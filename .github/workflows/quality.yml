@@ -19,12 +19,39 @@ jobs:
           # Full history so the session-gate step can diff PR/push ranges.
           fetch-depth: 0
 
+      # Control fast lane (kit v1.2.0, KL-8): a diff touching ONLY control/**
+      # (a status heartbeat, an inbox append) short-circuits this job GREEN
+      # in-job. Deliberately NOT a paths-ignore: `quality` is a REQUIRED
+      # check, and a required context that never reports stays pending
+      # forever and jams the merge (the fleet-protocol heartbeat-lane
+      # lesson, 2026-07-09). Coordination writes skip the heavy suite and
+      # need no session card; empty/unreadable diffs fail safe onto the
+      # full suite. Mirrors the kit's staged .substrate/ci/substrate-gate.yml
+      # control lane, folded into this single enforced gate on purpose.
+      - name: control fast lane (control/**-only diff short-circuits green)
+        id: lane
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          files="$(git diff --name-only "$range" 2>/dev/null || true)"
+          control_only=false
+          if [ -n "$files" ] && [ -z "$(printf '%s\n' "$files" | grep -v '^control/')" ]; then
+            control_only=true
+          fi
+          echo "control_only=$control_only" >> "$GITHUB_OUTPUT"
+          echo "control-only diff: $control_only"
+
       - name: Set up Python 3.12
+        if: steps.lane.outputs.control_only != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install app dependencies
+        if: steps.lane.outputs.control_only != 'true'
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install \
@@ -49,6 +76,7 @@ jobs:
       # folded into this single required `quality` gate so there is exactly one
       # enforced session-log path (no double / conflicting logic).
       - name: substrate check (strict, diff-aware session gate)
+        if: steps.lane.outputs.control_only != 'true'
         run: |
           if [ -n "${{ github.base_ref }}" ]; then
             range="origin/${{ github.base_ref }}...HEAD"
@@ -63,8 +91,10 @@ jobs:
       # Railway IDs (RAILWAY_PROJECT_ID / SERVICE_ID / ENVIRONMENT_ID), and a
       # safety doc must carry the warning. See docs/RAILWAY-SAFETY.md.
       - name: no ambient production Railway IDs
+        if: steps.lane.outputs.control_only != 'true'
         run: python3 scripts/check_no_ambient_railway_ids.py
 
       # Every service's test suite. FastAPI apps in app/, botsite/, dashboard/.
       - name: pytest (all services)
+        if: steps.lane.outputs.control_only != 'true'
         run: python3 -m pytest tests/ botsite/tests dashboard/tests -q

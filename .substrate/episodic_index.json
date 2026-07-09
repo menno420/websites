@@ -12,6 +12,25 @@
     "summary": "> **Status:** `complete` \u2014 shipped as PR #1 (`claude/adopt-substrate-kit`, squash-merged)."
   },
   {
+    "slug": "botsite-content-depth",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "botsite",
+      "content",
+      "depth",
+      "command",
+      "detail",
+      "pages",
+      "enriched",
+      "changelog",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 PR #21 (botsite content-depth batch, [D-0016])."
+  },
+  {
     "slug": "console-feed-contract",
     "date": "2026-07-09",
     "tags": [
@@ -100,9 +119,109 @@
       "2026-07-09",
       "engage",
       "substrate-kit",
-      "machinery"
+      "machinery",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2"
     ],
-    "summary": "> **Status:** `in-progress`"
+    "summary": "> **Status:** `complete` \u2014 PR #16. Contained, reversible, forward-only."
+  },
+  {
+    "slug": "fix-born-red-gate",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "fix",
+      "leaky",
+      "born-red",
+      "gate",
+      "adopt",
+      "kit",
+      "v1",
+      "0",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 born-red gate fix, [D-0017]. Card opened `complete`"
+  },
+  {
+    "slug": "harden-verify",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "hardening",
+      "verification",
+      "batch",
+      "p0-verify",
+      "p1a",
+      "b",
+      "c",
+      "p2-verify",
+      "owner-actions",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 the real work ships in the fix-forward PR from"
+  },
+  {
+    "slug": "journal-search-mobile",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "journal",
+      "browser",
+      "upgrade",
+      "rendered",
+      "markdown",
+      "cross-repo",
+      "search",
+      "mobile",
+      "polish",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 shipped as PR #18 (`claude/journal-search-mobile`),"
+  },
+  {
+    "slug": "kit-upgrade-engage",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "substrate-kit",
+      "upgrade",
+      "v1",
+      "0",
+      "2",
+      "engagement",
+      "audit",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` \u2014 PR #31 (`claude/kit-upgrade-engage`). First"
+  },
+  {
+    "slug": "order-001-deploy-drift",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "order",
+      "001",
+      "deploy-state",
+      "drift",
+      "cell",
+      "readiness",
+      "board",
+      "websites",
+      "row",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 the manager's ORDER 001 shipped forward-only through"
   },
   {
     "slug": "owner-area",
