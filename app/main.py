@@ -47,6 +47,14 @@ async def healthz():
     return {"ok": True, "cache_entries": github.cache_size()}
 
 
+@app.get("/version")
+async def version():
+    """The commit this service is running (deployed SHA). Unauthenticated,
+    no network dependency — read straight from the environment. Powers the
+    readiness board's deploy-state drift cell."""
+    return config.version_info("control-plane")
+
+
 @app.get("/", response_class=HTMLResponse)
 async def board(request: Request):
     rows = await readiness.board(refresh=_refresh(request))

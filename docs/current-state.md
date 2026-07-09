@@ -40,7 +40,13 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 - App: FastAPI + Jinja2 + httpx, server-rendered, no build step; data /
   cache model per `docs/site.md` (which stamps the stack + data-model
   decisions). Routes: `/` board, `/journal/…` browser,
-  `/api/readiness.json`, `/healthz`.
+  `/api/readiness.json`, `/healthz`, `/version`.
+- **Deploy-state drift** (see `docs/site.md`): the board's **websites row** shows
+  each service's DEPLOYED commit sha vs `main` HEAD (`in sync` / `DRIFT` /
+  `unknown`), and all three services expose an unauthenticated `/version` JSON.
+  Deployed sha
+  is read live from `RAILWAY_GIT_COMMIT_SHA` (primary, Railway-injected) →
+  `GIT_SHA` (Docker build-arg fallback) → `"unknown"`. No secret / Railway token.
 - Quality gates: the `quality` CI workflow (`.github/workflows/quality.yml`) —
   `python3 bootstrap.py check --strict --require-session-log`, the
   `scripts/check_no_ambient_railway_ids.py` guard, plus every service's pytest
@@ -100,6 +106,19 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **Deploy-state drift cell + `/version`** (ORDER 001 — decision + full detail in
+  `docs/site.md`). The board's
+  **websites row** now shows each service's DEPLOYED commit sha vs `main` HEAD —
+  `in sync` / `DRIFT` (both shas shown) / `unknown` — so the owner sees whether
+  the live site runs the latest merged code (Railway auto-deploys from `main`).
+  All three services expose an unauthenticated `/version` JSON
+  (`{service, sha, short}`); deployed sha read live from `RAILWAY_GIT_COMMIT_SHA`
+  (primary) → `GIT_SHA` Docker build-arg (fallback) → `"unknown"`. control-plane
+  reads its own sha from env (no network); botsite/dashboard fetched over
+  `/version` through the TTL cache. `app/readiness.py` `_deploy_board()` +
+  `board.html` cell; Dockerfiles gain `ARG GIT_SHA`. No secret / Railway token,
+  no ambient `RAILWAY_*` IDs. Tests +11 (84 → 95); local live-verify proved
+  DRIFT and in-sync both render.
 - **Born-red session-gate fix** ([D-0017]). The vendored substrate engine was
   **pre-1.0.0** and leaked: PR #19 auto-merged an empty PR on its born-red
   (`in-progress`) card alone. Two holes — (1) the checker never inspected the
