@@ -28,6 +28,17 @@ from . import config, github, journal
 
 OWNER = config.OWNER
 
+# The manager's canonical lane registry — the single source of truth for WHICH
+# lanes exist (one row per Project). `/fleet` parses this live so a lane added to
+# the manifest auto-appears on the page (no hand-kept copy to drift). superbot is
+# READ-ONLY here: the file is fetched at request time via the shared TTL-cached
+# github layer; nothing in superbot is written.
+MANIFEST_REPO = "superbot"
+MANIFEST_PATH = "docs/eap/fleet-manifest.md"
+
+# Extract every `menno420/<repo>` reference from a manifest Repo(s) cell.
+_MANIFEST_REPO_RE = re.compile(rf"{re.escape(OWNER)}/([A-Za-z0-9._-]+)")
+
 # Documented status.md field keys (control/README.md format block). A line is
 # only treated as a NEW field when its leading token (before the first colon) is
 # one of these — so a colon INSIDE a value (an ISO timestamp "12:07Z", a URL,
@@ -208,6 +219,264 @@ def _gh_blob(repo: str, path: str) -> str:
     return f"https://github.com/{OWNER}/{repo}/blob/main/{path}"
 
 
+# --------------------------------------------------------------------------- #
+# Live lane set from the manager's fleet-manifest
+# --------------------------------------------------------------------------- #
+# The manifest (menno420/superbot -> docs/eap/fleet-manifest.md) is a markdown
+# table, one row per Project:
+#     | Project | Repo(s) | Model | Routine cadence | Last-seen | Notes |
+# We parse the table (mapping columns by HEADER NAME so a reorder can't shift a
+# cell), then turn rows into the same lane dicts `config.FLEET_LANES` holds:
+#   {lane, repo, status_path, model, note}.
+# Two shapes need expanding beyond a plain single-repo row:
+#   * a row naming MORE THAN ONE repo (the SuperBot coordinator spans
+#     superbot + superbot-next; its heartbeat is written to superbot-next, so the
+#     bare superbot lane 404s as an honest absence) -> one lane per repo;
+#   * a repo SHARED by >1 row (the superbot-games cohabitation lanes) -> the
+#     lane reads `control/status-<slug>.md`, slug derived from the Project name.
+# The `manager` row (which builds nothing / owns no concrete repo) is skipped.
+
+
+def _strip_md(cell: str) -> str:
+    """Strip markdown emphasis + a trailing link target from a table cell."""
+    return cell.replace("**", "").replace("*", "").strip()
+
+
+def _lane_slug(project: str) -> str:
+    """Distinguishing slug for a shared-repo lane, from its Project name.
+
+    ``game-mining`` -> ``mining``; ``game-exploration`` -> ``exploration`` (the
+    segment after the first hyphen). A hyphen-less name slugifies whole. Drives
+    the ``control/status-<slug>.md`` path shared-repo cohabitation lanes use.
+    """
+    p = project.strip().lower()
+    tail = p.split("-", 1)[1] if "-" in p else p
+    return re.sub(r"[^a-z0-9]+", "-", tail).strip("-") or "lane"
+
+
+def _clean_model(model: str) -> str:
+    """Normalize a manifest Model cell to a display value.
+
+    ``—`` / empty -> ``unknown`` (the template hides an ``unknown`` model). Any
+    other value (``Fable 5``, ``default (Opus 4.8)``) is passed through trimmed.
+    """
+    m = _strip_md(model).strip()
+    if not m or m in {"—", "-", "–"}:
+        return "unknown"
+    return m
+
+
+def parse_manifest(text: str) -> list[dict[str, Any]]:
+    """Parse the fleet-manifest markdown table into raw Project rows.
+
+    Returns one dict per data row: ``{project, repos, model, cadence, last_seen,
+    notes}`` where ``repos`` is the list of ``menno420/<repo>`` names in the
+    Repo(s) cell (empty for the ``manager`` row, which names no concrete repo).
+    Columns are located by HEADER NAME, so a column reorder in the manifest does
+    not silently shift a value into the wrong field.
+    """
+    rows: list[list[str]] = []
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("|") and s.endswith("|"):
+            # Split on unescaped pipes; drop the empty edges from the outer bars.
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            rows.append(cells)
+    if not rows:
+        return []
+
+    # Locate the header row (has both a Project and a Repo column).
+    header_i = None
+    header: list[str] = []
+    for i, cells in enumerate(rows):
+        low = [c.lower() for c in cells]
+        if any("project" in c for c in low) and any(c.startswith("repo") for c in low):
+            header_i, header = i, low
+            break
+    if header_i is None:
+        return []
+
+    def col(*needles: str) -> Optional[int]:
+        for idx, name in enumerate(header):
+            if any(n in name for n in needles):
+                return idx
+        return None
+
+    ci = {
+        "project": col("project"),
+        "repos": col("repo"),
+        "model": col("model"),
+        "cadence": col("cadence"),
+        "last_seen": col("last-seen", "last seen"),
+        "notes": col("note"),
+    }
+    if ci["project"] is None or ci["repos"] is None:
+        return []
+
+    def get(cells: list[str], key: str) -> str:
+        idx = ci[key]
+        if idx is None or idx >= len(cells):
+            return ""
+        return cells[idx]
+
+    out: list[dict[str, Any]] = []
+    for cells in rows[header_i + 1 :]:
+        # Skip the header separator row (all cells are dashes) and short rows.
+        joined = "".join(cells).replace("|", "")
+        if joined and set(joined) <= set("-: "):
+            continue
+        project = _strip_md(get(cells, "project"))
+        if not project:
+            continue
+        repos_cell = get(cells, "repos")
+        repos = _MANIFEST_REPO_RE.findall(repos_cell)
+        out.append(
+            {
+                "project": project,
+                "repos": repos,
+                "repos_cell": repos_cell,
+                "model": get(cells, "model"),
+                "cadence": get(cells, "cadence"),
+                "last_seen": get(cells, "last_seen"),
+                "notes": _strip_md(get(cells, "notes")),
+            }
+        )
+    return out
+
+
+def manifest_to_lanes(manifest_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Turn parsed manifest rows into `/fleet` lane dicts (FLEET_LANES shape).
+
+    Rows naming no concrete repo (the ``manager`` control chair) are skipped.
+    A multi-repo row expands to one lane per repo; a repo shared by >1 row reads
+    ``control/status-<slug>.md``. Everything else is a single ``control/status.md``
+    lane named for its repo — matching the hand-kept `config.FLEET_LANES` set.
+    """
+    # A repo shared across rows (or flagged "shared" in its cell) needs per-lane
+    # status files, so count repo occurrences across the whole manifest first.
+    repo_rows: dict[str, int] = {}
+    for row in manifest_rows:
+        for repo in row["repos"]:
+            repo_rows[repo] = repo_rows.get(repo, 0) + 1
+
+    lanes: list[dict[str, Any]] = []
+    for row in manifest_rows:
+        repos = row["repos"]
+        if not repos:
+            continue  # manager / no concrete repo -> not a lane
+        model = _clean_model(row["model"])
+        notes = row["notes"]
+        project = row["project"]
+        shared = "shared" in row["repos_cell"].lower()
+
+        if len(repos) > 1:
+            # Multi-repo Project (SuperBot coordinator): one lane per repo. Each
+            # reads its OWN control/status.md and degrades honestly — the repo
+            # that doesn't hold the heartbeat 404s as an absence, never a fake.
+            siblings = ", ".join(repos)
+            for repo in repos:
+                others = [r for r in repos if r != repo]
+                note = (
+                    f"{project} Project (spans {siblings})."
+                    + (f" Heartbeat may live in {', '.join(others)}." if others else "")
+                    + (f" {notes}" if notes else "")
+                ).strip()
+                lanes.append(
+                    {
+                        "lane": repo,
+                        "repo": repo,
+                        "status_path": "control/status.md",
+                        "model": model,
+                        "note": note,
+                    }
+                )
+            continue
+
+        repo = repos[0]
+        if shared or repo_rows.get(repo, 0) > 1:
+            # Shared-repo cohabitation lane (superbot-games): the Project name
+            # distinguishes which status-<slug>.md file it writes.
+            slug = _lane_slug(project)
+            lanes.append(
+                {
+                    "lane": f"{repo} · {slug}",
+                    "repo": repo,
+                    "status_path": f"control/status-{slug}.md",
+                    "model": model,
+                    "note": notes or f"{project} lane ({repo} shared-repo cohabitation).",
+                }
+            )
+        else:
+            lanes.append(
+                {
+                    "lane": repo,
+                    "repo": repo,
+                    "status_path": "control/status.md",
+                    "model": model,
+                    "note": notes,
+                }
+            )
+    return lanes
+
+
+async def resolve_lanes(
+    refresh: bool = False,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """The lane set for `/fleet`, live from the manifest with an honest fallback.
+
+    PRIMARY: fetch + parse the manager's fleet-manifest so a lane added there
+    auto-appears. FALLBACK: on any fetch/parse failure (or a parse that yields
+    zero lanes) return the hand-kept ``config.FLEET_LANES`` and a ``source`` dict
+    the page renders as a visible "using the cached fallback list" notice — it
+    never silently pretends the manifest was live.
+    """
+    manifest_url = _gh_blob(MANIFEST_REPO, MANIFEST_PATH)
+    try:
+        fetch = await github.fetch_file(MANIFEST_REPO, MANIFEST_PATH, refresh=refresh)
+    except Exception as exc:  # pragma: no cover - defensive
+        return list(config.FLEET_LANES), {
+            "source": "fallback",
+            "ok": False,
+            "reason": f"manifest fetch raised: {type(exc).__name__}",
+            "manifest_url": manifest_url,
+        }
+
+    if not (fetch["ok"] and isinstance(fetch["data"], str) and fetch["data"].strip()):
+        reason = fetch.get("error") or f"HTTP {fetch.get('status')}"
+        return list(config.FLEET_LANES), {
+            "source": "fallback",
+            "ok": False,
+            "reason": f"manifest unavailable ({reason})",
+            "manifest_url": manifest_url,
+        }
+
+    try:
+        lanes = manifest_to_lanes(parse_manifest(fetch["data"]))
+    except Exception as exc:  # pragma: no cover - defensive
+        return list(config.FLEET_LANES), {
+            "source": "fallback",
+            "ok": False,
+            "reason": f"manifest parse failed: {type(exc).__name__}",
+            "manifest_url": manifest_url,
+        }
+
+    if not lanes:
+        return list(config.FLEET_LANES), {
+            "source": "fallback",
+            "ok": False,
+            "reason": "manifest parsed to zero lanes",
+            "manifest_url": manifest_url,
+        }
+
+    return lanes, {
+        "source": "manifest",
+        "ok": True,
+        "reason": "",
+        "count": len(lanes),
+        "manifest_url": manifest_url,
+    }
+
+
 async def lane_status(
     lane: dict, now: Optional[datetime] = None, refresh: bool = False
 ) -> dict[str, Any]:
@@ -237,6 +506,7 @@ async def lane_status(
         "open_prs": meta["open_prs"],
         "missing": False,
         "fetch_error": None,
+        "unreadable": False,
         "project": lane["lane"],
         "fields": {},
         "health": classify_health(""),
@@ -256,6 +526,16 @@ async def lane_status(
         # A 404 is a legitimate "this lane has no status file yet" — an absence,
         # never an error banner. (The bare `superbot` lane is expected here.)
         out["missing"] = True
+    elif fetch["status"] in (401, 403):
+        # The manifest may name a lane whose repo the app's token cannot read
+        # (private / not granted / rate limited). Render it honestly as
+        # "unreadable" — never drop it — so the owner sees the lane exists but
+        # its state is hidden. The underlying reason is preserved in the banner.
+        reason = fetch.get("error") or f"HTTP {fetch['status']}"
+        out["unreadable"] = True
+        out["fetch_error"] = (
+            f"unreadable — the board's token cannot read {OWNER}/{repo}: {reason}"
+        )
     else:
         out["fetch_error"] = fetch.get("error") or f"HTTP {fetch.get('status')}"
 
@@ -288,14 +568,18 @@ def _sort_key(lane: dict) -> tuple:
 async def overview(refresh: bool = False) -> dict[str, Any]:
     """Every fleet lane's heartbeat, attention-sorted, with a fleet summary.
 
-    Fetches all lanes concurrently (cache-backed) against a single ``now`` so
-    every age is measured from the same instant. Returns the lane list plus
-    roll-up counts (total / live / stale / broken / errored / no-file) so the
-    page can show one glanceable header line."""
+    The lane SET is resolved live from the manager's fleet-manifest (an added
+    lane auto-appears), falling back to ``config.FLEET_LANES`` with an honest
+    ``lane_source`` notice when the manifest can't be fetched/parsed. Fetches all
+    lanes concurrently (cache-backed) against a single ``now`` so every age is
+    measured from the same instant. Returns the lane list plus roll-up counts
+    (total / live / stale / broken / errored / no-file) so the page can show one
+    glanceable header line."""
     now = datetime.now(timezone.utc)
+    lane_defs, lane_source = await resolve_lanes(refresh=refresh)
     lanes = list(
         await asyncio.gather(
-            *[lane_status(lane, now=now, refresh=refresh) for lane in config.FLEET_LANES]
+            *[lane_status(lane, now=now, refresh=refresh) for lane in lane_defs]
         )
     )
     lanes.sort(key=_sort_key)
@@ -318,7 +602,7 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
         "lanes": lanes,
         "summary": summary,
         "stale_hours": config.FLEET_STALE_HOURS,
-        "manifest_url": (
-            f"https://github.com/{OWNER}/superbot/blob/main/docs/eap/fleet-manifest.md"
-        ),
+        "lane_source": lane_source,
+        "manifest_url": lane_source.get("manifest_url")
+        or _gh_blob(MANIFEST_REPO, MANIFEST_PATH),
     }

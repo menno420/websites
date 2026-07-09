@@ -58,11 +58,21 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    → stale → absent → red-by-design → healthy). A repo with no status file shows an
    honest absence (not an error — the bare `superbot` lane, whose heartbeat is
    written to superbot-next, is the real case); a fetch failure shows an honest
-   banner. The **canonical lane set** is the manager's registry
-   `menno420/superbot` → `docs/eap/fleet-manifest.md`; the app holds a hand-kept
-   copy in `config.FLEET_LANES` (⚑ owner note in [D-0021]: keep it in sync, or
-   evolve `/fleet` to parse the manifest live). No new dependency, no new secret,
-   no Railway op; the websites row dogfoods its own status.
+   banner. The **lane set** is derived **live** from the manager's canonical
+   registry `menno420/superbot` → `docs/eap/fleet-manifest.md` ([D-0022]):
+   `resolve_lanes` fetches that manifest (same TTL-cached github layer, superbot
+   read-only), `parse_manifest` reads its markdown table by header name, and
+   `manifest_to_lanes` expands it into lane dicts — the `manager` row (no concrete
+   repo) is skipped, the multi-repo SuperBot coordinator becomes a `superbot` +
+   `superbot-next` lane, and a repo shared by >1 row (the superbot-games
+   cohabitation lanes) reads `control/status-<slug>.md`. A lane **added to the
+   manifest auto-appears** here (drift removed). If the manifest can't be
+   fetched/parsed the page falls back to the hand-kept `config.FLEET_LANES` and
+   shows an **honest "cached fallback list" notice** (never silently pretends it
+   was live); `lane_source` in `/fleet.json` reports `manifest` vs `fallback`. A
+   manifest lane whose repo the token can't read renders an honest `unreadable`
+   state rather than being dropped. No new dependency, no new secret, no Railway
+   op; the websites row dogfoods its own status.
 4. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
