@@ -1,4 +1,4 @@
-"""substrate-kit bootstrap — GENERATED, DO NOT EDIT.
+"""substrate-kit bootstrap v1.0.0 — GENERATED, DO NOT EDIT.
 
 Single-file, stdlib-only. Regenerate from source with:
     python3 substrate-kit/src/build_bootstrap.py
@@ -14,8 +14,10 @@ from collections.abc import Iterator
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import asdict, dataclass, field, fields
+from dataclasses import dataclass, field
 from datetime import date
 from datetime import date as _led_date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 from typing import Any, NamedTuple
@@ -23,6 +25,8 @@ from typing import NamedTuple
 import argparse
 import ast
 import copy
+import difflib
+import hashlib
 import itertools
 import json
 import os
@@ -69,6 +73,16 @@ runtime (e.g. ``python3.10`` for a repo whose CI pins 3.10).
 CONFIG_FILENAME = "substrate.config.json"
 DEFAULT_STATE_DIR = ".substrate"
 
+# THE kit version (founding plan §4.1). Semver keyed to the planted-doc
+# contract, state schema, config schema, and CLI surface: MAJOR = breaking
+# change to any of those; MINOR = new capability; PATCH = fixes. Exposed as
+# `bootstrap.py --version`, stamped into the dist header by
+# `src/build_bootstrap.py`, and recorded into `substrate.config.json`
+# (`kit_version`) + state by `adopt`/`upgrade`. Bump together with
+# `pyproject.toml` `[project] version` (a test pins them equal) and a new
+# CHANGELOG.md section (the release workflow refuses to publish without one).
+KIT_VERSION = "1.0.0"
+
 
 def _new_project_id() -> str:
     """Return a short, stable identifier for one install."""
@@ -78,7 +92,10 @@ def _new_project_id() -> str:
 def _default_cadence() -> dict[str, int]:
     """Return the default cadence knobs (every hardcoded cadence lives here)."""
     return {
-        "reconciliation_prs": 20,
+        # 30, not 20: the source repo's live cadence (superbot Q-0134 — at burst
+        # velocity a 20-band fired the docs pass several times a day); the 20
+        # default was stale drift the founding plan §3.4 rules fixed.
+        "reconciliation_prs": 30,
         "reconciliation_sessions": 20,
         "compaction_sessions": 20,
         "critical_slot_grace_sessions": 3,
@@ -152,11 +169,19 @@ def _default_readpath_docs() -> list[str]:
 
 
 def _default_session_markers() -> list[dict[str, str]]:
-    """Return the markers every session log must carry (label + substring)."""
+    """Return the markers every session log must carry (label + substring).
+
+    The Model line (``📊 Model: <model> · <effort> · <task-class>``) is the
+    PL-004 telemetry feed (KL-3): ``session-close`` harvests it into
+    ``telemetry/model-usage.jsonl``. New adopts require it from birth;
+    existing installs gain it at ``upgrade`` (a consumer's gate only tightens
+    when it upgrades — founding plan §5.2).
+    """
     return [
         {"label": "Status badge", "needle": "**Status:**"},
         {"label": "Session idea", "needle": "💡"},
         {"label": "Previous-session review", "needle": "previous-session review"},
+        {"label": "Model line", "needle": "\N{BAR CHART} Model:"},
     ]
 
 
@@ -165,6 +190,13 @@ class Config:
     """Host-project configuration for one substrate-kit install."""
 
     project_id: str = field(default_factory=_new_project_id)
+    # The kit version this install last adopted/upgraded from — "" until an
+    # `adopt`/`upgrade` records it (a pre-release install honestly reports
+    # unrecorded rather than guessing). A DECLARED dataclass field on purpose:
+    # `from_dict` drops unknown keys and `save_config` serialises only
+    # dataclass fields, so a bare JSON key would be stripped on the next
+    # load→save round-trip (founding plan §4.1).
+    kit_version: str = ""
     interpreter: str = field(default_factory=lambda: sys.executable)
     interpreter_for_checks: str | None = None
     state_dir: str = DEFAULT_STATE_DIR
@@ -1195,6 +1227,180 @@ def run_doc_checks(
         + check_reachable(docs_root, readpath_docs)
     )
 
+# --- engine/checks/allowlist.py ---
+"""Reasons-required check allowlist (KL-3 — the §5.3 triage mechanism).
+
+Port of the host project's ``*_exceptions.yml`` discipline: a finding may be
+suppressed only by an allowlist entry that says **why**. The file lives at
+``<state_dir>/check-exceptions.yml`` (consumer-owned, committed), a YAML list
+of entries::
+
+    # one entry per accepted finding — reason is REQUIRED
+    # verdict: accepted_risk (default) or false_positive
+    - path: docs/legacy-import.md
+      kind: badge
+      reason: "generated import, migrates at KL-5 — badge lands with the move"
+      triaged: 2026-07-09
+      by: session-kl3
+      verdict: accepted_risk
+
+Schema: ``{path, kind, reason (REQUIRED), triaged, by, verdict?}``. An entry
+without a non-empty ``reason`` is **refused**: it suppresses nothing and is
+itself reported as a finding — the door, not a nag. Creating a (valid) entry
+IS the false_positive / accepted_risk verdict event for the guard-fire feed
+(founding plan §5.3): the suppressed fire is recorded with the entry's
+verdict + reason instead of a null awaiting triage.
+
+The parser is a deliberate stdlib-only YAML *subset* (the engine imports no
+third-party packages): comments, a flat list of flat string-valued mappings,
+optional single/double quotes. Anything it cannot read is reported as a
+finding rather than silently ignored — a malformed allowlist must never
+silently widen (entries lost = findings resurface: fail-closed for
+suppression, loud about why).
+"""
+
+
+
+
+EXCEPTIONS_FILENAME = "check-exceptions.yml"
+
+_ENTRY_KEYS = ("path", "kind", "reason", "triaged", "by", "verdict")
+_VERDICTS = ("accepted_risk", "false_positive")
+
+
+def _unquote(value: str) -> str:
+    """Strip one matching pair of surrounding quotes from ``value``."""
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+        return value[1:-1]
+    return value
+
+
+def parse_allowlist(text: str, source: str) -> tuple[list[dict], list[Finding]]:
+    """Parse the YAML-subset allowlist ``text`` into (entries, findings).
+
+    Valid entries (with a non-empty ``reason``) go to ``entries``; refused or
+    unparseable material becomes ``Finding``s with ``kind="allowlist"``
+    (``path`` = ``source``, the allowlist file's own relpath).
+    """
+    entries: list[dict] = []
+    findings: list[Finding] = []
+    current: dict | None = None
+
+    def close(entry: dict | None) -> None:
+        if entry is None:
+            return
+        reason = str(entry.get("reason", "")).strip()
+        label = entry.get("path") or entry.get("kind") or "?"
+        if not reason:
+            findings.append(
+                Finding(
+                    source,
+                    "allowlist",
+                    f"entry for {label!r} has no reason — refused "
+                    "(reasons are required; the entry suppresses nothing)",
+                ),
+            )
+            return
+        verdict = entry.get("verdict", "accepted_risk")
+        if verdict not in _VERDICTS:
+            findings.append(
+                Finding(
+                    source,
+                    "allowlist",
+                    f"entry for {label!r} has unknown verdict {verdict!r} "
+                    f"(allowed: {', '.join(_VERDICTS)}) — refused",
+                ),
+            )
+            return
+        entry["verdict"] = verdict
+        entries.append(entry)
+
+    for number, raw in enumerate(text.splitlines(), start=1):
+        # Full-line comments only: a reason like "see PR #1770" keeps its #.
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        stripped = raw.strip()
+        if stripped.startswith("- "):
+            close(current)
+            current = {}
+            stripped = stripped[2:].strip()
+            if not stripped:
+                continue
+        if current is None or ":" not in stripped:
+            findings.append(
+                Finding(
+                    source,
+                    "allowlist",
+                    f"line {number} is not part of a `- key: value` entry — "
+                    "unparseable (the allowlist accepts a flat YAML list of "
+                    "flat mappings only)",
+                ),
+            )
+            continue
+        key, _, value = stripped.partition(":")
+        key = key.strip()
+        if key not in _ENTRY_KEYS:
+            findings.append(
+                Finding(
+                    source,
+                    "allowlist",
+                    f"line {number}: unknown key {key!r} "
+                    f"(known: {', '.join(_ENTRY_KEYS)})",
+                ),
+            )
+            continue
+        current[key] = _unquote(value.strip())
+    close(current)
+    return entries, findings
+
+
+def load_allowlist(root: Path, state_dir: str) -> tuple[list[dict], list[Finding]]:
+    """Load ``<state_dir>/check-exceptions.yml`` — ``([], [])`` when absent.
+
+    An unreadable file yields no entries and one finding (never a crash: the
+    checker must run on any tree).
+    """
+    path = root / state_dir / EXCEPTIONS_FILENAME
+    source = f"{state_dir}/{EXCEPTIONS_FILENAME}"
+    if not path.is_file():
+        return [], []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return [], [Finding(source, "allowlist", "file unreadable — no suppression")]
+    return parse_allowlist(text, source)
+
+
+def apply_allowlist(
+    findings: list,
+    entries: list[dict],
+) -> tuple[list, list[tuple]]:
+    """Split ``findings`` into (kept, suppressed) by exact path+kind match.
+
+    ``suppressed`` pairs each dropped finding with the entry that covered it,
+    so the caller can record the guard fire with the entry's verdict+reason.
+    Matching is deliberately exact on ``path`` and ``kind`` — a broad glob
+    would let one entry silence a class of future findings its reason never
+    triaged.
+    """
+    kept: list = []
+    suppressed: list[tuple] = []
+    for finding in findings:
+        entry = next(
+            (
+                e
+                for e in entries
+                if e.get("path") == str(finding.path)
+                and e.get("kind") == str(finding.kind)
+            ),
+            None,
+        )
+        if entry is None:
+            kept.append(finding)
+        else:
+            suppressed.append((finding, entry))
+    return kept, suppressed
+
 # --- engine/checks/check_session_log.py ---
 """Generic session-log completeness checker (config-driven port).
 
@@ -1206,9 +1412,11 @@ host tunes the ritual without touching engine code.
 
 Unlike the host's version this port does **not** shell out to ``git`` to pick the
 "current" log — ``subprocess`` is banned in engine code and is host-CI sugar
-anyway. The current log is the newest ``*.md`` by mtime under ``sessions_dir``
-(the CLI also accepts an explicit ``--file``). Pure stdlib; returns the missing
-markers rather than printing.
+anyway. The current log is the newest ``*.md`` by mtime under ``sessions_dir``;
+CI workflows should prefer ``check --session-log <file>`` with the card the
+PR's diff touches, because a fresh checkout flattens every mtime to checkout
+time and silently degrades the newest-by-mtime guess. Pure stdlib; returns the
+missing markers rather than printing.
 """
 
 
@@ -1239,13 +1447,74 @@ def latest_session_log(sessions_dir: Path) -> Path | None:
     return max(candidates, key=lambda p: p.stat().st_mtime)
 
 
+# Status-badge values that mean "this session is not finished yet". A card
+# carrying one is INCOMPLETE even when every marker needle is present — the
+# born-red discipline checks the status VALUE, not just the badge's presence.
+# (KL-1 lesson, kit repo PR #9: a reopened card kept its idea/review markers
+# from the previous PR, so a presence-only check read born-red as green and
+# auto-merge landed the PR without its close-out.) ``drafted`` is the
+# auto-draft state (KL-5): an auto-drafted skeleton is real write-back but
+# not a finished session — drafted holds the gate exactly like born-red.
+IN_PROGRESS_TOKENS = ("in-progress", "in progress", "wip", "hold", "drafted")
+
+# The auto-draft judgment-slot opener (KL-5). Drafted text marks every field
+# only the session can fill with ``[[fill: <hint>]]``; a card still carrying
+# one is DRAFTED, not completed — a distinct, mechanically countable state
+# between "nothing written" (the twice-measured Phase-2.5 baseline) and a
+# genuine close-out. The needle-based markers may all be present in a draft
+# (the stand-ins carry them on purpose), so this token is what keeps an
+# unedited draft from counting complete.
+DRAFT_FILL_TOKEN = "[[fill:"
+
+# Inline code spans + fenced blocks are stripped before counting: a card
+# whose prose *mentions* the token (`[[fill:]]` in backticks — session cards
+# about the draft mechanism legitimately do) is not an unresolved slot; the
+# draft always writes real slots bare.
+_CODE_SPAN_RE = re.compile(r"`[^`\n]*`")
+_FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
+
+
+def unresolved_fill_count(text: str) -> int:
+    """Return how many auto-draft ``[[fill:]]`` slots remain in ``text``.
+
+    Counts only slots outside inline code spans and fenced code blocks —
+    prose that *talks about* the token doesn't hold the gate.
+    """
+    stripped = _CODE_SPAN_RE.sub("", _FENCE_RE.sub("", text))
+    return stripped.count(DRAFT_FILL_TOKEN)
+
+
+def status_in_progress(text: str) -> bool:
+    """True when the log's Status badge line carries an in-progress value."""
+    for line in text.splitlines():
+        if "**status:**" in line.lower():
+            lowered = line.lower()
+            return any(token in lowered for token in IN_PROGRESS_TOKENS)
+    return False
+
+
 def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
-    """Return the missing-marker labels for one log file (all if unreadable)."""
+    """Return what keeps one log file from counting complete (all if unreadable).
+
+    Three conditions feed the list: marker needles that are absent, a Status
+    badge still carrying an in-progress value, and unresolved auto-draft
+    ``[[fill:]]`` slots (the drafted-vs-completed distinction, KL-5 — a
+    drafted card is named as drafted, never mistaken for a finished one).
+    """
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return [m["label"] for m in markers]
-    return missing_markers(text, markers)
+    missing = missing_markers(text, markers)
+    fills = unresolved_fill_count(text)
+    if fills:
+        missing.append(
+            f"{fills} auto-draft [[fill:]] slot(s) unresolved "
+            "(the card is drafted, not completed)",
+        )
+    if status_in_progress(text):
+        missing.append("a completed Status (badge still says in-progress)")
+    return missing
 
 # --- engine/checks/check_namespace.py ---
 """Portable namespace / shadowing guard (Lane B6, the Q-0200 class).
@@ -2242,21 +2511,34 @@ def _ref_newest_logs(sessions_dir: Path, last_n: int) -> list[Path]:
 
 
 def _ref_clean_line(line: str) -> str:
-    """Strip bullets, blockquote marks, and the emoji markers from a mined line."""
-    text = line.strip().lstrip("-*> ").strip()
+    """Strip list/blockquote prefixes and the emoji markers from a mined line."""
+    text = _REF_LEAD_PREFIX_RE.sub("", line.strip())
     for mark in (_REF_IDEA_MARK, _REF_FLAG_MARK):
         text = text.replace(mark, "")
     return text.strip().lstrip(":").strip()
 
 
+# List/blockquote prefixes a marker-led line may open with: bullets ("- ", "* ",
+# "+ "), blockquotes ("> "), and ordered-list numbers ("1. ", "12) "), possibly
+# nested. Stripped before the marker-lead test below.
+_REF_LEAD_PREFIX_RE = re.compile(r"^(?:\s*(?:[-*+>]\s|\d{1,3}[.)]\s))*\s*")
+
+
 def _ref_marker_tags(line: str) -> list[str]:
-    """Return the candidate tags for a line's emoji markers (may be empty)."""
-    tags: list[str] = []
-    if _REF_IDEA_MARK in line:
-        tags.append("idea")
-    if _REF_FLAG_MARK in line:
-        tags.append("flag")
-    return tags
+    """Return the tags for a line *led* by an emoji marker (may be empty).
+
+    Only lines whose content starts at the marker — after list/blockquote
+    prefixes and emphasis characters — are lesson candidates. A mid-prose
+    marker mention ("see 💡 below for the durable fix", "its friction-index 💡
+    was left floating") is a cross-reference, not a lesson; harvesting those
+    produced junk fragments in the kit-lab band (observed 2026-07-09).
+    """
+    text = _REF_LEAD_PREFIX_RE.sub("", line).lstrip("*_ ")
+    if text.startswith(_REF_IDEA_MARK):
+        return ["idea"]
+    if text.startswith(_REF_FLAG_MARK):
+        return ["flag"]
+    return []
 
 
 def _ref_path_tokens(line: str) -> list[str]:
@@ -2281,7 +2563,12 @@ def _ref_mine_log(log: Path) -> tuple[list[dict], dict[str, str]]:
         if "[DEPRECATED]" in line:
             continue
         evidence = f"{log.name}:L{lineno}"
-        tags = _ref_marker_tags(line)
+        # Heading lines ("## 💡 Session idea") are section *structure*, not
+        # lessons — mining them produced header-text reflections in the KL-0
+        # dogfood (friction guard, 2026-07-09). Path tokens in headings still
+        # count for the recurring-path pass.
+        is_heading = line.lstrip().startswith("#")
+        tags = [] if is_heading else _ref_marker_tags(line)
         if tags:
             candidates.append(
                 {"lesson": _ref_clean_line(line), "evidence": evidence, "tags": tags},
@@ -2297,12 +2584,16 @@ def mine_reflections(sessions_dir: Path, *, last_n: int = 5) -> list[dict]:
     Deterministic and read-only — never writes state; the caller decides what
     to promote into the buffer. Three extraction passes:
 
-      1. 💡 idea lines → ``{"lesson", "evidence", "tags": ["idea"]}``.
-      2. ⚑ flag lines → the same shape, tagged ``flag``.
+      1. 💡-led idea lines → ``{"lesson", "evidence", "tags": ["idea"]}``.
+      2. ⚑-led flag lines → the same shape, tagged ``flag``.
       3. Any file path cited in >= 2 different logs → one
          ``Recurring attention on <path>`` candidate.
 
-    Lines containing ``[DEPRECATED]`` are skipped entirely.
+    Passes 1–2 require the marker to *lead* the line (after list/blockquote
+    prefixes) — a mid-prose marker mention is a cross-reference, never a
+    lesson. Lines containing ``[DEPRECATED]`` are skipped entirely;
+    ``#``-prefixed heading lines never become lesson candidates (passes 1–2)
+    but their path tokens still feed pass 3.
     """
     candidates: list[dict] = []
     sightings: dict[str, dict[str, str]] = {}
@@ -2324,6 +2615,870 @@ def mine_reflections(sessions_dir: Path, *, last_n: int = 5) -> list[dict]:
             },
         )
     return candidates
+
+# --- engine/loop/friction.py ---
+"""The friction-report protocol's consumer half (founding plan §9.1, KL-4).
+
+The context-delta loop, cross-repo: a consumer collects its kit-friction ⚑
+records, wraps them in a small envelope, and files them as a **GitHub issue
+labeled ``friction`` on the kit repo** (⚑ KF-7). The engine is stdlib-only
+and holds no network credentials, so the split is explicit:
+
+- **The engine (``friction export``)** builds the envelope and writes it to
+  the outbox at ``<state_dir>/friction-outbox/`` — the same outbox §9.1
+  prescribes for network/credential failure, used unconditionally: every
+  export lands there first, and the file doubles as the retry buffer.
+- **The session/agent files the issue** (its GitHub surface — MCP, ``gh``,
+  Actions) using the issue-ready title + body ``friction export``/``show``
+  print, then deletes the drained outbox file. Session-close advises on
+  pending files (best-effort, fail-open — the lab cannot drain a consumer's
+  outbox; it has no consumer write access).
+
+Envelope (§9.1, D-14 — the payload IS the reflection record shape)::
+
+    { "schema": 1, "repo": "<github full name>", "project_id": "<config id>",
+      "kit_version": "1.0.0", "reports": [ {reflection-record…}, … ] }
+
+Reports = the reflection buffer's ``flag``-tagged records **plus** a direct
+session-log scan for un-mined ⚑ lines — the buffer is a 5-slot rolling
+window, not an archive, so export never depends on it alone (D-14).
+"""
+
+
+
+
+FRICTION_SCHEMA = 1
+FRICTION_OUTBOX_DIRNAME = "friction-outbox"
+FRICTION_LABEL = "friction"
+
+# owner/repo out of a git remote URL — tolerant of https, ssh, and proxy
+# forms (…github.com/owner/repo.git · git@github.com:owner/repo ·
+# http://proxy/git/owner/repo). Fail-open: no match reads as "".
+_REMOTE_REPO_RE = re.compile(r"[:/]([\w.-]+/[\w.-]+?)(?:\.git)?\s*$")
+
+
+def detect_repo(root: Path) -> str:
+    """Best-effort ``owner/repo`` from ``.git/config``'s origin URL ("" if not).
+
+    Pure file parsing (the engine may not shell out): finds the
+    ``[remote "origin"]`` section's ``url =`` line and extracts the last two
+    path components. Any failure — no repo, detached layouts, exotic
+    remotes — returns ``""`` so the caller can require ``--repo`` instead.
+    """
+    config_path = root / ".git" / "config"
+    try:
+        text = config_path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    in_origin = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("["):
+            in_origin = stripped.replace("'", '"') == '[remote "origin"]'
+            continue
+        if in_origin and stripped.startswith("url"):
+            _, _, url = stripped.partition("=")
+            match = _REMOTE_REPO_RE.search(url.strip())
+            return match.group(1) if match else ""
+    return ""
+
+
+def friction_reports(target: Path, config: Any) -> list[dict]:
+    """Collect the ⚑ friction records for one export (D-14, both sources).
+
+    Buffer records tagged ``flag`` come through verbatim (full reflection
+    record shape); the direct session-log scan adds un-mined ⚑ lines as
+    ``{lesson, evidence, tags}`` records, deduplicated against the buffer
+    (and against each other) by lesson text.
+    """
+    reflections_path = target / config.state_dir / REFLECTIONS_FILENAME
+    reports = [
+        entry
+        for entry in load_reflections(reflections_path)
+        if "flag" in (entry.get("tags") or [])
+    ]
+    seen = {str(entry.get("lesson", "")) for entry in reports}
+    # A deliberately huge last_n: the export scans EVERY session log — the
+    # buffer's 5-slot window must never bound what gets reported.
+    for candidate in mine_reflections(target / config.sessions_dir, last_n=100000):
+        if "flag" not in candidate.get("tags", []):
+            continue
+        lesson = str(candidate.get("lesson", ""))
+        if not lesson or lesson in seen:
+            continue
+        seen.add(lesson)
+        reports.append(candidate)
+    return reports
+
+
+def build_envelope(
+    *,
+    repo: str,
+    project_id: str,
+    kit_version: str,
+    reports: list[dict],
+) -> dict:
+    """Return the §9.1 wire envelope for ``reports``."""
+    return {
+        "schema": FRICTION_SCHEMA,
+        "repo": repo,
+        "project_id": project_id,
+        "kit_version": kit_version,
+        "reports": reports,
+    }
+
+
+def outbox_dir(target: Path, state_dir: str) -> Path:
+    """Return the friction-outbox directory for one install."""
+    return target / state_dir / FRICTION_OUTBOX_DIRNAME
+
+
+def list_outbox(target: Path, state_dir: str) -> list[Path]:
+    """Return the pending outbox envelopes, oldest first ([] when none)."""
+    box = outbox_dir(target, state_dir)
+    if not box.is_dir():
+        return []
+    return sorted(p for p in box.glob("*.json") if p.is_file())
+
+
+def write_outbox(target: Path, state_dir: str, envelope: dict) -> Path:
+    """Write ``envelope`` to a fresh outbox file (atomic); return its path."""
+    box = outbox_dir(target, state_dir)
+    stamp = date.today().isoformat()
+    serial = 1
+    while (path := box / f"{stamp}-friction-{serial:02d}.json").exists():
+        serial += 1
+    atomic_write_text(path, json.dumps(envelope, indent=2, sort_keys=True) + "\n")
+    return path
+
+
+def load_envelope(path: Path) -> dict | None:
+    """Read one outbox envelope; None on a missing/corrupt file (fail-open)."""
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return raw if isinstance(raw, dict) else None
+
+
+def friction_issue_title(envelope: dict) -> str:
+    """Return the friction issue's title line."""
+    repo = envelope.get("repo") or envelope.get("project_id") or "unknown consumer"
+    count = len(envelope.get("reports") or [])
+    version = envelope.get("kit_version") or "unrecorded"
+    plural = "s" if count != 1 else ""
+    return f"[friction] {repo}: {count} report{plural} @ kit v{version}"
+
+
+def friction_issue_body(envelope: dict) -> str:
+    """Return the friction issue's body: one-line summary + fenced JSON (§9.1)."""
+    reports = envelope.get("reports") or []
+    lessons = [str(r.get("lesson", ""))[:120] for r in reports[:3]]
+    summary = "; ".join(lesson for lesson in lessons if lesson) or "(no lessons)"
+    if len(reports) > 3:
+        summary += f"; … +{len(reports) - 3} more"
+    payload = json.dumps(envelope, indent=2, sort_keys=True)
+    return (
+        f"Consumer friction report — {summary}\n"
+        "\n"
+        f"```json\n{payload}\n```\n"
+        "\n"
+        f"*Filed per founding plan §9.1 (label `{FRICTION_LABEL}`; triage = "
+        "the lab loop's step 5 three-clause bar; disposition comment + "
+        "close).*\n"
+    )
+
+# --- engine/loop/telemetry.py ---
+"""Telemetry substrate — guard-fire records + the model-usage harvest (KL-3).
+
+Two feeds, both mechanized (the Phase-2.5 lesson: mechanize, don't exhort)
+and both **fail-open by contract** — telemetry must never crash a check, a
+hook, or session-close (founding plan §5.3/§5.2):
+
+- **Guard fires** (B3): one JSONL record per finding a guard surfaces,
+  appended to ``<state_dir>/guard-fires.jsonl`` by the two local choke points
+  (``cmd_check``'s finding loop, ``cmd_hook``'s dispatch). The ``ci`` surface
+  is **derived, not written** — a JSONL appended inside an Actions runner
+  dies with the job, so the lab sweep reads the GitHub Checks API instead,
+  and ``did_not_run`` rows are computed the same way (never written here).
+- **Model usage** (B2 / PL-004): sessions self-report one machine-parsed
+  run-report line — ``- **📊 Model:** <model> · <effort> · <task-class>`` —
+  and ``session-close`` harvests it into ``telemetry/model-usage.jsonl``.
+  ``tokens_out`` is null-tolerated (KF-9: no meter exists; an optional 4th
+  ``·`` segment fills it when one does). ``outcome`` ships as the PL-004
+  object with null fields — the lab loop's sweep backfills them (CI result,
+  merged PR, the 14-day revert window).
+
+Appends use a single ``write`` in append mode (atomic enough for one-line
+records on POSIX); full-file rewrites are never performed on either feed —
+JSONL because atomic appends beat rewriting a JSON array (plan D-10).
+"""
+
+
+
+
+GUARD_FIRES_FILENAME = "guard-fires.jsonl"
+MODEL_USAGE_RELPATH = "telemetry/model-usage.jsonl"
+
+# The run-report needle. \N escape keeps the engine source ASCII-safe.
+MODEL_LINE_NEEDLE = "\N{BAR CHART} Model:"  # 📊 Model:
+
+# The 9 PL-004 task classes, verbatim (docs/program/rulings.md): the 8
+# founding Q-0248 classes + `feature build` (the PL-010 amendment).
+TASK_CLASSES = (
+    "docs-only",
+    "mechanical refactor",
+    "test writing",
+    "runtime bugfix",
+    "kernel/architecture design",
+    "review/verify",
+    "research",
+    "idea/planning",
+    "feature build",
+)
+
+_DATE_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
+
+
+def guard_fires_path(root: Path, state_dir: str) -> Path:
+    """Return the guard-fire JSONL path for one install."""
+    return root / state_dir / GUARD_FIRES_FILENAME
+
+
+def _append_jsonl(path: Path, record: dict) -> None:
+    """Append one compact JSON line to ``path`` (parents created)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(record, ensure_ascii=False, sort_keys=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(line + "\n")
+
+
+def record_guard_fires(
+    root: Path,
+    state_dir: str,
+    *,
+    cmd: str,
+    surface: str,
+    posture: str,
+    findings: list,
+    verdict: str | None = None,
+    reason: str | None = None,
+) -> int:
+    """Append one §5.3 record per finding; return how many were written.
+
+    ``findings`` is any iterable of objects with ``path``/``kind``/``message``
+    attributes (the kit's uniform ``Finding`` tuple is already the payload).
+    ``guard`` is the finding's ``kind`` — per-kind granularity is exactly the
+    per-guard unit B3 computes fire/FP rates over. ``verdict``/``reason`` are
+    pre-filled only when an allowlist entry suppressed the finding (creating
+    the entry IS the false_positive/accepted_risk verdict event); ``judge``
+    and ``outcome`` always start null — a later, *different* party fills them
+    (the grading-separation rule).
+
+    Fail-open by contract: any failure (unwritable path, weird finding
+    object) writes nothing and raises nothing — telemetry never blocks an
+    agent-facing path. Writes only into an **existing** install
+    (``state_dir`` present): ``check`` runs on un-adopted trees and must stay
+    read-only there.
+    """
+    try:
+        if not (root / state_dir).is_dir():
+            return 0
+        path = guard_fires_path(root, state_dir)
+        ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        written = 0
+        for finding in findings:
+            record = {
+                "ts": ts,
+                "guard": str(finding.kind),
+                "cmd": cmd,
+                "surface": surface,
+                "posture": posture,
+                "finding": {
+                    "path": str(finding.path),
+                    "kind": str(finding.kind),
+                    "message": str(finding.message),
+                },
+                "verdict": verdict,
+                "reason": reason,
+                "judge": None,
+                "outcome": None,
+            }
+            _append_jsonl(path, record)
+            written += 1
+        return written
+    except Exception:  # noqa: BLE001 — telemetry fails open by contract
+        return 0
+
+
+def parse_model_line(text: str) -> dict | None:
+    """Parse the last ``📊 Model:`` line out of a session log's text.
+
+    Returns ``{"model", "effort", "task_class", "tokens_out"}`` or None when
+    the needle is absent or the line has fewer than three ``·`` segments.
+    Bold markers and the list dash are cosmetic and stripped; an optional 4th
+    integer segment fills ``tokens_out`` (KF-9 — null until a meter exists).
+    """
+    payload = None
+    for line in text.splitlines():
+        if MODEL_LINE_NEEDLE in line and DRAFT_FILL_TOKEN not in line:
+            # An auto-drafted stand-in (`[[fill: model]] · …`, KL-5) is not a
+            # report — harvesting it would feed placeholder junk into the
+            # PL-004 dataset. Skip it; the advisory keeps asking for the line.
+            payload = line.split(MODEL_LINE_NEEDLE, 1)[1]
+    if payload is None:
+        return None
+    parts = [p.strip(" *`") for p in payload.split("\N{MIDDLE DOT}")]
+    parts = [p for p in parts if p]
+    if len(parts) < 3:
+        return None
+    tokens_out: int | None = None
+    if len(parts) >= 4:
+        try:
+            tokens_out = int(parts[3].replace(",", "").replace("_", ""))
+        except ValueError:
+            tokens_out = None
+    return {
+        "model": parts[0],
+        "effort": parts[1],
+        "task_class": parts[2],
+        "tokens_out": tokens_out,
+    }
+
+
+def _model_usage_sessions(path: Path) -> set[str]:
+    """Return the session slugs already recorded at ``path`` (dedupe key)."""
+    sessions: set[str] = set()
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(record, dict) and record.get("session"):
+                sessions.add(str(record["session"]))
+    except OSError:
+        pass
+    return sessions
+
+
+def harvest_model_usage(root: Path, session_log: Path | None) -> list[str]:
+    """Harvest the 📊 line from ``session_log`` into the model-usage JSONL.
+
+    Returns human-readable result lines for the CLI to emit (advisories when
+    the line is missing or the task class is off-taxonomy). The record is the
+    PL-004 shape: ``{session, date, model, effort, task_class, tokens_out,
+    outcome}``, ``outcome`` an all-null object until the lab sweep backfills
+    it. One record per session slug — a re-run session-close never
+    double-appends. Fail-open: any unexpected failure reports itself as an
+    advisory rather than raising into session-close.
+    """
+    try:
+        if session_log is None:
+            return [f"no session log — no {MODEL_LINE_NEEDLE} line to harvest."]
+        parsed = parse_model_line(session_log.read_text(encoding="utf-8"))
+        if parsed is None:
+            return [
+                f"session log {session_log.name} has no "
+                f"`{MODEL_LINE_NEEDLE}` line — add "
+                "`- **\N{BAR CHART} Model:** <model> · <effort> · <task-class>` "
+                "so the PL-004 dataset gets this session's row.",
+            ]
+        lines: list[str] = []
+        if parsed["task_class"] not in TASK_CLASSES:
+            known = " | ".join(TASK_CLASSES)
+            lines.append(
+                f"task_class {parsed['task_class']!r} is not one of the "
+                f"{len(TASK_CLASSES)} PL-004 classes ({known}) — recorded "
+                "verbatim; fix the line or the taxonomy.",
+            )
+        session = session_log.stem
+        path = root / MODEL_USAGE_RELPATH
+        if session in _model_usage_sessions(path):
+            lines.append(f"model-usage: {session} already recorded (skipped).")
+            return lines
+        match = _DATE_PREFIX_RE.match(session)
+        record = {
+            "session": session,
+            "date": match.group(1) if match else date.today().isoformat(),
+            "model": parsed["model"],
+            "effort": parsed["effort"],
+            "task_class": parsed["task_class"],
+            "tokens_out": parsed["tokens_out"],
+            "outcome": {
+                "ci_green_first_push": None,
+                "checker_findings": None,
+                "merged_pr": None,
+                "reverted_within_window": None,
+            },
+        }
+        _append_jsonl(path, record)
+        lines.append(f"model-usage: recorded {session} -> {MODEL_USAGE_RELPATH}")
+        return lines
+    except Exception:  # noqa: BLE001 — telemetry fails open by contract
+        return ["model-usage: harvest failed (fail-open) — row not recorded."]
+
+# --- engine/loop/handoff.py ---
+"""Auto-drafted session handoff (band KL-5, founding plan §10 — the ruled B1 prerequisite).
+
+The Phase-2.5 A/B measured the same failure twice: write-back that depends on
+agent discipline does not happen in task-focused sessions (the ON arm read the
+planted docs and wrote **nothing** back). This module stops asking the agent to
+remember: ``session-close`` and the Stop hook **draft** the session card's
+close-out from evidence the engine can already see, so the agent *edits a
+draft* instead of authoring from scratch — the same trick that makes the
+born-red card work (the card exists before the work; closing it is editing,
+not remembering).
+
+Evidence sources (all pure stdlib — no subprocess, per the engine lint bans):
+
+- a **session-start anchor** (``state["session_anchor"]``) recorded by the
+  SessionStart hook: timestamp + git HEAD/branch, read from ``.git`` by file
+  parsing (loose refs, ``packed-refs``, worktree ``gitdir:`` files);
+- an **mtime scan** of the working tree against the anchor — the stdlib
+  analog of ``git diff --stat`` — classified code / tests / docs / sessions;
+- git **HEAD movement** since the anchor (commits happened / nothing
+  committed yet);
+- the **derived verify command** (the adopt-time ``verify_command`` slot) —
+  the engine cannot execute it, so the draft carries it as a run-and-record
+  slot rather than fake results (the console's no-fake-data rule).
+
+The drafted text marks every judgment-only field with a ``[[fill: …]]`` slot
+and the card with ``<!-- substrate:auto-draft -->``; the session-log checker
+counts unresolved slots, so a **drafted-but-unedited card is distinguishable
+from a completed one** and the born-red gate keeps holding until the slots
+resolve. Everything here is fail-open by contract: drafting can never crash a
+hook or ``session-close``.
+"""
+
+
+
+
+# State key for the session-start evidence anchor.
+SESSION_ANCHOR_KEY = "session_anchor"
+# Provenance marker stamped into every auto-drafted card/section.
+DRAFT_MARKER = "<!-- substrate:auto-draft -->"
+
+# Directories the evidence scan never descends into (vendored/derived trees;
+# ``.git`` and the configured state_dir are excluded separately).
+_SKIP_DIR_NAMES = frozenset(
+    {
+        ".git",
+        "__pycache__",
+        "node_modules",
+        ".venv",
+        "venv",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".eggs",
+    },
+)
+_CODE_SUFFIXES = frozenset(
+    {
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".rb",
+        ".c",
+        ".h",
+        ".cpp",
+        ".sh",
+    },
+)
+# Rendering cap per evidence category — a giant session lists the head + a
+# "+N more" tail instead of flooding the card.
+_EVIDENCE_RENDER_CAP = 15
+_SHA_LEN = 9
+
+
+def _fill(hint: str) -> str:
+    """Return one unresolved judgment slot for the drafted text."""
+    return f"{DRAFT_FILL_TOKEN} {hint}]]"
+
+
+# ---------------------------------------------------------------------------
+# Git evidence — pure file parsing (subprocess is banned in engine code)
+# ---------------------------------------------------------------------------
+
+
+def _git_dir(root: Path) -> Path | None:
+    """Resolve ``root``'s git directory (handles worktree ``gitdir:`` files)."""
+    dot = root / ".git"
+    if dot.is_dir():
+        return dot
+    if dot.is_file():
+        text = dot.read_text(encoding="utf-8", errors="replace").strip()
+        if text.startswith("gitdir:"):
+            gitdir = Path(text.split(":", 1)[1].strip())
+            if not gitdir.is_absolute():
+                gitdir = (root / gitdir).resolve()
+            if gitdir.is_dir():
+                return gitdir
+    return None
+
+
+def _git_common_dir(git_dir: Path) -> Path:
+    """Return the shared git dir (worktrees keep refs in ``commondir``)."""
+    pointer = git_dir / "commondir"
+    if pointer.is_file():
+        common = Path(pointer.read_text(encoding="utf-8", errors="replace").strip())
+        if not common.is_absolute():
+            common = (git_dir / common).resolve()
+        if common.is_dir():
+            return common
+    return git_dir
+
+
+def _resolve_ref(git_dir: Path, ref: str) -> str | None:
+    """Resolve a symbolic ref to a sha via loose refs, then ``packed-refs``."""
+    common = _git_common_dir(git_dir)
+    for base in (git_dir, common):
+        loose = base / ref
+        if loose.is_file():
+            sha = loose.read_text(encoding="utf-8", errors="replace").strip()
+            return sha or None
+    packed = common / "packed-refs"
+    if packed.is_file():
+        for line in packed.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith(("#", "^")):
+                continue
+            parts = line.split(" ", 1)
+            if len(parts) == 2 and parts[1].strip() == ref:
+                return parts[0].strip() or None
+    return None
+
+
+def read_git_head(root: Path) -> tuple[str | None, str | None]:
+    """Return ``(branch, sha)`` for ``root``'s HEAD — ``(None, None)`` on any failure.
+
+    Pure file parsing (``HEAD`` → loose ref → ``packed-refs``), worktree-aware.
+    Fail-open by contract: evidence gathering must never raise into a hook.
+    """
+    try:
+        git_dir = _git_dir(root)
+        if git_dir is None:
+            return (None, None)
+        head = (git_dir / "HEAD").read_text(encoding="utf-8", errors="replace").strip()
+        if head.startswith("ref:"):
+            ref = head.split(":", 1)[1].strip()
+            branch = ref[len("refs/heads/") :] if ref.startswith("refs/heads/") else ref
+            return (branch, _resolve_ref(git_dir, ref))
+        # Detached HEAD: the file holds the sha itself.
+        if len(head) >= 40 and all(c in "0123456789abcdef" for c in head.lower()):
+            return (None, head)
+        return (None, None)
+    except Exception:  # fail open — git evidence is best-effort by contract
+        return (None, None)
+
+
+# ---------------------------------------------------------------------------
+# The session-start anchor
+# ---------------------------------------------------------------------------
+
+
+def record_session_anchor(root: Path, config: Config, backend: Any) -> None:
+    """Record this session's evidence anchor into state (fail-open).
+
+    Stores ``{ts, epoch, head, branch}`` under ``state["session_anchor"]``.
+    A same-day re-fire (SessionStart runs again on resume/clear) keeps the
+    original anchor so mid-session resumes don't hide earlier changes; a
+    stale anchor from a previous day is overwritten.
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        existing = backend.data.get(SESSION_ANCHOR_KEY) if backend.data else None
+        if isinstance(existing, dict):
+            ts = existing.get("ts")
+            if isinstance(ts, str) and ts[:10] == now.date().isoformat():
+                return
+        branch, sha = read_git_head(root)
+        backend.set(
+            SESSION_ANCHOR_KEY,
+            {
+                "ts": now.isoformat(timespec="seconds"),
+                "epoch": now.timestamp(),
+                "head": sha,
+                "branch": branch,
+            },
+        )
+    except Exception:  # fail open — anchoring must never crash a session start
+        return
+
+
+# ---------------------------------------------------------------------------
+# Evidence gathering
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SessionEvidence:
+    """What the engine can see about this session without being told."""
+
+    anchor_ts: str | None = None
+    anchor_epoch: float | None = None
+    branch: str | None = None
+    head_start: str | None = None
+    head_now: str | None = None
+    verify_command: str | None = None
+    # category -> sorted relative paths; categories: code/tests/docs/sessions/other
+    changed: dict[str, list[str]] = field(default_factory=dict)
+
+
+def _classify(rel: str, config: Config) -> str:
+    """Classify one changed path into an evidence category."""
+    parts = Path(rel).parts
+    if parts and parts[0] == config.sessions_dir:
+        return "sessions"
+    if parts and parts[0] == config.docs_root:
+        return "docs"
+    name = Path(rel).name
+    if any(p in ("tests", "test") for p in parts[:-1]) or name.startswith("test_"):
+        return "tests"
+    if Path(rel).suffix.lower() in _CODE_SUFFIXES:
+        return "code"
+    return "other"
+
+
+def _changed_since(root: Path, config: Config, epoch: float) -> dict[str, list[str]]:
+    """Return files modified after ``epoch``, classified — the mtime diff scan."""
+    changed: dict[str, list[str]] = {}
+    skip = set(_SKIP_DIR_NAMES) | {config.state_dir}
+    stack = [root]
+    while stack:
+        current = stack.pop()
+        try:
+            entries = list(current.iterdir())
+        except OSError:
+            continue
+        for entry in entries:
+            if entry.is_dir():
+                if entry.name not in skip and not entry.is_symlink():
+                    stack.append(entry)
+                continue
+            try:
+                if entry.stat().st_mtime <= epoch:
+                    continue
+            except OSError:
+                continue
+            rel = str(entry.relative_to(root))
+            changed.setdefault(_classify(rel, config), []).append(rel)
+    return {category: sorted(paths) for category, paths in sorted(changed.items())}
+
+
+def gather_evidence(root: Path, config: Config, state: dict[str, Any]) -> SessionEvidence:
+    """Collect the drafting evidence (fail-open — a partial view beats none)."""
+    evidence = SessionEvidence()
+    try:
+        anchor = state.get(SESSION_ANCHOR_KEY)
+        if isinstance(anchor, dict):
+            ts, epoch = anchor.get("ts"), anchor.get("epoch")
+            evidence.anchor_ts = ts if isinstance(ts, str) else None
+            evidence.anchor_epoch = float(epoch) if isinstance(epoch, (int, float)) else None
+            head = anchor.get("head")
+            evidence.head_start = head if isinstance(head, str) else None
+        evidence.branch, evidence.head_now = read_git_head(root)
+        values = state.get("slot_values")
+        if isinstance(values, dict):
+            entry = values.get("verify_command")
+            if isinstance(entry, dict) and isinstance(entry.get("value"), str):
+                evidence.verify_command = entry["value"]
+        if evidence.anchor_epoch is not None:
+            evidence.changed = _changed_since(root, config, evidence.anchor_epoch)
+    except Exception:  # fail open — return whatever was gathered so far
+        return evidence
+    return evidence
+
+
+# ---------------------------------------------------------------------------
+# Draft composition
+# ---------------------------------------------------------------------------
+
+
+def _evidence_lines(evidence: SessionEvidence) -> list[str]:
+    """Render the auto-collected evidence as card bullet lines."""
+    lines: list[str] = []
+    if evidence.anchor_epoch is None:
+        lines.append(
+            "- files touched: unknown — no session-start anchor recorded "
+            "(the SessionStart hook / `session-start` records it at boot).",
+        )
+    elif not evidence.changed:
+        lines.append(
+            f"- no files changed since session start ({evidence.anchor_ts}).",
+        )
+    else:
+        for category, paths in evidence.changed.items():
+            head = ", ".join(f"`{p}`" for p in paths[:_EVIDENCE_RENDER_CAP])
+            tail = len(paths) - _EVIDENCE_RENDER_CAP
+            more = f" (+{tail} more)" if tail > 0 else ""
+            lines.append(f"- {category} touched ({len(paths)}): {head}{more}")
+    if evidence.branch or evidence.head_now:
+        branch = f"branch `{evidence.branch}`" if evidence.branch else "detached HEAD"
+        start, now = evidence.head_start, evidence.head_now
+        if start and now and start != now:
+            movement = f"HEAD {start[:_SHA_LEN]} → {now[:_SHA_LEN]} (commits made this session)"
+        elif start and now:
+            movement = f"HEAD unchanged at {now[:_SHA_LEN]} (nothing committed yet)"
+        elif now:
+            movement = f"HEAD {now[:_SHA_LEN]}"
+        else:
+            movement = "HEAD unresolved"
+        lines.append(f"- git: {branch}, {movement}.")
+    if evidence.verify_command:
+        lines.append(
+            f"- verify: run `{evidence.verify_command}` and record the result "
+            f"→ {_fill('verify result — the engine cannot execute commands')}",
+        )
+    else:
+        lines.append(f"- verify: {_fill('how this session was verified (command + result)')}")
+    return lines
+
+
+# Label -> drafted stand-in line for the default session markers. Unknown
+# host-configured markers get a generic needle-carrying line so resolving the
+# slot satisfies the marker too.
+def _marker_line(marker: dict[str, str]) -> str | None:
+    """Return the drafted stand-in for one missing session marker."""
+    label = marker.get("label", "")
+    needle = marker.get("needle", "")
+    if not needle or needle == "**Status:**":
+        return None
+    if label == "Session idea":
+        return f"## 💡 Session idea\n\n{_fill('one idea you genuinely believe in — never filler')}"
+    if label == "Previous-session review":
+        return (
+            "## ⟲ Previous-session review\n\n"
+            f"{_fill('one genuine remark on the previous session + one workflow improvement')}"
+        )
+    if label == "Model line":
+        return (
+            f"- **\N{BAR CHART} Model:** {_fill('model')} \N{MIDDLE DOT} "
+            f"{_fill('effort')} \N{MIDDLE DOT} {_fill('task-class (Q-0248 taxonomy)')}"
+        )
+    return f"- {needle} {_fill(label or 'resolve this marker')}"
+
+
+def draft_close_out(
+    evidence: SessionEvidence,
+    markers: list[dict[str, str]] | None = None,
+) -> str:
+    """Compose the drafted close-out section (evidence + judgment slots).
+
+    ``markers`` — the session markers still missing from the card, each drafted
+    as a needle-carrying stand-in so one edit pass resolves everything.
+    """
+    parts = [
+        f"## Close-out (auto-drafted {date.today().isoformat()} — edit, don't author)",
+        "",
+        DRAFT_MARKER,
+        "",
+        "**Evidence (auto-collected — verify, then keep or correct):**",
+        "",
+        *_evidence_lines(evidence),
+        "",
+        "**Judgment (the half only the session knows — resolve every slot):**",
+        "",
+        f"- Decisions made: {_fill('decisions taken this session, or none')}",
+        f"- Next session should know: {_fill('the handoff pointer — where to pick up')}",
+    ]
+    for marker in markers or []:
+        line = _marker_line(marker)
+        if line:
+            parts += ["", line]
+    return "\n".join(parts) + "\n"
+
+
+def draft_card(slug: str, evidence: SessionEvidence, config: Config) -> str:
+    """Compose a full drafted skeleton card (the missing-card path)."""
+    body = draft_close_out(evidence, list(config.session_markers))
+    return (
+        f"# Session {slug}\n\n"
+        "> **Status:** `drafted` *(auto-drafted by substrate-kit — edit the\n"
+        "> close-out, resolve every `[[fill:]]` slot, then flip this badge to\n"
+        "> `complete`.)*\n\n"
+        f"{body}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# The drafting orchestrator (both write-back surfaces call this)
+# ---------------------------------------------------------------------------
+
+
+def _unique_card_path(sessions_dir: Path, day: str) -> Path:
+    """Return a non-colliding path for a drafted skeleton card."""
+    path = sessions_dir / f"{day}-session.md"
+    serial = 2
+    while path.exists():
+        path = sessions_dir / f"{day}-session-{serial}.md"
+        serial += 1
+    return path
+
+
+def ensure_draft(root: Path, config: Config, backend: Any) -> list[str]:
+    """Draft the session card / close-out from evidence; return advisory lines.
+
+    The mechanized write-back seam (`session-close` and the Stop hook both run
+    it): a missing card gets a drafted skeleton; an in-progress card missing
+    close-out markers gets the drafted section appended; a card already
+    drafted is only counted (unresolved slots); a completed card is never
+    touched. Fail-open by contract — any failure returns ``[]`` rather than
+    raising into a hook.
+    """
+    try:
+        try:
+            state = dict(backend.data) if backend.data else {}
+        except Exception:
+            state = {}
+        evidence = gather_evidence(root, config, state)
+        sessions_dir = root / config.sessions_dir
+        card = latest_session_log(sessions_dir)
+        if (
+            card is not None
+            and evidence.anchor_epoch is not None
+            and card.stat().st_mtime <= evidence.anchor_epoch
+        ):
+            card = None  # newest card predates this session — not ours
+        if card is None:
+            day = date.today().isoformat()
+            path = _unique_card_path(sessions_dir, day)
+            atomic_write_text(path, draft_card(f"{day} — {path.stem}", evidence, config))
+            rel = path.relative_to(root) if path.is_relative_to(root) else path
+            return [
+                f"session card was missing — auto-drafted {rel}: verify the "
+                "evidence, resolve the [[fill:]] slots, flip Status to complete",
+            ]
+        text = card.read_text(encoding="utf-8")
+        if DRAFT_MARKER in text or DRAFT_FILL_TOKEN in text:
+            slots = text.count(DRAFT_FILL_TOKEN)
+            if slots:
+                return [
+                    f"auto-draft in {card.name}: {slots} [[fill:]] slot(s) still "
+                    "unresolved — the card counts drafted, not completed",
+                ]
+            return []
+        if not status_in_progress(text):
+            return []  # completed card — consumer-owned, never touched
+        missing = check_log(card, config.session_markers)
+        missing_labels = {m for m in missing if not m.startswith("a completed Status")}
+        if not missing_labels:
+            return []  # close-out already written; only the status flip remains
+        markers = [m for m in config.session_markers if m.get("label") in missing_labels]
+        section = draft_close_out(evidence, markers)
+        atomic_write_text(card, text.rstrip("\n") + "\n\n" + section)
+        return [
+            f"auto-drafted close-out appended to {card.name} — verify the "
+            "evidence, resolve the [[fill:]] slots, flip the Status badge",
+        ]
+    except Exception:  # fail open — drafting must never crash a hook
+        return []
 
 # --- engine/loop/episodes.py ---
 """Episodic index — a tiny searchable memory over session logs (plan lane B2).
@@ -6154,6 +7309,75 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     ("session-journal.md.tmpl", ".session-journal.md"),
 ]
 
+# State key holding {planted relpath: sha256 hex} for every doc the kit last
+# wrote (planted by adopt, or re-rendered in place by `render --live`).
+# "Consumer-untouched" is decided by comparing a doc's current hash to this
+# record — never by re-rendering old templates, whose slot/banner/date
+# substitution makes byte-matching impossible (founding plan §4.3). `upgrade`
+# reads it to classify planted-doc drift; installs predating the record have
+# no hashes and are honestly treated as consumer-diverged.
+DOC_HASHES_STATE_KEY = "planted_doc_hashes"
+
+
+def _sha256_text(text: str) -> str:
+    """Return the sha256 hex digest of ``text`` (utf-8)."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def record_doc_hash(backend: Any, relpath: str, text: str) -> None:
+    """Record ``text``'s sha256 under ``relpath`` in the planted-doc hash map."""
+    hashes = dict(backend.get(DOC_HASHES_STATE_KEY) or {})
+    hashes[relpath] = _sha256_text(text)
+    backend.set(DOC_HASHES_STATE_KEY, hashes)
+
+
+def doc_is_untouched(backend: Any, relpath: str, current_text: str) -> bool:
+    """True when ``current_text`` still matches the recorded kit-written hash."""
+    hashes = backend.get(DOC_HASHES_STATE_KEY) or {}
+    recorded = hashes.get(relpath)
+    return recorded is not None and recorded == _sha256_text(current_text)
+
+
+BACKUP_DIRNAME = "backup"
+
+_DIST_VERSION_RE = re.compile(r"bootstrap v(\d[^\s]*)")
+
+
+def dist_version(text: str) -> str | None:
+    """Parse the version stamp out of a single-file bootstrap's header line."""
+    first_line = text.split("\n", 1)[0]
+    match = _DIST_VERSION_RE.search(first_line)
+    return match.group(1) if match else None
+
+
+def archive_dist(
+    root: Path,
+    config: Config,
+    dist_file: Path,
+    report: list[str],
+) -> Path | None:
+    """Bank ``dist_file`` under ``<state_dir>/backup/bootstrap-<version>.py``.
+
+    The §4.3 ordering constraint: an upgrade's planted-doc diff needs the OLD
+    dist's templates to still exist when it runs, so *both* ``adopt`` and
+    ``upgrade`` archive the running dist before anything could overwrite it —
+    the archive exists from v1.0.0 onward. Pre-stamp dists archive as
+    ``bootstrap-unknown.py``. Idempotent: an identical existing archive is
+    left alone; None when there is no single file to archive (source layout).
+    """
+    if not dist_file.is_file():
+        return None
+    text = dist_file.read_text(encoding="utf-8")
+    version = dist_version(text) or "unknown"
+    dest = root / config.state_dir / BACKUP_DIRNAME / f"bootstrap-{version}.py"
+    rel = f"{config.state_dir}/{BACKUP_DIRNAME}/bootstrap-{version}.py"
+    if dest.exists() and dest.read_text(encoding="utf-8") == text:
+        return dest
+    atomic_write_text(dest, text)
+    report.append(f"archived: {rel}")
+    return dest
+
+
 _ADOPT_NEXT_STEPS = (
     "next steps: run `bootstrap ask` to see the pending interview questions, "
     "answer them and fill the planted docs in place (`bootstrap render --live`), and set "
@@ -6217,6 +7441,19 @@ def _vendor_bootstrap(root: Path, report: list[str]) -> str:
     is_bootstrap_entry = (
         entry is not None and entry.name == "bootstrap.py" and entry.is_file()
     )
+    # A target that already contains the *generating* dist/bootstrap.py — the
+    # kit repo itself, operating on itself as consumer #0 (§3.3) — must not
+    # gain a vendored root duplicate: it would silently drift from the
+    # CI-byte-pinned dist file (KL-0 friction guard, 2026-07-09). Hook
+    # commands point at the dist copy instead.
+    dist_copy = root / "dist" / "bootstrap.py"
+    if (
+        is_bootstrap_entry
+        and not at_root.exists()
+        and dist_copy.is_file()
+        and entry == dist_copy.resolve()
+    ):
+        return "dist/bootstrap.py"
     if not at_root.exists() and is_bootstrap_entry and entry != at_root:
         _adopt_plant(
             at_root,
@@ -6239,13 +7476,18 @@ def _adopt_dest(relpath: str, config: Config) -> str:
     return relpath
 
 
-def _adopt_plant(path: Path, relpath: str, text: str, report: list[str]) -> None:
-    """Write ``text`` at ``path`` unless it exists; report planted/kept."""
+def _adopt_plant(path: Path, relpath: str, text: str, report: list[str]) -> bool:
+    """Write ``text`` at ``path`` unless it exists; report planted/kept.
+
+    Returns True when the file was actually written (so callers can record
+    provenance — e.g. the planted-doc hash — only for kit-written content).
+    """
     if path.exists():
         report.append(f"kept: {relpath}")
-        return
+        return False
     atomic_write_text(path, text)
     report.append(f"planted: {relpath}")
+    return True
 
 
 def _adopt_stage(path: Path, relpath: str, text: str, report: list[str]) -> None:
@@ -6266,7 +7508,20 @@ def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
         "parallel sessions, then flip it to `complete` as the deliberate LAST "
         "step once the close-out is written — a half-done session never reads "
         "as finished. Before it counts as complete, a log must carry these "
-        f"markers: {labels}.\n"
+        f"markers: {labels}.\n\n"
+        "If the card is missing at session end, the kit **auto-drafts** one "
+        "from evidence (files touched, git HEAD movement, the verify "
+        "command); an in-progress card missing its close-out gets the "
+        "drafted section appended. A draft is a starting point, not a "
+        "close-out: verify the evidence, resolve every `[[fill:]]` slot, "
+        "then flip the Status badge — unresolved slots (and the `drafted` "
+        "status) keep the card counting incomplete.\n\n"
+        "**Guard recipes:** when a card records friction-to-guard material "
+        "for a *later* session (a deferred fix, a flagged footgun), carry a "
+        "one-line **guard recipe** naming the code anchors — function + file "
+        "+ the test target — not just the symptom. A symptom-only entry "
+        "costs the next session a re-derivation grep pass; a recipe lets it "
+        "land the guard in minutes.\n"
     )
 
 
@@ -6305,7 +7560,7 @@ def ci_snippet() -> str:
 LIVE_CI_RELPATH = ".github/workflows/substrate-gate.yml"
 
 
-def live_ci_workflow(interpreter: str = "python3") -> str:
+def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".sessions") -> str:
     """Return the LIVE (uncommented) CI gate workflow — the locked door.
 
     Unlike :func:`ci_snippet` (a commented example the host installs by hand),
@@ -6315,11 +7570,18 @@ def live_ci_workflow(interpreter: str = "python3") -> str:
     so the merge is **held red** until the session's journal is written and the
     whole hygiene suite passes. This is the forcing function that makes the
     memory ritual non-optional: a nag can be ignored, a failing required check
-    cannot. `fetch-depth: 0` gives the checkout full history (the gate itself is
-    git-free, but hosts commonly extend this workflow with diff-aware steps).
+    cannot. `fetch-depth: 0` gives the checkout the history the diff needs.
     A docs-only or bot PR that shouldn't need a session card is handled by the
     host adding a `paths-ignore:` or a label carve-out — kept strict by default
     on purpose (the discipline is the point).
+
+    The gate step is **PR-diff-aware**: a fresh CI checkout flattens every file
+    mtime to checkout time, so the engine's newest-by-mtime card guess is
+    arbitrary in CI (the kit's own CI once carried a git-mtime-restore shim for
+    exactly this). The workflow instead derives the card from what the PR/push
+    diff touches under ``sessions_dir`` and passes it via
+    ``check --session-log``; when the diff names no card the argument is
+    simply omitted and the engine's mtime fallback applies (fail-open).
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
@@ -6343,7 +7605,22 @@ def live_ci_workflow(interpreter: str = "python3") -> str:
         "        with:\n"
         '          python-version: "3.x"\n'
         "      - name: substrate gate (docs + session-log required)\n"
-        f"        run: {interpreter} bootstrap.py check --strict --require-session-log\n"
+        "        # Gate on the session card THIS PR/push touches (CI flattens\n"
+        "        # mtimes, so the engine's newest-by-mtime guess is unreliable\n"
+        "        # here). No card in the diff -> no --session-log argument ->\n"
+        "        # the engine's mtime fallback (fail-open).\n"
+        "        run: |\n"
+        '          if [ -n "${{ github.base_ref }}" ]; then\n'
+        '            range="origin/${{ github.base_ref }}...HEAD"\n'
+        "          else\n"
+        '            range="${{ github.event.before }}..${{ github.sha }}"\n'
+        "          fi\n"
+        '          card="$(git diff --name-only --diff-filter=d "$range" -- '
+        f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null "
+        '| tail -1)"\n'
+        '          echo "session gate card: ${card:-<none - mtime fallback>}"\n'
+        f"          {interpreter} bootstrap.py check --strict --require-session-log"
+        ' ${card:+--session-log "$card"}\n'
     )
 
 
@@ -6389,6 +7666,13 @@ def adopt(
     # never overwriting an existing answer), then build the render context.
     report.extend(record_derived_slots(backend, derive_slots(root, config.docs_root)))
     bootstrap_path = _vendor_bootstrap(root, report)
+    # (0c) Bank the running dist under <state_dir>/backup/ (§4.3): a future
+    # upgrade's doc diff needs the OLD templates to still exist, so the
+    # archive is written before anything could ever overwrite the file.
+    dist_file = Path(bootstrap_path)
+    if not dist_file.is_absolute():
+        dist_file = root / bootstrap_path
+    archive_dist(root, config, dist_file, report)
     context = build_context(backend.data)
     # The live integration mode is state, not a slot — render it truthfully.
     context.setdefault("integration_mode", str(backend.get("mode", "guided")))
@@ -6402,7 +7686,10 @@ def adopt(
             # The example D-0001 records THIS adoption — stamp the real date so
             # the planted ledger is check_ledger-clean from its first commit.
             text = text.replace("- date:\n", f"- date: {date.today().isoformat()}\n")
-        _adopt_plant(root / rel, rel, with_unrendered_banner(text), report)
+        final = with_unrendered_banner(text)
+        if _adopt_plant(root / rel, rel, final, report):
+            # Provenance for the upgrade diff (§4.3): hash what the kit wrote.
+            record_doc_hash(backend, rel, final)
 
     # (2) Session-log scaffolding.
     sessions_rel = f"{config.sessions_dir}/README.md"
@@ -6442,7 +7729,11 @@ def adopt(
         report,
     )
 
-    # (5) Stage the CI example.
+    # (5) Stage the CI example — and the LIVE gate workflow (KL-7): a default
+    # adopt still never installs CI, but the engagement gate's
+    # `enforcement-unwired` checklist line must be a one-copy fix, so the
+    # ready-to-install substrate-gate.yml is always staged next to the
+    # commented example. Kit stages, host installs — doctrine unchanged.
     ci_rel = f"{config.state_dir}/ci/quality.yml.example"
     _adopt_stage(
         state_base / "ci" / "quality.yml.example",
@@ -6450,11 +7741,28 @@ def adopt(
         ci_snippet(),
         report,
     )
+    gate_text = live_ci_workflow(
+        config.interpreter_for_checks or "python3",
+        sessions_dir=config.sessions_dir,
+    )
+    gate_rel = f"{config.state_dir}/ci/substrate-gate.yml"
+    _adopt_stage(
+        state_base / "ci" / "substrate-gate.yml",
+        gate_rel,
+        gate_text,
+        report,
+    )
 
     # (6) Explicit host opt-in: live .claude/ (still never overwrites).
     if include_claude:
         claude_dir = root / ".claude"
-        _adopt_plant(claude_dir / "CLAUDE.md", ".claude/CLAUDE.md", claude_doc, report)
+        if _adopt_plant(
+            claude_dir / "CLAUDE.md",
+            ".claude/CLAUDE.md",
+            claude_doc,
+            report,
+        ):
+            record_doc_hash(backend, ".claude/CLAUDE.md", claude_doc)
         _adopt_plant(
             claude_dir / "settings.json",
             ".claude/settings.json",
@@ -6469,12 +7777,689 @@ def adopt(
         _adopt_plant(
             root / LIVE_CI_RELPATH,
             LIVE_CI_RELPATH,
-            live_ci_workflow(config.interpreter_for_checks or "python3"),
+            gate_text,
             report,
         )
 
+    # (6c) The install self-identifies (§4.1): record the kit version in the
+    # config file (a declared dataclass field — survives load→save) and state.
+    if config.kit_version != KIT_VERSION:
+        config.kit_version = KIT_VERSION
+        save_config(root, config)
+    backend.set("kit_version", KIT_VERSION)
+    report.append(f"recorded: kit_version {KIT_VERSION}")
+
     # (7) Point the adopter at the interview loop.
     report.append(_ADOPT_NEXT_STEPS)
+    return report
+
+# --- engine/checks/check_engagement.py ---
+"""Post-adopt ENGAGEMENT gate — RED until the install is rendered + enforcing + looping.
+
+Why + provenance: the independent fleet review (2026-07-09, superbot
+``docs/eap/fleet-review-2026-07-09.md`` §4) found both fresh adopters stranded
+identically — planted docs still under the UNRENDERED banner with raw
+``${...}`` slots, ``session_count`` 0, no CI running the check. ``adopt``
+plants-and-banners by design, but render/enforcement were separate opt-in
+steps nothing forced, so a default adopt LOOKED onboarded while being neither
+rendered nor enforcing. This checker is the owner-directed fix (band KL-7):
+"enforce, don't exhort" (PL-007) applied to onboarding itself — the same
+``check --strict`` an adopter's CI runs holds the gate red until the last
+mile is walked. Ships with its regression tests (the cold-adopt RED→GREEN
+arc), so it is load-bearing from birth, not a PL-008 unverified convenience.
+
+The gate engages only on **adoption evidence** — a recorded ``kit_version``
+in config or state (``adopt``/``upgrade`` write it) — so ``check`` stays
+meaningful on an un-adopted tree, exactly like the other input-gated
+checkers. One exception: a file that still *carries the UNRENDERED banner*
+is kit output by construction and is flagged even without version evidence
+(pre-v1.0.0 installs never recorded one).
+
+What turns it red (one finding per condition, each message an actionable
+checklist line — ``adopt`` prints these same findings as its next steps):
+
+- ``unrendered-banner`` — a planted doc still opens with the adopt-time
+  UNRENDERED banner.
+- ``unrendered-slot`` — a planted doc still contains ``${...}`` interview
+  slots (adoption-evidence-gated: bare ``${name}`` prose in a never-adopted
+  repo is host content, not a kit slot).
+- ``enforcement-unwired`` — no workflow under ``.github/workflows/`` runs
+  ``check --strict`` (the staged ``substrate-gate.yml`` is the one-copy fix).
+- ``session-loop-idle`` — no session has ever run: ``session_count`` is 0
+  AND no real session card exists under the sessions dir.
+
+Scope: the scan covers exactly the **planted** doc paths (the ``ADOPT_PLAN``
+destinations, ``project.index.json``, and a live ``.claude/CLAUDE.md``) —
+never template sources, so the kit repo's own ``src/engine/templates/``
+(legitimately full of ``${...}``) can never red its own gate. Findings ride
+the ordinary ``check`` finding loop: strict-only exit-code impact, guard-fire
+telemetry, and the reasons-required allowlist all apply unchanged.
+"""
+
+
+
+
+# Planted paths beyond the ADOPT_PLAN doc set that the unrendered scan covers.
+# project.index.json is planted by adopt; .claude/CLAUDE.md exists only after
+# the include_claude opt-in (scanned when present — a live-but-unrendered
+# working agreement is exactly the "looks onboarded, isn't" failure).
+EXTRA_SCAN_RELPATHS = ("project.index.json", ".claude/CLAUDE.md")
+
+
+def _load_state(target: Path, config: Any) -> dict:
+    """Read the install's state.json (empty dict when absent/unreadable)."""
+    path = target / config.state_dir / "state.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _adoption_evidence(config: Any, state: dict) -> bool:
+    """True when this tree is a known kit install (adopt/upgrade recorded it)."""
+    return bool(config.kit_version) or bool(state.get("kit_version"))
+
+
+def _scan_relpaths(config: Any) -> list[str]:
+    """Return the planted relpaths the unrendered scan covers."""
+    relpaths = [_adopt_dest(plan_rel, config) for _, plan_rel in ADOPT_PLAN]
+    relpaths.extend(EXTRA_SCAN_RELPATHS)
+    return relpaths
+
+
+def _unrendered_findings(
+    target: Path,
+    config: Any,
+    *,
+    evidence: bool,
+) -> list[Finding]:
+    """Scan the planted docs for the UNRENDERED banner / leftover ``${...}``."""
+    findings: list[Finding] = []
+    for rel in _scan_relpaths(config):
+        path = target / rel
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        slots = sorted(find_placeholders(text))
+        listed = ", ".join(slots[:5]) + (" …" if len(slots) > 5 else "")
+        if text.startswith(UNRENDERED_BANNER_FIRST_LINE):
+            detail = f" (unfilled: {listed})" if slots else ""
+            findings.append(
+                Finding(
+                    rel,
+                    "unrendered-banner",
+                    "still under the adopt-time UNRENDERED banner"
+                    f"{detail} — answer the slots (`bootstrap.py answer "
+                    "<slot> <value>`), then `bootstrap.py render --live`.",
+                ),
+            )
+        elif evidence and slots:
+            findings.append(
+                Finding(
+                    rel,
+                    "unrendered-slot",
+                    f"{len(slots)} unfilled ${{...}} slot(s): {listed} — "
+                    "answer them, then `bootstrap.py render --live`.",
+                ),
+            )
+    return findings
+
+
+def _enforcement_wired(target: Path) -> bool:
+    """True when some workflow under .github/workflows/ runs ``check --strict``.
+
+    Substring match on purpose: it accepts the planted ``substrate-gate.yml``
+    verbatim AND a host's hand-rolled gate (the kit repo's own ``ci.yml``) —
+    the condition is "a CI door exists", not "our exact file was copied".
+    """
+    workflows = target / ".github" / "workflows"
+    if not workflows.is_dir():
+        return False
+    for path in sorted(workflows.glob("*.yml")) + sorted(workflows.glob("*.yaml")):
+        try:
+            if "check --strict" in path.read_text(encoding="utf-8"):
+                return True
+        except (OSError, UnicodeDecodeError):
+            continue
+    return False
+
+
+def _session_loop_engaged(target: Path, config: Any, state: dict) -> bool:
+    """True when at least one session has run (count or a real card)."""
+    try:
+        if int(state.get("session_count", 0) or 0) >= 1:
+            return True
+    except (TypeError, ValueError):
+        pass
+    sessions = target / config.sessions_dir
+    if not sessions.is_dir():
+        return False
+    return any(p.name != "README.md" for p in sessions.glob("*.md"))
+
+
+def check_engagement(target: Path, config: Any) -> list[Finding]:
+    """Return the engagement-gate findings for ``target`` (empty = ENGAGED)."""
+    state = _load_state(target, config)
+    evidence = _adoption_evidence(config, state)
+    findings = _unrendered_findings(target, config, evidence=evidence)
+    if not evidence:
+        return findings
+    if not _enforcement_wired(target):
+        findings.append(
+            Finding(
+                ".github/workflows/",
+                "enforcement-unwired",
+                "no CI workflow runs `check --strict` — install the staged "
+                f"gate: copy {config.state_dir}/ci/substrate-gate.yml to "
+                ".github/workflows/ (or `adopt --wire-enforcement`).",
+            ),
+        )
+    if not _session_loop_engaged(target, config, state):
+        findings.append(
+            Finding(
+                config.sessions_dir,
+                "session-loop-idle",
+                "no session has ever run (session_count 0, no session card) "
+                f"— write the first born-red card under {config.sessions_dir}/ "
+                "and run `bootstrap.py session-close` at close.",
+            ),
+        )
+    return findings
+
+# --- engine/upgrade.py ---
+"""The ``upgrade`` verb — move an install to this bootstrap's version (§4.3).
+
+The consumer flow (``release.json.upgrade_steps`` says exactly this): download
+the new release's ``bootstrap.py`` next to the vendored copy as
+``bootstrap.py.new`` and run ``python3 bootstrap.py.new upgrade``. The verb
+then, in order:
+
+1. **Verifies itself** against ``release.json`` when one is supplied or sits
+   next to the running file (sha256 + version) — refusing on mismatch, noting
+   the skip when absent.
+2. **Archives first** (the §4.3 ordering constraint): the OLD vendored dist is
+   banked to ``<state_dir>/backup/bootstrap-<old-version>.py`` and
+   ``state.json`` to ``<state_dir>/backup/state.json`` before anything is
+   overwritten — together the ``--rollback`` path.
+3. **Classifies every planted doc by hash, never by re-render** (template
+   rendering stamps slots/banners/dates, so template@old never byte-matches
+   even an untouched file): a doc whose current sha256 equals the recorded
+   kit-written hash (``adopt``/``render --live`` record it) is
+   *consumer-untouched*. Classes: ``unchanged`` ·
+   ``template-improved`` (untouched + new template renders differently — safe
+   to apply) · ``consumer-edited`` (template unchanged — consumer-owned,
+   nothing to apply) · ``diverged`` (both moved, or no recorded hash — manual;
+   the report shows the template@old→new delta rendered through the current
+   slot context). Old templates are parsed out of the archived old dist's
+   embedded ``_TEMPLATES`` (``ast.literal_eval`` — never executed).
+4. **Applies template improvements only under ``--apply-docs`` and only to
+   consumer-untouched docs** — consumer-owned stays consumer-owned. Installs
+   predating the hash record have no hashes: every doc honestly classifies
+   ``diverged``.
+5. **Replaces the vendored file with itself**, re-runs adopt's staging
+   (staged ``.substrate/`` artifacts always regenerate; missing planted docs
+   replant), migrates state (backup already banked), records the new
+   ``kit_version``, and writes ``<state_dir>/upgrade-report.md``.
+6. **Cleans up its own inputs**: after the replace lands, the consumed
+   ``bootstrap.py.new`` and the ``release.json`` next to it are removed
+   (``--keep-inputs`` opts out) — the first field run (superbot-next#46)
+   left both stranded at the repo root.
+
+``upgrade --rollback`` restores the banked state.json + the archived dist
+named by ``<state_dir>/backup/last-upgrade.json`` (staged artifacts regenerate
+from the restored file; docs applied via ``--apply-docs`` are git-visible and
+are not silently reverted). Pure stdlib; every write is atomic.
+"""
+
+
+
+
+LAST_UPGRADE_FILENAME = "last-upgrade.json"
+UPGRADE_REPORT_FILENAME = "upgrade-report.md"
+STATE_BACKUP_FILENAME = "state.json"
+
+# Classification labels (the §4.3 report classes).
+CLASS_UNCHANGED = "unchanged"
+CLASS_IMPROVED = "template-improved"
+CLASS_CONSUMER_EDITED = "consumer-edited"
+CLASS_DIVERGED = "diverged"
+CLASS_MISSING = "missing"
+
+
+class UpgradeRefused(Exception):
+    """Raised when the self-verification against release.json fails."""
+
+
+def load_old_templates(dist_text: str) -> dict[str, str] | None:
+    """Parse the ``_TEMPLATES`` dict out of an old dist's text (never exec)."""
+    try:
+        tree = ast.parse(dist_text)
+    except SyntaxError:
+        return None
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id == "_TEMPLATES":
+                try:
+                    value = ast.literal_eval(node.value)
+                except (ValueError, SyntaxError):
+                    return None
+                if isinstance(value, dict):
+                    return {str(k): str(v) for k, v in value.items()}
+    return None
+
+
+def find_vendored_bootstrap(root: Path) -> Path | None:
+    """Return the install's vendored single-file bootstrap, if any.
+
+    ``bootstrap.py`` at the repo root is the adopt mechanic's plant;
+    ``dist/bootstrap.py`` is consumer #0 (the kit repo operating on itself).
+    """
+    for rel in ("bootstrap.py", "dist/bootstrap.py"):
+        candidate = root / rel
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def verify_against_release_json(running: Path, release_json: Path) -> list[str]:
+    """Return report lines; raise :class:`UpgradeRefused` on a mismatch."""
+    payload = json.loads(release_json.read_text(encoding="utf-8"))
+    digest = hashlib.sha256(running.read_bytes()).hexdigest()
+    if payload.get("sha256") != digest:
+        msg = (
+            f"sha256 mismatch vs {release_json.name}: expected "
+            f"{payload.get('sha256')}, this file is {digest} — corrupted or "
+            "tampered download; re-download the release asset."
+        )
+        raise UpgradeRefused(msg)
+    if payload.get("version") != KIT_VERSION:
+        msg = (
+            f"{release_json.name} names version {payload.get('version')!r} but "
+            f"this bootstrap is v{KIT_VERSION} — mismatched release files."
+        )
+        raise UpgradeRefused(msg)
+    return [f"verified: sha256 + version against {release_json.name}"]
+
+
+def _upgrade_context(backend: Any) -> dict[str, str]:
+    """Build the render context exactly the way adopt does."""
+    context = build_context(backend.data)
+    context.setdefault("integration_mode", str(backend.get("mode", "guided")))
+    return context
+
+
+def _render_planted(template_text: str, template_name: str, context: dict) -> str:
+    """Render a template the way adopt plants it (banner; ledger date stamp)."""
+    text = render(template_text, context)
+    if template_name == "decisions.md.tmpl":
+        text = text.replace("- date:\n", f"- date: {date.today().isoformat()}\n")
+    return with_unrendered_banner(text)
+
+
+def _normalize_dates(text: str) -> str:
+    """Blank ledger date stamps so an adopt-day stamp is not template drift."""
+    lines = text.split("\n")
+    return "\n".join(
+        "- date:" if line.startswith("- date: ") else line for line in lines
+    )
+
+
+def _doc_plan(root: Path, config: Config) -> list[tuple[str, str]]:
+    """Return (template, planted relpath) pairs the diff report covers."""
+    plan = [(tpl, _adopt_dest(rel, config)) for tpl, rel in ADOPT_PLAN]
+    if (root / ".claude" / "CLAUDE.md").exists():
+        plan.append(("CLAUDE.md.tmpl", ".claude/CLAUDE.md"))
+    return plan
+
+
+def classify_planted_docs(
+    root: Path,
+    config: Config,
+    backend: Any,
+    old_templates: dict[str, str] | None,
+    new_templates: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
+    """Classify every planted doc for the upgrade report (§4.3 step 2).
+
+    Returns rows ``{relpath, template, class, note, diff}`` (``diff`` only for
+    diverged docs with old templates available — the template@old→new delta,
+    both rendered through the *current* slot context for a readable diff).
+    """
+    context = _upgrade_context(backend)
+    templates = new_templates if new_templates is not None else load_templates()
+    rows: list[dict[str, str]] = []
+    for template_name, rel in _doc_plan(root, config):
+        path = root / rel
+        row = {"relpath": rel, "template": template_name, "diff": ""}
+        if not path.exists():
+            row["class"] = CLASS_MISSING
+            row["note"] = "absent — upgrade's adopt pass replants it"
+            rows.append(row)
+            continue
+        current = path.read_text(encoding="utf-8")
+        new_render = _render_planted(templates[template_name], template_name, context)
+        old_render = None
+        if old_templates and template_name in old_templates:
+            old_render = _render_planted(
+                old_templates[template_name],
+                template_name,
+                context,
+            )
+        if doc_is_untouched(backend, rel, current):
+            if _normalize_dates(new_render) == _normalize_dates(current):
+                row["class"] = CLASS_UNCHANGED
+                row["note"] = "template identical across versions"
+            else:
+                row["class"] = CLASS_IMPROVED
+                row["note"] = (
+                    "consumer-untouched + template improved — "
+                    "safe to apply with `upgrade --apply-docs`"
+                )
+        elif old_render is not None and _normalize_dates(
+            old_render,
+        ) == _normalize_dates(new_render):
+            row["class"] = CLASS_CONSUMER_EDITED
+            row["note"] = "template unchanged — consumer-owned, nothing to apply"
+        else:
+            row["class"] = CLASS_DIVERGED
+            if old_render is None:
+                row["note"] = (
+                    "no recorded hash or old templates unavailable "
+                    "(pre-1.0 install) — manual review"
+                )
+            else:
+                row["note"] = "both the template and the doc moved — manual merge"
+                row["diff"] = "\n".join(
+                    difflib.unified_diff(
+                        old_render.splitlines(),
+                        new_render.splitlines(),
+                        fromfile=f"{rel} (template@old, current slots)",
+                        tofile=f"{rel} (template@new, current slots)",
+                        lineterm="",
+                    ),
+                )
+        rows.append(row)
+    return rows
+
+
+def apply_doc_improvements(
+    root: Path,
+    config: Config,
+    backend: Any,
+    rows: list[dict[str, str]],
+    new_templates: dict[str, str] | None = None,
+) -> list[str]:
+    """Re-render + write every ``template-improved`` doc; re-record hashes.
+
+    Only the consumer-untouched class is ever written (the §4.3 covenant:
+    planted docs are never auto-edited without ``--apply-docs``, and never
+    when the consumer diverged).
+    """
+    context = _upgrade_context(backend)
+    templates = new_templates if new_templates is not None else load_templates()
+    lines: list[str] = []
+    for row in rows:
+        if row["class"] != CLASS_IMPROVED:
+            continue
+        rel = row["relpath"]
+        text = _render_planted(templates[row["template"]], row["template"], context)
+        atomic_write_text(root / rel, text)
+        record_doc_hash(backend, rel, text)
+        lines.append(f"applied: {rel} (template@new, hash re-recorded)")
+    return lines
+
+
+def upgrade_report_text(
+    old_version: str,
+    rows: list[dict[str, str]],
+    applied: list[str],
+) -> str:
+    """Compose ``<state_dir>/upgrade-report.md``."""
+    counts: dict[str, int] = {}
+    for row in rows:
+        counts[row["class"]] = counts.get(row["class"], 0) + 1
+    summary = " · ".join(f"{k}: {v}" for k, v in sorted(counts.items()))
+    lines = [
+        f"# substrate-kit upgrade report — v{old_version} → v{KIT_VERSION}",
+        "",
+        f"> Generated {date.today().isoformat()} by `bootstrap.py upgrade`. "
+        f"Rollback: `python3 bootstrap.py upgrade --rollback`.",
+        "",
+        f"**Docs:** {summary}",
+        "",
+        "| planted doc | class | note |",
+        "|---|---|---|",
+    ]
+    lines += [f"| {r['relpath']} | {r['class']} | {r['note']} |" for r in rows]
+    if applied:
+        lines += ["", "## Applied (--apply-docs)", ""]
+        lines += [f"- {line}" for line in applied]
+    diffs = [r for r in rows if r["diff"]]
+    if diffs:
+        lines += ["", "## Template deltas for diverged docs", ""]
+        for row in diffs:
+            lines += [f"### {row['relpath']}", "", "```diff", row["diff"], "```", ""]
+    return "\n".join(lines) + "\n"
+
+
+def run_upgrade(
+    root: Path,
+    config: Config,
+    backend: Any,
+    *,
+    kit_root: Path,
+    running: Path,
+    apply_docs: bool = False,
+    release_json: Path | None = None,
+    cleanup_inputs: bool = True,
+) -> list[str]:
+    """Execute the §4.3 upgrade flow; return the report lines.
+
+    Raises :class:`UpgradeRefused` when release.json verification fails.
+    """
+    report: list[str] = []
+
+    # (1) Self-verification (sha256 + version) when release.json is findable.
+    candidate = release_json or running.parent / "release.json"
+    if candidate.is_file():
+        report += verify_against_release_json(running, candidate)
+    else:
+        report.append(
+            "note: no release.json found — sha256 verification skipped "
+            "(download it next to the new bootstrap to enable it).",
+        )
+
+    # (2) Archive FIRST (§4.3): old dist + state.json, before any overwrite.
+    vendored = find_vendored_bootstrap(root)
+    old_text = vendored.read_text(encoding="utf-8") if vendored else None
+    # From-version: the vendored header states what is actually installed and
+    # OUTRANKS the config pin when they disagree — a consumer may record its
+    # pin BEFORE the first real upgrade (the D2 order), leaving the pin
+    # aspirational while the file on disk is older or unstamped. The field
+    # case (superbot-next#46): pin said 1.0.0, the archive honestly said
+    # bootstrap-unknown.py, and a rollback would have restored the wrong pin.
+    # The one header that cannot name the true "from" is KIT_VERSION itself —
+    # the hand-copied-new-dist-over-old case — where the recorded pin wins
+    # (distinguishable exactly because the header equals KIT_VERSION).
+    header_version = dist_version(old_text) if old_text else None
+    if old_text is not None and header_version != KIT_VERSION:
+        old_version = header_version or "unknown"
+    else:
+        old_version = config.kit_version or header_version or "unknown"
+    backup_dir = root / config.state_dir / BACKUP_DIRNAME
+    archived = None
+    if vendored is not None:
+        archived = archive_dist(root, config, vendored, report)
+    state_path = root / config.state_dir / "state.json"
+    if state_path.exists():
+        atomic_write_text(
+            backup_dir / STATE_BACKUP_FILENAME,
+            state_path.read_text(encoding="utf-8"),
+        )
+        report.append(
+            f"backed up: state.json -> "
+            f"{config.state_dir}/{BACKUP_DIRNAME}/{STATE_BACKUP_FILENAME}",
+        )
+    atomic_write_text(
+        backup_dir / LAST_UPGRADE_FILENAME,
+        json.dumps(
+            {
+                "from_version": old_version,
+                "to_version": KIT_VERSION,
+                "date": date.today().isoformat(),
+                "vendored": (
+                    str(vendored.relative_to(root)) if vendored is not None else None
+                ),
+                "archived_dist": (
+                    str(archived.relative_to(root)) if archived is not None else None
+                ),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+    )
+
+    # (3) Hash-based planted-doc diff report (§4.3 step 2), computed BEFORE
+    # the adopt pass replants anything.
+    old_templates = load_old_templates(old_text) if old_text else None
+    rows = classify_planted_docs(root, config, backend, old_templates)
+
+    # (4) --apply-docs: template improvements land on untouched docs only.
+    applied = apply_doc_improvements(root, config, backend, rows) if apply_docs else []
+    for line in applied:
+        report.append(line)
+    improved = [r for r in rows if r["class"] == CLASS_IMPROVED]
+    if improved and not apply_docs:
+        report.append(
+            f"note: {len(improved)} doc(s) have template improvements you "
+            "never edited — re-run with --apply-docs to take them.",
+        )
+
+    # (5) Replace the vendored file with the running (new) one — only when the
+    # running entry actually IS a stamped single-file bootstrap (in the
+    # source/pip layouts there is no single file to install).
+    running_is_dist = (
+        running.is_file()
+        and dist_version(running.read_text(encoding="utf-8")) is not None
+    )
+    replaced = False
+    if vendored is not None and running_is_dist and running.resolve() != vendored.resolve():
+        atomic_write_text(vendored, running.read_text(encoding="utf-8"))
+        replaced = True
+        report.append(
+            f"replaced: {vendored.relative_to(root)} "
+            f"(v{old_version} -> v{KIT_VERSION}; old copy archived)",
+        )
+
+    # (6) Staged regeneration: adopt is idempotent — staged artifacts always
+    # regenerate, planted docs skip-if-exist, kit_version records new.
+    report += adopt(root, config, backend, kit_root=kit_root)
+
+    # (6b) KL-3: the 📊 Model needle joins session_markers at upgrade time —
+    # a consumer's gate only tightens when it upgrades, never mid-version
+    # (founding plan §5.2); the report says so out loud.
+    if not any(
+        m.get("needle") == MODEL_LINE_NEEDLE for m in config.session_markers
+    ):
+        config.session_markers.append(
+            {"label": "Model line", "needle": MODEL_LINE_NEEDLE},
+        )
+        save_config(root, config)
+        report.append(
+            "session_markers: added the \N{BAR CHART} Model line needle "
+            "(KL-3 telemetry) — session logs must now carry "
+            "`- **\N{BAR CHART} Model:** <model> \N{MIDDLE DOT} <effort> "
+            "\N{MIDDLE DOT} <task-class>`; session-close harvests it into "
+            "telemetry/model-usage.jsonl.",
+        )
+
+    # (7) State migration (backup already banked above).
+    backend.migrate(STATE_SCHEMA_VERSION)
+    report.append(f"state: schema at v{STATE_SCHEMA_VERSION} (backup banked).")
+
+    # (8) The report file (§9.2 names it as the upgrade PR's body evidence).
+    report_rel = f"{config.state_dir}/{UPGRADE_REPORT_FILENAME}"
+    atomic_write_text(
+        root / report_rel,
+        upgrade_report_text(old_version, rows, applied),
+    )
+    report.append(f"report: {report_rel}")
+
+    # (9) Self-cleanup of the upgrade inputs: the consumer flow downloads
+    # ``bootstrap.py.new`` (+ its ``release.json``) next to the vendored file,
+    # and once the replace has landed both are strays the first field run
+    # (superbot-next#46) left behind. Only the files the flow itself consumed
+    # are touched — the running .new file that was just installed and the
+    # release.json sitting NEXT TO it (an explicit --release-json elsewhere is
+    # left alone). ``--keep-inputs`` opts out; a cleanup error never fails a
+    # completed upgrade (fail-open, like every non-essential step).
+    if cleanup_inputs and replaced:
+        for leftover in (running, candidate):
+            if leftover.parent != running.parent or not leftover.is_file():
+                continue
+            try:
+                leftover.unlink()
+                report.append(
+                    f"cleaned up: {leftover.name} "
+                    "(upgrade input; pass --keep-inputs to retain)",
+                )
+            except OSError:
+                report.append(
+                    f"note: could not remove {leftover.name} — "
+                    "delete it by hand.",
+                )
+    return report
+
+
+def run_rollback(root: Path, config: Config) -> list[str]:
+    """Restore the banked state.json + archived dist from the last upgrade."""
+    backup_dir = root / config.state_dir / BACKUP_DIRNAME
+    marker = backup_dir / LAST_UPGRADE_FILENAME
+    if not marker.is_file():
+        return [f"rollback: nothing to roll back (no {LAST_UPGRADE_FILENAME})."]
+    meta = json.loads(marker.read_text(encoding="utf-8"))
+    report: list[str] = []
+    state_backup = backup_dir / STATE_BACKUP_FILENAME
+    if state_backup.is_file():
+        atomic_write_text(
+            root / config.state_dir / "state.json",
+            state_backup.read_text(encoding="utf-8"),
+        )
+        report.append("restored: state.json from backup.")
+    archived_rel = meta.get("archived_dist")
+    vendored_rel = meta.get("vendored")
+    if archived_rel and vendored_rel:
+        archived = root / archived_rel
+        if archived.is_file():
+            atomic_write_text(
+                root / vendored_rel,
+                archived.read_text(encoding="utf-8"),
+            )
+            report.append(
+                f"restored: {vendored_rel} from {archived_rel} "
+                f"(back to v{meta.get('from_version')}).",
+            )
+    recorded = str(meta.get("from_version") or "")
+    # "unknown" names an unstamped pre-release dist (the archive is
+    # bootstrap-unknown.py) — the honest config value for that state is the
+    # unrecorded sentinel "", never the literal string "unknown".
+    restored_pin = "" if recorded == "unknown" else recorded
+    if config.kit_version and config.kit_version != restored_pin:
+        config.kit_version = restored_pin
+        save_config(root, config)
+        report.append(f"restored: config kit_version -> {config.kit_version!r}.")
+    report.append(
+        "note: staged .substrate/ artifacts regenerate from the restored file "
+        "(run: python3 bootstrap.py adopt); docs applied via --apply-docs are "
+        "git-visible and were not reverted.",
+    )
     return report
 
 # --- engine/cli.py ---
@@ -6487,7 +8472,9 @@ docs), ``skills`` / ``agents`` / ``hooks`` (list / ``--build`` the packs),
 ``hook <event>`` (the runtime hook entry points), ``check`` (every hygiene
 checker), ``triggers``, ``reflect``, ``episodes``, ``metrics``, ``maintain``,
 ``review`` (the independent-review seam), ``economy`` (the context-economy
-engine), ``ledger`` (the [D-NNNN] decisions ledger), and ``--simulate N
+engine), ``ledger`` (the [D-NNNN] decisions ledger), ``friction`` (export/list/show
+the §9.1 friction-report outbox), ``draft`` (auto-draft the session card's
+close-out from evidence — KL-5), and ``--simulate N
 [--mode m]`` (the CI / proving smoke that drives the staged interview and
 asserts per-mode behavior). Output goes through ``_emit`` (``sys.stdout.write``)
 rather than ``print`` to keep the engine lint-clean.
@@ -6639,12 +8626,14 @@ def cmd_ask(target: Path) -> int:
     return 0
 
 
-def _render_live(target: Path, context: dict[str, str]) -> int:
+def _render_live(target: Path, context: dict[str, str], backend: Any) -> int:
     """Fill remaining ``${slot}`` placeholders in the PLANTED docs, in place.
 
     Placeholders survive verbatim in a planted file until their slot fills, so
     substituting over the live text updates exactly the newly-answered slots
     while preserving every hand edit around them. Returns the leftover count.
+    Every rewrite re-records the doc's sha256 (the §4.3 "kit last wrote this"
+    provenance the upgrade diff keys on).
     """
     leftover_total = 0
     for _, plan_rel in ADOPT_PLAN:
@@ -6661,6 +8650,7 @@ def _render_live(target: Path, context: dict[str, str]) -> int:
             filled = strip_unrendered_banner(filled)
         if filled != text:
             atomic_write_text(path, filled)
+            record_doc_hash(backend, rel, filled)
             suffix = f" ({len(leftover)} slot(s) still unfilled)" if leftover else ""
             _emit(f"render: filled {rel}{suffix}")
     _emit(f"render: {leftover_total} unfilled placeholder(s) across planted docs.")
@@ -6683,7 +8673,7 @@ def cmd_render(target: Path, live: bool = False) -> int:
         return 1
     context = build_context(backend.data)
     if live:
-        return _render_live(target, context)
+        return _render_live(target, context, backend)
     out_dir = target / config.state_dir / "rendered"
     leftover_total = 0
     for name, text in load_templates().items():
@@ -6807,33 +8797,41 @@ def cmd_hooks(target: Path, build: bool) -> int:
     return 0
 
 
-def _hook_pretooluse(target: Path) -> int:
+def _hook_pretooluse(target: Path) -> list[str]:
     """PreToolUse stance guard: warn on stderr for an out-of-stance tool."""
     tool_name = tool_from_payload(sys.stdin.read())
     if not tool_name:
-        return 0
+        return []
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
     stance = backend.data.get("stance") if backend.data else None
     if not stance:
-        return 0
+        return []
     warning = evaluate_tool(stance, tool_name)
     if warning:
         sys.stderr.write(warning + "\n")
-    return 0
+        return [warning]
+    return []
 
 
-def _hook_sessionstart(target: Path) -> int:
-    """SessionStart: print the mode-aware orientation composition to stdout."""
+def _hook_sessionstart(target: Path) -> list[str]:
+    """SessionStart: print the orientation composition + record the anchor.
+
+    The anchor (timestamp + git HEAD/branch, ``state["session_anchor"]``) is
+    the evidence baseline the KL-5 auto-draft diffs against at session close.
+    Recording is fail-open inside ``record_session_anchor`` — orientation
+    must never be blocked by evidence bookkeeping.
+    """
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
     text = compose_orientation(target, config, backend)
     if text:
         sys.stdout.write(text)
-    return 0
+    record_session_anchor(target, config, backend)
+    return []
 
 
-def _hook_postedit(target: Path) -> int:
+def _hook_postedit(target: Path) -> list[str]:
     """PostToolUse: warn on stderr for a generated-artifact / unbadged-doc edit.
 
     Handles Edit/Write (``tool_input.file_path``) and NotebookEdit
@@ -6846,26 +8844,36 @@ def _hook_postedit(target: Path) -> int:
     try:
         payload = json.loads(raw) if raw.strip() else {}
     except json.JSONDecodeError:
-        return 0
+        return []
     tool_input = payload.get("tool_input") if isinstance(payload, dict) else None
     if not isinstance(tool_input, dict):
-        return 0
+        return []
     file_path = tool_input.get("file_path") or tool_input.get("notebook_path")
     if not isinstance(file_path, str) or not file_path:
-        return 0
+        return []
     warning = evaluate_edit(target, load_config(target), file_path)
     if warning:
         sys.stderr.write(warning + "\n")
-    return 0
+        return [warning]
+    return []
 
 
-def _hook_stopcheck(target: Path) -> int:
-    """Stop: print the session-close advisory lines to stderr."""
+def _hook_stopcheck(target: Path) -> list[str]:
+    """Stop: auto-draft the session card, then print the advisories to stderr.
+
+    Drafting runs FIRST (KL-5 — the mechanized write-back the Phase-2.5 A/B
+    proved doesn't happen by discipline): a missing card gets a drafted
+    skeleton, an in-progress card missing its close-out gets the drafted
+    section appended, and the advisories that follow see the drafted state.
+    Both halves fail open; the hook always exits 0.
+    """
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
-    for line in evaluate_stop(target, config, backend):
+    lines = ensure_draft(target, config, backend)
+    lines += evaluate_stop(target, config, backend)
+    for line in lines:
         sys.stderr.write(line + "\n")
-    return 0
+    return lines
 
 
 _HOOK_EVENTS = {
@@ -6873,6 +8881,14 @@ _HOOK_EVENTS = {
     "sessionstart": _hook_sessionstart,
     "postedit": _hook_postedit,
     "stopcheck": _hook_stopcheck,
+}
+
+# Guard kind per hook event, for the §5.3 guard-fire feed. ``sessionstart``
+# is orientation, not a guard — it never records a fire.
+_HOOK_GUARD_KINDS = {
+    "pretooluse": "stance",
+    "postedit": "edit-advisor",
+    "stopcheck": "stop-advisory",
 }
 
 
@@ -6884,12 +8900,29 @@ def cmd_hook(target: Path, event: str) -> int:
     payload (``tool_input.file_path``) and warns on stderr; ``stopcheck``
     prints session-close advisories to stderr. Every event fails open on a
     missing / malformed payload, config, or state.
+
+    This dispatch is one of the two guard-fire choke points (KL-3, plan
+    §5.3): each warning a guard hook surfaces is appended to
+    ``<state_dir>/guard-fires.jsonl`` (surface ``hook``, posture ``advisory``
+    — hooks never block). The write is fail-open and never alters the exit
+    code: telemetry must never crash a hook.
     """
     handler = _HOOK_EVENTS.get(event)
     if handler is None:
         return 0
     try:
-        return handler(target)
+        warnings = handler(target)
+        kind = _HOOK_GUARD_KINDS.get(event)
+        if warnings and kind:
+            record_guard_fires(
+                target,
+                load_config(target).state_dir,
+                cmd=f"hook {event}",
+                surface="hook",
+                posture="advisory",
+                findings=[Finding("", kind, warning) for warning in warnings],
+            )
+        return 0
     except Exception:  # noqa: BLE001 — hooks fail open by contract, always 0
         return 0
 
@@ -6919,6 +8952,11 @@ def _extra_check_findings(target: Path, config: Config) -> list:
     docs_root = target / config.docs_root
     if any((docs_root / doc).exists() or (target / doc).exists() for doc in boot_docs):
         findings += check_orientation_budget(target, config)
+    # The post-adopt ENGAGEMENT gate (KL-7): red in an adopted host until the
+    # planted docs are rendered, a CI workflow runs the check, and the session
+    # loop has engaged. Self-gating on adoption evidence — a bare tree adds
+    # nothing here.
+    findings += check_engagement(target, config)
     return findings
 
 
@@ -6927,6 +8965,7 @@ def cmd_check(
     strict: bool,
     *,
     require_session_log: bool = False,
+    session_log: Path | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
 
@@ -6941,8 +8980,32 @@ def cmd_check(
     makes the memory ritual non-optional, not merely advised). Uses config
     defaults if ``target`` has no ``substrate.config.json`` yet, so a project
     can lint before onboarding.
+
+    ``session_log`` (CLI ``--session-log``) names the card to gate on
+    *explicitly* — the diff-aware selection a CI workflow derives from which
+    ``<sessions_dir>/*.md`` file the PR adds/changes. Without it the gate
+    falls back to newest-by-mtime, which a fresh CI checkout silently degrades
+    (every mtime flattens to checkout time), the trap that used to require a
+    git-mtime-restore shim before this step. A named file that does not exist
+    is treated exactly like an absent log (advisory by default, a hard failure
+    under ``require_session_log``) — an explicit selection never silently
+    falls back to a different card.
+
+    Two KL-3 mechanisms ride the finding loop (plan §5.3):
+
+    - **Reasons-required allowlist**: ``<state_dir>/check-exceptions.yml``
+      entries suppress exact path+kind matches — but only entries carrying a
+      ``reason``; a reason-less entry is refused and reported as its own
+      finding. The session-log gate is never allowlistable.
+    - **Guard-fire telemetry** (the ``check`` choke point): every surfaced
+      finding — and every allowlist suppression, recorded with the entry's
+      verdict + reason (creating the entry IS the verdict event) — appends a
+      record to ``<state_dir>/guard-fires.jsonl``. Fail-open, written only
+      into an existing install; the ``ci`` surface + ``did_not_run`` rows are
+      derived by readers from the Checks API, never written in CI.
     """
     config = load_config(target)
+    posture = "blocking" if strict else "advisory"
     docs_root = target / config.docs_root
     doc_findings = run_doc_checks(
         docs_root,
@@ -6950,30 +9013,93 @@ def cmd_check(
         config.readpath_docs,
     )
     doc_findings = list(doc_findings) + _extra_check_findings(target, config)
+    entries, allow_findings = load_allowlist(target, config.state_dir)
+    doc_findings, suppressed = apply_allowlist(doc_findings, entries)
+    doc_findings += allow_findings
+    if suppressed:
+        _emit(
+            f"check: {len(suppressed)} finding(s) suppressed by allowlist "
+            "(reason-carrying entries; fires recorded with their verdicts).",
+        )
+        for finding, entry in suppressed:
+            record_guard_fires(
+                target,
+                config.state_dir,
+                cmd="check",
+                surface="check",
+                posture=posture,
+                findings=[finding],
+                verdict=entry.get("verdict"),
+                reason=entry.get("reason"),
+            )
     if doc_findings:
         _emit(f"check: {len(doc_findings)} finding(s):")
         for finding in doc_findings:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture=posture,
+            findings=doc_findings,
+        )
 
-    log = latest_session_log(target / config.sessions_dir)
+    if session_log is not None:
+        explicit = session_log if session_log.is_absolute() else target / session_log
+        log = explicit if explicit.is_file() else None
+    else:
+        log = latest_session_log(target / config.sessions_dir)
     log_missing: list[str] = check_log(log, config.session_markers) if log else []
     # In gate mode an absent log is itself a failing condition, so it must feed
     # the exit code exactly like an incomplete one.
     log_absent_fails = log is None and require_session_log
     if log is None:
+        if session_log is not None:
+            absent = f"--session-log {session_log} does not exist"
+        else:
+            absent = f"no session log under {config.sessions_dir}/"
         if require_session_log:
             _emit(
-                f"check: MERGE HELD — no session log under {config.sessions_dir}/ "
+                f"check: MERGE HELD — {absent} "
                 "(--require-session-log): write one before merging.",
             )
         else:
-            _emit("check: no session log found yet (advisory — not a failure).")
+            _emit(f"check: {absent} (advisory — not a failure).")
     else:
         rel = log.relative_to(target) if log.is_relative_to(target) else log
         if log_missing:
             _emit(f"check: session log {rel} is missing: {', '.join(log_missing)}")
         else:
             _emit(f"check: session log {rel} complete.")
+    if log_missing or log_absent_fails:
+        # The session gate is a guard too (the kit's flagship one) — its
+        # fires feed B3 like any checker's. Never allowlistable, though.
+        if log_absent_fails:
+            if session_log is not None:
+                absent = f"--session-log {session_log} does not exist"
+            else:
+                absent = f"no session log under {config.sessions_dir}/"
+            gate_finding = Finding(
+                "",
+                "session-log",
+                f"{absent} (--require-session-log)",
+            )
+        else:
+            log_rel = str(log.relative_to(target)) if log.is_relative_to(target) else str(log)
+            gate_finding = Finding(
+                log_rel,
+                "session-log",
+                f"missing: {', '.join(log_missing)}",
+            )
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="blocking" if (strict or require_session_log) else "advisory",
+            findings=[gate_finding],
+        )
 
     if not doc_findings and not log_missing and not log_absent_fails:
         _emit("check: all checks passed.")
@@ -7353,6 +9479,69 @@ def cmd_adopt(
     )
     for line in lines:
         _emit(f"adopt: {line}")
+    # KL-7 — the adopter is told, in the adopt output itself, exactly what the
+    # born-red engagement gate needs: the gate's findings ARE the checklist.
+    engage = check_engagement(target, config)
+    if engage:
+        _emit(
+            f"adopt: NOT ENGAGED — `check --strict` holds RED until these "
+            f"{len(engage)} item(s) are done:",
+        )
+        for finding in engage:
+            where = f"{finding.path}: " if finding.path else ""
+            _emit(f"adopt:   [{finding.kind}] {where}{finding.message}")
+    else:
+        _emit("adopt: ENGAGED — the post-adopt gate is green.")
+    return 0
+
+
+def cmd_upgrade(
+    target: Path,
+    *,
+    apply_docs: bool,
+    rollback: bool,
+    release_json: Path | None,
+    keep_inputs: bool = False,
+) -> int:
+    """Run the §4.3 upgrade flow (or ``--rollback``) against ``target``.
+
+    The consumer flow: download the new release's file as ``bootstrap.py.new``
+    (plus its ``release.json`` for sha256 verification) and run
+    ``python3 bootstrap.py.new upgrade``. Archives before it overwrites;
+    planted docs are only ever touched under ``--apply-docs`` and only when
+    the recorded hash proves the consumer never edited them. On completion
+    the consumed inputs (the ``.new`` file + its adjacent ``release.json``)
+    are removed unless ``--keep-inputs``.
+    """
+    loaded = _require_state(target, "upgrade")
+    if loaded is None:
+        return 1
+    config, backend = loaded
+    if rollback:
+        for line in run_rollback(target, config):
+            _emit(f"upgrade: {line}")
+        return 0
+    running = (
+        Path(sys.argv[0]).resolve()
+        if sys.argv and sys.argv[0]
+        else Path(__file__).resolve()
+    )
+    try:
+        lines = run_upgrade(
+            target,
+            config,
+            backend,
+            kit_root=_kit_root(),
+            running=running,
+            apply_docs=apply_docs,
+            release_json=release_json,
+            cleanup_inputs=not keep_inputs,
+        )
+    except UpgradeRefused as exc:
+        _emit(f"upgrade: REFUSED — {exc}")
+        return 2
+    for line in lines:
+        _emit(f"upgrade: {line}")
     return 0
 
 
@@ -7379,39 +9568,170 @@ def cmd_contextpack(target: Path, index: Path | None) -> int:
 
 
 def cmd_session_start(target: Path) -> int:
-    """Print this session's orientation injection (the SessionStart composition)."""
+    """Print this session's orientation injection (the SessionStart composition).
+
+    Also records the session-start evidence anchor (fail-open) — the same
+    baseline the SessionStart hook records, so a session driven by the CLI
+    instead of the hook still gets an evidence-backed auto-draft at close.
+    """
     loaded = _require_state(target, "session-start")
     if loaded is None:
         return 1
     config, backend = loaded
     _emit(compose_orientation(target, config, backend))
+    record_session_anchor(target, config, backend)
     return 0
 
 
 def cmd_session_close(target: Path) -> int:
-    """Run the session-close ritual: mine, index, advise, and report KPIs.
+    """Run the session-close ritual: draft, mine, index, advise, report KPIs.
 
-    Mines the session logs into the reflection buffer, rebuilds the episodic
-    index, prints the stop-check advisories, and ends with the KPI footer —
-    the engine analog of the one-idea / previous-session-review enders.
+    First auto-drafts the session card's close-out from evidence (KL-5 —
+    ``ensure_draft``; fail-open), then mines the session logs into the
+    reflection buffer, rebuilds the episodic index, harvests the
+    ``📊 Model:`` line into the PL-004 model-usage feed
+    (``telemetry/model-usage.jsonl`` — one row per session, KL-3; a drafted
+    ``[[fill:]]`` stand-in line is never harvested), prints the stop-check
+    advisories, and ends with the KPI footer — the engine analog of the
+    one-idea / previous-session-review enders.
     """
     loaded = _require_state(target, "session-close")
     if loaded is None:
         return 1
-    config, _ = loaded
+    config, backend0 = loaded
+    # KL-5 mechanized write-back: draft the card/close-out from evidence
+    # BEFORE the ritual runs, so mining/advisories see the drafted state and
+    # a session that wrote nothing still leaves an evidence-backed draft.
+    for line in ensure_draft(target, config, backend0):
+        _emit(f"session-close: [draft] {line}")
     rc = cmd_reflect(target, add=None, evidence="", tags="", mine=True)
     if rc != 0:
         return rc
     index_path = target / config.state_dir / EPISODIC_INDEX_FILENAME
     entries = rebuild_episodic_index(target / config.sessions_dir, index_path)
     _emit(f"session-close: indexed {len(entries)} session(s).")
+    log = latest_session_log(target / config.sessions_dir)
+    for line in harvest_model_usage(target, log):
+        _emit(f"session-close: {line}")
     # Re-read state: the mine above stamped reflection_buffer.last_mined, and
     # a pre-mine snapshot would re-advise the mine it just ran.
     backend = JsonStateBackend(_state_path(target, config))
     for line in evaluate_stop(target, config, backend):
         _emit(f"session-close: [advisory] {line}")
+    # §9.1: filing friction issues rides session-close, best-effort — the
+    # engine cannot reach GitHub, so it advises the session/agent instead.
+    pending = list_outbox(target, config.state_dir)
+    if pending:
+        _emit(
+            f"session-close: [advisory] {len(pending)} friction report(s) "
+            f"pending in {config.state_dir}/friction-outbox/ — file each as "
+            f"a `{FRICTION_LABEL}`-labeled issue on the kit repo "
+            "(`friction show <name>` prints the issue title+body), then "
+            "delete the drained file.",
+        )
     kpis = workflow_kpis(backend.data, target / config.sessions_dir)
     _emit(kpi_footer(kpis))
+    return 0
+
+
+def cmd_draft(target: Path) -> int:
+    """Auto-draft the session card / close-out from evidence, on demand.
+
+    The same seam ``session-close`` and the Stop hook run (KL-5): a missing
+    card gets a drafted skeleton, an in-progress card missing its close-out
+    gets the drafted section appended, a drafted card reports its unresolved
+    ``[[fill:]]`` slots, and a completed card is never touched.
+    """
+    loaded = _require_state(target, "draft")
+    if loaded is None:
+        return 1
+    config, backend = loaded
+    lines = ensure_draft(target, config, backend)
+    if not lines:
+        _emit("draft: nothing to do (card complete, or close-out already present).")
+        return 0
+    for line in lines:
+        _emit(f"draft: {line}")
+    return 0
+
+
+def cmd_friction(
+    target: Path,
+    action: str,
+    *,
+    repo: str | None,
+    name: str | None,
+) -> int:
+    """Drive the §9.1 friction-report protocol's consumer half.
+
+    ``export`` collects the ⚑ friction records (reflection buffer + a full
+    session-log scan), wraps them in the wire envelope, writes it to
+    ``<state_dir>/friction-outbox/``, and prints the issue-ready title +
+    body — **the engine never files the issue itself** (stdlib-only, no
+    credentials): the session/agent files it on the kit repo with the
+    ``friction`` label and deletes the drained outbox file. ``list`` shows
+    pending outbox envelopes; ``show <name>`` re-prints one's issue text
+    (how a later session drains an outbox held by a network/credential
+    failure).
+    """
+    loaded = _require_state(target, "friction")
+    if loaded is None:
+        return 1
+    config, _ = loaded
+    if action == "list":
+        pending = list_outbox(target, config.state_dir)
+        for path in pending:
+            envelope = load_envelope(path) or {}
+            count = len(envelope.get("reports") or [])
+            _emit(f"  {path.name} — {count} report(s), repo {envelope.get('repo')!r}")
+        _emit(f"friction: {len(pending)} pending outbox envelope(s).")
+        return 0
+    if action == "show":
+        if not name:
+            _emit("friction: show needs the outbox file name (see `friction list`).")
+            return 2
+        path = target / config.state_dir / "friction-outbox" / name
+        envelope = load_envelope(path)
+        if envelope is None:
+            _emit(f"friction: no readable envelope at {path}.")
+            return 1
+        _emit(f"title: {friction_issue_title(envelope)}")
+        _emit("")
+        _emit(friction_issue_body(envelope))
+        return 0
+    if action != "export":
+        _emit(f"friction: unknown action {action!r} (export | list | show).")
+        return 2
+    reports = friction_reports(target, config)
+    if not reports:
+        _emit("friction: no \N{BLACK FLAG} friction records found — nothing to export.")
+        return 0
+    repo_name = repo or detect_repo(target)
+    if not repo_name:
+        _emit(
+            "friction: could not detect the GitHub repo from .git/config — "
+            "pass --repo <owner/name>.",
+        )
+        return 2
+    envelope = build_envelope(
+        repo=repo_name,
+        project_id=str(config.project_id),
+        # The honest install record — "" (rendered "unrecorded") when the
+        # install predates version recording; never guessed from KIT_VERSION.
+        kit_version=config.kit_version or "",
+        reports=reports,
+    )
+    path = write_outbox(target, config.state_dir, envelope)
+    rel = path.relative_to(target) if path.is_relative_to(target) else path
+    _emit(f"friction: wrote {rel} ({len(reports)} report(s)).")
+    _emit(
+        f"friction: now file it — open a `{FRICTION_LABEL}`-labeled issue on "
+        "the kit repo with the title+body below, then delete the outbox file.",
+    )
+    _emit("")
+    _emit(f"title: {friction_issue_title(envelope)}")
+    _emit("")
+    _emit(friction_issue_body(envelope))
     return 0
 
 
@@ -7511,6 +9831,12 @@ def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
     parser.add_argument(
+        "--version",
+        action="version",
+        version=f"substrate-kit {KIT_VERSION}",
+        help="print the kit version and exit",
+    )
+    parser.add_argument(
         "--simulate",
         type=int,
         metavar="N",
@@ -7530,7 +9856,8 @@ def build_parser() -> argparse.ArgumentParser:
         ("triggers", "scan for fired triggers / mandatory questions"),
         ("metrics", "emit the router + workflow KPIs"),
         ("session-start", "print this session's orientation injection"),
-        ("session-close", "mine reflections, index the session, report KPIs"),
+        ("session-close", "draft the close-out, mine reflections, report KPIs"),
+        ("draft", "auto-draft the session card / close-out from evidence"),
     ):
         child = sub.add_parser(name, help=helptext)
         child.add_argument("--target", type=Path, default=Path.cwd())
@@ -7550,6 +9877,34 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     adopt_p.add_argument("--target", type=Path, default=Path.cwd())
+    upgrade_p = sub.add_parser(
+        "upgrade",
+        help="upgrade the install to this bootstrap's version (archives first)",
+    )
+    upgrade_p.add_argument(
+        "--apply-docs",
+        action="store_true",
+        help="re-render template-improved docs the consumer never edited",
+    )
+    upgrade_p.add_argument(
+        "--rollback",
+        action="store_true",
+        help="restore the state + dist banked by the last upgrade",
+    )
+    upgrade_p.add_argument(
+        "--release-json",
+        type=Path,
+        default=None,
+        help="release.json to verify this file's sha256 against "
+        "(default: one next to the running file, when present)",
+    )
+    upgrade_p.add_argument(
+        "--keep-inputs",
+        action="store_true",
+        help="keep bootstrap.py.new + its release.json after a completed "
+        "upgrade (default: the consumed inputs are removed)",
+    )
+    upgrade_p.add_argument("--target", type=Path, default=Path.cwd())
     contextpack = sub.add_parser(
         "contextpack",
         help="generate agent context packs from the index",
@@ -7608,6 +9963,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     economy.add_argument("--bands", type=int, default=24)
     economy.add_argument("--target", type=Path, default=Path.cwd())
+    friction = sub.add_parser(
+        "friction",
+        help="export/list/show §9.1 friction-report envelopes (outbox)",
+    )
+    friction.add_argument("action", choices=("export", "list", "show"))
+    friction.add_argument(
+        "name",
+        nargs="?",
+        default=None,
+        help="outbox file name (for show)",
+    )
+    friction.add_argument(
+        "--repo",
+        default=None,
+        help="this consumer's GitHub owner/name (default: parsed from .git/config)",
+    )
+    friction.add_argument("--target", type=Path, default=Path.cwd())
     ledger = sub.add_parser("ledger", help="append a [D-NNNN] decision")
     ledger.add_argument("--title", required=True)
     ledger.add_argument("--verdict", required=True)
@@ -7653,6 +10025,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="fail (not just advise) when the session log is missing — the CI gate mode",
     )
+    check.add_argument(
+        "--session-log",
+        type=Path,
+        default=None,
+        help=(
+            "gate on this session card explicitly (e.g. the card the PR's diff "
+            "touches) instead of newest-by-mtime; a missing file counts as an "
+            "absent log, never a silent fallback"
+        ),
+    )
     return parser
 
 
@@ -7688,6 +10070,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.target,
                 args.strict,
                 require_session_log=args.require_session_log,
+                session_log=args.session_log,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))
@@ -7732,12 +10115,29 @@ def main(argv: list[str] | None = None) -> int:
                 args.include_claude,
                 wire_enforcement=args.wire_enforcement,
             )
+        if args.command == "upgrade":
+            return cmd_upgrade(
+                args.target,
+                apply_docs=args.apply_docs,
+                rollback=args.rollback,
+                release_json=args.release_json,
+                keep_inputs=args.keep_inputs,
+            )
         if args.command == "contextpack":
             return cmd_contextpack(args.target, args.index)
         if args.command == "session-start":
             return cmd_session_start(args.target)
         if args.command == "session-close":
             return cmd_session_close(args.target)
+        if args.command == "draft":
+            return cmd_draft(args.target)
+        if args.command == "friction":
+            return cmd_friction(
+                args.target,
+                args.action,
+                repo=args.repo,
+                name=args.name,
+            )
         if args.command == "ledger":
             return cmd_ledger(
                 args.target,
@@ -7753,66 +10153,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.print_help()
     return 0
 
-_ENGINE_MANIFEST = {
-    'engine/__init__.py': '',
-    'engine/lib/__init__.py': '',
-    'engine/interview/__init__.py': '',
-    'engine/checks/__init__.py': '"""Generic, config-driven hygiene checkers lifted from the host project.\n\nThese are stdlib-only ports of the proven ``check_docs`` / ``check_session_log``\nscripts, with every host-specific value (doc root, badge taxonomy, read-path\ndocs, sessions dir, required markers) read from ``substrate.config.json`` instead\nof hardcoded. The host project\'s ratchets and freshness rules are intentionally\ndropped — they are superbot-shaped policy, not portable mechanism.\n"""\n',
-    'engine/loop/__init__.py': '"""The self-improving loop: triggers, reflections, episodes, maintenance."""\n',
-    'engine/economy/__init__.py': '"""The context-economy engine: taxonomy, gauges, retention, tombstones."""\n',
-    'engine/stances/__init__.py': '"""Task-stance capability layer (plan section 3b).\n\nA stance is the working agent\'s operational posture for the current task — the\nfourth control axis, distinct from adoption-pace (mode), promotion-rights, and\nstage. Each stance scopes a reading-route, a tool-scope, and an output contract\nto cut context rot and tool misfires. Advisory by default.\n"""\n',
-    'engine/skills/__init__.py': '"""Skills — the invoke-a-capability layer (plan section 3c).\n\nA skill is an invokable ``SKILL.md`` procedure (the counterpart to a stance\'s\nambient posture). The kit ships generalized skill *sources* here and emits native\n``.claude/skills/<name>/SKILL.md`` files (metadata-first frontmatter + body) so\nthey load progressively and port across agent CLIs.\n"""\n',
-    'engine/agents/__init__.py': '"""Personas — spawnable read-only specialists (plan section 3c).\n\nA persona is a sub-agent the working agent can spawn for a focused, read-only\ntask (design review, independent critique, deep exploration). The kit ships\ngeneralized persona sources here and emits native ``.claude/agents/<name>.md``\nfiles (frontmatter + system-prompt body), each filled from the project\'s own\ncontract docs via ``${slot}`` substitution.\n"""\n',
-    'engine/hooks/__init__.py': '"""Hook layer — the kit\'s runtime seams into a Claude Code session.\n\nFour hooks: the **PreToolUse stance guard** (warns on an out-of-stance tool),\n**SessionStart orientation** (injects the mode-aware composition), the\n**PostToolUse edit advisor** (generated-artifact / unbadged-doc warnings), and\nthe **Stop-check advisor** (session-close hygiene). All advisory and fail-open\n— they inform, they never block. ``settings.py`` builds the staged\n``settings.template.json`` + fill-table a host merges into ``.claude/``.\n"""\n',
-    'engine/lib/atomicio.py': '"""Atomic file writes for crash-safe state.\n\nA write goes to a sibling ``*.tmp`` file and is renamed into place with\n``os.replace`` — an atomic rename on POSIX and Windows — so a process that dies\nmid-write can never leave a half-written, unparseable file behind. This is the\nrobustness floor the whole engine builds on (plan: Gemini round).\n"""\n\nfrom __future__ import annotations\n\nimport os\nfrom pathlib import Path\n\n\ndef atomic_write_text(path: Path, text: str) -> None:\n    """Write ``text`` to ``path`` atomically via a temp file + ``os.replace``."""\n    path.parent.mkdir(parents=True, exist_ok=True)\n    tmp = path.with_name(path.name + ".tmp")\n    tmp.write_text(text, encoding="utf-8")\n    os.replace(tmp, path)\n',
-    'engine/lib/config.py': '"""Host-project configuration for one substrate-kit install.\n\nReads and writes ``substrate.config.json`` — the single file that absorbs every\nhost-specific knob so the engine code never hardcodes a project value. Two\ninterpreters are kept explicitly separate (Hermes-final): ``interpreter`` is the\nkit\'s own runtime, ``interpreter_for_checks`` is the host project\'s verification\nruntime (e.g. ``python3.10`` for a repo whose CI pins 3.10).\n"""\n\nfrom __future__ import annotations\n\nimport json\nimport sys\nimport uuid\nfrom dataclasses import asdict, dataclass, field, fields\nfrom pathlib import Path\n\nfrom engine.lib.atomicio import atomic_write_text\n\nCONFIG_FILENAME = "substrate.config.json"\nDEFAULT_STATE_DIR = ".substrate"\n\n\ndef _new_project_id() -> str:\n    """Return a short, stable identifier for one install."""\n    return uuid.uuid4().hex[:12]\n\n\ndef _default_cadence() -> dict[str, int]:\n    """Return the default cadence knobs (every hardcoded cadence lives here)."""\n    return {\n        "reconciliation_prs": 20,\n        "reconciliation_sessions": 20,\n        "compaction_sessions": 20,\n        "critical_slot_grace_sessions": 3,\n        "staleness_days": 14,\n        "guided_practice_sessions": 3,\n    }\n\n\ndef _default_reflection() -> dict:\n    """Return the reflection-buffer knobs (size cap is a hard context guard)."""\n    return {"enabled": True, "buffer_size": 5}\n\n\ndef _default_orientation() -> dict:\n    """Return the orientation-budget knobs (the K0 ≤7,000-word gate).\n\n    ``boot_docs`` empty means "fall back to ``readpath_docs``" — the\n    unconditional boot-read set the budget counts.\n    """\n    return {"budget_words": 7000, "boot_docs": []}\n\n\ndef _default_economy() -> dict:\n    """Return the context-economy knobs (taxonomy/gauges are host policy).\n\n    ``maturity`` gates the actuator: ``shadow`` (report only, the first-prune\n    safety protocol) -> ``gated`` (apply with review) -> ``normal``. Classes and\n    gauges ship empty — the engine supplies a documented generic default when\n    unset; each adopting repo declares its own table (the kit ships the search,\n    not our constants).\n    """\n    return {\n        "maturity": "shadow",\n        "pass_records_dir": "planning",\n        "reference_roots": [],\n        "id_patterns": [r"Q-\\d{3,}", r"D-\\d{3,}", r"R-\\d{3,}"],\n        "classes": [],\n        "gauges": [],\n        "debt_threshold": 10,\n    }\n\n\ndef _default_namespace() -> dict:\n    """Return the namespace-guard knobs (roots to scan + reserved-name map)."""\n    return {"roots": [], "reserved": {}}\n\n\ndef _default_review_seam() -> dict:\n    """Return the review-seam knobs (provisioned, not wired — no live reviewer)."""\n    return {"reviewer": None}\n\n\ndef _default_badge_tokens() -> list[str]:\n    """Return the default Status-badge taxonomy the doc checker accepts."""\n    return [\n        "binding",\n        "living-ledger",\n        "reference",\n        "plan",\n        "historical",\n        "audit",\n        "owner-guidance",\n        "ideas",\n        "archive",\n    ]\n\n\ndef _default_readpath_docs() -> list[str]:\n    """Return the read-path doc names that seed the reachability roots."""\n    return ["AGENT_ORIENTATION.md", "current-state.md"]\n\n\ndef _default_session_markers() -> list[dict[str, str]]:\n    """Return the markers every session log must carry (label + substring)."""\n    return [\n        {"label": "Status badge", "needle": "**Status:**"},\n        {"label": "Session idea", "needle": "💡"},\n        {"label": "Previous-session review", "needle": "previous-session review"},\n    ]\n\n\n@dataclass\nclass Config:\n    """Host-project configuration for one substrate-kit install."""\n\n    project_id: str = field(default_factory=_new_project_id)\n    interpreter: str = field(default_factory=lambda: sys.executable)\n    interpreter_for_checks: str | None = None\n    state_dir: str = DEFAULT_STATE_DIR\n    docs_root: str = "docs"\n    sessions_dir: str = ".sessions"\n    paths: dict[str, str] = field(default_factory=dict)\n    cadence: dict[str, int] = field(default_factory=_default_cadence)\n    scopes: dict[str, str] = field(default_factory=dict)\n    badge_tokens: list[str] = field(default_factory=_default_badge_tokens)\n    readpath_docs: list[str] = field(default_factory=_default_readpath_docs)\n    session_markers: list[dict[str, str]] = field(\n        default_factory=_default_session_markers,\n    )\n    reflection: dict = field(default_factory=_default_reflection)\n    orientation: dict = field(default_factory=_default_orientation)\n    economy: dict = field(default_factory=_default_economy)\n    namespace: dict = field(default_factory=_default_namespace)\n    seams: list[dict] = field(default_factory=list)\n    review_seam: dict = field(default_factory=_default_review_seam)\n\n    def to_json(self) -> str:\n        """Serialise the config to indented, key-sorted JSON."""\n        return json.dumps(asdict(self), indent=2, sort_keys=True)\n\n    @classmethod\n    def from_dict(cls, data: dict) -> Config:\n        """Build a Config from a parsed dict, ignoring unknown keys."""\n        known = {f.name for f in fields(cls)}\n        return cls(**{k: v for k, v in data.items() if k in known})\n\n\ndef config_path(root: Path) -> Path:\n    """Return the config-file path for a project ``root``."""\n    return root / CONFIG_FILENAME\n\n\ndef load_config(root: Path) -> Config:\n    """Load the config from ``root``; return defaults if none exists."""\n    path = config_path(root)\n    if not path.exists():\n        return Config()\n    data = json.loads(path.read_text(encoding="utf-8"))\n    return Config.from_dict(data)\n\n\ndef save_config(root: Path, config: Config) -> None:\n    """Write ``config`` to ``root`` atomically."""\n    atomic_write_text(config_path(root), config.to_json() + "\\n")\n',
-    'engine/lib/state.py': '"""The state-backend interface and its default JSON implementation.\n\nThe *interface* — not a raw JSON shape — is the contract the rest of the engine\ncodes against (Hermes-final, plan §2), so a future SQLite backend can replace the\nJSON one without a rewrite. The default backend is one JSON file written\natomically; mutations inside a ``transaction`` roll back on error and flush once.\n"""\n\nfrom __future__ import annotations\n\nimport copy\nimport json\nfrom abc import ABC, abstractmethod\nfrom collections.abc import Iterator\nfrom contextlib import AbstractContextManager, contextmanager\nfrom pathlib import Path\nfrom typing import Any\n\nfrom engine.lib.atomicio import atomic_write_text\n\nSTATE_SCHEMA_VERSION = 1\n\n\ndef default_state(project_id: str) -> dict[str, Any]:\n    """Return the initial state document for a fresh install."""\n    return {\n        "version": STATE_SCHEMA_VERSION,\n        "project_id": project_id,\n        "mode": "guided",\n        "promotion_rights": "propose",\n        "stage": "integration",\n        "stance": "analysis",\n        "session_count": 0,\n        "slots": {},\n        "slot_values": {},\n        "open_questions": [],\n        "quiet_sessions": 0,\n        "graduation": {\n            "soft_target_sessions": 50,\n            "criteria": {\n                "critical_slots_filled_pct": 0.8,\n                "blocking_questions": 0,\n            },\n        },\n        "mode_history": [],\n        "reflection_buffer": {"active_count": 0, "last_mined": None},\n        "graduation_proposed": False,\n        "last_compaction_session": 0,\n        "review_log": [],\n    }\n\n\nclass StateBackend(ABC):\n    """Read / write / query / transaction / migrate contract for engine state."""\n\n    version: int = STATE_SCHEMA_VERSION\n\n    @abstractmethod\n    def get(self, key: str, default: Any = None) -> Any:\n        """Return the value stored at ``key`` or ``default``."""\n\n    @abstractmethod\n    def set(self, key: str, value: Any) -> None:\n        """Store ``value`` at ``key`` (flushing unless inside a transaction)."""\n\n    @abstractmethod\n    def query(self, prefix: str = "") -> dict[str, Any]:\n        """Return all key/value pairs whose key starts with ``prefix``."""\n\n    @abstractmethod\n    def transaction(self) -> AbstractContextManager[StateBackend]:\n        """Return a context manager that commits on success, rolls back on error."""\n\n    @abstractmethod\n    def migrate(self, to_version: int) -> None:\n        """Migrate the stored document to schema ``to_version``."""\n\n\nclass JsonStateBackend(StateBackend):\n    """A StateBackend backed by one atomically-written JSON file."""\n\n    def __init__(self, path: Path) -> None:\n        self._path = Path(path)\n        self._data: dict[str, Any] = self._read()\n        self._txn_depth = 0\n\n    def _read(self) -> dict[str, Any]:\n        if not self._path.exists():\n            return {}\n        return json.loads(self._path.read_text(encoding="utf-8"))\n\n    def _flush(self) -> None:\n        atomic_write_text(\n            self._path,\n            json.dumps(self._data, indent=2, sort_keys=True) + "\\n",\n        )\n\n    def get(self, key: str, default: Any = None) -> Any:\n        """Return the value stored at ``key`` or ``default``."""\n        return self._data.get(key, default)\n\n    def set(self, key: str, value: Any) -> None:\n        """Store ``value`` at ``key``; flush now unless inside a transaction."""\n        self._data[key] = value\n        if self._txn_depth == 0:\n            self._flush()\n\n    def query(self, prefix: str = "") -> dict[str, Any]:\n        """Return all key/value pairs whose key starts with ``prefix``."""\n        return {k: v for k, v in self._data.items() if k.startswith(prefix)}\n\n    @contextmanager\n    def transaction(self) -> Iterator[JsonStateBackend]:\n        """Buffer writes; roll back the whole document on error, else flush once.\n\n        Re-entrant (Q-0223 tail ①): a helper that opens its own transaction may\n        be composed inside a caller\'s wider transaction. Each level snapshots on\n        entry and restores its own snapshot on error; only the *outermost* exit\n        flushes, so a composed multi-write either fully lands or fully rolls\n        back to the enclosing level\'s snapshot — never a partial flush.\n        """\n        snapshot = copy.deepcopy(self._data)\n        self._txn_depth += 1\n        try:\n            yield self\n        except Exception:\n            self._data = snapshot\n            raise\n        finally:\n            self._txn_depth -= 1\n        if self._txn_depth == 0:\n            self._flush()\n\n    def migrate(self, to_version: int) -> None:\n        """Set the stored schema version (no transforms needed at v1)."""\n        self._data["version"] = to_version\n        self._flush()\n\n    @property\n    def data(self) -> dict[str, Any]:\n        """Return a shallow copy of the current state document."""\n        return dict(self._data)\n',
-    'engine/lib/guardrail.py': '"""The live-loop guardrail.\n\nA mechanical guarantee (plan: design-corroboration) that the kit never operates\non its own repository root — which would let it mutate the very workflow it runs\ninside. Safe targets are the system temp tree, an ``examples/`` subtree of the\nkit, or any directory outside the kit. Enforced in code, in the first commit —\nnot left as a doc.\n"""\n\nfrom __future__ import annotations\n\nfrom pathlib import Path\n\n\nclass UnsafeTargetError(Exception):\n    """Raised when a target directory would corrupt the kit\'s own live loop."""\n\n\ndef assert_safe_target(target: Path, kit_root: Path) -> None:\n    """Refuse to operate on the kit\'s own repo root.\n\n    Unsafe: ``kit_root`` itself or a non-``examples`` path inside it — even\n    when the kit checkout lives under the system temp tree (an earlier\n    temp-tree shortcut ran first and silently voided the whole guarantee for a\n    kit cloned into ``/tmp``). Everything outside ``kit_root``, and the\n    ``examples/`` subtree, is safe. A ``kit_root`` that is a *file* (the\n    single-file bootstrap has no kit tree to protect) never matches.\n    """\n    target = Path(target).resolve()\n    kit_root = Path(kit_root).resolve()\n    inside_kit = target == kit_root or target.is_relative_to(kit_root)\n    inside_examples = target.is_relative_to(kit_root / "examples")\n    if inside_kit and not inside_examples:\n        msg = f"refusing to operate on the kit\'s own tree: {target}"\n        raise UnsafeTargetError(msg)\n',
-    'engine/lib/modes.py': '"""Integration-mode behavior policies (plan section 3 — the adoption-pace axis).\n\nThe ``mode`` state field (observe | guided | active) existed since PR 1 but nothing\nread it; this module is the single place its *behavior* is defined, so every\nconsumer (interview quota, orientation depth, trigger mandates, actuator gating,\ngraduation) asks one policy table instead of re-deriving the semantics.\n\nThe three modes, per the approved plan:\n\n- **observe** — the kit imposes nothing: each session writes a light note, asks\n  only 1-2 observation questions, and passively profiles how the user already\n  works; after enough sessions it *proposes* a tailored workflow (never\n  auto-graduates — proposal only).\n- **guided** — the default: the workflow rolls out one practice at a time in a\n  fixed order (session logs → idea lifecycle → question router → session-enders\n  → gates), each arriving only after the prior is established; triggers may\n  mandate questions.\n- **active** — the full workflow from session 1; the interview runs aggressively\n  (no quota) to fill slots fast.\n\n``promotion_rights`` is the *separate* autonomy axis: what the agent may change\nwithout sign-off. Actuators (economy prunes, maintenance writes) may apply only\nwhen the mode allows it AND promotion_rights is ``"promote"`` — otherwise they\nstay dry-run/propose.\n"""\n\nfrom __future__ import annotations\n\nfrom typing import Any\n\nMODES = ("observe", "guided", "active")\n\n# The guided-mode rollout order is fixed by the plan; only the pacing is ours.\nGUIDED_ROLLOUT = (\n    "session_logs",\n    "idea_lifecycle",\n    "question_router",\n    "session_enders",\n    "gates",\n)\n\nDEFAULT_MODE = "guided"\n\n# One behavior record per mode. quota None = unlimited questions per session.\n_MODE_POLICIES: dict[str, dict[str, Any]] = {\n    "observe": {\n        "question_quota": 2,\n        "orientation_depth": "minimal",\n        "practices": "none",\n        "triggers_mandate": False,\n        "actuators_allowed": False,\n        "auto_graduate": False,\n        "workflow_proposal_after_sessions": 5,\n    },\n    "guided": {\n        "question_quota": 3,\n        "orientation_depth": "standard",\n        "practices": "rollout",\n        "triggers_mandate": True,\n        "actuators_allowed": True,\n        "auto_graduate": True,\n        "workflow_proposal_after_sessions": None,\n    },\n    "active": {\n        "question_quota": None,\n        "orientation_depth": "full",\n        "practices": "all",\n        "triggers_mandate": True,\n        "actuators_allowed": True,\n        "auto_graduate": True,\n        "workflow_proposal_after_sessions": None,\n    },\n}\n\n\ndef mode_policy(state: dict[str, Any]) -> dict[str, Any]:\n    """Return the behavior policy for the state\'s active mode.\n\n    An unknown or missing mode falls back to the default (``guided``) so every\n    consumer fails open onto sane behavior rather than crashing on bad state.\n    """\n    mode = state.get("mode", DEFAULT_MODE)\n    return dict(_MODE_POLICIES.get(mode, _MODE_POLICIES[DEFAULT_MODE]))\n\n\ndef question_quota(state: dict[str, Any]) -> int | None:\n    """Return the per-session interview question quota (None = unlimited)."""\n    quota = mode_policy(state)["question_quota"]\n    return quota if quota is None else int(quota)\n\n\ndef orientation_depth(state: dict[str, Any]) -> str:\n    """Return the orientation-injection depth: minimal | standard | full."""\n    return str(mode_policy(state)["orientation_depth"])\n\n\ndef triggers_mandate(state: dict[str, Any]) -> bool:\n    """True when fired triggers may *mandate* questions (guided/active only)."""\n    return bool(mode_policy(state)["triggers_mandate"])\n\n\ndef actuators_may_apply(state: dict[str, Any]) -> bool:\n    """True when actuators may apply changes (mode allows AND rights say promote).\n\n    This is the promotion-rights enforcement point: whatever the mode, an agent\n    whose ``promotion_rights`` is ``"propose"`` (or ``"observe"``) only ever\n    produces dry-run reports.\n    """\n    if not mode_policy(state)["actuators_allowed"]:\n        return False\n    return state.get("promotion_rights") == "promote"\n\n\ndef may_auto_graduate(state: dict[str, Any]) -> bool:\n    """True when graduation may fire automatically (observe mode proposes only)."""\n    return bool(mode_policy(state)["auto_graduate"])\n\n\ndef workflow_proposal_due(state: dict[str, Any]) -> bool:\n    """True when observe mode has watched long enough to propose its workflow."""\n    threshold = mode_policy(state)["workflow_proposal_after_sessions"]\n    if threshold is None:\n        return False\n    return int(state.get("session_count", 0)) >= int(threshold)\n\n\ndef active_practices(\n    state: dict[str, Any],\n    cadence: dict[str, int] | None = None,\n) -> list[str]:\n    """Return the workflow practices currently active under the mode\'s pacing.\n\n    observe: none (the kit imposes nothing). active: all from session 1.\n    guided: one practice unlocks per ``guided_practice_sessions`` sessions\n    (config cadence, default 3), in the fixed rollout order — the "only after\n    the prior is established" pacing, made deterministic.\n    """\n    practices = mode_policy(state)["practices"]\n    if practices == "none":\n        return []\n    if practices == "all":\n        return list(GUIDED_ROLLOUT)\n    interval = int((cadence or {}).get("guided_practice_sessions", 3))\n    interval = max(interval, 1)\n    sessions = int(state.get("session_count", 0))\n    unlocked = 1 + sessions // interval\n    return list(GUIDED_ROLLOUT[:unlocked])\n',
-    'engine/interview/question_bank.py': '"""The interview question bank — the seed set the staged onboarding draws from.\n\nCuration policy (Hermes #7): keep this lean. Add a question only when its slot\ngenuinely blocks graduation, or a checker keeps flagging its absence; prune\nquestions that no longer earn their place. Each entry is a plain dict so the bank\nships inside the stdlib-only bootstrap with no parser (the plan named\n``question_bank.yml``; a Python module is the simplest form that embeds and runs\nidentically in ``src`` and the single-file ``dist`` — no YAML/JSON dependency).\n\nEntry fields:\n  id        — stable "Q-NNN" identifier.\n  slot      — the content slot it fills (matches the project index).\n  audience  — "user" (ask the maintainer) or "self" (the agent infers).\n  prompt    — the question text.\n  routing   — where a confirmed answer lands (a doc:field or state:key).\n  priority  — "blocking" | "high" | "normal".\n  critical  — True if graduation requires this slot filled (confirmed, not assumed).\n\nOptional fields:\n  trigger   — a trigger kind (see engine/loop/triggers.py); the question is pulled\n              into a mandatory-question session when that trigger fires.\n  objective — True when a different model can verify the answer against evidence\n              (the review seam may then confirm a provisional answer); subjective\n              slots stay provisional until the user confirms.\n  min_len   — anti-gaming floor: an answer shorter than this never fills the slot.\n"""\n\nfrom __future__ import annotations\n\nCURATION_RULE = (\n    "Lean bank: add a question only when it blocks graduation or a checker keeps "\n    "flagging its slot; prune questions that no longer earn their place."\n)\n\nQUESTIONS: list[dict] = [\n    {\n        "id": "Q-001",\n        "slot": "integration_mode",\n        "audience": "user",\n        "prompt": "Adoption pace for the workflow? observe | guided | active.",\n        "routing": "state:mode",\n        "priority": "blocking",\n        "critical": True,\n        # The sole blocking+critical slot needs an anti-gaming floor too — the\n        # valid values (observe/guided/active) are all >=6 chars, so a floor of\n        # 4 rejects a hollow single-char graduation without ever rejecting a\n        # real mode.\n        "min_len": 4,\n    },\n    {\n        "id": "Q-002",\n        "slot": "project_name",\n        "audience": "user",\n        "prompt": "What is this project called?",\n        "routing": "templates/CLAUDE.md:project_name",\n        "priority": "high",\n        "critical": True,\n        "objective": True,\n        "min_len": 2,\n    },\n    {\n        "id": "Q-003",\n        "slot": "primary_language",\n        "audience": "user",\n        "prompt": "Primary language / runtime (e.g. Python 3.10, TypeScript)?",\n        "routing": "templates/CLAUDE.md:language",\n        "priority": "high",\n        "critical": True,\n        "objective": True,\n        "min_len": 3,\n    },\n    {\n        "id": "Q-004",\n        "slot": "architecture_layers",\n        "audience": "user",\n        "prompt": "What are the top-level layers and their import rules?",\n        "routing": "templates/architecture.md:layers",\n        "priority": "high",\n        "critical": True,\n        "trigger": "critical_unfilled",\n        "objective": True,\n        "min_len": 20,\n    },\n    {\n        "id": "Q-005",\n        "slot": "verify_command",\n        "audience": "user",\n        "prompt": "One command that proves a change is good (tests + lint)?",\n        "routing": "templates/CLAUDE.md:verify_command",\n        "priority": "high",\n        "critical": True,\n        "objective": True,\n        "min_len": 4,\n    },\n    {\n        "id": "Q-006",\n        "slot": "ownership_model",\n        "audience": "self",\n        "prompt": "Which component owns each data store / write path?",\n        "routing": "templates/ownership.md:owners",\n        "priority": "normal",\n        "critical": False,\n        "objective": True,\n        "min_len": 20,\n    },\n    {\n        "id": "Q-007",\n        "slot": "doc_roots",\n        "audience": "self",\n        "prompt": "Where does durable documentation live?",\n        "routing": "state:paths.docs",\n        "priority": "normal",\n        "critical": False,\n    },\n    {\n        "id": "Q-008",\n        "slot": "owner_profile",\n        "audience": "user",\n        "prompt": "How do you like an agent to work (tone, detail, autonomy)?",\n        "routing": "templates/owner-profile.md:style",\n        "priority": "normal",\n        "critical": False,\n    },\n    {\n        "id": "Q-009",\n        "slot": "mutation_seam",\n        "audience": "self",\n        "prompt": "How are writes gated (the audited mutation seam)?",\n        "routing": "templates/runtime_contracts.md:mutations",\n        "priority": "normal",\n        "critical": False,\n        "objective": True,\n        "min_len": 20,\n    },\n    {\n        "id": "Q-010",\n        "slot": "review_ritual",\n        "audience": "user",\n        "prompt": "Your PR-review and release rhythm?",\n        "routing": "templates/owner-profile.md:procedures",\n        "priority": "normal",\n        "critical": False,\n    },\n    {\n        "id": "Q-011",\n        "slot": "drift_resolution",\n        "audience": "self",\n        "prompt": "Doc-hygiene checks are failing - what drifted, and what fixes it?",\n        "routing": "state:open_questions",\n        "priority": "high",\n        "critical": False,\n        "trigger": "drift",\n    },\n    {\n        "id": "Q-012",\n        "slot": "staleness_review",\n        "audience": "user",\n        "prompt": "Memory looks stale (reconciliation overdue) - what changed since the last update?",\n        "routing": "templates/current-state.md:refresh",\n        "priority": "normal",\n        "critical": False,\n        "trigger": "staleness",\n    },\n    {\n        "id": "Q-013",\n        "slot": "new_area_ownership",\n        "audience": "user",\n        "prompt": "A new area appeared with no ownership/folio entry - which component owns it?",\n        "routing": "templates/ownership.md:owners",\n        "priority": "high",\n        "critical": False,\n        "trigger": "new_area",\n    },\n]\n',
-    'engine/interview/stages.py': '"""Stage state machine + adaptive graduation (plan section 2).\n\nStage 1 (``integration``) graduates to stage 2 (``steady``) *adaptively* — when\nthe project\'s **critical** content slots are mostly filled (by confirmed, not\nassumed, answers), no blocking questions remain, and several consecutive sessions\nsurface no new mandatory question — not at a hard session count.\n"""\n\nfrom __future__ import annotations\n\nfrom typing import Any\n\nfrom engine.lib.modes import may_auto_graduate\n\nSTAGE_INTEGRATION = "integration"\nSTAGE_STEADY = "steady"\n\n_DEFAULT_FILL_PCT = 0.8\n_DEFAULT_QUIET_SESSIONS = 3\n\n\ndef critical_fill_ratio(slots: dict[str, str], critical: list[str]) -> float:\n    """Return the fraction of ``critical`` slots marked ``filled``."""\n    if not critical:\n        return 1.0\n    filled = sum(1 for name in critical if slots.get(name) == "filled")\n    return filled / len(critical)\n\n\ndef graduation_ready(\n    state: dict[str, Any],\n    critical: list[str],\n) -> tuple[bool, list[str]]:\n    """Return ``(ready, reasons)`` for graduating integration -> steady.\n\n    ``reasons`` lists the unmet criteria when not ready (empty when ready).\n    """\n    criteria = state.get("graduation", {}).get("criteria", {})\n    want_pct = criteria.get("critical_slots_filled_pct", _DEFAULT_FILL_PCT)\n    want_quiet = criteria.get("quiet_sessions_required", _DEFAULT_QUIET_SESSIONS)\n    reasons: list[str] = []\n\n    ratio = critical_fill_ratio(state.get("slots", {}), critical)\n    if ratio < want_pct:\n        reasons.append(f"critical slots {ratio:.0%} < {want_pct:.0%}")\n    blocking = len(state.get("open_questions", []))\n    if blocking:\n        reasons.append(f"{blocking} blocking question(s) open")\n    quiet = state.get("quiet_sessions", 0)\n    if quiet < want_quiet:\n        reasons.append(f"quiet streak {quiet} < {want_quiet}")\n    return (not reasons, reasons)\n\n\ndef maybe_graduate(backend: Any, critical: list[str]) -> bool:\n    """Advance integration -> steady if ready; return whether it graduated.\n\n    Mode-conditional (the plan\'s per-mode behavior): ``observe`` mode never\n    auto-graduates — when ready it records a *proposal* (``graduation_proposed``)\n    for the user to accept (switch mode or graduate explicitly); guided/active\n    graduate automatically.\n    """\n    if backend.get("stage") != STAGE_INTEGRATION:\n        return False\n    ready, _ = graduation_ready(backend.data, critical)\n    if not ready:\n        return False\n    if not may_auto_graduate(backend.data):\n        backend.set("graduation_proposed", True)\n        return False\n    backend.set("stage", STAGE_STEADY)\n    return True\n',
-    'engine/interview/interview.py': '"""The interview pass — fills content slots from the question bank (plan section 4).\n\nA session asks its pending questions. A user-facing answer fills a slot\n(``filled``); when no human is present the agent self-answers, recording a\n*provisional* assumption (``provisional``) that never counts toward graduation\nuntil confirmed. This is what lets an autonomous run keep moving without blocking:\nit records assumptions, flags them, and moves on.\n"""\n\nfrom __future__ import annotations\n\nimport string\nfrom typing import Any\n\nfrom engine.interview.question_bank import QUESTIONS\nfrom engine.interview.stages import maybe_graduate\nfrom engine.lib.modes import question_quota\n\n_PRIORITY_ORDER = {"blocking": 0, "high": 1, "normal": 2}\n_PLACEHOLDER_ANSWERS = frozenset({"todo", "tbd", "...", "n/a", "?"})\n_ANSWER_STRIP = string.punctuation + string.whitespace\n\n\ndef critical_slots(bank: list[dict] | None = None) -> list[str]:\n    """Return the slot names the bank marks as critical."""\n    bank = QUESTIONS if bank is None else bank\n    return [q["slot"] for q in bank if q.get("critical")]\n\n\ndef pending_questions(\n    state: dict[str, Any],\n    bank: list[dict] | None = None,\n) -> list[dict]:\n    """Return bank questions whose slot is not yet ``filled``."""\n    bank = QUESTIONS if bank is None else bank\n    slots = state.get("slots", {})\n    return [q for q in bank if slots.get(q["slot"]) != "filled"]\n\n\ndef session_questions(\n    state: dict[str, Any],\n    bank: list[dict] | None = None,\n) -> list[dict]:\n    """Return this session\'s ask list: pending, priority-ordered, quota-capped.\n\n    The cap is the integration mode\'s question quota (observe asks 1-2, guided a\n    few, active unlimited). Blocking questions sort first, so a quota can never\n    hide one.\n    """\n    pending = sorted(\n        pending_questions(state, bank),\n        key=lambda q: _PRIORITY_ORDER.get(q.get("priority", "normal"), 2),\n    )\n    quota = question_quota(state)\n    return pending if quota is None else pending[:quota]\n\n\ndef answer_is_substantive(question: dict, answer: str) -> bool:\n    """True when ``answer`` passes the anti-gaming floor for this slot.\n\n    Completeness counts only non-placeholder content: no leftover ``${slot}``\n    marker, not a stock placeholder word, and at least the slot\'s ``min_len``\n    characters — so an autonomous run can\'t graduate on hollow answers.\n    """\n    text = answer.strip()\n    if not text or "${" in text:\n        return False\n    # Strip surrounding punctuation before the placeholder-word check so\n    # "todo." / "tbd!" / "n/a?" cannot slip past the exact-match set.\n    if text.lower().strip(_ANSWER_STRIP) in _PLACEHOLDER_ANSWERS:\n        return False\n    # Content-free answers never fill a slot: no alphanumeric char at all\n    # ("??", "...", "!!"), or a single character repeated ("aaaa", "....").\n    if not any(ch.isalnum() for ch in text) or len(set(text)) == 1:\n        return False\n    return len(text) >= int(question.get("min_len", 1))\n\n\ndef _set_without_open_question(backend: Any, question_id: str | None) -> None:\n    """Drop ``question_id`` from open_questions via ``backend.set`` (no flush).\n\n    Called *inside* a transaction so the slot fill and its escalation\n    resolution commit in one atomic flush — a crash between two separate\n    flushes once left a filled slot with a stale open question that nothing\n    automatic could clear.\n    """\n    if not question_id:\n        return\n    open_questions = list(backend.get("open_questions", []))\n    if question_id in open_questions:\n        open_questions.remove(question_id)\n        backend.set("open_questions", open_questions)\n\n\ndef record_answer(backend: Any, question: dict, answer: str, *, source: str) -> None:\n    """Fill ``question``\'s slot from an answer.\n\n    ``source="user"`` confirms the slot (``filled``) when the answer passes the\n    anti-gaming floor (``partial`` otherwise); any other source records a\n    ``provisional`` self-answer that must be confirmed before it counts. A\n    filled answer also resolves the question\'s escalated open-question entry.\n    """\n    if source == "user":\n        status = "filled" if answer_is_substantive(question, answer) else "partial"\n    else:\n        status = "provisional"\n    slots = dict(backend.get("slots", {}))\n    values = dict(backend.get("slot_values", {}))\n    slots[question["slot"]] = status\n    values[question["slot"]] = {\n        "value": answer,\n        "source": source,\n        "question_id": question["id"],\n    }\n    with backend.transaction():\n        backend.set("slots", slots)\n        backend.set("slot_values", values)\n        if status == "filled":\n            _set_without_open_question(backend, question["id"])\n\n\ndef confirm_slot(backend: Any, slot: str, *, source: str) -> bool:\n    """Promote a ``provisional`` slot to ``filled`` (the confirmation seam).\n\n    ``source`` records who confirmed (``"user"`` or ``"reviewer:<name>"``).\n    Returns False when the slot is not provisional (nothing to confirm).\n    """\n    slots = dict(backend.get("slots", {}))\n    if slots.get(slot) != "provisional":\n        return False\n    values = dict(backend.get("slot_values", {}))\n    entry = dict(values.get(slot, {}))\n    entry["source"] = f"confirmed:{source}"\n    slots[slot] = "filled"\n    values[slot] = entry\n    with backend.transaction():\n        backend.set("slots", slots)\n        backend.set("slot_values", values)\n        _set_without_open_question(backend, entry.get("question_id"))\n    return True\n\n\ndef run_session(\n    backend: Any,\n    answers: dict[str, str],\n    *,\n    autonomous: bool = False,\n    bank: list[dict] | None = None,\n) -> dict[str, Any]:\n    """Run one interview session, then attempt graduation.\n\n    ``answers`` maps slot -> user answer. A pending question with a user answer is\n    confirmed; otherwise, in ``autonomous`` mode it is self-answered provisionally\n    (within the integration mode\'s question quota — blocking questions sort first,\n    so the quota never starves one). A session that leaves no blocking question\n    unanswered extends the quiet streak; any unanswered blocking question resets\n    it AND escalates onto ``open_questions``, which holds graduation until the\n    question is answered.\n    """\n    bank = QUESTIONS if bank is None else bank\n    pending = sorted(\n        pending_questions(backend.data, bank),\n        key=lambda q: _PRIORITY_ORDER.get(q.get("priority", "normal"), 2),\n    )\n    quota = question_quota(backend.data)\n    left_blocking = False\n    self_answered = 0\n    for question in pending:\n        slot = question["slot"]\n        blocking = question.get("priority") == "blocking"\n        if slot in answers:\n            record_answer(backend, question, answers[slot], source="user")\n            continue\n        if autonomous and (quota is None or self_answered < quota):\n            # Never downgrade an existing provisional value (e.g. an\n            # adopt-time derived answer) to a placeholder assumption — the\n            # slot already carries better content awaiting confirmation.\n            if backend.get("slots", {}).get(slot) != "provisional":\n                record_answer(\n                    backend, question, f"ASSUMED: {slot}", source="assumption"\n                )\n                self_answered += 1\n            if not blocking:\n                continue\n            # A provisional self-answer does NOT discharge a blocking question\n            # — it must still escalate, or an autonomous run could graduate on\n            # an unconfirmed assumption for the one slot marked blocking.\n        elif not blocking:\n            continue\n        left_blocking = True\n        open_questions = list(backend.get("open_questions", []))\n        if question["id"] not in open_questions:\n            open_questions.append(question["id"])\n            backend.set("open_questions", open_questions)\n\n    backend.set("session_count", int(backend.get("session_count", 0)) + 1)\n    quiet = int(backend.get("quiet_sessions", 0))\n    backend.set("quiet_sessions", 0 if left_blocking else quiet + 1)\n\n    graduated = maybe_graduate(backend, critical_slots(bank))\n    return {\n        "session": backend.get("session_count"),\n        "pending_after": len(pending_questions(backend.data, bank)),\n        "graduated": graduated,\n        "stage": backend.get("stage"),\n    }\n',
-    'engine/checks/check_docs.py': '"""Generic doc-hygiene checker (config-driven port of ``check_docs``).\n\nThree portable checks, every input supplied by the caller (from config) rather\nthan hardcoded:\n\n  1. **badge**      — every ``*.md`` under ``docs_root`` (non-ADR) carries a\n     ``> **Status:** `<token>``` line in its first 12 lines, ``<token>`` drawn\n     from the project\'s allowed taxonomy.\n  2. **link**       — every relative markdown link ``[text](path)`` resolves to\n     an existing file (external / anchor-only links are skipped).\n  3. **reachable**  — every live doc is reachable by following links + backtick\n     ``<docs>/*.md`` refs from a read-path root (the read-path docs + any\n     ``README.md``). Orphans fail unless badged ``historical`` / ``archive`` or\n     an ADR.\n\nThe host\'s soft ratchets (top-level pile, recently-shipped) and the\nsuperbot-specific freshness rule are intentionally left behind — they are\nproject policy, not portable mechanism. Pure stdlib; returns findings rather\nthan printing so the CLI owns all output.\n"""\n\nfrom __future__ import annotations\n\nimport re\nfrom collections import deque\nfrom collections.abc import Collection, Sequence\nfrom pathlib import Path\nfrom typing import NamedTuple\n\n\nclass Finding(NamedTuple):\n    """One doc-hygiene violation: ``path`` is relative to ``docs_root``."""\n\n    path: str\n    kind: str\n    message: str\n\n\n# `> **Status:** `<token>`` — the machine-readable badge (rich text may follow).\n_BADGE_RE = re.compile(r"\\*\\*Status:\\*\\*\\s*`([a-z-]+)`")\n# ADR filename: NNN-something.md (exempt — ADRs use their own Accepted/Superseded).\n_ADR_RE = re.compile(r"^\\d+-.*\\.md$")\n# Markdown link target: [text](target).\n_MD_LINK_RE = re.compile(r"\\[[^\\]]*\\]\\(([^)]+)\\)")\n# Badges whose docs are retired content and need no inbound link.\n_EXEMPT_BADGES = frozenset({"historical", "archive"})\n\n_BADGE_MISSING = "missing `> **Status:** `<token>`` in first 12 lines"\n_ORPHAN_MSG = (\n    "orphan: not reachable from any read-path doc / README "\n    "(link it from one, or badge it historical/archive)"\n)\n\n\ndef _md_files(docs_root: Path) -> list[Path]:\n    """Return every ``*.md`` under ``docs_root`` (sorted, empty if absent)."""\n    if not docs_root.exists():\n        return []\n    return sorted(docs_root.rglob("*.md"))\n\n\ndef _is_adr(path: Path) -> bool:\n    """True for ``decisions/NNN-*.md`` ADR files (badge-exempt)."""\n    return path.parent.name == "decisions" and bool(_ADR_RE.match(path.name))\n\n\ndef badge_token(path: Path) -> str | None:\n    """Return the doc\'s Status-badge token from its first 12 lines, or None.\n\n    Public: the trigger detector (and any host tooling) classifies docs by this\n    same badge scan — one badge reader, not per-module copies. An unreadable or\n    non-UTF-8 file reads as badge-less rather than crashing the whole scan.\n    """\n    try:\n        head = "\\n".join(path.read_text(encoding="utf-8").splitlines()[:12])\n    except (OSError, UnicodeDecodeError):\n        return None\n    match = _BADGE_RE.search(head)\n    return match.group(1) if match else None\n\n\n# Backward-compatible alias for the original private name.\n_badge_token = badge_token\n\n\ndef _link_target(raw: str) -> str:\n    """Normalise a markdown link target (drop ``<>``, title, ``#anchor``)."""\n    target = raw.strip()\n    if target.startswith("<") and ">" in target:\n        target = target[1:].split(">", 1)[0]\n    parts = target.split()\n    target = parts[0] if parts else target\n    return target.split("#", 1)[0]\n\n\ndef _backtick_docs_re(docs_root: Path) -> re.Pattern[str]:\n    """Compile the ``<docs>/*.md`` backtick-ref pattern for this doc root."""\n    name = re.escape(docs_root.name)\n    return re.compile(rf"`({name}/[\\w./-]+\\.md)`")\n\n\ndef check_badges(docs_root: Path, badge_tokens: Collection[str]) -> list[Finding]:\n    """Every non-ADR doc must declare a Status badge from the taxonomy."""\n    allowed = set(badge_tokens)\n    findings: list[Finding] = []\n    for f in _md_files(docs_root):\n        if _is_adr(f):\n            continue\n        rel = f.relative_to(docs_root).as_posix()\n        token = badge_token(f)\n        if token is None:\n            findings.append(Finding(rel, "badge", _BADGE_MISSING))\n        elif token not in allowed:\n            allowed_list = ", ".join(sorted(allowed))\n            findings.append(\n                Finding(\n                    rel,\n                    "badge",\n                    f"invalid badge token `{token}` (allowed: {allowed_list})",\n                ),\n            )\n    return findings\n\n\ndef check_links(docs_root: Path) -> list[Finding]:\n    """Relative markdown links inside ``docs_root`` must resolve.\n\n    An unreadable / non-UTF-8 file is reported as an ``encoding`` finding\n    instead of crashing the scan (one bad byte must not take down triggers,\n    ``maintain``, and ``check`` together).\n    """\n    findings: list[Finding] = []\n    for f in _md_files(docs_root):\n        rel = f.relative_to(docs_root).as_posix()\n        try:\n            lines = f.read_text(encoding="utf-8").splitlines()\n        except (OSError, UnicodeDecodeError) as exc:\n            findings.append(Finding(rel, "encoding", f"unreadable as UTF-8: {exc}"))\n            continue\n        for lineno, line in enumerate(lines, 1):\n            for raw in _MD_LINK_RE.findall(line):\n                if raw.startswith(("http://", "https://", "mailto:", "#")):\n                    continue\n                target = _link_target(raw)\n                if not target or target.startswith(("http", "mailto:")):\n                    continue\n                if not (f.parent / target).resolve().exists():\n                    msg = f"L{lineno}: dead link -> {raw}"\n                    findings.append(Finding(rel, "link", msg))\n    return findings\n\n\ndef _outgoing_links(path: Path, docs_root: Path) -> set[Path]:\n    """Resolve every relative markdown link + backtick ``<docs>/*.md`` ref."""\n    out: set[Path] = set()\n    backtick = _backtick_docs_re(docs_root)\n    root = docs_root.parent\n    try:\n        text = path.read_text(encoding="utf-8")\n    except (OSError, UnicodeDecodeError):\n        return out\n    for line in text.splitlines():\n        for raw in _MD_LINK_RE.findall(line):\n            if raw.startswith(("http://", "https://", "mailto:", "#")):\n                continue\n            target = _link_target(raw)\n            if target:\n                out.add((path.parent / target).resolve())\n        for ref in backtick.findall(line):\n            out.add((root / ref).resolve())\n    return out\n\n\ndef check_reachable(docs_root: Path, readpath_docs: Sequence[str]) -> list[Finding]:\n    """Every live doc must be reachable from a read-path root / README.\n\n    Walks the doc graph (markdown links + backtick ``<docs>/*.md`` refs) from the\n    roots; any doc not reached — and not ``historical`` / ``archive`` badged or an\n    ADR — is an orphan.\n    """\n    roots = [docs_root / name for name in readpath_docs]\n    roots += sorted(docs_root.rglob("README.md"))\n    seen: set[Path] = set()\n    queue: deque[Path] = deque()\n    for root in roots:\n        resolved = root.resolve()\n        if root.exists() and resolved not in seen:\n            seen.add(resolved)\n            queue.append(resolved)\n    while queue:\n        cur = queue.popleft()\n        if cur.suffix != ".md" or not cur.exists():\n            continue\n        for nxt in _outgoing_links(cur, docs_root):\n            if nxt not in seen and nxt.suffix == ".md" and nxt.exists():\n                seen.add(nxt)\n                queue.append(nxt)\n\n    findings: list[Finding] = []\n    for f in _md_files(docs_root):\n        if f.resolve() in seen or _is_adr(f):\n            continue\n        if badge_token(f) in _EXEMPT_BADGES:\n            continue\n        rel = f.relative_to(docs_root).as_posix()\n        findings.append(Finding(rel, "reachable", _ORPHAN_MSG))\n    return findings\n\n\ndef run_doc_checks(\n    docs_root: Path,\n    badge_tokens: Collection[str],\n    readpath_docs: Sequence[str],\n) -> list[Finding]:\n    """Run every doc check and return the combined findings."""\n    return (\n        check_badges(docs_root, badge_tokens)\n        + check_links(docs_root)\n        + check_reachable(docs_root, readpath_docs)\n    )\n',
-    'engine/checks/check_session_log.py': '"""Generic session-log completeness checker (config-driven port).\n\nThe session workflow asks every session to end with a\n``<sessions_dir>/<date>-<slug>.md`` log that carries a set of required markers\n(by default: a Status badge, a session-idea flag, and a previous-session review).\nEach marker is a ``{"label", "needle"}`` pair from ``substrate.config.json``, so a\nhost tunes the ritual without touching engine code.\n\nUnlike the host\'s version this port does **not** shell out to ``git`` to pick the\n"current" log — ``subprocess`` is banned in engine code and is host-CI sugar\nanyway. The current log is the newest ``*.md`` by mtime under ``sessions_dir``\n(the CLI also accepts an explicit ``--file``). Pure stdlib; returns the missing\nmarkers rather than printing.\n"""\n\nfrom __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom pathlib import Path\n\n\ndef missing_markers(text: str, markers: Sequence[Mapping[str, str]]) -> list[str]:\n    """Return the labels of markers whose needle is absent from ``text``.\n\n    Tolerant of partial host-config entries: a marker without a ``needle`` is\n    skipped (nothing to search for) rather than raising, and a missing\n    ``label`` reports as ``"?"``.\n    """\n    lower = text.lower()\n    return [\n        m.get("label", "?")\n        for m in markers\n        if m.get("needle") and m.get("needle", "").lower() not in lower\n    ]\n\n\ndef latest_session_log(sessions_dir: Path) -> Path | None:\n    """Best guess at this session\'s log: newest ``*.md`` by mtime (skip README)."""\n    if not sessions_dir.is_dir():\n        return None\n    candidates = [p for p in sessions_dir.glob("*.md") if p.name != "README.md"]\n    if not candidates:\n        return None\n    return max(candidates, key=lambda p: p.stat().st_mtime)\n\n\ndef check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:\n    """Return the missing-marker labels for one log file (all if unreadable)."""\n    try:\n        text = path.read_text(encoding="utf-8")\n    except OSError:\n        return [m["label"] for m in markers]\n    return missing_markers(text, markers)\n',
-    'engine/checks/check_namespace.py': '"""Portable namespace / shadowing guard (Lane B6, the Q-0200 class).\n\nThree AST-level checks over the Python roots a host configures\n(``config.namespace``):\n\n  1. **in-module shadowing** — the same top-level ``def`` / ``class`` name\n     bound twice in one module; the later binding silently wins and the\n     earlier one dies unnoticed (superbot\'s ``round_composition`` collision,\n     caught only at CI).\n  2. **cross-module collision** — the same public (non-underscore) top-level\n     name defined in two modules of one package, unless one of the two is the\n     package\'s ``__init__.py`` (the deliberate re-export pattern).\n  3. **reserved names** — a name from the configured reserved map\n     (``{"Name": "canonical/module.py"}``) defined outside its canonical\n     module.\n\nUses only stdlib ``ast``; a file that fails to parse becomes a\n``namespace-parse`` finding, never an exception. Findings reuse the\n``Finding`` record from ``engine.checks.check_docs`` with paths relative to\nthe scanned root where possible.\n"""\n\nfrom __future__ import annotations\n\nimport ast\nfrom pathlib import Path\n\nfrom engine.checks.check_docs import Finding\n\n_NS_DEF_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)\n\n\ndef _ns_rel(path: Path, root: Path) -> str:\n    """Return ``path`` relative to ``root`` (posix) when possible, else str."""\n    try:\n        return path.relative_to(root).as_posix()\n    except ValueError:\n        return path.as_posix()\n\n\ndef _ns_py_files(root: Path) -> list[Path]:\n    """Return the ``*.py`` files under ``root`` (or ``root`` itself if a file)."""\n    if root.is_file():\n        return [root] if root.suffix == ".py" else []\n    if not root.is_dir():\n        return []\n    return sorted(p for p in root.rglob("*.py") if "__pycache__" not in p.parts)\n\n\ndef _ns_top_level_defs(tree: ast.Module) -> list[tuple[str, int]]:\n    """Return ``(name, lineno)`` for every top-level def/class in ``tree``."""\n    return [\n        (node.name, node.lineno)\n        for node in tree.body\n        if isinstance(node, _NS_DEF_NODES)\n    ]\n\n\ndef _ns_overloaded_names(tree: ast.Module) -> set[str]:\n    """Names whose top-level defs carry ``@overload`` — not shadowing.\n\n    ``@typing.overload`` stacks re-bind the same name by design; flagging them\n    as in-module shadowing was a verified false positive.\n    """\n    names: set[str] = set()\n    for node in tree.body:\n        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):\n            continue\n        for deco in node.decorator_list:\n            if (\n                isinstance(deco, ast.Name)\n                and deco.id == "overload"\n                or isinstance(deco, ast.Attribute)\n                and deco.attr == "overload"\n            ):\n                names.add(node.name)\n    return names\n\n\ndef _ns_dispatch_registered_names(tree: ast.Module) -> set[str]:\n    """Names whose top-level defs carry ``@<x>.register`` — not shadowing.\n\n    The ``functools.singledispatch`` idiom re-binds the same name (canonically\n    ``def _``) once per registered type; the ``.register`` decorator captures\n    each function, so the last global binding is irrelevant. Flagging the\n    repeated defs as in-module shadowing was a verified false positive.\n    Handles both ``@process.register`` and ``@process.register(int)``.\n    """\n    names: set[str] = set()\n    for node in tree.body:\n        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):\n            continue\n        for deco in node.decorator_list:\n            target = deco.func if isinstance(deco, ast.Call) else deco\n            if isinstance(target, ast.Attribute) and target.attr == "register":\n                names.add(node.name)\n    return names\n\n\ndef _ns_matches_canonical(rel: str, canonical: str) -> bool:\n    """True when the scanned relpath is the reserved name\'s canonical module."""\n    canon = canonical.replace("\\\\", "/").lstrip("./")\n    return rel == canon or rel.endswith(f"/{canon}")\n\n\ndef check_namespace(\n    roots: list[Path],\n    *,\n    reserved: dict[str, str] | None = None,\n) -> list[Finding]:\n    """Run the three namespace checks over ``roots``; return the findings.\n\n    ``reserved`` maps a name to the canonical module relpath allowed to define\n    it. Kinds: ``namespace`` for collisions, ``namespace-parse`` for files\n    that fail to parse (reported, never raised).\n    """\n    reserved = reserved or {}\n    findings: list[Finding] = []\n    # (package dir, public name) -> [(rel, module filename, lineno)]\n    package_defs: dict[tuple[str, str], list[tuple[str, str, int]]] = {}\n\n    for root in roots:\n        rel_base = root.parent if root.is_file() else root\n        for py in _ns_py_files(root):\n            rel = _ns_rel(py, rel_base)\n            try:\n                tree = ast.parse(py.read_text(encoding="utf-8"))\n            except (SyntaxError, ValueError, OSError, UnicodeDecodeError) as exc:\n                lineno = getattr(exc, "lineno", None)\n                where = f"L{lineno}: " if lineno else ""\n                msg = f"{where}failed to parse: {exc.__class__.__name__}: {exc}"\n                findings.append(Finding(rel, "namespace-parse", msg))\n                continue\n\n            seen: dict[str, int] = {}\n            # `_` is the conventional throwaway (and the canonical\n            # singledispatch register target); `.register`-decorated defs are\n            # the named-function dispatch form — neither is real shadowing.\n            exempt_shadow = _ns_overloaded_names(tree)\n            exempt_shadow |= _ns_dispatch_registered_names(tree)\n            for name, lineno in _ns_top_level_defs(tree):\n                if name in seen and name not in exempt_shadow and name != "_":\n                    msg = (\n                        f"`{name}` defined twice in one module "\n                        f"(L{seen[name]} and L{lineno}) — the later def "\n                        "silently shadows the earlier"\n                    )\n                    findings.append(Finding(rel, "namespace", msg))\n                seen.setdefault(name, lineno)\n                if not name.startswith("_"):\n                    key = (py.parent.resolve().as_posix(), name)\n                    package_defs.setdefault(key, []).append(\n                        (rel, py.name, lineno),\n                    )\n                canonical = reserved.get(name)\n                if canonical is not None and not _ns_matches_canonical(\n                    rel,\n                    canonical,\n                ):\n                    msg = (\n                        f"L{lineno}: reserved name `{name}` defined outside "\n                        f"its canonical module `{canonical}`"\n                    )\n                    findings.append(Finding(rel, "namespace", msg))\n\n    for (_, name), sites in sorted(package_defs.items()):\n        modules = {filename for _, filename, _ in sites}\n        non_init = [s for s in sites if s[1] != "__init__.py"]\n        if len(modules) < 2 or len({s[1] for s in non_init}) < 2:\n            continue  # one module, or an __init__ re-export pair\n        site_list = ", ".join(f"{rel}:L{lineno}" for rel, _, lineno in non_init)\n        msg = (\n            f"public name `{name}` defined in multiple modules of one "\n            f"package ({site_list}) — rename or move to a shared home"\n        )\n        findings.append(Finding(non_init[0][0], "namespace", msg))\n    return findings\n',
-    'engine/checks/check_seam_authority.py': 'r"""Config-driven seam-authority fences (Lane B6).\n\nA *seam* is a boundary the host declares in ``config.seams`` — "all writes go\nthrough the mutation service", "no direct pool access outside the db layer" —\ngeneralising superbot\'s hardcoded architecture fences into pure data. Each\nseam is a dict::\n\n    {"name": "db-seam",\n     "paths": ["src/**/*.py"],        # globs to scan, relative to root\n     "forbidden": "pool\\\\.execute",   # regex; a hit is a violation\n     "allowed": ["src/db/**"],        # exempt globs (the seam\'s own home)\n     "message": "call db.* helpers, never the pool directly"}\n\nThe scan is plain line-by-line text matching (no AST, no imports) so it works\non any language the host points it at. A regex hit in a non-exempt file\nbecomes a ``Finding(kind="seam")`` whose message carries the seam name, the\nconfigured message, and the line number. Findings reuse the ``Finding``\nrecord from ``engine.checks.check_docs``; unreadable/binary files are skipped.\n"""\n\nfrom __future__ import annotations\n\nimport re\nfrom pathlib import Path\n\nfrom engine.checks.check_docs import Finding\n\n\ndef _seam_files(root: Path, globs: list[str]) -> list[Path]:\n    """Return the de-duplicated files matched by ``globs`` under ``root``."""\n    matched: set[Path] = set()\n    for pattern in globs:\n        for candidate in root.glob(pattern):\n            if candidate.is_file():\n                matched.add(candidate)\n    return sorted(matched)\n\n\ndef _seam_exempt_files(root: Path, allowed: list[str]) -> set[Path]:\n    """Resolve the exempt set with the SAME glob semantics as ``paths``.\n\n    fnmatch let ``*`` cross ``/`` — an ``allowed`` pattern like ``src/*``\n    silently exempted ``src/sub/hack.py`` and opened a fence gap. Re-globbing\n    with ``root.glob`` keeps both sides of the seam on pathlib semantics.\n\n    A glob hit that is a *directory* is expanded to the files under it — a\n    trailing ``**`` (the documented ``src/db/**`` "own home" form) matches only\n    directories in ``Path.glob``, so exempting by raw glob hits compared the\n    file being scanned against a set of dirs and exempted **nothing**: a seam\n    flagged its own home. Directory hits now contribute their whole file\n    subtree (the ``economy`` reference-scan idiom), so ``src/db/**``,\n    ``src/db/*`` and ``src/db/**/*`` all exempt the subtree as documented.\n    """\n    exempt: set[Path] = set()\n    for pattern in allowed:\n        for hit in root.glob(pattern):\n            if hit.is_file():\n                exempt.add(hit)\n            elif hit.is_dir():\n                exempt.update(p for p in hit.rglob("*") if p.is_file())\n    return exempt\n\n\ndef check_seam_authority(root: Path, seams: list[dict]) -> list[Finding]:\n    """Scan the configured seams under ``root``; return the violations.\n\n    Each seam dict supplies ``name``, ``paths`` (globs to scan), ``forbidden``\n    (a regex), optional ``allowed`` (exempt globs), and ``message``. A seam\n    with an invalid regex is itself reported as a finding rather than raising\n    (a broken fence should fail loud in the report, not crash the check).\n    """\n    findings: list[Finding] = []\n    for seam in seams:\n        name = seam.get("name", "unnamed")\n        message = seam.get("message", "forbidden pattern")\n        pattern = seam.get("forbidden", "")\n        if not pattern:\n            # An empty pattern\'s ``.search`` matches every line — a seam with no\n            # ``forbidden`` would flag every line of every in-scope file. That is\n            # a misconfiguration; report it loud instead of drowning the report.\n            msg = f"seam `{name}`: no `forbidden` regex configured — seam skipped"\n            findings.append(Finding("", "seam", msg))\n            continue\n        try:\n            forbidden = re.compile(pattern)\n        except re.error as exc:\n            msg = f"seam `{name}`: invalid forbidden regex: {exc}"\n            findings.append(Finding("", "seam", msg))\n            continue\n        exempt = _seam_exempt_files(root, list(seam.get("allowed", [])))\n        for path in _seam_files(root, list(seam.get("paths", []))):\n            rel = path.relative_to(root).as_posix()\n            if path in exempt:\n                continue\n            try:\n                text = path.read_text(encoding="utf-8")\n            except (OSError, UnicodeDecodeError):\n                continue\n            for lineno, line in enumerate(text.splitlines(), 1):\n                if forbidden.search(line):\n                    msg = f"L{lineno}: seam `{name}`: {message}"\n                    findings.append(Finding(rel, "seam", msg))\n    return findings\n',
-    'engine/checks/check_orientation_budget.py': '"""Orientation-budget gate — the K0 <=7,000-word boot-read cap (Lane B6).\n\nOrientation cost is the tax every session pays before real work starts, so\nthe kit meters it: the *boot set* (``config.orientation["boot_docs"]``,\nfalling back to ``config.readpath_docs`` when empty) must total no more than\n``config.orientation["budget_words"]`` words. Boot-doc entries name files\nunder ``docs_root``; an entry containing ``/`` resolves from the project root\ninstead, so hosts can meter root-level docs (a journal, a CLAUDE.md) too.\n\nPer-doc self-caps ride on top: a doc whose first 12 lines declare\n``substrate-budget: N words`` is individually capped at N — a living doc can\npin its own growth ceiling without touching config.\n\nFinding kinds: ``orientation-missing`` (a boot doc is absent),\n``orientation-budget`` (the total blows the budget), ``orientation-doc-cap``\n(a self-capped doc outgrew its declared cap). Findings reuse the ``Finding``\nrecord from ``engine.checks.check_docs``.\n"""\n\nfrom __future__ import annotations\n\nimport re\nfrom pathlib import Path\n\nfrom engine.checks.check_docs import Finding\nfrom engine.lib.config import Config\n\n# `substrate-budget: 500 words` — the per-doc self-cap declaration.\n_OB_SELF_CAP_RE = re.compile(r"substrate-budget:\\s*(\\d+)\\s*words", re.IGNORECASE)\n_OB_HEAD_LINES = 12\n_OB_TOTAL_KEY = "_total"\n\n\ndef _ob_word_count(path: Path) -> int | None:\n    """Return the doc\'s word count, or ``None`` when it cannot be read."""\n    try:\n        return len(path.read_text(encoding="utf-8").split())\n    except (OSError, UnicodeDecodeError):\n        return None\n\n\ndef _ob_self_cap(path: Path) -> int | None:\n    """Return the doc\'s declared self-cap from its first 12 lines, if any."""\n    try:\n        head = path.read_text(encoding="utf-8").splitlines()[:_OB_HEAD_LINES]\n    except (OSError, UnicodeDecodeError):\n        return None\n    match = _OB_SELF_CAP_RE.search("\\n".join(head))\n    return int(match.group(1)) if match else None\n\n\ndef _ob_rel(path: Path, root: Path) -> str:\n    """Return ``path`` relative to ``root`` (posix) when possible, else str."""\n    try:\n        return path.relative_to(root).as_posix()\n    except ValueError:\n        return path.as_posix()\n\n\ndef orientation_word_count(root: Path, boot_docs: list[Path]) -> dict[str, int]:\n    """Return per-doc word counts plus a ``_total`` for the boot set.\n\n    Keys are paths relative to ``root`` where possible. A missing or\n    unreadable doc counts 0 here — ``check_orientation_budget`` is the layer\n    that reports it.\n    """\n    counts: dict[str, int] = {}\n    total = 0\n    for doc in boot_docs:\n        words = _ob_word_count(doc) or 0\n        counts[_ob_rel(doc, root)] = words\n        total += words\n    counts[_OB_TOTAL_KEY] = total\n    return counts\n\n\ndef _ob_boot_paths(root: Path, config: Config) -> list[Path]:\n    """Resolve the configured boot set to concrete paths.\n\n    Explicit ``orientation["boot_docs"]`` entries: a bare name resolves under\n    ``docs_root``, an entry with ``/`` resolves from the project root. The\n    ``readpath_docs`` fallback resolves under ``docs_root`` unconditionally —\n    matching ``check_reachable``, which reads the same key.\n    """\n    orientation = config.orientation or {}\n    docs_root = root / config.docs_root\n    explicit = list(orientation.get("boot_docs") or [])\n    if explicit:\n        # Explicit boot docs: a bare name resolves under docs_root, an entry\n        # with "/" resolves from the project root (CONSTITUTION.md etc.).\n        return [root / e if "/" in e else docs_root / e for e in explicit]\n    # readpath_docs fallback: resolve under docs_root unconditionally, matching\n    # check_reachable — the two consumers of that key must agree.\n    return [docs_root / e for e in config.readpath_docs]\n\n\ndef check_orientation_budget(root: Path, config: Config) -> list[Finding]:\n    """Meter the boot-read set against the orientation budget.\n\n    Reports missing boot docs (``orientation-missing``), a total word count\n    over ``orientation["budget_words"]`` (``orientation-budget``), and any doc\n    that outgrew its own ``substrate-budget: N words`` self-cap\n    (``orientation-doc-cap``).\n    """\n    findings: list[Finding] = []\n    boot_paths = _ob_boot_paths(root, config)\n    for doc in boot_paths:\n        if not doc.is_file():\n            msg = "boot doc missing — fix the path or the orientation config"\n            findings.append(Finding(_ob_rel(doc, root), "orientation-missing", msg))\n\n    counts = orientation_word_count(root, boot_paths)\n    budget = int((config.orientation or {}).get("budget_words", 7000))\n    total = counts[_OB_TOTAL_KEY]\n    if total > budget:\n        msg = (\n            f"boot-read set totals {total} words, over the "\n            f"{budget}-word orientation budget — trim or demote a boot doc"\n        )\n        findings.append(Finding(_OB_TOTAL_KEY, "orientation-budget", msg))\n\n    for doc in boot_paths:\n        cap = _ob_self_cap(doc)\n        if cap is None:\n            continue\n        words = counts.get(_ob_rel(doc, root), 0)\n        if words > cap:\n            msg = f"doc is {words} words, over its {cap}-word self-cap"\n            findings.append(Finding(_ob_rel(doc, root), "orientation-doc-cap", msg))\n    return findings\n',
-    'engine/ledger.py': '"""Decision ledger — the ``[D-NNNN]`` provenance-separated rulebook (Lane B6).\n\nImplements the kit\'s ``docs/decisions.md`` grammar (plan: Q-0214.4 depth — a\nconstitution cites decisions by id instead of narrating them inline). One\nentry is::\n\n    ## [D-0001] <title>\n    - status: decided | superseded | retired\n    - date: YYYY-MM-DD\n    - supersedes: D-NNNN        (optional)\n    - superseded-by: D-NNNN     (stamped on the OLD entry when superseded)\n    - verdict: <one ruling line>\n    - why: <2-3 lines, continuation lines allowed>\n    - provenance: <link or ref>\n\n``parse_ledger`` is tolerant of prose between entries (the ledger is a living\nmarkdown doc, not a database). ``append_decision`` assigns the next id and —\nwhen superseding — rewrites the old entry in place so the chain is stamped on\nboth ends. ``check_ledger`` and ``check_stamp_discipline`` are the hygiene\ncheckers, reusing the ``Finding`` record from ``engine.checks.check_docs``.\nPure stdlib; every write goes through ``atomic_write_text``.\n"""\n\nfrom __future__ import annotations\n\nimport re\nfrom datetime import date as _led_date\nfrom pathlib import Path\n\nfrom engine.checks.check_docs import Finding\nfrom engine.lib.atomicio import atomic_write_text\n\nLEDGER_FILENAME = "decisions.md"\n\n# `## [D-0001] <title>` — the strict entry heading.\n_LED_HEADING_RE = re.compile(r"^## \\[(D-\\d{3,})\\] (.+)$")\n# Any `## ` heading that *tries* to be an entry but fails the strict form.\n_LED_HEADING_ATTEMPT_RE = re.compile(r"^##\\s*\\[?\\s*D-", re.IGNORECASE)\n# `- key: value` field line inside an entry block.\n_LED_FIELD_RE = re.compile(r"^- ([a-z-]+):\\s*(.*)$")\n# A bare decision id, for supersedes targets and stamp-discipline citations.\n_LED_ID_RE = re.compile(r"\\bD-\\d{3,}\\b")\n_LED_DATE_RE = re.compile(r"^\\d{4}-\\d{2}-\\d{2}$")\n\n_LED_STATUSES = frozenset({"decided", "superseded", "retired"})\n_LED_REQUIRED_FIELDS = ("status", "date", "verdict", "why", "provenance")\n\n_LED_HEADER = """# Decisions\n\n> **Status:** `living-ledger` — append-only decision ledger; entries are \\\nsuperseded, never deleted.\n\n<!-- Grammar: ## [D-NNNN] <title> / - status: decided|superseded|retired / \\\n- date: YYYY-MM-DD / - supersedes: D-NNNN (opt) / - superseded-by: D-NNNN \\\n(opt) / - verdict: <one line> / - why: <2-3 lines> / - provenance: <ref> -->\n"""\n\n\ndef _led_field_key(raw: str) -> str:\n    """Map a grammar field name to its entry-dict key (``-`` -> ``_``)."""\n    return raw.replace("-", "_")\n\n\ndef _led_blocks(text: str) -> list[tuple[int, list[str]]]:\n    """Split ``text`` into entry blocks: ``(heading lineno, block lines)``.\n\n    A block starts at any ``## `` heading that looks like a decision entry\n    (strict or malformed) and runs until the next ``## `` heading or EOF.\n    Prose outside blocks is ignored.\n    """\n    blocks: list[tuple[int, list[str]]] = []\n    current: list[str] | None = None\n    for lineno, line in enumerate(text.splitlines(), 1):\n        if line.startswith("## "):\n            current = None\n            if _LED_HEADING_ATTEMPT_RE.match(line):\n                current = [line]\n                blocks.append((lineno, current))\n        elif current is not None:\n            current.append(line)\n    return blocks\n\n\ndef _led_parse_block(lines: list[str]) -> dict | None:\n    """Parse one entry block into a dict, or ``None`` if the heading is bad."""\n    match = _LED_HEADING_RE.match(lines[0])\n    if match is None:\n        return None\n    entry: dict = {\n        "id": match.group(1),\n        "title": match.group(2).strip(),\n        "status": None,\n        "date": None,\n        "supersedes": None,\n        "superseded_by": None,\n        "verdict": None,\n        "why": None,\n        "provenance": None,\n    }\n    last_key: str | None = None\n    for line in lines[1:]:\n        field = _LED_FIELD_RE.match(line)\n        if field is not None:\n            key = _led_field_key(field.group(1))\n            if key in entry and key not in ("id", "title"):\n                entry[key] = field.group(2).strip()\n                last_key = key\n            else:\n                last_key = None\n        elif line[:1].isspace() and line.strip() and last_key is not None:\n            # Continuation line (indented) — the multi-line `why` case.\n            entry[last_key] = f"{entry[last_key]}\\n{line.strip()}"\n        elif not line.strip():\n            last_key = None\n    return entry\n\n\ndef parse_ledger(text: str) -> list[dict]:\n    """Parse ledger ``text`` into entry dicts, tolerating prose between entries.\n\n    Malformed headings are skipped here (``check_ledger`` reports them);\n    missing fields parse as ``None``.\n    """\n    entries: list[dict] = []\n    for _, lines in _led_blocks(text):\n        entry = _led_parse_block(lines)\n        if entry is not None:\n            entries.append(entry)\n    return entries\n\n\ndef next_decision_id(entries: list[dict]) -> str:\n    """Return the next free decision id (``D-0001`` for an empty ledger)."""\n    highest = 0\n    for entry in entries:\n        try:\n            highest = max(highest, int(entry["id"].split("-", 1)[1]))\n        except (KeyError, IndexError, ValueError):\n            continue\n    return f"D-{highest + 1:04d}"\n\n\ndef _led_format_entry(entry: dict) -> str:\n    """Render one entry dict back into its grammar block."""\n    lines = [f"## [{entry[\'id\']}] {entry[\'title\']}"]\n    lines.append(f"- status: {entry[\'status\']}")\n    lines.append(f"- date: {entry[\'date\']}")\n    if entry.get("supersedes"):\n        lines.append(f"- supersedes: {entry[\'supersedes\']}")\n    if entry.get("superseded_by"):\n        lines.append(f"- superseded-by: {entry[\'superseded_by\']}")\n    lines.append(f"- verdict: {entry[\'verdict\']}")\n    why = str(entry["why"]).split("\\n")\n    lines.append(f"- why: {why[0]}")\n    lines.extend(f"  {cont}" for cont in why[1:])\n    lines.append(f"- provenance: {entry[\'provenance\']}")\n    return "\\n".join(lines)\n\n\ndef _led_stamp_superseded(text: str, old_id: str, new_id: str) -> str:\n    """Rewrite ``old_id``\'s entry in ``text``: status + superseded-by stamp."""\n    out: list[str] = []\n    in_target = False\n    stamped = False\n    for line in text.splitlines():\n        if line.startswith("## "):\n            # ANY level-2 heading ends the current block (mirrors _led_blocks)\n            # — a prose section after the target must never get stamped.\n            heading = _LED_HEADING_RE.match(line)\n            in_target = heading is not None and heading.group(1) == old_id\n        elif in_target and not line.strip():\n            # An entry\'s field block is contiguous and ends at its first blank\n            # line. Without this, a target that is the LAST entry keeps\n            # ``in_target`` true to EOF (no later ``## `` to reset it) and would\n            # silently stamp any field-shaped bullet in trailing prose.\n            in_target = False\n        field = _LED_FIELD_RE.match(line) if in_target else None\n        if field is not None:\n            key = field.group(1)\n            if key == "status":\n                out.append("- status: superseded")\n                out.append(f"- superseded-by: {new_id}")\n                stamped = True\n                continue\n            if key == "superseded-by" and stamped:\n                continue  # replaced above\n        out.append(line)\n    return "\\n".join(out) + ("\\n" if text.endswith("\\n") else "")\n\n\ndef append_decision(\n    path: Path,\n    *,\n    title: str,\n    verdict: str,\n    why: str,\n    provenance: str,\n    supersedes: str | None = None,\n    date: str | None = None,\n) -> dict:\n    """Append a new decision to the ledger at ``path`` and return its dict.\n\n    Creates the file (header + grammar comment) when absent, assigns the next\n    free id, and — when ``supersedes`` names an existing entry — rewrites that\n    old entry in place (``status: superseded`` plus a ``superseded-by`` stamp)\n    so the chain is recorded on both ends. The whole file is written atomically.\n    Raises ``ValueError`` when ``supersedes`` names an id not in the ledger.\n    """\n    text = path.read_text(encoding="utf-8") if path.exists() else _LED_HEADER\n    entries = parse_ledger(text)\n    if supersedes is not None:\n        known = {entry["id"] for entry in entries}\n        if supersedes not in known:\n            msg = f"supersedes target {supersedes} not found in {path.name}"\n            raise ValueError(msg)\n    entry = {\n        "id": next_decision_id(entries),\n        "title": title,\n        "status": "decided",\n        "date": date or _led_date.today().isoformat(),\n        "supersedes": supersedes,\n        "superseded_by": None,\n        "verdict": verdict,\n        "why": why,\n        "provenance": provenance,\n    }\n    if supersedes is not None:\n        text = _led_stamp_superseded(text, supersedes, entry["id"])\n    if not text.endswith("\\n"):\n        text += "\\n"\n    atomic_write_text(path, f"{text}\\n{_led_format_entry(entry)}\\n")\n    return entry\n\n\ndef current_rules(entries: list[dict]) -> list[dict]:\n    """Return the live rule set: supersedes chains resolved, retired dropped.\n\n    An entry is live when its status is neither ``superseded`` nor ``retired``\n    *and* no other entry names it as a supersedes target (chain resolution\n    holds even when the old entry missed its stamp).\n    """\n    replaced = {e["supersedes"] for e in entries if e.get("supersedes")}\n    return [\n        e\n        for e in entries\n        if e.get("status") not in ("superseded", "retired") and e["id"] not in replaced\n    ]\n\n\ndef check_ledger(path: Path) -> list[Finding]:\n    """Validate the ledger grammar; return findings (empty for a clean file).\n\n    Flags: unparseable entry blocks, missing/invalid required fields, duplicate\n    ids, dangling ``supersedes`` targets, non-monotonic ids, and a superseded\n    entry missing its ``superseded-by`` stamp. An absent ledger yields no\n    findings (adoption plants it).\n    """\n    if not path.exists():\n        return []\n    rel = path.name\n    text = path.read_text(encoding="utf-8")\n    findings: list[Finding] = []\n    entries: list[dict] = []\n    for lineno, lines in _led_blocks(text):\n        entry = _led_parse_block(lines)\n        if entry is None:\n            msg = f"L{lineno}: unparseable entry heading: {lines[0].strip()}"\n            findings.append(Finding(rel, "ledger", msg))\n            continue\n        entries.append(entry)\n        for field in _LED_REQUIRED_FIELDS:\n            if not entry.get(field):\n                msg = f"L{lineno}: {entry[\'id\']} missing required field `{field}`"\n                findings.append(Finding(rel, "ledger", msg))\n        status = entry.get("status")\n        if status and status not in _LED_STATUSES:\n            allowed = ", ".join(sorted(_LED_STATUSES))\n            msg = f"L{lineno}: {entry[\'id\']} invalid status `{status}` ({allowed})"\n            findings.append(Finding(rel, "ledger", msg))\n        if entry.get("date") and not _LED_DATE_RE.match(entry["date"]):\n            msg = f"L{lineno}: {entry[\'id\']} invalid date `{entry[\'date\']}`"\n            findings.append(Finding(rel, "ledger", msg))\n        if status == "superseded" and not entry.get("superseded_by"):\n            msg = f"L{lineno}: {entry[\'id\']} superseded without a superseded-by stamp"\n            findings.append(Finding(rel, "ledger", msg))\n\n    seen: set[str] = set()\n    known = {entry["id"] for entry in entries}\n    previous = 0\n    for entry in entries:\n        number = int(entry["id"].split("-", 1)[1])\n        if entry["id"] in seen:\n            findings.append(Finding(rel, "ledger", f"duplicate id {entry[\'id\']}"))\n        elif number <= previous:\n            msg = f"non-monotonic id {entry[\'id\']} after D-{previous:04d}"\n            findings.append(Finding(rel, "ledger", msg))\n        seen.add(entry["id"])\n        previous = max(previous, number)\n        target = entry.get("supersedes")\n        if target and target not in known:\n            msg = f"{entry[\'id\']} supersedes dangling target {target}"\n            findings.append(Finding(rel, "ledger", msg))\n    return findings\n\n\ndef check_stamp_discipline(docs_root: Path, ledger_path: Path) -> list[Finding]:\n    """Flag a decision id cited from more than one doc outside the ledger.\n\n    The provenance-separated model wants each ``D-NNNN`` stamped at exactly one\n    home (the rule it justifies); a second citation is drift risk — when the\n    decision changes, one of the two goes stale. Kind ``stamp`` (warn-class).\n    """\n    if not docs_root.exists():\n        return []\n    ledger_resolved = ledger_path.resolve()\n    citations: dict[str, list[str]] = {}\n    for doc in sorted(docs_root.rglob("*.md")):\n        if doc.resolve() == ledger_resolved:\n            continue\n        try:\n            text = doc.read_text(encoding="utf-8")\n        except (OSError, UnicodeDecodeError):\n            continue\n        rel = doc.relative_to(docs_root).as_posix()\n        for cited in set(_LED_ID_RE.findall(text)):\n            citations.setdefault(cited, []).append(rel)\n    findings: list[Finding] = []\n    for cited, docs in sorted(citations.items()):\n        if len(docs) > 1:\n            cite_list = ", ".join(sorted(docs))\n            msg = (\n                f"{cited} cited from {len(docs)} docs ({cite_list}) — "\n                "stamp each decision at one home"\n            )\n            findings.append(Finding(sorted(docs)[0], "stamp", msg))\n    return findings\n',
-    'engine/loop/kpis.py': '"""Workflow KPIs for the self-improving loop (plan section 5, Lane B1).\n\nDeterministic read-only metrics over the state document + sessions directory:\n``router_metrics`` measures the question-router\'s health (slot completeness,\nopen questions, the assumption-confirmation rate that keeps autonomous runs\nhonest), ``workflow_kpis`` adds the session/reflection counters, and\n``kpi_footer`` renders the one-line 📊 summary the orientation and reports\nembed. Pure stdlib; returns data / text, never prints.\n"""\n\nfrom __future__ import annotations\n\nfrom pathlib import Path\nfrom typing import Any\n\n\ndef _kpi_confirmation_rate(slot_values: dict[str, Any]) -> float:\n    """Return confirmed-over-self-answered for the recorded slot values.\n\n    Self-answered slots are those whose ``source`` is ``"assumption"`` or\n    starts with ``"confirmed:"`` (a confirmed former assumption). With no\n    self-answered slots there is nothing to confirm — the rate is 1.0.\n    """\n    confirmed = 0\n    self_answered = 0\n    if not isinstance(slot_values, dict):\n        return 1.0\n    for entry in slot_values.values():\n        if not isinstance(entry, dict):\n            # A hand-corrupted state.json can carry a non-dict slot value; skip\n            # it rather than raising (the kit\'s read-side fail-open contract —\n            # a KPI read must never brick session-close / maintain). Matches the\n            # non-dict guards in reflections / episodes / maintenance.\n            continue\n        source = str(entry.get("source", ""))\n        if source.startswith("confirmed:"):\n            confirmed += 1\n            self_answered += 1\n        elif source == "assumption":\n            self_answered += 1\n    if self_answered == 0:\n        return 1.0\n    return confirmed / self_answered\n\n\ndef router_metrics(state: dict[str, Any]) -> dict[str, Any]:\n    """Return the question-router health metrics for one state document.\n\n    ``completeness_pct`` counts ``filled`` slots only — ``provisional`` and\n    ``partial`` answers never inflate completeness (the anti-gaming floor\'s\n    KPI mirror). With no recorded slots completeness is 0.0.\n    """\n    slots = state.get("slots", {})\n    statuses = list(slots.values())\n    total = len(statuses)\n    filled = statuses.count("filled")\n    provisional = statuses.count("provisional")\n    completeness = round(100.0 * filled / total, 1) if total else 0.0\n    return {\n        "slots_total": total,\n        "slots_filled": filled,\n        "slots_provisional": provisional,\n        "completeness_pct": completeness,\n        "open_questions": len(state.get("open_questions", [])),\n        "assumption_confirmation_rate": _kpi_confirmation_rate(\n            state.get("slot_values", {}),\n        ),\n        "quiet_sessions": int(state.get("quiet_sessions", 0)),\n        "session_count": int(state.get("session_count", 0)),\n    }\n\n\ndef workflow_kpis(state: dict[str, Any], sessions_dir: Path) -> dict[str, Any]:\n    """Return the full workflow KPI record: router metrics + session counters.\n\n    ``sessions_logged`` counts ``*.md`` logs under ``sessions_dir`` (README\n    excluded, 0 when the directory is absent); ``reflections_active`` reads\n    the state\'s reflection-buffer counter.\n    """\n    kpis = router_metrics(state)\n    logged = 0\n    if sessions_dir.is_dir():\n        logged = sum(1 for p in sessions_dir.glob("*.md") if p.name != "README.md")\n    buffer = state.get("reflection_buffer", {})\n    kpis["sessions_logged"] = logged\n    kpis["reflections_active"] = int(buffer.get("active_count", 0))\n    kpis["stage"] = state.get("stage")\n    kpis["mode"] = state.get("mode")\n    return kpis\n\n\ndef kpi_footer(kpis: dict[str, Any]) -> str:\n    """Render the one-line 📊 KPI summary for orientation blocks and reports.\n\n    Router metrics always appear; the workflow extras (logged sessions,\n    active lessons, mode, stage) appear when present in ``kpis``.\n    """\n    completeness = float(kpis.get("completeness_pct", 0.0))\n    parts = [\n        f"completeness {completeness:.0f}%",\n        f"open-Q {kpis.get(\'open_questions\', 0)}",\n        f"sessions {kpis.get(\'session_count\', 0)}",\n        f"quiet {kpis.get(\'quiet_sessions\', 0)}",\n    ]\n    if "sessions_logged" in kpis:\n        parts.append(f"logged {kpis[\'sessions_logged\']}")\n    if "reflections_active" in kpis:\n        parts.append(f"lessons {kpis[\'reflections_active\']}")\n    if kpis.get("mode") is not None:\n        parts.append(f"mode {kpis[\'mode\']}")\n    if kpis.get("stage") is not None:\n        parts.append(f"stage {kpis[\'stage\']}")\n    return "📊 substrate: " + " · ".join(parts)\n',
-    'engine/loop/reflections.py': '"""Reflection buffer — the loop\'s compact learned-lesson memory (plan lane B2).\n\nReflections are small ``{"lesson", "evidence", "tags"}`` records mined from\nsession logs or added deliberately, stored in one atomically-written JSON file\n(``<state_dir>/reflections.json``). The buffer is deliberately tiny — a hard\n``buffer_size`` cap keeps the orientation injection cheap — and fail-open: a\nmissing or corrupt file reads as an empty list, never a crash. The miner is\ndeterministic and read-only; the caller decides what (if anything) becomes a\nstored reflection.\n"""\n\nfrom __future__ import annotations\n\nimport json\nimport re\nfrom datetime import date\nfrom pathlib import Path\n\nfrom engine.lib.atomicio import atomic_write_text\n\nREFLECTIONS_FILENAME = "reflections.json"\n\n_REF_ID_RE = re.compile(r"^R-(\\d+)$")\n_REF_IDEA_MARK = "\\N{ELECTRIC LIGHT BULB}"  # 💡 — session-idea lines\n_REF_FLAG_MARK = "\\N{BLACK FLAG}"  # ⚑ — self-initiated / friction flags\n_REF_PATH_SUFFIXES = (".py", ".md", ".js", ".ts", ".yml", ".json")\n_REF_STRIP_CHARS = "`\'\\"()[]<>,;:!?."\n\n\ndef load_reflections(path: Path) -> list[dict]:\n    """Return the reflection entries at ``path`` — ``[]`` on absent/corrupt."""\n    try:\n        raw = json.loads(path.read_text(encoding="utf-8"))\n    except (OSError, ValueError):\n        return []\n    if not isinstance(raw, list):\n        return []\n    return [entry for entry in raw if isinstance(entry, dict)]\n\n\ndef _ref_save(path: Path, entries: list[dict]) -> None:\n    """Write ``entries`` to ``path`` atomically as pretty-printed JSON."""\n    atomic_write_text(path, json.dumps(entries, indent=2) + "\\n")\n\n\ndef _ref_next_id(entries: list[dict]) -> str:\n    """Return the next ``R-NNNN`` id, monotonic over the ids already present."""\n    highest = 0\n    for entry in entries:\n        match = _REF_ID_RE.match(str(entry.get("id", "")))\n        if match:\n            highest = max(highest, int(match.group(1)))\n    return f"R-{highest + 1:04d}"\n\n\ndef _ref_is_inactive(entry: dict) -> bool:\n    """True when an entry is deprecated or superseded (prune/skip candidate)."""\n    return entry.get("status") == "deprecated" or bool(entry.get("superseded_by"))\n\n\ndef _ref_prune(entries: list[dict], buffer_size: int) -> list[dict]:\n    """Drop overflow beyond ``buffer_size``: oldest inactive first, then oldest.\n\n    ``buffer_size`` is clamped to at least 1 — a zero/negative host config must\n    never silently discard every lesson (or crash), and the entry just added is\n    never its own prune victim.\n    """\n    buffer_size = max(1, int(buffer_size))\n    pruned = list(entries)\n    while len(pruned) > buffer_size:\n        victim = next((e for e in pruned[:-1] if _ref_is_inactive(e)), pruned[0])\n        pruned.remove(victim)\n    return pruned\n\n\ndef add_reflection(\n    path: Path,\n    *,\n    lesson: str,\n    evidence: str,\n    tags: list[str],\n    status: str = "provisional",\n    buffer_size: int = 5,\n) -> dict:\n    """Append a reflection to the buffer at ``path`` and return the new entry.\n\n    Assigns the next monotonic ``R-NNNN`` id, stamps today\'s ISO date, and\n    prunes overflow beyond ``buffer_size`` (oldest superseded/deprecated\n    entries first, then oldest overall). ``status`` is ``provisional`` until a\n    later session confirms the lesson held up.\n    """\n    entries = load_reflections(path)\n    entry = {\n        "id": _ref_next_id(entries),\n        "lesson": lesson,\n        "evidence": evidence,\n        "tags": list(tags),\n        "status": status,\n        "date": date.today().isoformat(),\n    }\n    entries.append(entry)\n    _ref_save(path, _ref_prune(entries, buffer_size))\n    return entry\n\n\ndef active_lessons(entries: list[dict], buffer_size: int) -> list[dict]:\n    """Return live lessons newest-first, capped at ``buffer_size``.\n\n    Skips entries whose status is ``deprecated`` and entries carrying a\n    ``superseded_by`` stamp.\n    """\n    live = [entry for entry in entries if not _ref_is_inactive(entry)]\n    live.reverse()\n    return live[:buffer_size]\n\n\ndef supersede_reflection(path: Path, old_id: str, new_id: str) -> bool:\n    """Stamp ``superseded_by`` on ``old_id``\'s entry; False when it is absent."""\n    entries = load_reflections(path)\n    for entry in entries:\n        if entry.get("id") == old_id:\n            entry["superseded_by"] = new_id\n            _ref_save(path, entries)\n            return True\n    return False\n\n\ndef lessons_block(entries: list[dict]) -> str:\n    """Render the "Learned lessons" orientation block ("" when nothing active).\n\n    Provisional entries are flagged ``(provisional)`` so the reading agent\n    weighs them as candidates, not settled rules.\n    """\n    live = active_lessons(entries, len(entries))\n    if not live:\n        return ""\n    lines = ["## Learned lessons", ""]\n    for entry in live:\n        flag = " (provisional)" if entry.get("status") == "provisional" else ""\n        lines.append(f"- [{entry.get(\'id\', \'?\')}] {entry.get(\'lesson\', \'\')}{flag}")\n    return "\\n".join(lines) + "\\n"\n\n\ndef _ref_newest_logs(sessions_dir: Path, last_n: int) -> list[Path]:\n    """Return the newest ``last_n`` logs by mtime (name-tiebroken), oldest first."""\n    if not sessions_dir.is_dir() or last_n < 1:\n        return []\n    logs = [p for p in sessions_dir.glob("*.md") if p.name != "README.md"]\n    logs.sort(key=lambda p: (p.stat().st_mtime, p.name))\n    return logs[-last_n:]\n\n\ndef _ref_clean_line(line: str) -> str:\n    """Strip bullets, blockquote marks, and the emoji markers from a mined line."""\n    text = line.strip().lstrip("-*> ").strip()\n    for mark in (_REF_IDEA_MARK, _REF_FLAG_MARK):\n        text = text.replace(mark, "")\n    return text.strip().lstrip(":").strip()\n\n\ndef _ref_marker_tags(line: str) -> list[str]:\n    """Return the candidate tags for a line\'s emoji markers (may be empty)."""\n    tags: list[str] = []\n    if _REF_IDEA_MARK in line:\n        tags.append("idea")\n    if _REF_FLAG_MARK in line:\n        tags.append("flag")\n    return tags\n\n\ndef _ref_path_tokens(line: str) -> list[str]:\n    """Return file-path tokens: contain ``/`` and end in a known code/doc suffix."""\n    tokens: list[str] = []\n    for raw in line.split():\n        token = raw.strip(_REF_STRIP_CHARS)\n        if "/" in token and token.endswith(_REF_PATH_SUFFIXES):\n            tokens.append(token)\n    return tokens\n\n\ndef _ref_mine_log(log: Path) -> tuple[list[dict], dict[str, str]]:\n    """Mine one log: (marker-line candidates, first evidence per cited path)."""\n    candidates: list[dict] = []\n    paths_seen: dict[str, str] = {}\n    try:\n        lines = log.read_text(encoding="utf-8").splitlines()\n    except (OSError, UnicodeDecodeError):\n        return candidates, paths_seen\n    for lineno, line in enumerate(lines, 1):\n        if "[DEPRECATED]" in line:\n            continue\n        evidence = f"{log.name}:L{lineno}"\n        tags = _ref_marker_tags(line)\n        if tags:\n            candidates.append(\n                {"lesson": _ref_clean_line(line), "evidence": evidence, "tags": tags},\n            )\n        for token in _ref_path_tokens(line):\n            paths_seen.setdefault(token, evidence)\n    return candidates, paths_seen\n\n\ndef mine_reflections(sessions_dir: Path, *, last_n: int = 5) -> list[dict]:\n    """Mine candidate lessons from the newest ``last_n`` session logs.\n\n    Deterministic and read-only — never writes state; the caller decides what\n    to promote into the buffer. Three extraction passes:\n\n      1. 💡 idea lines → ``{"lesson", "evidence", "tags": ["idea"]}``.\n      2. ⚑ flag lines → the same shape, tagged ``flag``.\n      3. Any file path cited in >= 2 different logs → one\n         ``Recurring attention on <path>`` candidate.\n\n    Lines containing ``[DEPRECATED]`` are skipped entirely.\n    """\n    candidates: list[dict] = []\n    sightings: dict[str, dict[str, str]] = {}\n    for log in _ref_newest_logs(sessions_dir, last_n):\n        mined, paths_seen = _ref_mine_log(log)\n        candidates.extend(mined)\n        for token, evidence in paths_seen.items():\n            sightings.setdefault(token, {})[log.name] = evidence\n    for token in sorted(sightings):\n        seen = sightings[token]\n        if len(seen) < 2:\n            continue\n        evidence = ", ".join(seen[name] for name in sorted(seen))\n        candidates.append(\n            {\n                "lesson": f"Recurring attention on {token}",\n                "evidence": evidence,\n                "tags": ["recurring-path"],\n            },\n        )\n    return candidates\n',
-    'engine/loop/episodes.py': '"""Episodic index — a tiny searchable memory over session logs (plan lane B2).\n\nEach session log becomes one compact ``{"slug", "date", "tags", "summary"}``\nrecord in ``<state_dir>/episodic_index.json``, so an agent can grep *which*\npast session touched a topic without reading every log top-to-bottom. Tags\ncome from the log\'s first heading (minus stopwords) plus the workflow\'s marker\nemojis (💡 idea, ⚑ flag, ⟲ review, 📊 telemetry). The index is a derived\nartifact: rebuildable from the logs at any time, written atomically, and\nfail-open on absence/corruption.\n"""\n\nfrom __future__ import annotations\n\nimport json\nimport re\nfrom pathlib import Path\n\nfrom engine.lib.atomicio import atomic_write_text\n\nEPISODIC_INDEX_FILENAME = "episodic_index.json"\n\n_EPI_NAME_RE = re.compile(r"^(\\d{4}-\\d{2}-\\d{2})-(.+)$")\n_EPI_WORD_RE = re.compile(r"[a-z0-9][\\w-]*")\n_EPI_STOPWORDS = frozenset(\n    {\n        "a",\n        "an",\n        "and",\n        "at",\n        "by",\n        "for",\n        "from",\n        "in",\n        "of",\n        "on",\n        "or",\n        "the",\n        "to",\n        "with",\n    },\n)\n_EPI_MARKERS = (\n    "\\N{ELECTRIC LIGHT BULB}",  # 💡 session idea\n    "\\N{BLACK FLAG}",  # ⚑ self-initiated / friction flag\n    "\\N{ANTICLOCKWISE GAPPED CIRCLE ARROW}",  # ⟲ previous-session review\n    "\\N{BAR CHART}",  # 📊 telemetry / KPI footer\n)\n_EPI_SUMMARY_LIMIT = 140\n\n\ndef _epi_load(index_path: Path) -> list[dict]:\n    """Return the index entries at ``index_path`` — ``[]`` on absent/corrupt."""\n    try:\n        raw = json.loads(index_path.read_text(encoding="utf-8"))\n    except (OSError, ValueError):\n        return []\n    if not isinstance(raw, list):\n        return []\n    return [entry for entry in raw if isinstance(entry, dict)]\n\n\ndef _epi_save(index_path: Path, entries: list[dict]) -> None:\n    """Write ``entries`` to ``index_path`` atomically as pretty-printed JSON."""\n    atomic_write_text(index_path, json.dumps(entries, indent=2) + "\\n")\n\n\ndef _epi_tags(text: str) -> list[str]:\n    """Tags: first ``# `` heading words minus stopwords, plus marker emojis."""\n    tags: list[str] = []\n    for line in text.splitlines():\n        if line.startswith("# "):\n            words = _EPI_WORD_RE.findall(line[2:].lower())\n            tags.extend(word for word in words if word not in _EPI_STOPWORDS)\n            break\n    tags.extend(mark for mark in _EPI_MARKERS if mark in text)\n    return list(dict.fromkeys(tags))\n\n\ndef _epi_summary(text: str) -> str:\n    """Return the first non-blank non-heading line, truncated to 140 chars."""\n    for line in text.splitlines():\n        stripped = line.strip()\n        if stripped and not stripped.startswith("#"):\n            return stripped[:_EPI_SUMMARY_LIMIT]\n    return ""\n\n\ndef index_session(log_path: Path) -> dict:\n    """Summarise one session log into ``{"slug", "date", "tags", "summary"}``.\n\n    ``slug`` and ``date`` parse from the ``YYYY-MM-DD-<slug>.md`` filename\n    convention; a non-conforming name degrades gracefully to the whole stem as\n    the slug with an empty date. An unreadable file yields empty tags/summary.\n    """\n    match = _EPI_NAME_RE.match(log_path.stem)\n    if match:\n        session_date, slug = match.group(1), match.group(2)\n    else:\n        session_date, slug = "", log_path.stem\n    try:\n        text = log_path.read_text(encoding="utf-8")\n    except (OSError, UnicodeDecodeError):\n        text = ""\n    return {\n        "slug": slug,\n        "date": session_date,\n        "tags": _epi_tags(text),\n        "summary": _epi_summary(text),\n    }\n\n\ndef rebuild_episodic_index(sessions_dir: Path, index_path: Path) -> list[dict]:\n    """Rebuild the whole index from ``sessions_dir`` and write it atomically.\n\n    Scans ``*.md`` excluding ``README.md``, sorted by filename (the date-first\n    naming convention makes that chronological). Returns the entries written;\n    an absent sessions dir yields an empty index.\n    """\n    logs: list[Path] = []\n    if sessions_dir.is_dir():\n        logs = sorted(p for p in sessions_dir.glob("*.md") if p.name != "README.md")\n    entries = [index_session(p) for p in logs]\n    _epi_save(index_path, entries)\n    return entries\n\n\ndef append_episode(index_path: Path, entry: dict) -> None:\n    """Add ``entry`` to the index, replacing an existing (slug, date) match.\n\n    Keyed on slug *and* date: re-indexing the same log updates in place, while\n    a same-slug session from a different day appends instead of silently\n    deleting the earlier episode.\n    """\n    entries = _epi_load(index_path)\n    key = (entry.get("slug"), entry.get("date"))\n    for i, existing in enumerate(entries):\n        if (existing.get("slug"), existing.get("date")) == key:\n            entries[i] = entry\n            break\n    else:\n        entries.append(entry)\n    _epi_save(index_path, entries)\n\n\ndef search_episodes(index_path: Path, tag: str) -> list[dict]:\n    """Return every indexed episode carrying ``tag`` in its tag list."""\n    return [entry for entry in _epi_load(index_path) if tag in entry.get("tags", [])]\n',
-    'engine/loop/triggers.py': '"""Trigger scan for the self-improving loop (plan section 5, Lane B1).\n\nThe loop\'s sensory layer: ``check_triggers`` inspects the project tree plus the\nstate document and reports which of the five trigger kinds fired —\n\n- ``critical_unfilled`` — a graduation-critical slot is still not ``filled``\n  after the cadence\'s grace window (one trigger per slot).\n- ``blocking_open``     — escalated blocking questions sit on\n  ``state["open_questions"]``.\n- ``drift``             — the doc-hygiene checks (badge / link / reachable)\n  report findings.\n- ``staleness``         — the newest session log is older than\n  ``cadence["staleness_days"]`` days, or reconciliation is overdue by session\n  count.\n- ``new_area``          — a direct subdirectory of the docs root holds only\n  unreachable *and* unbadged markdown (nobody owns it yet).\n\n``mandatory_questions`` then maps fired triggers back onto question-bank\nentries, and ``trigger_block`` renders the orientation text block. The mode\npolicy (``engine.lib.modes.triggers_mandate``) decides whether the block is a\nmandate or an advisory — this module only renders whichever the caller picked.\nPure stdlib; returns data / text, never prints.\n"""\n\nfrom __future__ import annotations\n\nimport time\nfrom pathlib import Path\nfrom typing import Any, NamedTuple\n\nfrom engine.checks.check_docs import badge_token, check_reachable, run_doc_checks\nfrom engine.checks.check_session_log import latest_session_log\nfrom engine.interview.question_bank import QUESTIONS\nfrom engine.lib.config import Config\n\n_TRG_PRIORITY_ORDER = {"blocking": 0, "high": 1, "normal": 2}\n_TRG_SECONDS_PER_DAY = 86_400.0\n\n\nclass Trigger(NamedTuple):\n    """One fired trigger: kind, severity, human message, related question ids."""\n\n    kind: str\n    severity: str\n    message: str\n    question_ids: tuple[str, ...]\n\n\ndef _trg_critical_unfilled(\n    state: dict[str, Any],\n    cadence: dict[str, int],\n    bank: list[dict],\n) -> list[Trigger]:\n    """One trigger per critical slot still unfilled past the grace window."""\n    grace = int(cadence.get("critical_slot_grace_sessions", 3))\n    if int(state.get("session_count", 0)) <= grace:\n        return []\n    slots = state.get("slots", {})\n    critical = dict.fromkeys(q["slot"] for q in bank if q.get("critical"))\n    triggers: list[Trigger] = []\n    for slot in critical:\n        if slots.get(slot) == "filled":\n            continue\n        ids = tuple(q["id"] for q in bank if q["slot"] == slot)\n        message = (\n            f"critical slot \'{slot}\' is not filled after the "\n            f"{grace}-session grace window"\n        )\n        triggers.append(Trigger("critical_unfilled", "blocking", message, ids))\n    return triggers\n\n\ndef _trg_blocking_open(state: dict[str, Any]) -> list[Trigger]:\n    """One trigger when escalated blocking questions are open."""\n    open_questions = [str(q) for q in state.get("open_questions", [])]\n    if not open_questions:\n        return []\n    listed = ", ".join(open_questions)\n    message = f"{len(open_questions)} blocking question(s) open: {listed}"\n    return [Trigger("blocking_open", "blocking", message, tuple(open_questions))]\n\n\ndef _trg_drift(docs_root: Path, config: Config) -> list[Trigger]:\n    """One trigger when the doc-hygiene checks report any finding."""\n    findings = run_doc_checks(docs_root, config.badge_tokens, config.readpath_docs)\n    if not findings:\n        return []\n    kinds = ", ".join(sorted({f.kind for f in findings}))\n    message = f"doc hygiene reports {len(findings)} finding(s) ({kinds})"\n    return [Trigger("drift", "high", message, ())]\n\n\ndef _trg_staleness(\n    state: dict[str, Any],\n    cadence: dict[str, int],\n    sessions_dir: Path,\n) -> list[Trigger]:\n    """One trigger when memory looks stale (old log or overdue reconciliation)."""\n    reasons: list[str] = []\n    stale_days = int(cadence.get("staleness_days", 14))\n    newest = latest_session_log(sessions_dir)\n    if newest is not None:\n        age_days = (time.time() - newest.stat().st_mtime) / _TRG_SECONDS_PER_DAY\n        if age_days > stale_days:\n            reasons.append(\n                f"newest session log is {int(age_days)} days old "\n                f"(threshold {stale_days})",\n            )\n    overdue = int(cadence.get("reconciliation_sessions", 20))\n    since = int(state.get("session_count", 0)) - int(\n        state.get("last_compaction_session", 0),\n    )\n    if since >= overdue:\n        reasons.append(\n            f"{since} sessions since the last compaction (cadence {overdue})",\n        )\n    if not reasons:\n        return []\n    return [Trigger("staleness", "normal", "; ".join(reasons), ())]\n\n\ndef _trg_new_area(docs_root: Path, config: Config) -> list[Trigger]:\n    """One trigger per docs subdirectory whose docs are all orphaned + unbadged."""\n    if not docs_root.is_dir():\n        return []\n    orphans = {f.path for f in check_reachable(docs_root, config.readpath_docs)}\n    triggers: list[Trigger] = []\n    for sub in sorted(p for p in docs_root.iterdir() if p.is_dir()):\n        files = sorted(sub.rglob("*.md"))\n        if not files:\n            continue\n        all_unowned = all(\n            f.relative_to(docs_root).as_posix() in orphans and badge_token(f) is None\n            for f in files\n        )\n        if all_unowned:\n            message = (\n                f"new docs area \'{sub.name}/\' ({len(files)} file(s)) is "\n                "entirely unreachable and unbadged — no ownership entry yet"\n            )\n            triggers.append(Trigger("new_area", "high", message, ()))\n    return triggers\n\n\ndef check_triggers(\n    root: Path,\n    config: Config,\n    state: dict[str, Any],\n    bank: list[dict] | None = None,\n) -> list[Trigger]:\n    """Scan the project tree + state and return every fired trigger.\n\n    ``root`` is the project root; the docs root and sessions dir are resolved\n    from ``config``. Returns triggers grouped by kind in the fixed order\n    critical_unfilled, blocking_open, drift, staleness, new_area.\n    """\n    bank = QUESTIONS if bank is None else bank\n    cadence = dict(config.cadence or {})\n    docs_root = root / config.docs_root\n    sessions_dir = root / config.sessions_dir\n    return (\n        _trg_critical_unfilled(state, cadence, bank)\n        + _trg_blocking_open(state)\n        + _trg_drift(docs_root, config)\n        + _trg_staleness(state, cadence, sessions_dir)\n        + _trg_new_area(docs_root, config)\n    )\n\n\ndef mandatory_questions(\n    triggers: list[Trigger],\n    bank: list[dict] | None = None,\n) -> list[dict]:\n    """Return the bank questions the fired triggers pull into this session.\n\n    Selects entries whose ``trigger`` field matches a fired kind, plus the\n    entries a ``critical_unfilled`` trigger names via ``question_ids``.\n    De-duplicated by id; priority-ordered (blocking, high, normal — stable).\n    """\n    bank = QUESTIONS if bank is None else bank\n    fired_kinds = {t.kind for t in triggers}\n    named_ids = {\n        qid for t in triggers if t.kind == "critical_unfilled" for qid in t.question_ids\n    }\n    selected: list[dict] = []\n    seen: set[str] = set()\n    for question in bank:\n        wanted = question.get("trigger") in fired_kinds or question["id"] in named_ids\n        if wanted and question["id"] not in seen:\n            seen.add(question["id"])\n            selected.append(question)\n    return sorted(\n        selected,\n        key=lambda q: _TRG_PRIORITY_ORDER.get(q.get("priority", "normal"), 2),\n    )\n\n\ndef trigger_block(\n    triggers: list[Trigger],\n    questions: list[dict],\n    *,\n    mandate: bool,\n) -> str:\n    """Render the orientation trigger block (\'\' when nothing fired).\n\n    ``mandate=True`` (guided/active modes) opens with a MANDATORY\n    question-session header; otherwise the block is an advisory.\n    """\n    if not triggers:\n        return ""\n    if mandate:\n        header = "## ⚠️ MANDATORY question session — triggers fired"\n    else:\n        header = "## Trigger advisory (non-mandatory)"\n    lines = [header, ""]\n    lines += [f"- [{t.severity}] {t.kind}: {t.message}" for t in triggers]\n    if questions:\n        lines += ["", "Questions to ask this session:"]\n        lines += [\n            f"- {q[\'id\']} ({q.get(\'priority\', \'normal\')}): {q[\'prompt\']}"\n            for q in questions\n        ]\n    return "\\n".join(lines) + "\\n"\n',
-    'engine/loop/maintenance.py': '"""Maintenance actuators for the self-improving loop (plan section 5, Lane B3).\n\nThe loop\'s housekeeping arm: the compaction cadence and its pre-compaction\n"State Delta" snapshot, the escalated open-question list (the blocking-question\nbrake graduation waits on), the promotion-rights downgrade, and the composed\n``maintain`` human report. Pure stdlib; every file write goes through\n``atomic_write_text``; functions return data / text, never print — the CLI\nowns all output.\n\nThe sibling loop modules (``reflections``, ``kpis``, ``review_seam``) are\nimported lazily with fail-open fallbacks, so this module keeps working when a\nbuild ships without them (the single-file bootstrap concatenation case).\n"""\n\nfrom __future__ import annotations\n\nfrom datetime import date\nfrom pathlib import Path\nfrom typing import Any\n\nfrom engine.lib.atomicio import atomic_write_text\nfrom engine.lib.config import Config\nfrom engine.loop.kpis import kpi_footer\nfrom engine.loop.reflections import (\n    REFLECTIONS_FILENAME,\n    active_lessons,\n    load_reflections,\n)\n\n_MNT_VALUE_WIDTH = 80\n\n\ndef compaction_due(state: dict[str, Any], cadence: dict[str, int]) -> bool:\n    """True when the compaction cadence window has elapsed.\n\n    Fires when ``session_count - last_compaction_session`` reaches\n    ``cadence["compaction_sessions"]`` (default 20).\n\n    Deliberate reduction of the plan\'s "~700K tokens OR 20 sessions": the kit\n    has no token telemetry (stdlib-only, no provider hooks), so only the\n    session-count half ships; hosts with token accounting can trigger\n    ``run_compaction`` directly when their own meter trips.\n    """\n    every = int(cadence.get("compaction_sessions", 20))\n    since = int(state.get("session_count", 0)) - int(\n        state.get("last_compaction_session", 0),\n    )\n    return since >= every\n\n\ndef _mnt_cell(value: Any) -> str:\n    """Collapse ``value`` to one table-safe line truncated to 80 chars."""\n    text = " ".join(str(value).split()).replace("|", "/")\n    return text[:_MNT_VALUE_WIDTH]\n\n\ndef _mnt_lesson_lines(reflections: list[dict]) -> list[str]:\n    """Render the active-lesson lines from the reflection entries."""\n    live = active_lessons(reflections, len(reflections))\n    return [f"- [{e.get(\'id\', \'?\')}] {e.get(\'lesson\', \'\')}" for e in live]\n\n\ndef _mnt_slot_lines(state: dict[str, Any]) -> list[str]:\n    """Render the slot table (name-sorted; values truncated to 80 chars)."""\n    slots = state.get("slots", {})\n    if not slots:\n        return []\n    values = state.get("slot_values", {})\n    lines = ["| slot | status | value |", "| --- | --- | --- |"]\n    for slot in sorted(slots):\n        entry = values.get(slot, {})\n        value = entry.get("value", "") if isinstance(entry, dict) else entry\n        lines.append(f"| {slot} | {slots[slot]} | {_mnt_cell(value)} |")\n    return lines\n\n\ndef state_delta(state: dict[str, Any], reflections: list[dict]) -> str:\n    """Render the pre-compaction State Delta markdown — dense, deterministic.\n\n    The counters line always appears; the slot table, open-questions list, and\n    active-lessons list appear only when non-empty. No timestamps: two calls\n    over the same inputs return identical text.\n    """\n    lines = [\n        f"# State Delta — session {int(state.get(\'session_count\', 0))}",\n        "",\n        f"- mode: {state.get(\'mode\', \'?\')} · stage: {state.get(\'stage\', \'?\')} · "\n        f"sessions: {int(state.get(\'session_count\', 0))} · "\n        f"quiet: {int(state.get(\'quiet_sessions\', 0))}",\n    ]\n    slot_lines = _mnt_slot_lines(state)\n    if slot_lines:\n        lines += ["", "## Slots", "", *slot_lines]\n    open_questions = [str(q) for q in state.get("open_questions", [])]\n    if open_questions:\n        lines += ["", "## Open questions", ""]\n        lines += [f"- {qid}" for qid in open_questions]\n    lesson_lines = _mnt_lesson_lines(reflections)\n    if lesson_lines:\n        lines += ["", "## Active lessons", "", *lesson_lines]\n    return "\\n".join(lines) + "\\n"\n\n\ndef _mnt_load_reflections(state_dir: Path) -> list[dict]:\n    """Load the reflection buffer for the delta (``[]`` when unavailable)."""\n    return load_reflections(state_dir / REFLECTIONS_FILENAME)\n\n\ndef run_compaction(root: Path, config: Config, backend: Any) -> Path:\n    """Write the State Delta snapshot and reset the compaction counter.\n\n    Writes ``<state_dir>/state-delta-<session_count>.md`` atomically, then\n    stamps ``last_compaction_session`` so ``compaction_due`` stays quiet until\n    the next cadence window. Returns the written path.\n    """\n    state_dir = root / config.state_dir\n    session = int(backend.get("session_count", 0))\n    delta = state_delta(backend.data, _mnt_load_reflections(state_dir))\n    path = state_dir / f"state-delta-{session}.md"\n    atomic_write_text(path, delta)\n    backend.set("last_compaction_session", session)\n    return path\n\n\ndef escalate_blocking(backend: Any, question_id: str) -> bool:\n    """Append ``question_id`` to the escalated open-questions list once.\n\n    Idempotent: True when it appended, False when the id was already open.\n    Open questions hold graduation until answered (the blocking brake).\n    """\n    open_questions = list(backend.get("open_questions", []))\n    if question_id in open_questions:\n        return False\n    open_questions.append(question_id)\n    backend.set("open_questions", open_questions)\n    return True\n\n\ndef resolve_open_question(backend: Any, question_id: str) -> bool:\n    """Drop ``question_id`` from the open-questions list; False when absent."""\n    open_questions = list(backend.get("open_questions", []))\n    if question_id not in open_questions:\n        return False\n    open_questions.remove(question_id)\n    backend.set("open_questions", open_questions)\n    return True\n\n\ndef downgrade_promotion(backend: Any, *, reason: str) -> None:\n    """Cap autonomy: ``promotion_rights`` → ``"propose"``, logged with why.\n\n    Appends a ``promotion_downgrade`` event to ``review_log`` so the loss of\n    apply-rights always carries its provenance.\n    """\n    log = list(backend.get("review_log", []))\n    log.append(\n        {\n            "event": "promotion_downgrade",\n            "reason": reason,\n            "date": date.today().isoformat(),\n        },\n    )\n    with backend.transaction():\n        backend.set("promotion_rights", "propose")\n        backend.set("review_log", log)\n\n\ndef _mnt_item_line(item: Any) -> str:\n    """Render one report line for a trigger or a checker finding.\n\n    Triggers (kind/severity/message) render like the orientation block;\n    findings (path/kind/message) render path-first; anything else renders as\n    its ``str``.\n    """\n    kind = getattr(item, "kind", None)\n    message = getattr(item, "message", None)\n    if kind is None or message is None:\n        return f"- {item}"\n    severity = getattr(item, "severity", None)\n    if severity is not None:\n        return f"- [{severity}] {kind}: {message}"\n    path = getattr(item, "path", None)\n    prefix = f"{path}: " if path else ""\n    return f"- {prefix}[{kind}] {message}"\n\n\ndef _mnt_review_dir() -> str:\n    """Return the review-payload directory name.\n\n    Mirrors ``review_seam.REVIEW_DIR`` as a literal: ``review_seam`` imports\n    this module at top level, so importing it back would be circular — the\n    seam\'s own test pins the two values equal.\n    """\n    return "review"\n\n\ndef _mnt_advisories(root: Path, config: Config, backend: Any) -> list[str]:\n    """Return the maintenance advisories: compaction due, payloads waiting."""\n    advisories: list[str] = []\n    if compaction_due(backend.data, dict(config.cadence or {})):\n        advisories.append("compaction due — write the State Delta snapshot")\n    review_dir = root / config.state_dir / _mnt_review_dir()\n    if review_dir.is_dir():\n        pending = sorted(review_dir.glob("payload-*.json"))\n        if pending:\n            advisories.append(\n                f"{len(pending)} review payload(s) awaiting a reviewer",\n            )\n    return advisories\n\n\ndef _mnt_footer(kpis: dict[str, Any]) -> str:\n    """Render the KPI footer line for the report."""\n    return kpi_footer(kpis)\n\n\ndef maintenance_report(\n    root: Path,\n    config: Config,\n    backend: Any,\n    *,\n    triggers: list[Any],\n    economy_findings: list[Any],\n    ledger_findings: list[Any],\n    kpis: dict[str, Any],\n) -> str:\n    """Compose the ``maintain`` human report from the loop\'s sensor outputs.\n\n    Every section is skipped when its input is empty; a maintenance-advisories\n    section surfaces compaction cadence and accumulated review payloads (the\n    no-reviewer graceful fallback); the report ends with the KPI footer when\n    ``kpis`` is non-empty.\n    """\n    lines = [\n        f"# Maintenance report — session {int(backend.get(\'session_count\', 0))}",\n    ]\n    sections: tuple[tuple[str, list[Any]], ...] = (\n        ("Triggers", triggers),\n        ("Economy findings", economy_findings),\n        ("Ledger findings", ledger_findings),\n    )\n    for title, items in sections:\n        if not items:\n            continue\n        lines += ["", f"## {title}", ""]\n        lines += [_mnt_item_line(item) for item in items]\n    advisories = _mnt_advisories(root, config, backend)\n    if advisories:\n        lines += ["", "## Maintenance", ""]\n        lines += [f"- {advisory}" for advisory in advisories]\n    if kpis:\n        lines += ["", _mnt_footer(kpis)]\n    return "\\n".join(lines) + "\\n"\n',
-    'engine/loop/review_seam.py': '"""The external-review seam — provisioned, not wired (plan section 6, Lane B3).\n\nA second model can audit the interview\'s provisional self-answers, but the kit\nnever talks to one (no subprocess, no network): it emits an **anti-anchor**\npayload — the proposition and its evidence, NO confidence score, NO author\ncommentary — and the host records the verdict through one entry point. With no\nreviewer configured, payloads simply accumulate for the owner; nothing blocks.\nPure stdlib; writes via ``atomic_write_text``.\n"""\n\nfrom __future__ import annotations\n\nimport json\nfrom datetime import date\nfrom pathlib import Path\nfrom typing import Any\n\nfrom engine.interview.interview import confirm_slot\nfrom engine.interview.question_bank import QUESTIONS\nfrom engine.lib.atomicio import atomic_write_text\nfrom engine.lib.config import Config\nfrom engine.loop.maintenance import downgrade_promotion, escalate_blocking\n\nREVIEW_DIR = "review"\n\n# Deterministic checks first — the reviewer runs mechanical verification\n# before exercising judgment; subjective slots route straight to the owner.\n_REV_OBJECTIVE_STOPS = (\n    "verify against repository source",\n    "run the project verify command",\n)\n_REV_SUBJECTIVE_STOPS = ("route to the owner - subjective slot",)\n\n_REV_WIRING_DOC = """\\\n# Review seam — provisioned, not wired\n\nThe kit never calls an external model. It defines a payload format and two\nentry points; the host wires ANY reviewer (a second model, a CLI, a human)\naround them:\n\n1. `bootstrap review build <slot>` emits the payload JSON to\n   `<state_dir>/review/payload-<slot>.json`.\n2. The external reviewer reads ONLY that payload — never the chat context,\n   never the author\'s notes or working files.\n3. The host records the verdict:\n   `bootstrap review confirm <slot> --verdict pass|fail --reviewer <name>`.\n   A `pass` on an objective slot confirms it; a `pass` on a subjective slot is\n   recorded but the slot stays provisional (only the owner confirms taste);\n   a `fail` escalates the question as blocking and downgrades promotion\n   rights to propose-only.\n\nGraceful no-reviewer fallback: with no reviewer configured, payloads simply\naccumulate in the review directory for the owner to work through — nothing\nblocks, and the maintenance report counts them.\n\nAnti-anchor rule: the payload carries the proposition, its evidence, and\ndeterministic stop conditions — NO confidence score and NO author commentary,\nso the reviewer cannot anchor on the author\'s own belief.\n\nUnverified reviewer: calibrate a new reviewer against known-answer issues\nbefore trusting its dissent — a verdict that fights the evidence is the\nreviewer\'s bug until proven otherwise.\n"""\n\n\ndef _rev_bank_entry(slot: str) -> dict:\n    """Return the question-bank entry for ``slot`` (``{}`` when unknown)."""\n    for question in QUESTIONS:\n        if question.get("slot") == slot:\n            return question\n    return {}\n\n\ndef _rev_slot_value(backend: Any, slot: str) -> dict:\n    """Return the recorded slot-value entry for ``slot`` (``{}`` when absent)."""\n    entry = dict(backend.get("slot_values", {})).get(slot, {})\n    return entry if isinstance(entry, dict) else {}\n\n\ndef build_review_payload(backend: Any, slot: str) -> dict:\n    """Build the anti-anchor review payload for a provisional ``slot``.\n\n    The payload carries the proposition and its evidence ONLY — no confidence\n    score, no author commentary — so the reviewing model cannot anchor on the\n    author\'s belief. Objective slots get deterministic stop conditions first;\n    subjective slots route to the owner. Returns ``{}`` when the slot is not\n    provisional (nothing to review). Never raises ``KeyError``.\n    """\n    if dict(backend.get("slots", {})).get(slot) != "provisional":\n        return {}\n    entry = _rev_slot_value(backend, slot)\n    question = _rev_bank_entry(slot)\n    objective = bool(question.get("objective", False))\n    stops = _REV_OBJECTIVE_STOPS if objective else _REV_SUBJECTIVE_STOPS\n    evidence = (\n        f"question: {question.get(\'prompt\', \'\')} | "\n        f"recorded source: {entry.get(\'source\', \'\')}"\n    )\n    return {\n        "format_version": 1,\n        "slot": slot,\n        "proposition": entry.get("value", ""),\n        "evidence": evidence,\n        "stop_conditions": list(stops),\n        "objective": objective,\n    }\n\n\ndef write_review_payload(root: Path, config: Config, payload: dict) -> Path:\n    """Write ``payload`` to ``<state_dir>/review/payload-<slot>.json``.\n\n    Atomic, indented, key-sorted JSON; returns the written path.\n    """\n    slot = str(payload.get("slot", "unknown"))\n    path = root / config.state_dir / REVIEW_DIR / f"payload-{slot}.json"\n    atomic_write_text(path, json.dumps(payload, indent=2, sort_keys=True) + "\\n")\n    return path\n\n\ndef clear_review_payload(root: Path, config: Config, slot: str) -> bool:\n    """Remove the consumed payload for ``slot``; True when one was present.\n\n    A verdict recorded via ``apply_review_verdict`` consumes the payload, but the\n    payload FILE persists — and ``maintenance._mnt_advisories`` counts every\n    ``payload-*.json`` as "awaiting a reviewer", so without this the count never\n    decrements after a review (it grows without bound under a wired reviewer).\n    Idempotent: a missing payload is a no-op.\n    """\n    path = root / config.state_dir / REVIEW_DIR / f"payload-{slot}.json"\n    existed = path.exists()\n    path.unlink(missing_ok=True)\n    return existed\n\n\ndef _rev_log(backend: Any, slot: str, verdict: str, reviewer: str) -> None:\n    """Append one review-log entry (the state contract\'s four-field shape)."""\n    log = list(backend.get("review_log", []))\n    log.append(\n        {\n            "slot": slot,\n            "verdict": verdict,\n            "reviewer": reviewer,\n            "date": date.today().isoformat(),\n        },\n    )\n    backend.set("review_log", log)\n\n\ndef apply_review_verdict(\n    backend: Any,\n    slot: str,\n    *,\n    verdict: str,\n    reviewer: str,\n) -> str:\n    """Record an external reviewer\'s verdict on a provisional slot.\n\n    Three outcomes:\n\n    - ``pass`` on an *objective* slot confirms it (provisional → filled,\n      source ``reviewer:<name>``) → returns ``"confirmed"``.\n    - ``pass`` on a *subjective* slot is recorded only — the slot stays\n      provisional and promotion stays capped at propose → ``"recorded"``.\n    - ``fail`` escalates the slot\'s question as blocking AND downgrades\n      promotion rights to propose-only → ``"escalated"``.\n\n    Every outcome appends a review-log entry. Raises ``ValueError`` on any\n    verdict other than ``"pass"`` / ``"fail"``. A slot that is not currently\n    ``provisional`` (typo\'d, already confirmed, never answered) returns\n    ``"not-provisional"`` untouched — mirroring ``build_review_payload``\'s\n    guard, so a stray verdict can neither falsely confirm nor escalate.\n    """\n    if verdict not in ("pass", "fail"):\n        raise ValueError(f"unknown review verdict: {verdict!r}")\n    if backend.get("slots", {}).get(slot) != "provisional":\n        return "not-provisional"\n    question = _rev_bank_entry(slot)\n    # Each multi-write outcome is one transaction (Q-0223 tail ①): the escalate/\n    # downgrade/log (and confirm/log) legs land together or not at all. The\n    # helpers open their own transactions internally — safe, because the JSON\n    # backend\'s transaction is re-entrant and only the outermost exit flushes.\n    if verdict == "fail":\n        question_id = str(_rev_slot_value(backend, slot).get("question_id", ""))\n        question_id = question_id or str(question.get("id", slot))\n        with backend.transaction():\n            escalate_blocking(backend, question_id)\n            downgrade_promotion(\n                backend,\n                reason=f"review fail on slot \'{slot}\' by {reviewer}",\n            )\n            _rev_log(backend, slot, verdict, reviewer)\n        return "escalated"\n    if question.get("objective", False):\n        with backend.transaction():\n            confirm_slot(backend, slot, source=f"reviewer:{reviewer}")\n            _rev_log(backend, slot, verdict, reviewer)\n        return "confirmed"\n    _rev_log(backend, slot, verdict, reviewer)\n    return "recorded"\n\n\ndef seam_wiring_doc() -> str:\n    """Return the wiring instructions for hosting ANY external reviewer.\n\n    The seam ships provisioned, not wired: the kit defines the payload format\n    and the verdict entry points; the host decides which model (if any) reads\n    the payloads — and without one, they accumulate gracefully for the owner.\n    """\n    return _REV_WIRING_DOC\n',
-    'engine/economy/engine.py': '"""The context-economy engine (plan §5.B, Lane B4).\n\nThe retention/taxonomy layer of the self-improving loop: docs are classified\ninto host-declared classes (badge- and/or glob-matched), gauges watch word and\ncount budgets, an inbound-reference scan protects cited files, and the actuator\napplies the TRIPLE FILTER (harvested AND past window AND zero inbound refs)\nbefore any deletion — writing one tombstone line per pruned file into a\nper-band shard. Retention windows are measured in **days** from file mtime:\nthe kit supports day windows only; "bands" are a host cadence unit layered on\ntop of it, never a kit unit. ``economy["maturity"]`` gates the actuator —\n``"shadow"`` never applies. Pure stdlib; returns data / text, never prints.\n"""\n\nfrom __future__ import annotations\n\nimport os\nimport re\nimport time\nfrom datetime import date\nfrom pathlib import Path\nfrom typing import Any, NamedTuple\n\nfrom engine.checks.check_orientation_budget import _ob_boot_paths\nfrom engine.lib.atomicio import atomic_write_text\nfrom engine.lib.config import Config\n\n# Minimal inline copy of check_docs._badge_token\'s regex (private there); drop\n# once the helper is promoted to a public name in engine/checks/check_docs.py.\n_ECO_BADGE_RE = re.compile(r"\\*\\*Status:\\*\\*\\s*`([a-z-]+)`")\n\n_ECO_SECONDS_PER_DAY = 86400.0\n\n\nclass EconomyFinding(NamedTuple):\n    """One economy finding: ``path`` is relative to the project root."""\n\n    path: str\n    kind: str\n    message: str\n\n\nDEFAULT_CLASSES: list[dict] = [\n    {\n        "name": "sessions",\n        "globs": ["<sessions_dir>/*.md"],\n        "mode": "delete_tomb",\n        "window_days": 14,\n        "tombstone_dir": "<sessions_dir>/pruned",\n    },\n    {\n        "name": "plans",\n        "badges": ["plan"],\n        "mode": "archive",\n        "window_days": 60,\n    },\n    {\n        "name": "living",\n        "badges": ["living-ledger", "reference", "binding"],\n        "mode": "keep",\n    },\n]\n"""Minimal generic class profile — a STARTING POINT, not shipped policy.\n\nUsed only when ``config.economy["classes"]`` is empty. Every adopting host is\nexpected to replace it with its own measured taxonomy (the kit ships the\nsearch, not our constants). Placeholder tokens (``<sessions_dir>`` etc.) are\nexpanded from the host config at evaluation time.\n"""\n\n\ndef _eco_expand(pattern: str, config: Config) -> str:\n    """Expand ``<sessions_dir>`` / ``<docs_root>`` / ``<state_dir>`` tokens."""\n    return (\n        pattern.replace("<sessions_dir>", config.sessions_dir)\n        .replace("<docs_root>", config.docs_root)\n        .replace("<state_dir>", config.state_dir)\n    )\n\n\ndef _eco_classes(config: Config) -> list[dict]:\n    """Return the active class table (host classes or the generic default)."""\n    return list(config.economy.get("classes") or DEFAULT_CLASSES)\n\n\ndef _eco_md_files(docs_root: Path) -> list[Path]:\n    """Return every ``*.md`` under ``docs_root`` (sorted, empty if absent)."""\n    if not docs_root.exists():\n        return []\n    return sorted(docs_root.rglob("*.md"))\n\n\ndef _eco_read_text(path: Path) -> str | None:\n    """Read ``path`` as UTF-8 text; None when unreadable or not text."""\n    try:\n        return path.read_text(encoding="utf-8")\n    except (OSError, UnicodeDecodeError):\n        return None\n\n\ndef _eco_badge_token(path: Path) -> str | None:\n    """Return the doc\'s Status-badge token from its first 12 lines, or None."""\n    text = _eco_read_text(path)\n    if text is None:\n        return None\n    match = _ECO_BADGE_RE.search("\\n".join(text.splitlines()[:12]))\n    return match.group(1) if match else None\n\n\ndef _eco_wc(path: Path) -> int:\n    """Return the whitespace word count of one text file (0 if unreadable)."""\n    text = _eco_read_text(path)\n    return len(text.split()) if text else 0\n\n\ndef _eco_rel(path: Path, root: Path) -> str:\n    """Return ``path`` relative to ``root`` as posix (absolute-safe fallback)."""\n    try:\n        return path.resolve().relative_to(root.resolve()).as_posix()\n    except ValueError:\n        return path.as_posix()\n\n\ndef classify_docs(root: Path, config: Config) -> dict[str, list[Path]]:\n    """Bucket project docs into economy classes plus the ``_unbadged`` bucket.\n\n    Classes come from ``config.economy["classes"]`` (``DEFAULT_CLASSES`` when\n    empty); each class matches by Status-badge token (``badges``, scanned from\n    a doc\'s first 12 lines with the check_docs regex convention) and/or by\n    root-relative ``globs``. The first matching class wins. Docs under the\n    docs root that match no class AND carry no badge land in ``"_unbadged"``.\n    """\n    docs = _eco_md_files(root / config.docs_root)\n    buckets: dict[str, list[Path]] = {}\n    assigned: set[Path] = set()\n    for cls in _eco_classes(config):\n        matched: set[Path] = set()\n        for pattern in cls.get("globs", []):\n            expanded = _eco_expand(str(pattern), config)\n            matched.update(p for p in root.glob(expanded) if p.is_file())\n        badges = set(cls.get("badges", []))\n        if badges:\n            matched.update(f for f in docs if _eco_badge_token(f) in badges)\n        fresh = sorted(p for p in matched if p.resolve() not in assigned)\n        assigned.update(p.resolve() for p in fresh)\n        buckets[cls["name"]] = fresh\n    buckets["_unbadged"] = [\n        f for f in docs if f.resolve() not in assigned and _eco_badge_token(f) is None\n    ]\n    return buckets\n\n\ndef _eco_word_cap_value(root: Path, config: Config, gauge: dict) -> int:\n    """Return a word_cap gauge\'s value: one file\'s words, or a dir\'s summed."""\n    target = root / _eco_expand(str(gauge.get("path", "")), config)\n    if target.is_dir():\n        return sum(_eco_wc(f) for f in sorted(target.rglob("*.md")))\n    if target.is_file():\n        return _eco_wc(target)\n    return 0\n\n\ndef _eco_count_cap_value(root: Path, config: Config, gauge: dict) -> int:\n    """Return a count_cap gauge\'s value: file count under its glob."""\n    pattern = _eco_expand(str(gauge.get("glob", "")), config)\n    if not pattern:\n        return 0\n    return sum(1 for p in root.glob(pattern) if p.is_file())\n\n\ndef _eco_route_budget(root: Path, config: Config) -> tuple[int, int]:\n    """Return (value, cap) for the boot-route word budget.\n\n    Value sums word counts over the boot set resolved by the orientation\n    checker\'s own ``_ob_boot_paths`` (ONE resolver for both consumers — the\n    gauge once resolved everything under docs_root and undercounted\n    root-level boot docs to 0); cap is ``orientation["budget_words"]``.\n    """\n    value = sum(_eco_wc(path) for path in _ob_boot_paths(root, config))\n    cap = int(config.orientation.get("budget_words", 7000))\n    return value, cap\n\n\ndef economy_gauges(root: Path, config: Config) -> list[dict]:\n    """Evaluate the configured gauges (word_cap / count_cap / route_budget).\n\n    When ``config.economy["gauges"]`` is empty, falls back to one\n    ``route_budget`` gauge derived from ``config.orientation``. Unknown kinds\n    are skipped. Each result is ``{"name", "kind", "value", "cap", "over"}``.\n    """\n    gauges = list(config.economy.get("gauges") or [])\n    if not gauges:\n        gauges = [{"name": "route_budget", "kind": "route_budget"}]\n    results: list[dict] = []\n    for gauge in gauges:\n        kind = str(gauge.get("kind", ""))\n        cap = int(gauge.get("cap") or 0)\n        if kind == "word_cap":\n            value = _eco_word_cap_value(root, config, gauge)\n        elif kind == "count_cap":\n            value = _eco_count_cap_value(root, config, gauge)\n        elif kind == "route_budget":\n            value, default_cap = _eco_route_budget(root, config)\n            cap = int(gauge.get("cap") or default_cap)\n        else:\n            continue\n        results.append(\n            {\n                "name": str(gauge.get("name", kind)),\n                "kind": kind,\n                "value": value,\n                "cap": cap,\n                "over": value > cap,\n            },\n        )\n    return results\n\n\ndef _eco_scan_files(root: Path, config: Config) -> list[Path]:\n    """Return the reference-scan set: docs-root ``*.md`` + reference roots."""\n    files: set[Path] = set(_eco_md_files(root / config.docs_root))\n    for pattern in config.economy.get("reference_roots", []):\n        expanded = _eco_expand(str(pattern), config)\n        for hit in root.glob(expanded):\n            if hit.is_file():\n                files.add(hit)\n            elif hit.is_dir():\n                files.update(p for p in hit.rglob("*") if p.is_file())\n    return sorted(files)\n\n\ndef inbound_references(\n    root: Path,\n    config: Config,\n    targets: list[Path],\n    exclude: dict[str, set[str]] | None = None,\n) -> dict[str, list[str]]:\n    """Map each target to the files that cite it (plain-text scan, stdlib).\n\n    A scanner file cites a target when it contains (a) an id-pattern token\n    (``config.economy["id_patterns"]``) drawn from the target\'s filename, or\n    (b) the target\'s filename stem. Scans every ``*.md`` under the docs root\n    plus every text file under each ``economy["reference_roots"]`` glob; a\n    file never counts as citing itself. ``exclude`` maps a target *stem* to\n    resolved scanner paths that must not count as citations — the pass record\n    whose harvest table licenses a slug\'s deletion would otherwise hold every\n    harvested file forever (the triple filter became unsatisfiable).\n    """\n    exclude = exclude or {}\n    patterns = [re.compile(p) for p in config.economy.get("id_patterns", [])]\n    scanners: list[tuple[Path, str]] = []\n    for f in _eco_scan_files(root, config):\n        text = _eco_read_text(f)\n        if text is not None:\n            scanners.append((f, text))\n    refs: dict[str, list[str]] = {}\n    for target in targets:\n        ids = {m for pat in patterns for m in pat.findall(target.name)}\n        needles = ids | {target.stem}\n        excluded = exclude.get(target.stem, set())\n        citing = {\n            _eco_rel(f, root)\n            for f, text in scanners\n            if f.resolve() != target.resolve()\n            and f.resolve().as_posix() not in excluded\n            and any(needle in text for needle in needles)\n        }\n        refs[_eco_rel(target, root)] = sorted(citing)\n    return refs\n\n\ndef _eco_expired(path: Path, window_days: Any) -> tuple[bool, int]:\n    """Return (past-window?, age-in-days) for ``path`` (mtime-based)."""\n    if window_days is None:\n        return False, 0\n    age = (time.time() - path.stat().st_mtime) / _ECO_SECONDS_PER_DAY\n    return age > float(window_days), int(age)\n\n\ndef _eco_delete_row(\n    rel: str,\n    cls: dict,\n    *,\n    expired: bool,\n    in_harvest: bool,\n    n_refs: int,\n) -> dict:\n    """Build one delete would-act row carrying the TRIPLE FILTER verdict."""\n    blockers: list[str] = []\n    if not in_harvest:\n        blockers.append("not harvested")\n    if n_refs:\n        blockers.append(f"inbound refs: {n_refs}")\n    if not expired:\n        blockers.append("window not reached")\n    return {\n        "path": rel,\n        "action": "delete",\n        "reason": f"class \'{cls[\'name\']}\' ({cls.get(\'window_days\')}d window)",\n        "eligible": not blockers,\n        "blockers": blockers,\n        "class": cls["name"],\n    }\n\n\ndef _eco_archive_row(rel: str, cls: dict, *, expired: bool) -> dict:\n    """Build one archive would-act row (window is the only gate)."""\n    return {\n        "path": rel,\n        "action": "archive",\n        "reason": f"class \'{cls[\'name\']}\' ({cls.get(\'window_days\')}d window)",\n        "eligible": expired,\n        "blockers": [] if expired else ["window not reached"],\n        "class": cls["name"],\n    }\n\n\ndef _eco_class_files(classes: list[dict], buckets: dict[str, list[Path]]) -> list:\n    """Return (class, file) pairs over every classified file, class order."""\n    return [(cls, f) for cls in classes for f in buckets.get(cls["name"], [])]\n\n\ndef _eco_class_rows(\n    root: Path,\n    classes: list[dict],\n    buckets: dict[str, list[Path]],\n    harvested: set[str],\n    refs: dict[str, list[str]],\n) -> tuple[list[dict], list[EconomyFinding], int]:\n    """Return (would-act rows, expired/delete_with_refs findings, debt)."""\n    rows: list[dict] = []\n    findings: list[EconomyFinding] = []\n    debt = 0\n    for cls, f in _eco_class_files(classes, buckets):\n        expired, age = _eco_expired(f, cls.get("window_days"))\n        rel = _eco_rel(f, root)\n        if expired:\n            debt += 1\n            message = (\n                f"{age}d old exceeds the {cls.get(\'window_days\')}d "\n                f"\'{cls[\'name\']}\' window"\n            )\n            findings.append(EconomyFinding(rel, "expired", message))\n        mode = cls.get("mode")\n        if mode == "delete_tomb":\n            n_refs = len(refs.get(rel, []))\n            in_harvest = f.stem in harvested\n            rows.append(\n                _eco_delete_row(\n                    rel,\n                    cls,\n                    expired=expired,\n                    in_harvest=in_harvest,\n                    n_refs=n_refs,\n                ),\n            )\n            if expired and n_refs:\n                message = f"expired but still cited by {n_refs} file(s)"\n                findings.append(EconomyFinding(rel, "delete_with_refs", message))\n        elif mode == "archive":\n            rows.append(_eco_archive_row(rel, cls, expired=expired))\n    return rows, findings, debt\n\n\ndef _eco_base_findings(\n    root: Path,\n    buckets: dict[str, list[Path]],\n    gauges: list[dict],\n) -> list[EconomyFinding]:\n    """Return the unbadged + over_cap findings."""\n    findings = [\n        EconomyFinding(\n            _eco_rel(f, root),\n            "unbadged",\n            "no Status badge and no economy class",\n        )\n        for f in buckets.get("_unbadged", [])\n    ]\n    findings += [\n        EconomyFinding(\n            g["name"],\n            "over_cap",\n            f"gauge \'{g[\'name\']}\' at {g[\'value\']} words/files vs cap {g[\'cap\']}",\n        )\n        for g in gauges\n        if g["over"]\n    ]\n    return findings\n\n\ndef economy_check(\n    root: Path,\n    config: Config,\n    *,\n    harvested: set[str] | None = None,\n    harvest_exclude: dict[str, set[str]] | None = None,\n) -> dict:\n    """Run the full economy pass: census, gauges, findings, debt, would-act.\n\n    Findings: ``unbadged`` (doc with no badge and no class), ``over_cap`` (a\n    gauge over its cap), ``expired`` (file past its class window — the kit\n    supports **day** windows only; "bands" are a host cadence unit, not a kit\n    unit), and ``delete_with_refs`` (an expired delete-class file still\n    cited). ``debt`` counts expired files. ``would_act`` delete rows carry the\n    TRIPLE FILTER: eligible only when the file\'s stem (slug) is in\n    ``harvested`` AND it is past its window AND it has zero inbound refs;\n    blockers are the explicit strings ``"not harvested"`` /\n    ``"inbound refs: N"`` / ``"window not reached"``.\n    """\n    harvested = set(harvested or set())\n    classes = _eco_classes(config)\n    buckets = classify_docs(root, config)\n    census = {\n        name: {"files": len(files), "words": sum(_eco_wc(f) for f in files)}\n        for name, files in buckets.items()\n    }\n    gauges = economy_gauges(root, config)\n    delete_targets = [\n        f\n        for cls in classes\n        if cls.get("mode") == "delete_tomb"\n        for f in buckets.get(cls["name"], [])\n    ]\n    refs = (\n        inbound_references(root, config, delete_targets, harvest_exclude)\n        if delete_targets\n        else {}\n    )\n    rows, class_findings, debt = _eco_class_rows(\n        root,\n        classes,\n        buckets,\n        harvested,\n        refs,\n    )\n    findings = _eco_base_findings(root, buckets, gauges) + class_findings\n    return {\n        "census": census,\n        "gauges": gauges,\n        "findings": findings,\n        "debt": debt,\n        "would_act": rows,\n    }\n\n\ndef tombstone_line(path: Path, summary: str) -> str:\n    """Render one ~20-word tombstone: ``slug - date - last path - what-it-was``."""\n    short = " ".join(summary.split()[:12])\n    return f"- {path.stem} - {date.today().isoformat()} - {path.as_posix()} - {short}"\n\n\ndef _eco_doc_summary(path: Path) -> str:\n    """Return a short what-it-was summary: first heading or non-blank line."""\n    text = _eco_read_text(path) or ""\n    lines = [line.strip() for line in text.splitlines() if line.strip()]\n    for line in lines:\n        if line.startswith("#"):\n            return line.lstrip("#").strip()\n    return lines[0] if lines else "(empty file)"\n\n\ndef _eco_tombstone_shard(\n    root: Path,\n    config: Config,\n    cls: dict,\n    rel_path: Path,\n) -> Path:\n    """Return the per-band tombstone shard path for one deleted file\'s class."""\n    tomb = cls.get("tombstone_dir")\n    if tomb:\n        tomb_dir = root / _eco_expand(str(tomb), config)\n    else:\n        tomb_dir = root / rel_path.parent / "pruned"\n    return tomb_dir / f"band-{date.today().strftime(\'%Y%m\')}.md"\n\n\ndef _eco_append_tombstone(shard: Path, line: str) -> None:\n    """Append one tombstone line to the shard (create with banner if absent).\n\n    Read-modify-write through ``atomic_write_text`` so a crash mid-append can\n    never leave a truncated shard.\n    """\n    if shard.exists():\n        text = shard.read_text(encoding="utf-8")\n        if not text.endswith("\\n"):\n            text += "\\n"\n    else:\n        today = date.today()\n        text = (\n            f"# Tombstones — band {today.strftime(\'%Y%m\')}\\n\\n"\n            "> **Status:** `archive`\\n\\n"\n            f"> Pruned by the context-economy actuator; created "\n            f"{today.isoformat()}. One line per deleted file: "\n            "slug - date - last path - what-it-was.\\n\\n"\n        )\n    atomic_write_text(shard, text + line + "\\n")\n\n\ndef _eco_dry_line(row: dict) -> str:\n    """Render one would-act row as a dry-run report line."""\n    if row.get("eligible"):\n        return f"would {row[\'action\']} {row[\'path\']} ({row[\'reason\']})"\n    return f"hold {row[\'path\']}: " + "; ".join(row.get("blockers", []))\n\n\ndef _eco_apply_rows(root: Path, config: Config, rows: list[dict]) -> list[str]:\n    """Delete eligible delete rows, tombstoning each; archive rows advisory."""\n    class_by_name = {c["name"]: c for c in _eco_classes(config)}\n    lines: list[str] = []\n    for row in rows:\n        if not row.get("eligible"):\n            lines.append(_eco_dry_line(row))\n            continue\n        if row.get("action") != "delete":\n            lines.append(\n                f"advisory: {row[\'action\']} {row[\'path\']} is a host action — "\n                "the kit never moves files",\n            )\n            continue\n        path = root / row["path"]\n        if not path.is_file():\n            lines.append(f"skipped {row[\'path\']}: file no longer exists")\n            continue\n        cls = class_by_name.get(str(row.get("class", "")), {})\n        shard = _eco_tombstone_shard(root, config, cls, Path(row["path"]))\n        summary = _eco_doc_summary(path)\n        _eco_append_tombstone(shard, tombstone_line(Path(row["path"]), summary))\n        path.unlink()\n        lines.append(f"deleted {row[\'path\']} -> tombstone {_eco_rel(shard, root)}")\n    return lines\n\n\ndef economy_actuate(\n    root: Path,\n    config: Config,\n    report: dict,\n    *,\n    apply: bool = False,\n    acknowledged: bool = False,\n) -> list[str]:\n    """Apply (or dry-run) the would-act plan from ``economy_check``.\n\n    Dry-run (the default) returns the would-act lines without touching\n    anything. ``apply=True`` acts only under the maturity ALLOWLIST:\n    ``"normal"`` applies, ``"gated"`` applies only with\n    ``acknowledged=True`` (the CE-14 first-prune human-review tier), and\n    anything else — including ``"shadow"`` and any typo — refuses outright.\n    The lock is acquired atomically (``O_CREAT|O_EXCL``); a pre-existing lock\n    refuses (another actuation in flight) and is left in place. It then\n    deletes ONLY eligible delete rows (one tombstone line per deletion,\n    appended to the class\'s ``<tombstone_dir>/band-<YYYYMM>.md`` shard),\n    removes its own lock in a ``finally`` block, and returns the action\n    lines. Archive rows are advisory — the kit never moves files.\n    """\n    if not apply:\n        return [_eco_dry_line(row) for row in report.get("would_act", [])]\n    maturity = str(config.economy.get("maturity", "shadow")).strip().lower()\n    if maturity not in ("gated", "normal"):\n        # Allowlist, not a blocklist: a typo\'d maturity ("Shadow", "shadoww")\n        # must refuse, never silently apply — deletion is the one place the\n        # kit\'s fail-open posture inverts to fail-closed.\n        return [\n            f"refused: economy maturity {maturity!r} does not permit apply "\n            "(allowed: \'gated\' with --reviewed, \'normal\') — nothing changed",\n        ]\n    if maturity == "gated" and not acknowledged:\n        return [\n            "refused: economy maturity is \'gated\' — the first executing prune "\n            "needs an explicit human review acknowledgment (pass --reviewed); "\n            "promote maturity to \'normal\' once the first prune has been "\n            "reviewed — nothing changed",\n        ]\n    lock = root / config.state_dir / "economy.lock"\n    lock.parent.mkdir(parents=True, exist_ok=True)\n    try:\n        # O_CREAT|O_EXCL: atomic acquire — check-then-create raced, and two\n        # concurrent actuations could clobber a tombstone shard.\n        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)\n    except FileExistsError:\n        return [\n            f"refused: {config.state_dir}/economy.lock exists — another "\n            "actuation may be in flight; nothing changed",\n        ]\n    try:\n        with os.fdopen(fd, "w", encoding="utf-8") as handle:\n            handle.write(f"locked {date.today().isoformat()}\\n")\n        return _eco_apply_rows(root, config, report.get("would_act", []))\n    finally:\n        lock.unlink(missing_ok=True)\n\n\ndef issue_body(report: dict) -> str:\n    """Render the retention-debt routine issue body (markdown).\n\n    Census table + debt count + the top would-act rows (eligible first) — the\n    ``--issue-body`` emit the debt-threshold routine posts.\n    """\n    lines = [\n        "## Context-economy retention debt",\n        "",\n        f"**Debt (expired files): {report.get(\'debt\', 0)}**",\n        "",\n        "### Census",\n        "",\n        "| class | files | words |",\n        "| --- | --- | --- |",\n    ]\n    for name, row in sorted(report.get("census", {}).items()):\n        lines.append(f"| {name} | {row[\'files\']} | {row[\'words\']} |")\n    top = sorted(report.get("would_act", []), key=lambda r: not r.get("eligible"))\n    if top:\n        lines += ["", "### Top would-act rows", ""]\n        lines += [f"- {_eco_dry_line(row)}" for row in top[:10]]\n    return "\\n".join(lines) + "\\n"\n',
-    'engine/economy/harvest.py': '"""Harvest-table parsing + stub rendering (plan §5.B, Lane B4).\n\nThe harvest table is the delete-side safety input of the TRIPLE FILTER: a\npass record commits what it *harvested* from the files it reviewed into a\nmarkdown table under a heading containing "harvest". ``parse_harvest_tables``\nrecovers the committed slugs (a file is delete-eligible only once its slug\nappears here); ``harvest_table_stub`` renders the kit-defined row format,\nwhich round-trips through the parser. Pure stdlib; returns data / text.\n"""\n\nfrom __future__ import annotations\n\nimport re\nfrom pathlib import Path\n\n_HRV_HEADING_RE = re.compile(r"^#{1,6}\\s")\n# A table separator row: only pipes, dashes, colons, and whitespace.\n_HRV_SEPARATOR_RE = re.compile(r"^\\|[\\s:|-]+\\|?$")\n\n_HRV_HEADER_ROW = "| slug | status/PR | ⚑ flags | 💡 ideas | 📊 telemetry |"\n_HRV_SEPARATOR_ROW = "| --- | --- | --- | --- | --- |"\n\n\ndef _hrv_first_cell(line: str) -> str | None:\n    """Return a table row\'s first-column cell (None when empty)."""\n    cells = [c.strip() for c in line.strip().strip("|").split("|")]\n    if not cells:\n        return None\n    cell = cells[0].strip("`* ")\n    return cell or None\n\n\ndef _hrv_slugs_from_text(text: str) -> set[str]:\n    """Collect first-column data cells from tables under harvest headings.\n\n    A "harvest heading" is any markdown heading containing ``harvest``\n    (case-insensitive). Within such a section, each contiguous run of ``|``\n    lines is one table: its first row is the header (skipped), separator rows\n    are skipped, every other row contributes its first cell. Surrounding\n    prose is tolerated.\n    """\n    slugs: set[str] = set()\n    in_harvest = False\n    in_table = False\n    table_is_harvest = False\n    for line in text.splitlines():\n        if _HRV_HEADING_RE.match(line):\n            in_harvest = "harvest" in line.lower()\n            in_table = False\n            continue\n        if not in_harvest or not line.lstrip().startswith("|"):\n            in_table = False\n            continue\n        if not in_table:\n            # First row of a new table = header. Only a table whose FIRST\n            # header cell is "slug" is a harvest table — an inventory or\n            # pending table under a "Harvest backlog" heading must never mark\n            # files as harvested (that is a deletion license).\n            in_table = True\n            header = (_hrv_first_cell(line) or "").lower()\n            table_is_harvest = header == "slug"\n            continue\n        if not table_is_harvest or _HRV_SEPARATOR_RE.match(line.strip()):\n            continue\n        cell = _hrv_first_cell(line)\n        if cell:\n            slugs.add(cell)\n    return slugs\n\n\ndef parse_harvest_tables(pass_records_dir: Path) -> set[str]:\n    """Return every harvested slug committed in the pass-record tables.\n\n    Scans ``*.md`` under ``pass_records_dir`` for markdown tables sitting\n    under any heading containing ``"harvest"`` (case-insensitive) and\n    collects the first-column cell of each data row (header + separator rows\n    skipped). Tolerant of surrounding prose; empty set when the directory is\n    absent.\n    """\n    if not pass_records_dir.is_dir():\n        return set()\n    slugs: set[str] = set()\n    for f in sorted(pass_records_dir.glob("*.md")):\n        try:\n            text = f.read_text(encoding="utf-8")\n        except (OSError, UnicodeDecodeError):\n            continue\n        slugs |= _hrv_slugs_from_text(text)\n    return slugs\n\n\ndef harvest_table_stub(entries: list[dict]) -> str:\n    """Render the kit-defined harvest table for ``entries``.\n\n    Columns: ``slug | status/PR | ⚑ flags | 💡 ideas | 📊 telemetry``. Each\n    entry supplies ``slug`` (required) plus optional ``status`` / ``flags`` /\n    ``ideas`` / ``telemetry``. The output includes the ``## Harvest`` heading\n    so it round-trips through ``parse_harvest_tables`` unchanged.\n    """\n    lines = ["## Harvest", "", _HRV_HEADER_ROW, _HRV_SEPARATOR_ROW]\n    for entry in entries:\n        lines.append(\n            "| {slug} | {status} | {flags} | {ideas} | {telemetry} |".format(\n                slug=entry.get("slug", ""),\n                status=entry.get("status", "—"),\n                flags=entry.get("flags", "—"),\n                ideas=entry.get("ideas", "—"),\n                telemetry=entry.get("telemetry", "—"),\n            ),\n        )\n    return "\\n".join(lines) + "\\n"\n\n\ndef harvest_sources(pass_records_dir: Path) -> dict[str, set[str]]:\n    """Map each harvested slug to the pass-record files that harvested it.\n\n    The harvest table row is the *deletion license* for its slug — the pass\n    record naming a slug must not count as an inbound reference to it, or the\n    triple filter becomes unsatisfiable (every harvested file is "referenced"\n    by its own harvest record).\n    """\n    sources: dict[str, set[str]] = {}\n    if not pass_records_dir.is_dir():\n        return sources\n    for record in sorted(pass_records_dir.glob("*.md")):\n        try:\n            text = record.read_text(encoding="utf-8")\n        except (OSError, UnicodeDecodeError):\n            continue\n        for slug in _hrv_slugs_from_text(text):\n            sources.setdefault(slug, set()).add(record.resolve().as_posix())\n    return sources\n',
-    'engine/economy/simulator.py': '"""Retention-policy simulator for the context economy (plan §5.B, Lane B5).\n\nA generalized port of superbot\'s ``tools/sim/retention_policy_sim.py``\n(sim-driven design applied to the memory system itself). It models a docs\ncorpus growing over sessions, agents reading it (boot route, grep discovery,\ndirectory scans, back-references into pruned content, stale encounters), and a\ncandidate retention policy acting on it. The grid search scores each candidate\non expected agent context cost (words per session) under a hard feasibility\nconstraint (retrieval-miss risk), with a secondary lean-by-construction\nobjective (smallest tree at horizon among near-best feasible policies) and a\n×1/3–×3 sensitivity sweep over the assumption-grade constants.\n\nThe kit ships the SEARCH, not any project\'s constants: every number returned\nby ``default_calibration()`` is an UNVERIFIED illustrative placeholder. Run\n``calibration_recipe()`` for the measurement plan, replace the numbers with\nyour repo\'s, then re-run ``run_search``.\n\nCalibration shape (one plain dict; all costs are words unless noted)::\n\n    {\n      # velocity\n      "sessions_per_band": 20.0,     # sessions per reconciliation band\n      "words_per_token": 0.75,       # for the tokens-saved line in why-it-won\n      "initial_age_bands": 12,       # today\'s stock spread uniformly this deep\n      # living-file stocks and boot route\n      "live_files": 100.0,           # living/working docs (non-terminal)\n      "live_words": 150000.0,\n      "boot_fixed_words": 6000.0,    # always-read orientation route\n      "journal_words": 4000.0,       # cappable process-memory journal\n      "journal_caps": [1000000, 2000],   # grid toggle: uncapped vs capped\n      "ledger_base_words": 1500.0,   # living ledger lean head\n      "ledger_tail_per_band": 300.0, # narrative accretion per band if untrimmed\n      "ledger_tail_bands_initial": 6,\n      "ledger_tail_compressed_bands": 2,\n      "index_active_line_words": 20.0,\n      "index_hist_line_words": 18.0,\n      "tombstone_words": 20.0,       # one tombstone index line\n      # discovery tax\n      "greps_per_session": 8.0,\n      "grep_hits_per_1k_files": 50.0,\n      "skim_words_per_hit": 12.0,    # path skim in -l output\n      "open_frac_per_hit": 0.10,     # fraction opened before badge-bail\n      "open_words_per_hit": 200.0,\n      "archive_pollution_w_per_mw": 25.0,  # content-grep noise per Mw archived\n      "maintenance_w_per_mw": 8.0,   # sweep/link-check burden per Mw in tree\n      "ls_scan_words_per_file": 5.0,\n      "ls_scans_per_session": 2.0,\n      # back-references into terminal content\n      "backref_halflife_bands": 3.0, # demand decays with age (exponential)\n      "tombstone_hop_words": 300.0,  # tombstone -> history-recovery effort\n      "bare_rederive_words": 3000.0, # no pointer: re-derive / re-decide\n      "bare_find_fail": 0.5,         # P(recovery fails without a tombstone)\n      # staleness (assumption-grade; sweep it)\n      "stale_act_base": 0.01,        # P/session of acting on stale content\n      "stale_act_cost": 10000.0,\n      # feasibility + search knobs\n      "miss_per_band_max": 0.005,    # hard constraint on retrieval-miss risk\n      "near_best_frac": 0.05,        # secondary-objective envelope\n      "grid_scale": 1,               # widening knob: N multiplies each class\'s\n                                     # candidate windows by 1..N (bigger grid)\n      "sensitivity_multipliers": [1/3, 3],\n      "sensitivity_keys": ["stale_act_base", "classes.sessions.backref_rate"],\n      # document classes (per-class mode × window searched per declarations)\n      "classes": [\n        {\n          "name": "sessions",\n          "birth_rate": 1.0,         # new files per session\n          "words_each": 700.0,\n          "initial_files": 240.0,\n          "cited_frac": 0.05,        # inbound-live-reference blocking fraction\n          "cascade_unlock_frac": 0.0,  # share of cited_frac released when the\n                                       # living tails compress (ledger cascade)\n          "backref_rate": 0.05,      # back-reference demand per session\n          "tombstone_lines_each": 0.0,  # index lines left per deleted doc\n          "indexed": False,          # hist files add boot-index lines\n          "active_pool": None,       # or {"initial": F, "lifetime_bands": B}\n                                     # for classes born active, then terminal\n          "modes": ["keep", "archive", "delete_tomb", "delete_bare"],\n          "windows": [1, 2, 4],      # candidate windows, in bands\n        },\n        ...\n      ],\n    }\n\nPolicy shape (``policy_grid`` builds these; you can hand-craft one too)::\n\n    {"name": str,   # optional on hand-crafted policies; derived when absent\n     "classes": {<class name>: {"mode": <RETENTION_MODES member>, "window": int}},\n     "ledger_compress": bool, "journal_cap": float,\n     "index_hist_tombstones": bool}\n\nPure stdlib, deterministic per seed (``random.Random`` instances only, no\nrandomness at import), no I/O, never prints — the CLI wires presentation.\n"""\n\nfrom __future__ import annotations\n\nimport copy\nimport itertools\nimport random\nfrom typing import Any\n\nRETENTION_MODES: tuple[str, ...] = ("keep", "archive", "delete_tomb", "delete_bare")\n\n\ndef default_calibration() -> dict[str, Any]:\n    """Return a neutral, illustrative calibration — every value UNVERIFIED.\n\n    These numbers exist so the search runs out of the box and the shape is\n    executable documentation; they are NOT measurements of any repo. Follow\n    ``calibration_recipe()`` to measure your own corpus before trusting a\n    winner. The default grid is deliberately small (a few seconds end to end);\n    raise ``grid_scale`` to widen the candidate windows.\n    """\n    return {\n        "sessions_per_band": 20.0,\n        "words_per_token": 0.75,\n        "initial_age_bands": 12,\n        "live_files": 100.0,\n        "live_words": 150000.0,\n        "boot_fixed_words": 6000.0,\n        "journal_words": 4000.0,\n        "journal_caps": [1000000, 2000],\n        "ledger_base_words": 1500.0,\n        "ledger_tail_per_band": 300.0,\n        "ledger_tail_bands_initial": 6,\n        "ledger_tail_compressed_bands": 2,\n        "index_active_line_words": 20.0,\n        "index_hist_line_words": 18.0,\n        "tombstone_words": 20.0,\n        "greps_per_session": 8.0,\n        "grep_hits_per_1k_files": 50.0,\n        "skim_words_per_hit": 12.0,\n        "open_frac_per_hit": 0.10,\n        "open_words_per_hit": 200.0,\n        "archive_pollution_w_per_mw": 25.0,\n        "maintenance_w_per_mw": 8.0,\n        "ls_scan_words_per_file": 5.0,\n        "ls_scans_per_session": 2.0,\n        "backref_halflife_bands": 3.0,\n        "tombstone_hop_words": 300.0,\n        "bare_rederive_words": 3000.0,\n        "bare_find_fail": 0.5,\n        "stale_act_base": 0.01,\n        "stale_act_cost": 10000.0,\n        "miss_per_band_max": 0.005,\n        "near_best_frac": 0.05,\n        "grid_scale": 1,\n        "sensitivity_multipliers": [1 / 3, 3],\n        "sensitivity_keys": [\n            "stale_act_base",\n            "grep_hits_per_1k_files",\n            "maintenance_w_per_mw",\n            "archive_pollution_w_per_mw",\n            "classes.sessions.backref_rate",\n            "classes.plans.backref_rate",\n        ],\n        "classes": [\n            {\n                "name": "sessions",\n                "birth_rate": 1.0,\n                "words_each": 700.0,\n                "initial_files": 240.0,\n                "cited_frac": 0.05,\n                "cascade_unlock_frac": 0.0,\n                "backref_rate": 0.05,\n                "tombstone_lines_each": 0.0,\n                "indexed": False,\n                "active_pool": None,\n                "modes": ["keep", "archive", "delete_tomb", "delete_bare"],\n                "windows": [1, 2, 4],\n            },\n            {\n                "name": "plans",\n                "birth_rate": 0.25,\n                "words_each": 2500.0,\n                "initial_files": 60.0,\n                "cited_frac": 0.90,\n                "cascade_unlock_frac": 0.85,\n                "backref_rate": 0.20,\n                "tombstone_lines_each": 1.0,\n                "indexed": True,\n                "active_pool": {"initial": 40.0, "lifetime_bands": 4.0},\n                "modes": ["keep", "archive", "delete_tomb"],\n                "windows": [2, 4],\n            },\n            {\n                "name": "notes",\n                "birth_rate": 0.20,\n                "words_each": 800.0,\n                "initial_files": 40.0,\n                "cited_frac": 0.10,\n                "cascade_unlock_frac": 0.0,\n                "backref_rate": 0.02,\n                "tombstone_lines_each": 1.0,\n                "indexed": False,\n                "active_pool": None,\n                "modes": ["delete_tomb"],\n                "windows": [4],\n            },\n        ],\n    }\n\n\n# ---------------------------------------------------------------------------\n# Policy space\n# ---------------------------------------------------------------------------\n\n\ndef _sim_policy_name(policy: dict[str, Any]) -> str:\n    """Render the deterministic display name for one policy dict."""\n    parts = [\n        f"{name}={spec[\'mode\']}@{spec[\'window\']}b"\n        for name, spec in sorted(policy["classes"].items())\n    ]\n    parts.append(f"ledger={\'compress\' if policy[\'ledger_compress\'] else \'grow\'}")\n    parts.append(f"journal<={policy[\'journal_cap\']:g}")\n    parts.append(f"idx={\'tomb\' if policy[\'index_hist_tombstones\'] else \'full\'}")\n    return " ".join(parts)\n\n\ndef _sim_class_candidates(\n    cls_cal: dict[str, Any],\n    grid_scale: int,\n) -> list[tuple[str, int]]:\n    """Return the (mode, window) candidates one class declaration allows.\n\n    ``keep`` collapses to a single ``(keep, 0)`` candidate (its window is\n    meaningless); ``grid_scale`` N widens each declared window by factors\n    1..N, deduplicated and sorted, so hosts can search deeper without editing\n    the class declarations.\n    """\n    windows = sorted(\n        {\n            int(w) * f\n            for w in cls_cal["windows"]\n            for f in range(1, max(grid_scale, 1) + 1)\n        },\n    )\n    candidates: list[tuple[str, int]] = []\n    for mode in cls_cal["modes"]:\n        if mode == "keep":\n            candidates.append(("keep", 0))\n        else:\n            candidates.extend((mode, w) for w in windows)\n    return candidates\n\n\ndef policy_grid(calibration: dict[str, Any]) -> list[dict[str, Any]]:\n    """Build the candidate-policy grid from the calibration\'s class declarations.\n\n    The grid is the cartesian product of every class\'s ``modes`` × ``windows``\n    (widened by ``grid_scale``), crossed with the living-file toggles: ledger\n    compression on/off and each ``journal_caps`` value. Historical index lines\n    are always tombstone-compressed in generated candidates (the status-quo\n    baseline inside ``run_search`` covers the full-line alternative).\n    """\n    grid_scale = int(calibration.get("grid_scale", 1))\n    class_names = [c["name"] for c in calibration["classes"]]\n    per_class = [_sim_class_candidates(c, grid_scale) for c in calibration["classes"]]\n    journal_caps = calibration.get("journal_caps", [10**9])\n    policies: list[dict[str, Any]] = []\n    for combo in itertools.product(*per_class):\n        for ledger_compress, journal_cap in itertools.product(\n            (True, False),\n            journal_caps,\n        ):\n            policy: dict[str, Any] = {\n                "classes": {\n                    name: {"mode": mode, "window": window}\n                    for name, (mode, window) in zip(class_names, combo, strict=True)\n                },\n                "ledger_compress": ledger_compress,\n                "journal_cap": float(journal_cap),\n                "index_hist_tombstones": True,\n            }\n            policy["name"] = _sim_policy_name(policy)\n            policies.append(policy)\n    return policies\n\n\ndef _sim_status_quo(calibration: dict[str, Any]) -> dict[str, Any]:\n    """Return the keep-everything baseline policy for this calibration."""\n    policy: dict[str, Any] = {\n        "classes": {\n            c["name"]: {"mode": "keep", "window": 0} for c in calibration["classes"]\n        },\n        "ledger_compress": False,\n        "journal_cap": float(10**9),\n        "index_hist_tombstones": False,\n    }\n    policy["name"] = _sim_policy_name(policy)\n    return policy\n\n\n# ---------------------------------------------------------------------------\n# Corpus state: per class, bucketed by age-in-bands since terminal\n# ---------------------------------------------------------------------------\n\n\ndef _sim_initial_state(calibration: dict[str, Any]) -> dict[str, Any]:\n    """Build the initial corpus state from the calibration\'s stocks.\n\n    Each class\'s initial terminal stock is spread uniformly over\n    ``initial_age_bands`` age buckets (bucket index = bands since the file\n    went terminal); classes with an ``active_pool`` start with its declared\n    active count.\n    """\n    age_bands = max(int(calibration.get("initial_age_bands", 12)), 1)\n    classes: dict[str, dict[str, Any]] = {}\n    for cls in calibration["classes"]:\n        pool = cls.get("active_pool") or {}\n        classes[cls["name"]] = {\n            "buckets": [float(cls.get("initial_files", 0.0)) / age_bands] * age_bands,\n            "active": float(pool.get("initial", 0.0)),\n        }\n    return {\n        "classes": classes,\n        "archived_words": 0.0,\n        "tombstone_lines": 0.0,\n        "ledger_tail_bands": float(calibration.get("ledger_tail_bands_initial", 0)),\n    }\n\n\ndef _sim_age_out(buckets: list[float], window: int, keep_frac: float) -> float:\n    """Prune buckets older than ``window`` in place; return files removed.\n\n    ``keep_frac`` is the citation-locked fraction that stays in place (still\n    referenced by living docs, so not yet removable).\n    """\n    removed = 0.0\n    for i in range(len(buckets)):\n        if i >= window and buckets[i] > 0:\n            hold = buckets[i] * keep_frac\n            removed += buckets[i] - hold\n            buckets[i] = hold\n    return removed\n\n\ndef _sim_grow(\n    state: dict[str, Any],\n    calibration: dict[str, Any],\n    rng: random.Random,\n) -> None:\n    """Advance one band of corpus growth (births, completions, tail accretion).\n\n    Births carry a small deterministic-per-seed jitter (±10%) so the seed is\n    load-bearing; the draw count per band is policy-independent, which keeps\n    same-seed policy comparisons exact.\n    """\n    n_sessions = float(calibration["sessions_per_band"])\n    for cls in calibration["classes"]:\n        cs = state["classes"][cls["name"]]\n        births = float(cls["birth_rate"]) * n_sessions * (0.9 + 0.2 * rng.random())\n        pool = cls.get("active_pool")\n        if pool:\n            lifetime = max(float(pool.get("lifetime_bands", 1.0)), 1.0)\n            completions = cs["active"] / lifetime\n            cs["active"] += births - completions\n            cs["buckets"].insert(0, completions)\n        else:\n            cs["buckets"].insert(0, births)\n\n\ndef _sim_prune(\n    state: dict[str, Any],\n    policy: dict[str, Any],\n    calibration: dict[str, Any],\n) -> None:\n    """Apply one band of the policy\'s per-class retention actions.\n\n    Inbound-reference blocking: a class\'s ``cited_frac`` locks that share of\n    delete-eligible files in place; when the policy compresses the living\n    tails, ``cascade_unlock_frac`` of that lock is released (the deletability\n    cascade — provenance decoration in living history tails is the top citer).\n    Archiving is never citation-blocked: the body stays recoverable in-tree.\n    """\n    for cls in calibration["classes"]:\n        spec = policy["classes"][cls["name"]]\n        mode, window = spec["mode"], int(spec["window"])\n        if mode == "keep" or window <= 0:\n            continue\n        block = float(cls.get("cited_frac", 0.0))\n        if policy["ledger_compress"]:\n            block *= 1.0 - float(cls.get("cascade_unlock_frac", 0.0))\n        buckets = state["classes"][cls["name"]]["buckets"]\n        if mode == "archive":\n            moved = _sim_age_out(buckets, window, keep_frac=0.0)\n            state["archived_words"] += moved * float(cls["words_each"])\n        elif mode == "delete_tomb":\n            gone = _sim_age_out(buckets, window, keep_frac=block)\n            state["tombstone_lines"] += gone * float(\n                cls.get("tombstone_lines_each", 1.0),\n            )\n        elif mode == "delete_bare":\n            _sim_age_out(buckets, window, keep_frac=block)\n\n\ndef _sim_dispo(mode: str, window: int, halflife: float) -> tuple[float, float, float]:\n    """Split back-reference demand into (in-tree, tombstone, bare) fractions.\n\n    Demand decays exponentially with age (``halflife`` in bands); the share\n    older than the prune window lands on the pruned disposition.\n    """\n    if mode in ("keep", "archive") or window <= 0:\n        return 1.0, 0.0, 0.0\n    p_old = 0.5 ** (window / max(halflife, 0.1))\n    if mode == "delete_tomb":\n        return 1.0 - p_old, p_old, 0.0\n    return 1.0 - p_old, 0.0, p_old\n\n\ndef _sim_boot_cost(\n    state: dict[str, Any],\n    policy: dict[str, Any],\n    calibration: dict[str, Any],\n) -> float:\n    """Return the per-session boot tax (always-read route, words)."""\n    tail_bands = (\n        float(calibration.get("ledger_tail_compressed_bands", 2))\n        if policy["ledger_compress"]\n        else state["ledger_tail_bands"]\n    )\n    ledger_tail = tail_bands * float(calibration["ledger_tail_per_band"])\n    journal = min(float(calibration["journal_words"]), float(policy["journal_cap"]))\n    per_hist = (\n        float(calibration["tombstone_words"])\n        if policy["index_hist_tombstones"]\n        else float(calibration["index_hist_line_words"])\n    )\n    index_words = state["tombstone_lines"] * float(calibration["tombstone_words"])\n    for cls in calibration["classes"]:\n        if not cls.get("indexed", False):\n            continue\n        cs = state["classes"][cls["name"]]\n        index_words += cs["active"] * float(calibration["index_active_line_words"])\n        index_words += sum(cs["buckets"]) * per_hist\n    return (\n        float(calibration["boot_fixed_words"])\n        + journal\n        + float(calibration["ledger_base_words"])\n        + ledger_tail\n        + index_words\n    )\n\n\ndef _sim_discovery_cost(\n    state: dict[str, Any],\n    calibration: dict[str, Any],\n    term_files: float,\n    term_words: float,\n) -> float:\n    """Return the per-session discovery tax (grep noise, scans, maintenance)."""\n    live_files = float(calibration["live_files"]) + sum(\n        cs["active"] for cs in state["classes"].values()\n    )\n    total_files = term_files + live_files\n    hits_per_grep = float(calibration["grep_hits_per_1k_files"]) * total_files / 1000.0\n    term_share = term_files / max(total_files, 1.0)\n    per_hit = float(calibration["skim_words_per_hit"]) + float(\n        calibration["open_frac_per_hit"],\n    ) * float(calibration["open_words_per_hit"])\n    grep_noise = (\n        float(calibration["greps_per_session"]) * hits_per_grep * term_share * per_hit\n    )\n    ls_noise = (\n        float(calibration["ls_scans_per_session"])\n        * term_files\n        * float(calibration["ls_scan_words_per_file"])\n    )\n    arch_noise = (\n        float(calibration["archive_pollution_w_per_mw"]) * state["archived_words"] / 1e6\n    )\n    tree_words = term_words + float(calibration["live_words"]) + state["archived_words"]\n    maintenance = float(calibration["maintenance_w_per_mw"]) * tree_words / 1e6\n    return grep_noise + ls_noise + arch_noise + maintenance\n\n\ndef _sim_backref_and_miss(\n    policy: dict[str, Any],\n    calibration: dict[str, Any],\n) -> tuple[float, float]:\n    """Return (back-reference cost, retrieval-miss events), both per session.\n\n    In-tree demand costs nothing extra (reading a present body is work, not\n    waste); a tombstone costs one recovery hop; a bare deletion costs a full\n    re-derivation when recovery fails and a doubled hop when it succeeds. The\n    miss metric counts only failed bare recoveries — the risk the feasibility\n    constraint bounds.\n    """\n    halflife = float(calibration["backref_halflife_bands"])\n    hop = float(calibration["tombstone_hop_words"])\n    fail = float(calibration["bare_find_fail"])\n    rederive = float(calibration["bare_rederive_words"])\n    backref = miss = 0.0\n    for cls in calibration["classes"]:\n        spec = policy["classes"][cls["name"]]\n        _in_tree, tomb, bare = _sim_dispo(spec["mode"], int(spec["window"]), halflife)\n        rate = float(cls.get("backref_rate", 0.0))\n        backref += rate * tomb * hop\n        backref += rate * bare * (fail * rederive + (1.0 - fail) * hop * 2.0)\n        miss += rate * bare * fail\n    return backref, miss\n\n\ndef _sim_stale_cost(\n    state: dict[str, Any],\n    policy: dict[str, Any],\n    calibration: dict[str, Any],\n    term_words: float,\n    initial_term_words: float,\n) -> float:\n    """Return the per-session staleness cost (acting on dead content as live)."""\n    tail_bands = (\n        float(calibration.get("ledger_tail_compressed_bands", 2))\n        if policy["ledger_compress"]\n        else state["ledger_tail_bands"]\n    )\n    ledger_tail = tail_bands * float(calibration["ledger_tail_per_band"])\n    norm_tail = max(\n        float(calibration.get("ledger_tail_bands_initial", 1)),\n        1.0,\n    ) * float(calibration["ledger_tail_per_band"])\n    scale = (term_words / (initial_term_words + 1.0)) * 0.6 + (\n        ledger_tail / max(norm_tail, 1.0)\n    ) * 0.4\n    return (\n        float(calibration["stale_act_base"])\n        * scale\n        * float(\n            calibration["stale_act_cost"],\n        )\n    )\n\n\ndef simulate_policy(\n    policy: dict[str, Any],\n    calibration: dict[str, Any],\n    *,\n    bands: int,\n    seed: int = 7,\n) -> dict[str, Any]:\n    """Simulate one policy over ``bands`` reconciliation bands; score it.\n\n    Returns the per-policy result record: the four per-session cost components\n    (``boot``, ``discovery``, ``backref``, ``stale``, band-averaged words per\n    session), their ``total``, the ``miss_per_band`` risk metric with its\n    ``feasible`` verdict (< ``miss_per_band_max``), and the horizon-end tree\n    size (``end_terminal_files``, ``end_tree_kwords``). Deterministic for a\n    given (policy, calibration, bands, seed).\n    """\n    rng = random.Random(seed)\n    name = policy.get("name") or _sim_policy_name(policy)\n    state = _sim_initial_state(calibration)\n    initial_term_words = sum(\n        float(c.get("initial_files", 0.0)) * float(c["words_each"])\n        for c in calibration["classes"]\n    )\n    totals = {"boot": 0.0, "discovery": 0.0, "backref": 0.0, "stale": 0.0}\n    miss_events = 0.0\n    term_files = term_words = 0.0\n    n_bands = max(int(bands), 1)\n    for _ in range(n_bands):\n        _sim_grow(state, calibration, rng)\n        if not policy["ledger_compress"]:\n            state["ledger_tail_bands"] += 1.0\n        _sim_prune(state, policy, calibration)\n        term_files = sum(sum(cs["buckets"]) for cs in state["classes"].values())\n        term_words = sum(\n            sum(state["classes"][c["name"]]["buckets"]) * float(c["words_each"])\n            for c in calibration["classes"]\n        )\n        totals["boot"] += _sim_boot_cost(state, policy, calibration)\n        totals["discovery"] += _sim_discovery_cost(\n            state,\n            calibration,\n            term_files,\n            term_words,\n        )\n        backref, miss = _sim_backref_and_miss(policy, calibration)\n        totals["backref"] += backref\n        miss_events += miss\n        totals["stale"] += _sim_stale_cost(\n            state,\n            policy,\n            calibration,\n            term_words,\n            initial_term_words,\n        )\n    per = {k: v / n_bands for k, v in totals.items()}\n    per_total = sum(per.values())\n    miss_per_band = miss_events / n_bands\n    return {\n        "policy": policy,\n        "name": name,\n        **per,\n        "total": per_total,\n        "miss_per_band": miss_per_band,\n        "feasible": miss_per_band < float(calibration.get("miss_per_band_max", 0.005)),\n        "end_terminal_files": term_files,\n        "end_tree_kwords": (\n            term_words + float(calibration["live_words"]) + state["archived_words"]\n        )\n        / 1000.0,\n    }\n\n\n# ---------------------------------------------------------------------------\n# Search, sensitivity, why-it-won\n# ---------------------------------------------------------------------------\n\n\ndef _sim_scaled(calibration: dict[str, Any], key: str, mult: float) -> dict[str, Any]:\n    """Return a deep copy of the calibration with one constant multiplied.\n\n    ``key`` is either a top-level constant name or a class field addressed as\n    ``classes.<class name>.<field>``. Unknown class addresses scale nothing\n    (the copy is returned unchanged) so pruned class lists stay sweepable.\n    """\n    scaled = copy.deepcopy(calibration)\n    if key.startswith("classes."):\n        _, cls_name, field = key.split(".", 2)\n        for cls in scaled["classes"]:\n            if cls["name"] == cls_name and field in cls:\n                cls[field] = float(cls[field]) * mult\n        return scaled\n    scaled[key] = float(scaled[key]) * mult\n    return scaled\n\n\ndef _sim_sensitivity(\n    policy: dict[str, Any],\n    calibration: dict[str, Any],\n    *,\n    bands: int,\n    seed: int,\n    base_total: float,\n) -> list[dict[str, Any]]:\n    """Re-score the winner under each sweep multiplier on each swept constant."""\n    entries: list[dict[str, Any]] = []\n    multipliers = calibration.get("sensitivity_multipliers", [1 / 3, 3])\n    for key in calibration.get("sensitivity_keys", []):\n        for mult in multipliers:\n            scaled = _sim_scaled(calibration, key, float(mult))\n            total = simulate_policy(policy, scaled, bands=bands, seed=seed)["total"]\n            entries.append(\n                {\n                    "key": key,\n                    "multiplier": float(mult),\n                    "total": total,\n                    "delta": total - base_total,\n                },\n            )\n    return entries\n\n\ndef _sim_why_it_won(\n    winner: dict[str, Any],\n    baseline: dict[str, Any],\n    calibration: dict[str, Any],\n    *,\n    feasible_count: int,\n    grid_size: int,\n    near_count: int,\n) -> str:\n    """Render the WHY-IT-WON record for one search outcome."""\n    words_per_token = max(float(calibration.get("words_per_token", 0.75)), 0.01)\n    base_total = baseline["total"]\n    saved = base_total - winner["total"]\n    pct = 100.0 * saved / base_total if base_total > 0 else 0.0\n    near_frac = float(calibration.get("near_best_frac", 0.05))\n    lines = [\n        f"winner: {winner[\'name\']}",\n        (\n            f"vs keep-everything baseline: {base_total:,.0f} -> "\n            f"{winner[\'total\']:,.0f} words/session ({pct:.0f}% lower), "\n            f"~{saved / words_per_token / 1000:.1f}k tokens/session saved"\n        ),\n        (\n            f"tree size at horizon: {baseline[\'end_tree_kwords\']:,.0f}kw -> "\n            f"{winner[\'end_tree_kwords\']:,.0f}kw"\n        ),\n        (\n            f"retrieval-miss events/band: {winner[\'miss_per_band\']:.4f} "\n            f"(constraint < {float(calibration.get(\'miss_per_band_max\', 0.005)):g})"\n        ),\n        (\n            f"feasible policies: {feasible_count} of {grid_size}; secondary "\n            f"objective picked the smallest tree among {near_count} within "\n            f"{near_frac:.0%} of the best primary score"\n        ),\n    ]\n    if not winner["feasible"]:\n        lines.append(\n            "WARNING: no candidate met the miss constraint — winner is the "\n            "lowest-cost INFEASIBLE policy; loosen windows or drop delete_bare",\n        )\n    return "\\n".join(lines)\n\n\ndef run_search(\n    calibration: dict[str, Any],\n    *,\n    bands: int = 24,\n    seed: int = 7,\n) -> dict[str, Any]:\n    """Run the full policy-grid search and return the winner with its record.\n\n    Primary objective: lowest expected words/session among FEASIBLE policies\n    (``miss_per_band`` under the calibration\'s bound). Secondary objective\n    (lean by construction): among feasible policies within ``near_best_frac``\n    of the best primary score, the smallest tree at horizon wins. Returns\n    ``{"winner", "why_it_won", "feasible_count", "sensitivity"}`` — the winner\n    is the full ``simulate_policy`` record (policy dict under ``"winner"["policy"]``).\n    If nothing is feasible the search degrades gracefully: the lowest-cost\n    infeasible policy wins and ``why_it_won`` carries a loud warning.\n    """\n    grid = policy_grid(calibration)\n    results = [\n        simulate_policy(policy, calibration, bands=bands, seed=seed) for policy in grid\n    ]\n    feasible = [r for r in results if r["feasible"]]\n    pool = feasible or sorted(results, key=lambda r: r["total"])\n    best_total = min(r["total"] for r in pool)\n    near_frac = float(calibration.get("near_best_frac", 0.05))\n    near = [r for r in pool if r["total"] <= best_total * (1.0 + near_frac)]\n    near.sort(key=lambda r: (r["end_tree_kwords"], r["total"], r["name"]))\n    winner = near[0]\n    baseline = simulate_policy(\n        _sim_status_quo(calibration),\n        calibration,\n        bands=bands,\n        seed=seed,\n    )\n    sensitivity = _sim_sensitivity(\n        winner["policy"],\n        calibration,\n        bands=bands,\n        seed=seed,\n        base_total=winner["total"],\n    )\n    why = _sim_why_it_won(\n        winner,\n        baseline,\n        calibration,\n        feasible_count=len(feasible),\n        grid_size=len(grid),\n        near_count=len(near),\n    )\n    return {\n        "winner": winner,\n        "why_it_won": why,\n        "feasible_count": len(feasible),\n        "sensitivity": sensitivity,\n    }\n\n\ndef calibration_recipe() -> str:\n    """Return the re-measurement recipe for grounding a calibration in a repo.\n\n    The kit ships the search, not our constants: every default is a\n    placeholder. Measure the five profiles below against YOUR corpus, write\n    the numbers into a copy of ``default_calibration()``, then re-run\n    ``run_search`` — and re-measure whenever the corpus shape shifts.\n    """\n    return (\n        "Calibration recipe — measure your repo, then edit default_calibration()\\n"\n        "\\n"\n        "Every default constant is an UNVERIFIED placeholder. Ground each group\\n"\n        "in measurements before trusting a winner:\\n"\n        "\\n"\n        "```sh\\n"\n        "# 1) Badge census — per-class stocks (initial_files, words_each):\\n"\n        "#    count and word-count files per lifecycle class (terminal vs live).\\n"\n        "grep -rlE \'\\\\*\\\\*Status:\\\\*\\\\* .(historical|archived)\' docs/ | wc -l\\n"\n        "grep -rlE \'\\\\*\\\\*Status:\\\\*\\\\* .(historical|archived)\' docs/ | xargs wc -w\\n"\n        "ls .sessions/*.md | wc -l && wc -w .sessions/*.md | tail -1\\n"\n        "\\n"\n        "# 2) Grep-noise profile — discovery constants (grep_hits_per_1k_files,\\n"\n        "#    share of hits landing in terminal docs): run ~20 representative\\n"\n        "#    working-term greps and count hit locations.\\n"\n        \'for t in <your 20 working terms>; do grep -rl "$t" docs/ ; done |\\n\'\n        "  sort | uniq -c | sort -rn | head\\n"\n        "\\n"\n        "# 3) Velocity — sessions_per_band and per-class birth_rate:\\n"\n        "#    files born per session over recent history.\\n"\n        "git log --since=\'30 days ago\' --oneline --merges | wc -l\\n"\n        "git log --since=\'30 days ago\' --name-only --diff-filter=A -- docs/ |\\n"\n        "  grep \'\\\\.md$\' | sort | uniq | wc -l\\n"\n        "\\n"\n        "# 4) Back-reference greps — backref_rate and cited_frac per class:\\n"\n        "#    how often terminal docs are cited from OUTSIDE their own dir.\\n"\n        "for f in .sessions/*.md; do\\n"\n        \'  grep -rl "$(basename "$f")" docs/ --include=\\\'*.md\\\' |\\n\'\n        "    grep -v \'^.sessions/\'; done | sort -u | wc -l\\n"\n        "\\n"\n        "# 5) Boot word count — boot_fixed_words / journal_words /\\n"\n        "#    ledger_base_words: word-count the always-read orientation route.\\n"\n        "wc -w CLAUDE.md .session-journal.md docs/current-state.md\\n"\n        "```\\n"\n        "\\n"\n        "Sweep discipline: constants you could not measure (staleness, archive\\n"\n        "pollution) stay assumption-grade — list them in sensitivity_keys so\\n"\n        "every search re-checks the winner under x1/3 and x3. Adopt a winner\\n"\n        "only when its rank holds across the whole sweep.\\n"\n    )\n',
-    'engine/stances/stances.py': '"""Task-stance definitions — the fourth control axis (plan section 3b).\n\nA *stance* is the working agent\'s operational posture for the current task,\ndistinct from adoption-pace (``mode``), promotion-rights, and stage. Following\nRoo Code\'s proven mode model, each stance scopes three things to cut context rot\nand tool misfires:\n\n  - a **reading-route** — which docs to load first;\n  - a **tool-scope** — which action categories are in-bounds;\n  - an **output contract** — what the stance is expected to produce.\n\nThe active stance lives in state (``"stance"``) and is **advisory**: the contract\nguides the agent, and an optional PreToolUse guard can warn on an out-of-stance\naction (e.g. an edit while in ``review``) via :func:`is_out_of_stance`.\n\nLike the question bank, the set ships as a Python module — not the plan\'s literal\n``stances.yml`` — so it embeds in the stdlib-only bootstrap with no YAML parser\nand runs identically in ``src`` and the single-file ``dist``.\n"""\n\nfrom __future__ import annotations\n\n# Canonical action categories a stance\'s tool-scope is drawn from.\nREAD = "read"  # read files / memory / source\nRUN = "run"  # run read-only tools / commands\nEDIT = "edit"  # modify files\nCOMMENT = "comment"  # emit review comments (no file edits)\n\nACTIONS = (READ, RUN, EDIT, COMMENT)\n\nDEFAULT_STANCE = "analysis"\n\nSTANCES: list[dict] = [\n    {\n        "name": "question",\n        "role": "Answer concisely from memory and source; make no changes.",\n        "when_to_use": "A direct question that memory or a quick read can answer.",\n        "reading_route": ["current-state.md", "AGENT_ORIENTATION.md"],\n        "tools": [READ],\n        "output": "A concise answer grounded in memory/source; no edits.",\n    },\n    {\n        "name": "analysis",\n        "role": "Read-only deep-dive: investigate and report, do not change.",\n        "when_to_use": "Understanding a system, tracing a behavior, scoping work.",\n        "reading_route": ["AGENT_ORIENTATION.md", "architecture.md", "ownership.md"],\n        "tools": [READ, RUN],\n        "output": "Findings (evidence + conclusion), not changes.",\n    },\n    {\n        "name": "debug",\n        "role": "Read, run, and make targeted edits to fix a known fault.",\n        "when_to_use": "A reproduced, localized fault with a clear blast radius.",\n        "reading_route": ["runtime_contracts.md", "current-state.md"],\n        "tools": [READ, RUN, EDIT],\n        "output": "A targeted fix for the known fault; no broad refactor.",\n    },\n    {\n        "name": "review",\n        "role": "Evaluate a diff against the contracts; comment, do not edit.",\n        "when_to_use": "Assessing a change someone else (or a prior stance) produced.",\n        "reading_route": ["architecture.md", "ownership.md", "runtime_contracts.md"],\n        "tools": [READ, COMMENT],\n        "output": "A verdict + comments against the contracts; no edits.",\n    },\n    {\n        "name": "plan",\n        "role": "Research + safe prototyping, then propose a plan for approval.",\n        "when_to_use": "A multi-step or architectural change worth designing first.",\n        "reading_route": ["AGENT_ORIENTATION.md", "current-state.md", "roadmap.md"],\n        "tools": [READ, RUN],\n        "output": "An approved plan (research + safe prototyping; no committed change).",\n    },\n]\n\n_BY_NAME = {s["name"]: s for s in STANCES}\n\n\ndef stance_names() -> list[str]:\n    """Return the available stance names, in declared order."""\n    return [s["name"] for s in STANCES]\n\n\ndef get_stance(name: str) -> dict | None:\n    """Return the stance definition for ``name`` (or None if unknown)."""\n    return _BY_NAME.get(name)\n\n\ndef action_allowed(name: str, action: str) -> bool:\n    """True if ``action`` is in ``name``\'s tool-scope (False for an unknown stance)."""\n    stance = _BY_NAME.get(name)\n    return stance is not None and action in stance["tools"]\n\n\ndef is_out_of_stance(name: str, action: str) -> bool:\n    """True if ``action`` falls *outside* a known stance\'s tool-scope.\n\n    The predicate a PreToolUse guard calls to warn on, e.g., an edit while the\n    active stance is ``review``. Returns False for an unknown stance (nothing to\n    enforce) so the guard fails **open** — it never blocks on a misconfigured name.\n    """\n    stance = _BY_NAME.get(name)\n    if stance is None:\n        return False\n    return action not in stance["tools"]\n\n\ndef stance_briefing(name: str) -> str:\n    """Return the orientation block injected for the active stance.\n\n    The reading-route + tool-scope + output contract, formatted for injection into\n    session orientation (alongside the user-style block and reflection buffer).\n    """\n    stance = _BY_NAME.get(name)\n    if stance is None:\n        choices = ", ".join(stance_names())\n        return f"Unknown stance {name!r} (choose from {choices})."\n    route = " -> ".join(stance["reading_route"])\n    tools = ", ".join(stance["tools"])\n    return (\n        f"Stance: {stance[\'name\']} — {stance[\'role\']}\\n"\n        f"  When: {stance[\'when_to_use\']}\\n"\n        f"  Read first: {route}\\n"\n        f"  In-scope actions: {tools}\\n"\n        f"  Output: {stance[\'output\']}"\n    )\n',
-    'engine/skills/skills.py': '"""Skill sources + the skill/stance precedence model (plan section 3c).\n\nA *skill* is an invokable procedure emitted as a native ``.claude/skills/<name>/\nSKILL.md`` (YAML frontmatter for metadata-first loading + a readable body). Unlike\na stance (an ambient posture), a skill is invoked for a specific job and **declares\nthe capabilities it needs** — so a skill\'s declared capability **takes precedence\nover the ambient stance** (a ``session-close`` that declares it edits can write the\nsession log even while the active stance is ``review``). Stances stay advisory for\nanything a skill has not declared.\n\nLike the question bank and the stances, the set ships as a Python module — embeds\nin the stdlib-only bootstrap with no YAML parser, identical in ``src`` and ``dist``.\nBodies use ``${slot}`` placeholders filled from the interview at build time, so a\nskill is project-aware (e.g. ``quality-gate`` runs the project\'s own verify command).\n"""\n\nfrom __future__ import annotations\n\nfrom engine.stances.stances import COMMENT, EDIT, READ, RUN, action_allowed\n\n_SESSION_CLOSE_BODY = """\\\nClose ${project_name}\'s current session correctly.\n\n1. Session log — write `.sessions/<date>-<slug>.md`: what changed, one new idea\n   you genuinely believe in, and a one-line review of the previous session.\n2. Idea backlog — groom one idea forward (the ideas-README lifecycle).\n3. Verify — run the project\'s checks: `${verify_command}` and `bootstrap check`.\n4. Commit + push on the session branch; open the PR ready (not draft).\n5. Drive the PR to a terminal state — merge on green CI, or close with a reason.\n\nDeclared capabilities: edit (the log + docs), run (the checks + git)."""\n\n_QUALITY_GATE_BODY = """\\\nProve a change is good before pushing ${project_name}.\n\n1. Run `${verify_command}` — the project\'s full verification (tests + lint/types).\n2. Run `bootstrap check --strict` — doc + session-log hygiene.\n3. Report every failure with the exact command to reproduce it.\n4. Do NOT push on red — green here should mean green in CI.\n\nDeclared capabilities: run."""\n\n_REVIEW_BODY = """\\\nReview the current branch\'s diff against ${project_name}\'s binding contracts.\n\n1. Read the contracts first (architecture / ownership / runtime), then the diff.\n2. For each change check layer boundaries, mutation ownership, and the project\'s\n   invariants. Flag violations with file:line and the rule they break.\n3. Produce a verdict (approve / request-changes) + concrete fixes.\n4. Do not edit — comment only. (The `review` stance pairs with this skill.)\n\nDeclared capabilities: comment."""\n\n_REPO_HEALTH_BODY = """\\\nAudit ${project_name}\'s documentation + session-log hygiene.\n\n1. Run `bootstrap check` — badges, link resolution, doc reachability, and the\n   required session-log markers.\n2. Summarize the drift: orphaned docs, missing badges, incomplete logs.\n3. Fix the small ones (link the orphan, badge the doc); capture the rest as ideas.\n\nDeclared capabilities: run."""\n\n_DEEP_RESEARCH_BODY = """\\\nAnswer a multi-source factual question with a cited report.\n\n1. Decompose the question into sub-questions; search broadly (fan out).\n2. Fetch the strongest sources; cross-check claims adversarially; prefer\n   primary/official docs over memory.\n3. Flag uncertainty explicitly; never state a guess as fact.\n4. Synthesize a concise report with inline citations.\n\nDeclared capabilities: run."""\n\n_QUESTION_BODY = """\\\nAnswer a direct question about ${project_name} concisely.\n\n1. Read current-state + the one relevant doc or source file.\n2. Answer in a few sentences, grounded in what you read; cite the source.\n3. Make no changes. (The `question` stance pairs with this skill.)\n\nDeclared capabilities: read-only."""\n\n_ANALYSIS_BODY = """\\\nInvestigate a ${project_name} system and report findings, changing nothing.\n\n1. Read the binding contracts and trace the behavior across files.\n2. Produce evidence (file:line) + a conclusion; name the uncertainty.\n3. Do not edit. (The `analysis` stance pairs with this skill.)\n\nDeclared capabilities: read-only."""\n\n# Each skill declares the capabilities it needs *beyond* read (read is implicit).\n# The declared set is what overrides the ambient stance (the precedence rule).\nSKILLS: list[dict] = [\n    {\n        "name": "session-close",\n        "description": "End the session correctly — write the log, groom + add an "\n        "idea, verify, commit, push, drive the PR to a terminal state.",\n        "capabilities": [EDIT, RUN],\n        "body": _SESSION_CLOSE_BODY,\n    },\n    {\n        "name": "quality-gate",\n        "description": "Run the project\'s full verification before pushing and "\n        "report what must be fixed.",\n        "capabilities": [RUN],\n        "body": _QUALITY_GATE_BODY,\n    },\n    {\n        "name": "review",\n        "description": "Review the branch diff against the binding contracts; "\n        "comment with a verdict and fixes, no edits.",\n        "capabilities": [COMMENT],\n        "body": _REVIEW_BODY,\n    },\n    {\n        "name": "repo-health",\n        "description": "Audit doc + session-log hygiene (bootstrap check) and "\n        "summarize drift.",\n        "capabilities": [RUN],\n        "body": _REPO_HEALTH_BODY,\n    },\n    {\n        "name": "deep-research",\n        "description": "Fan out web research, adversarially verify sources, and "\n        "synthesize a cited report.",\n        "capabilities": [RUN],\n        "body": _DEEP_RESEARCH_BODY,\n    },\n    {\n        "name": "question",\n        "description": "Answer a direct question concisely from memory and source; "\n        "make no changes.",\n        "capabilities": [],\n        "body": _QUESTION_BODY,\n    },\n    {\n        "name": "analysis",\n        "description": "Read-only deep-dive: investigate and report findings "\n        "without changing anything.",\n        "capabilities": [],\n        "body": _ANALYSIS_BODY,\n    },\n]\n\n_SKILL_BY_NAME = {s["name"]: s for s in SKILLS}\n\n\ndef skill_names() -> list[str]:\n    """Return the available skill names, in declared order."""\n    return [s["name"] for s in SKILLS]\n\n\ndef get_skill(name: str) -> dict | None:\n    """Return the skill definition for ``name`` (or None if unknown)."""\n    return _SKILL_BY_NAME.get(name)\n\n\ndef skill_capabilities(name: str) -> list[str]:\n    """Return a skill\'s full capability set (declared + the implicit ``read``)."""\n    skill = _SKILL_BY_NAME.get(name)\n    if skill is None:\n        return []\n    return [READ, *skill["capabilities"]]\n\n\ndef skill_permits(name: str, action: str) -> bool:\n    """True if skill ``name`` declares (or implies) ``action``."""\n    return action in skill_capabilities(name)\n\n\ndef action_permitted(\n    stance_name: str,\n    action: str,\n    skill_name: str | None = None,\n) -> bool:\n    """Resolve whether ``action`` is permitted under a stance, optionally in a skill.\n\n    Precedence (plan section 3c): a skill\'s explicitly-declared capability **wins**\n    over the ambient stance — so an invoked skill can do what it declares even when\n    the stance forbids it. For anything the skill has not declared, the stance\'s\n    advisory tool-scope applies.\n    """\n    if skill_name is not None and skill_permits(skill_name, action):\n        return True\n    return action_allowed(stance_name, action)\n\n\ndef skill_frontmatter(skill: dict) -> str:\n    """Return the native ``SKILL.md`` YAML frontmatter (metadata-first loading)."""\n    return f\'---\\nname: {skill["name"]}\\ndescription: "{skill["description"]}"\\n---\'\n\n\ndef skill_relpath(skill: dict) -> str:\n    """Return the emit path for a skill, relative to the skills root."""\n    return f"skills/{skill[\'name\']}/SKILL.md"\n\n\ndef skill_document(skill: dict, body: str) -> str:\n    """Compose the full ``SKILL.md`` text from a skill + its (rendered) body."""\n    return f"{skill_frontmatter(skill)}\\n\\n# {skill[\'name\']}\\n\\n{body.rstrip()}\\n"\n',
-    'engine/agents/agents.py': '"""Persona (sub-agent) sources + native emission (plan section 3c).\n\nA *persona* is a spawnable, read-only specialist (the third capability mechanism\nalongside stances and skills): the working agent delegates a focused task —\ndesign review, independent critique, deep exploration — to a fresh sub-agent\ncontext. The kit ships three generalized personas, each emitted as a native\n``.claude/agents/<name>.md`` (YAML frontmatter ``name`` / ``description`` /\n``tools`` + a system-prompt body).\n\nPersonas are **interview-populated**: their binding sources are filled from the\nproject\'s own contract slots (``${architecture_layers}``, ``${ownership_model}``,\n…) at build time — so a persona reviews against *this* project\'s rules, not\nsuperbot\'s. Like the skills, they ship as a Python module (not a subdir of\n``templates/``) so they embed in the stdlib-only bootstrap with no extra loader.\n\nPersonas are spawned specialists, so — unlike skills — they carry no stance\nprecedence; they are read-only by construction (their declared ``tools`` grant\nno write).\n"""\n\nfrom __future__ import annotations\n\n# Native read-only tool set for a spawned specialist (no write/edit/run).\n_READONLY_TOOLS = ["Read", "Grep", "Glob"]\n\n_ARCHITECT_BODY = """\\\nYou are ${project_name}\'s architecture specialist — read-only. Answer design\nquestions and review proposed changes for layer/ownership compliance BEFORE they\nare coded.\n\nBinding model (this project\'s contracts):\n- Layers & import rules: ${architecture_layers}\n- Ownership (who owns each write path): ${ownership_model}\n- Mutation seam (how writes are gated): ${mutation_seam}\n\nMethod: read the relevant contracts + source, then judge a proposed change\nagainst them. Flag every layer-boundary or ownership violation with file:line and\nthe rule it breaks; propose the compliant placement. You advise — you do not edit."""\n\n_REVIEWER_BODY = """\\\nYou are ${project_name}\'s independent reviewer — a second pair of eyes that does\nNOT share the author\'s assumptions. Evaluate a diff against the binding contracts\nand surface the risks the author may have anchored past.\n\nReview against: ${architecture_layers} · ${ownership_model} · the project\'s\nverification (`${verify_command}`).\n\nAnti-anchoring rule: judge the change on its evidence, not the author\'s stated\nconfidence. Give a verdict (approve / request-changes) + the specific risks and\nfixes. Read-only — you comment, you do not edit. (Wire this persona to the\nindependent-review seam: a *different* model reviewing breaks the monoculture.)"""\n\n_RESEARCHER_BODY = """\\\nYou are ${project_name}\'s researcher — read-only deep exploration. Map unfamiliar\ncode or trace a behavior across the system and report findings; change nothing.\n\nStart from: ${doc_roots} (where durable documentation lives) and the read-path\ndocs, then follow the source.\n\nOutput: evidence (file:line) + a clear conclusion, with the uncertainty named.\nPrefer reading source over assuming. You produce understanding, not edits."""\n\nAGENTS: list[dict] = [\n    {\n        "name": "architect",\n        "description": "Read-only design/layer specialist — answer architecture "\n        "questions and flag layer/ownership violations before they are coded.",\n        "tools": list(_READONLY_TOOLS),\n        "body": _ARCHITECT_BODY,\n    },\n    {\n        "name": "reviewer",\n        "description": "Independent critic — evaluate a diff against the contracts "\n        "without the author\'s assumptions; verdict + risks, no edits.",\n        "tools": list(_READONLY_TOOLS),\n        "body": _REVIEWER_BODY,\n    },\n    {\n        "name": "researcher",\n        "description": "Read-only deep exploration — map unfamiliar code / trace a "\n        "behavior and report evidence-backed findings; change nothing.",\n        "tools": list(_READONLY_TOOLS),\n        "body": _RESEARCHER_BODY,\n    },\n]\n\n_AGENT_BY_NAME = {a["name"]: a for a in AGENTS}\n\n\ndef agent_names() -> list[str]:\n    """Return the available persona names, in declared order."""\n    return [a["name"] for a in AGENTS]\n\n\ndef get_agent(name: str) -> dict | None:\n    """Return the persona definition for ``name`` (or None if unknown)."""\n    return _AGENT_BY_NAME.get(name)\n\n\ndef agent_frontmatter(agent: dict) -> str:\n    """Return the native ``.claude/agents`` YAML frontmatter (name/description/tools)."""\n    tools = ", ".join(agent["tools"])\n    return (\n        f"---\\nname: {agent[\'name\']}\\n"\n        f\'description: "{agent["description"]}"\\n\'\n        f"tools: {tools}\\n---"\n    )\n\n\ndef agent_relpath(agent: dict) -> str:\n    """Return the emit path for a persona, relative to the agents root."""\n    return f"agents/{agent[\'name\']}.md"\n\n\ndef agent_document(agent: dict, body: str) -> str:\n    """Compose the full agent ``.md`` text from a persona + its (rendered) body."""\n    return f"{agent_frontmatter(agent)}\\n\\n{body.rstrip()}\\n"\n',
-    'engine/hooks/stance_guard.py': '"""PreToolUse stance guard — makes the stance layer enforced, not just advisory.\n\nClaude Code calls a PreToolUse hook before each tool runs, passing the tool name\nin a JSON payload on stdin. This maps the tool to a stance action category\n(read / run / edit / comment) and, if that action is outside the active stance\'s\ntool-scope, produces an advisory warning — the agent stays free to proceed\n(stances are advisory by default, plan section 3b). The bootstrap\n``hook pretooluse`` command is the runtime entry point; ``settings_snippet``\ngenerates the ``.claude/settings.json`` wiring a host installs.\n\nEverything here **fails open**: an unknown tool, an unknown stance, or a\nmalformed payload yields no warning — the guard never gets in the way when it is\nunsure.\n"""\n\nfrom __future__ import annotations\n\nimport json\n\nfrom engine.stances.stances import EDIT, READ, RUN, is_out_of_stance\n\n# Claude Code tool name -> the stance action category it performs. Tools not\n# listed (Task, the slash-command tools, …) carry no stance opinion (fail open).\nTOOL_ACTIONS: dict[str, str] = {\n    "Read": READ,\n    "Grep": READ,\n    "Glob": READ,\n    "NotebookRead": READ,\n    "Edit": EDIT,\n    "Write": EDIT,\n    "NotebookEdit": EDIT,\n    "Bash": RUN,\n    "WebFetch": RUN,\n    "WebSearch": RUN,\n}\n\n\ndef tool_to_action(tool_name: str) -> str | None:\n    """Return the stance action category a Claude Code tool performs (or None)."""\n    return TOOL_ACTIONS.get(tool_name)\n\n\ndef tool_from_payload(raw: str) -> str:\n    """Extract the tool name from a PreToolUse stdin payload (``""`` if absent)."""\n    try:\n        payload = json.loads(raw) if raw.strip() else {}\n    except json.JSONDecodeError:\n        return ""\n    name = payload.get("tool_name", "") if isinstance(payload, dict) else ""\n    return name if isinstance(name, str) else ""\n\n\ndef evaluate_tool(stance: str, tool_name: str) -> str | None:\n    """Return an out-of-stance warning for ``tool_name`` under ``stance``, or None.\n\n    ``None`` means no objection — the tool carries no stance opinion, or the\n    action is within the stance\'s tool-scope. Fails open: an unknown stance or\n    tool never warns.\n    """\n    action = tool_to_action(tool_name)\n    if action is None or not is_out_of_stance(stance, action):\n        return None\n    return (\n        f"out-of-stance: {tool_name} ({action}) while stance is \'{stance}\'. "\n        "Re-check the task, or switch stance (`bootstrap stance <name>`). "\n        "(advisory — not blocked)"\n    )\n\n\ndef settings_snippet(command: str) -> str:\n    """Return a ``.claude/settings.json`` PreToolUse wiring snippet (JSON text).\n\n    ``command`` is the shell command Claude Code runs before each tool (e.g.\n    ``python3 bootstrap.py hook pretooluse``). The host merges the returned\n    ``hooks.PreToolUse`` block into their ``.claude/settings.json``.\n    """\n    snippet = {\n        "hooks": {\n            "PreToolUse": [\n                {\n                    "matcher": "*",\n                    "hooks": [{"type": "command", "command": command}],\n                },\n            ],\n        },\n    }\n    return json.dumps(snippet, indent=2) + "\\n"\n',
-    'engine/hooks/session_start.py': '"""SessionStart orientation composer (plan section 5.B, Lane B7).\n\nThe nervous system\'s *injection* point: when Claude Code starts a session, the\n``bootstrap hook sessionstart`` entry point prints the text this module\ncomposes, so the agent boots already knowing the project\'s mode, stance,\nlearned lessons, fired triggers, and pending questions. The composition is\n**mode-aware** — ``orientation_depth`` (observe → minimal, guided → standard,\nactive → full) decides which sections render and how hard they cap.\n\nSection order (the plan\'s fixed sequence): status header → stance briefing →\nuser-style block → learned lessons (AFTER user-style) → trigger block →\nguided-practices line → economy-gauges advisory (over-cap only) → pending\nquestions (quota view) → observe-mode workflow proposal.\n\nEvery section is defensive: a failure inside one section drops that section,\nnever the whole composition — orientation must never crash a session. This is\nthe one place broad ``except Exception`` is correct by design (fail open, like\nthe stance guard).\n"""\n\nfrom __future__ import annotations\n\nfrom pathlib import Path\nfrom typing import Any\n\nfrom engine.economy.engine import economy_gauges\nfrom engine.interview.interview import pending_questions, session_questions\nfrom engine.lib.config import Config\nfrom engine.lib.modes import (\n    active_practices,\n    orientation_depth,\n    triggers_mandate,\n    workflow_proposal_due,\n)\nfrom engine.loop.reflections import (\n    REFLECTIONS_FILENAME,\n    active_lessons,\n    lessons_block,\n    load_reflections,\n)\nfrom engine.loop.triggers import check_triggers, mandatory_questions, trigger_block\nfrom engine.stances.stances import stance_briefing\n\n# Depth "standard" caps the learned-lessons section at this many entries.\n_ORI_STANDARD_LESSON_CAP = 3\n# Depth "minimal" (observe) renders only these section numbers: the status\n# header (1), the trigger block as an advisory (5), and the workflow proposal\n# (9) — observe imposes nothing else.\n_ORI_MINIMAL_SECTIONS = frozenset({1, 5, 9})\n\n\ndef _ori_status_header(state: dict[str, Any], config: Config) -> str:\n    """Render section 1 — the compact status header line block."""\n    project = str(state.get("project_id") or config.project_id)\n    return (\n        f"# Session orientation — {project}\\n"\n        f"mode: {state.get(\'mode\', \'?\')} · stage: {state.get(\'stage\', \'?\')} · "\n        f"stance: {state.get(\'stance\', \'?\')} · "\n        f"session: {int(state.get(\'session_count\', 0))}"\n    )\n\n\ndef _ori_stance(state: dict[str, Any]) -> str:\n    """Render section 2 — the active stance briefing (\'\' when no stance set)."""\n    stance = state.get("stance")\n    if not stance:\n        return ""\n    return stance_briefing(str(stance))\n\n\ndef _ori_user_style(state: dict[str, Any]) -> str:\n    """Render section 3 — the owner_profile user-style block (\'\' when unfilled)."""\n    entry = state.get("slot_values", {}).get("owner_profile")\n    value = entry.get("value") if isinstance(entry, dict) else entry\n    text = str(value).strip() if value else ""\n    if not text:\n        return ""\n    return f"## How the owner works:\\n\\n> {text}"\n\n\ndef _ori_lessons(root: Path, config: Config, depth: str) -> str:\n    """Render section 4 — learned lessons (standard caps at 3, full uncapped)."""\n    entries = load_reflections(root / config.state_dir / REFLECTIONS_FILENAME)\n    cap = _ORI_STANDARD_LESSON_CAP if depth == "standard" else len(entries)\n    return lessons_block(active_lessons(entries, cap))\n\n\ndef _ori_triggers(root: Path, config: Config, state: dict[str, Any]) -> str:\n    """Render section 5 — the trigger block (mandate flag per the mode policy)."""\n    triggers = check_triggers(root, config, state)\n    questions = mandatory_questions(triggers)\n    return trigger_block(triggers, questions, mandate=triggers_mandate(state))\n\n\ndef _ori_practices(state: dict[str, Any], config: Config) -> str:\n    """Render section 6 — the one-line guided-practices block (\'\' when empty)."""\n    practices = active_practices(state, dict(config.cadence or {}))\n    if not practices:\n        return ""\n    return "Active practices: " + ", ".join(practices)\n\n\ndef _ori_gauges(root: Path, config: Config) -> str:\n    """Render section 7 — economy advisory listing ONLY over-cap gauges."""\n    over = [g for g in economy_gauges(root, config) if g.get("over")]\n    if not over:\n        return ""\n    lines = ["## Economy advisory — over-cap gauges", ""]\n    lines += [\n        f"- {g[\'name\']} ({g[\'kind\']}): {g[\'value\']} words/items over cap {g[\'cap\']}"\n        for g in over\n    ]\n    return "\\n".join(lines)\n\n\ndef _ori_questions(state: dict[str, Any]) -> str:\n    """Render section 8 — the quota-capped ask list with a \'+N more\' suffix."""\n    asks = session_questions(state)\n    if not asks:\n        return ""\n    lines = ["## Questions this session", ""]\n    lines += [\n        f"- {q[\'id\']} ({q.get(\'priority\', \'normal\')}): {q[\'prompt\']}" for q in asks\n    ]\n    extra = len(pending_questions(state)) - len(asks)\n    if extra > 0:\n        lines += ["", f"(+{extra} more later)"]\n    return "\\n".join(lines)\n\n\ndef _ori_proposal(state: dict[str, Any]) -> str:\n    """Render section 9 — observe mode\'s workflow proposal when it is due."""\n    if state.get("mode") != "observe" or not workflow_proposal_due(state):\n        return ""\n    return (\n        "## Proposed workflow\\n\\n"\n        "Observe mode has watched enough sessions to propose a tailored "\n        "workflow. If the pacing looks right, switch mode to adopt it: "\n        "`bootstrap mode guided` (one practice at a time) or "\n        "`bootstrap mode active` (the full workflow now). Observe imposes "\n        "nothing until you do."\n    )\n\n\ndef _ori_safe(build: Any) -> str:\n    """Run one section builder, returning \'\' on any failure (fail open).\n\n    The one place broad ``except Exception`` is correct by design: a bad state\n    document or an unreadable file drops that single section — orientation\n    must never crash a session.\n    """\n    try:\n        return str(build()).strip()\n    except Exception:  # fail open — one bad section never breaks the whole\n        return ""\n\n\ndef compose_orientation(root: Path, config: Config, backend: Any) -> str:\n    """Compose the mode-aware SessionStart orientation injection.\n\n    Assembles the nine plan sections in fixed order, gated by\n    ``orientation_depth``: ``minimal`` renders only the status header, the\n    trigger advisory, and the observe-mode proposal; ``standard`` renders all\n    sections but caps lessons at 3; ``full`` renders everything uncapped.\n    Every section builder runs inside its own guard — a bad state document or\n    an unreadable file drops that one section, never the whole composition\n    (orientation must never crash a session).\n    """\n    try:\n        state = dict(backend.data)\n    except Exception:  # fail open — orientation never crashes a session\n        state = {}\n    try:\n        depth = orientation_depth(state)\n    except Exception:  # fail open — fall back to the default depth\n        depth = "standard"\n    builders = (\n        (1, lambda: _ori_status_header(state, config)),\n        (2, lambda: _ori_stance(state)),\n        (3, lambda: _ori_user_style(state)),\n        (4, lambda: _ori_lessons(root, config, depth)),\n        (5, lambda: _ori_triggers(root, config, state)),\n        (6, lambda: _ori_practices(state, config)),\n        (7, lambda: _ori_gauges(root, config)),\n        (8, lambda: _ori_questions(state)),\n        (9, lambda: _ori_proposal(state)),\n    )\n    sections: list[str] = []\n    for number, build in builders:\n        if depth == "minimal" and number not in _ORI_MINIMAL_SECTIONS:\n            continue\n        text = _ori_safe(build)\n        if text:\n            sections.append(text)\n    if not sections:\n        return ""\n    return "\\n\\n".join(sections) + "\\n"\n',
-    'engine/hooks/post_edit.py': '"""PostToolUse edit advisor (plan section 5.B, Lane B7).\n\nRuns after every Edit/Write tool call: the CLI\'s ``hook postedit`` entry point\nextracts the edited file path from the PostToolUse stdin payload and asks\n``evaluate_edit`` whether the edit deserves an advisory —\n\n- **generated artifact** — the file lives under ``<state_dir>/rendered`` or\n  ``<state_dir>/contextpacks``, or its head carries the ``NOT SOURCE OF\n  TRUTH`` marker: edit the template/index and re-render, not the artifact.\n- **missing Status badge** — a ``*.md`` under the docs root without a\n  ``> **Status:** `<token>``` badge in its first 12 lines (the same badge scan\n  ``check_docs`` runs, via the shared ``badge_token`` reader).\n\nLike every hook evaluator this **fails open**: absolute or root-relative paths\nboth resolve, and an unreadable / missing file yields ``None`` — the advisor\nnever gets in the way when it is unsure.\n"""\n\nfrom __future__ import annotations\n\nfrom pathlib import Path\n\nfrom engine.checks.check_docs import badge_token\nfrom engine.lib.config import Config\n\n# The HTML-comment form only: planted (hand-editable) docs carry the bare\n# phrase "NOT SOURCE OF TRUTH" in their badge prose, and the guard must not\n# warn on every legitimate edit of a planted binding doc — only generated\n# artifacts (contextpacks etc.) open with this comment marker.\n_PE_MARKER = "<!-- NOT SOURCE OF TRUTH"\n_PE_HEAD_LINES = 12\n# <state_dir> subdirectories that hold build artifacts, never source.\n_PE_GENERATED_DIRS = ("rendered", "contextpacks")\n_PE_GENERATED_MSG = (\n    "generated artifact — edit the template/index and re-render, not this file"\n)\n_PE_BADGE_MSG = (\n    "missing Status badge — add `> **Status:** `<token>`` to its first 12 lines"\n)\n\n\ndef _pe_resolve(root: Path, file_path: str) -> tuple[Path, Path | None]:\n    """Return ``(absolute path, root-relative path or None)`` for an edit path.\n\n    Accepts absolute and root-relative inputs; the relative half is ``None``\n    when the file lives outside ``root`` (nothing to classify against config\n    paths there).\n    """\n    path = Path(file_path)\n    if not path.is_absolute():\n        path = root / path\n    try:\n        rel = path.resolve().relative_to(root.resolve())\n    except (OSError, ValueError):\n        rel = None\n    return path, rel\n\n\ndef _pe_head(path: Path) -> str:\n    """Return the file\'s first 12 lines (\'\' when unreadable — fail open)."""\n    try:\n        lines = path.read_text(encoding="utf-8").splitlines()\n    except (OSError, UnicodeDecodeError):\n        return ""\n    return "\\n".join(lines[:_PE_HEAD_LINES])\n\n\ndef _pe_is_generated(config: Config, rel: Path | None, head: str) -> bool:\n    """True when the edited file is a build artifact (by path or by marker)."""\n    if _PE_MARKER in head:\n        return True\n    if rel is None:\n        return False\n    state_dir = Path(config.state_dir)\n    return any(rel.is_relative_to(state_dir / sub) for sub in _PE_GENERATED_DIRS)\n\n\ndef evaluate_edit(root: Path, config: Config, file_path: str) -> str | None:\n    """Return the advisory warning for one edited file, or None.\n\n    Warns on a generated artifact (path under ``<state_dir>/rendered`` /\n    ``<state_dir>/contextpacks``, or the generated-artifact HTML-comment marker)\n    and on a docs-root ``*.md`` lacking a Status badge. Tolerant of absolute\n    or root-relative ``file_path`` and of unreadable / missing files (None).\n    """\n    try:\n        path, rel = _pe_resolve(root, file_path)\n        if not path.is_file():\n            return None\n        name = rel.as_posix() if rel is not None else path.as_posix()\n        if _pe_is_generated(config, rel, _pe_head(path)):\n            return f"{name}: {_PE_GENERATED_MSG}"\n        if (\n            rel is not None\n            and path.suffix == ".md"\n            and rel.is_relative_to(Path(config.docs_root))\n            and badge_token(path) is None\n        ):\n            return f"{name}: {_PE_BADGE_MSG}"\n        return None\n    except Exception:  # fail open — the advisor never blocks an edit\n        return None\n',
-    'engine/hooks/stop_check.py': '"""Stop-hook session-close advisor (plan section 5.B, Lane B7).\n\nRuns when a Claude Code session stops: the CLI\'s ``hook stopcheck`` entry\npoint prints the advisory lines ``evaluate_stop`` returns, reminding the agent\nwhat the session ritual still owes —\n\n- the session log is missing, or exists but lacks required markers\n  (``latest_session_log`` + ``check_log`` with ``config.session_markers``);\n- escalated blocking questions are still open (``state["open_questions"]``);\n- the compaction cadence window has elapsed (``compaction_due``);\n- the reflection buffer has not been mined today\n  (``reflection_buffer.last_mined`` vs today\'s ISO date).\n\nReturns ``[]`` when all clean. Advisory only, and it **fails open**: every\ncheck runs inside its own guard, so a bad state document or an unreadable log\ndrops that one advisory rather than crashing the stop hook.\n"""\n\nfrom __future__ import annotations\n\nfrom datetime import date\nfrom pathlib import Path\nfrom typing import Any\n\nfrom engine.checks.check_session_log import check_log, latest_session_log\nfrom engine.lib.config import Config\nfrom engine.loop.maintenance import compaction_due\n\n_STOP_UNMINED_MSG = "reflections unmined this session — run bootstrap reflect --mine"\n\n\ndef _stop_safe(check: Any) -> list[str]:\n    """Run one advisory check, returning [] on any failure (fail open).\n\n    Each check is guarded on its own so one bad input never suppresses the\n    other advisories — the stop hook is advisory by contract.\n    """\n    try:\n        return list(check())\n    except Exception:  # fail open — one bad check drops only itself\n        return []\n\n\ndef _stop_state(backend: Any) -> dict[str, Any]:\n    """Return the state document ({} when the backend is unusable — fail open)."""\n    try:\n        return dict(backend.data)\n    except Exception:  # fail open — a broken backend yields no state advisories\n        return {}\n\n\ndef _stop_log(root: Path, config: Config) -> list[str]:\n    """Advise when the session log is missing or lacks required markers."""\n    log = latest_session_log(root / config.sessions_dir)\n    if log is None:\n        return [\n            f"no session log found under {config.sessions_dir}/ — "\n            "write one before ending the session",\n        ]\n    missing = check_log(log, config.session_markers)\n    if missing:\n        return [f"session log {log.name} is missing: {\', \'.join(missing)}"]\n    return []\n\n\ndef _stop_questions(state: dict[str, Any]) -> list[str]:\n    """Advise when escalated blocking questions are still open."""\n    open_questions = [str(q) for q in state.get("open_questions", [])]\n    if not open_questions:\n        return []\n    listed = ", ".join(open_questions)\n    return [f"{len(open_questions)} blocking question(s) open: {listed}"]\n\n\ndef _stop_compaction(state: dict[str, Any], config: Config) -> list[str]:\n    """Advise when the compaction cadence window has elapsed."""\n    if compaction_due(state, dict(config.cadence or {})):\n        return ["compaction due — write the State Delta snapshot (bootstrap maintain)"]\n    return []\n\n\ndef _stop_reflections(state: dict[str, Any]) -> list[str]:\n    """Advise when the reflection buffer has not been mined today."""\n    buffer = state.get("reflection_buffer")\n    last_mined = buffer.get("last_mined") if isinstance(buffer, dict) else None\n    if last_mined == date.today().isoformat():\n        return []\n    return [_STOP_UNMINED_MSG]\n\n\ndef evaluate_stop(root: Path, config: Config, backend: Any) -> list[str]:\n    """Return the session-close advisory lines ([] when all clean).\n\n    Four checks in fixed order: session log, open blocking questions,\n    compaction cadence, reflection mining. Each runs inside its own guard so\n    one failing check never suppresses the others — the stop hook is advisory\n    and fails open by contract.\n    """\n    state = _stop_state(backend)\n    checks = (\n        lambda: _stop_log(root, config),\n        lambda: _stop_questions(state),\n        lambda: _stop_compaction(state, config),\n        lambda: _stop_reflections(state),\n    )\n    advisories: list[str] = []\n    for check in checks:\n        advisories.extend(_stop_safe(check))\n    return advisories\n',
-    'engine/hooks/settings.py': '"""Hook settings template + customization contract (plan section 5.B, Lane B7).\n\nThe staging half of the hook layer (HOOK-2): ``full_settings_template`` emits\nthe complete ``.claude`` ``settings.template.json`` wiring all four hook\nevents — PreToolUse (stance guard), SessionStart (orientation), PostToolUse\n(edit advisor), Stop (session-close advisor) — each to\n``<interpreter> bootstrap.py hook <event>``, the same command shape the CLI\'s\n``_hook_command`` builds. ``hooks_fill_table`` emits the markdown\ncustomization contract a host reads before merging: which config fields must\nmatch their repo, and the standing rule that the kit *stages* hook settings —\nit never writes a live ``.claude/`` tree itself.\n"""\n\nfrom __future__ import annotations\n\nimport json\n\nfrom engine.lib.config import Config\n\n# (settings.json event key, bootstrap hook event, tool matcher or None).\n_SET_EVENTS: tuple[tuple[str, str, str | None], ...] = (\n    ("PreToolUse", "pretooluse", "*"),\n    ("SessionStart", "sessionstart", None),\n    ("PostToolUse", "postedit", "Edit|Write|NotebookEdit"),\n    ("Stop", "stopcheck", None),\n)\n\n_SET_FILL_ROWS: tuple[tuple[str, str], ...] = (\n    (\n        "`interpreter`",\n        "the Python that runs the kit itself — every hook command below "\n        "starts with it; set it to an interpreter available on your PATH",\n    ),\n    (\n        "`interpreter_for_checks`",\n        "your *project\'s* verification interpreter (the version your CI "\n        "pins, e.g. `python3.10`) — kept separate from `interpreter` on "\n        "purpose",\n    ),\n    (\n        "`bootstrap.py` path",\n        "each hook command assumes `bootstrap.py` sits at your repo root; "\n        "rewrite the path inside every command if it lives elsewhere",\n    ),\n    (\n        "`state_dir`",\n        "where kit state + staged artifacts live (default `.substrate`) — "\n        "the post-edit generated-artifact warning keys off it",\n    ),\n    (\n        "`docs_root`",\n        "your documentation root (default `docs`) — the post-edit badge "\n        "warning and the SessionStart trigger scan key off it",\n    ),\n    (\n        "`sessions_dir`",\n        "where per-session logs live (default `.sessions`) — the Stop-hook "\n        "session-log advisory keys off it",\n    ),\n    (\n        "cadence knobs",\n        "`cadence.*` in `substrate.config.json` (`compaction_sessions`, "\n        "`reconciliation_sessions`, `staleness_days`, "\n        "`critical_slot_grace_sessions`, `guided_practice_sessions`) drive "\n        "the SessionStart triggers and Stop-hook advisories",\n    ),\n)\n\n\ndef _set_command(config: Config, event: str, bootstrap_path: str) -> str:\n    """Return the shell command Claude Code runs for one hook event."""\n    return f"{config.interpreter} {bootstrap_path} hook {event}"\n\n\ndef full_settings_template(config: Config, bootstrap_path: str = "bootstrap.py") -> str:\n    """Return the complete ``settings.template.json`` wiring all four hooks.\n\n    JSON text (2-space indent) a host merges into ``.claude/settings.json``:\n    PreToolUse (matcher ``*``), SessionStart, PostToolUse (matcher\n    ``Edit|Write|NotebookEdit``), and Stop, each running\n    ``<interpreter> <bootstrap_path> hook <event>``. Matcher-less events omit\n    the ``matcher`` key entirely (they apply unconditionally).\n    ``bootstrap_path`` is the path the hook commands reference — adopt passes\n    the vendored/root-resolved location so staged hooks resolve inside the\n    target repo (the Phase-2.5 staged-hook failure cause).\n    """\n    hooks: dict[str, list[dict]] = {}\n    for settings_event, cli_event, matcher in _SET_EVENTS:\n        entry: dict = {}\n        if matcher is not None:\n            entry["matcher"] = matcher\n        entry["hooks"] = [\n            {\n                "type": "command",\n                "command": _set_command(config, cli_event, bootstrap_path),\n            },\n        ]\n        hooks[settings_event] = [entry]\n    return json.dumps({"hooks": hooks}, indent=2) + "\\n"\n\n\ndef hooks_fill_table() -> str:\n    """Return the markdown customization contract for the settings template.\n\n    One ``field | what must match your repo`` row per knob a host must verify\n    before installing, plus the install instruction: merge the staged template\n    into ``.claude/settings.json`` yourself — the kit stages hook settings, it\n    never writes a live ``.claude/`` tree.\n    """\n    lines = [\n        "# Hook settings — customization contract",\n        "",\n        "The kit **stages** `settings.template.json`; it never writes your",\n        "`.claude/` tree. Install by merging the template\'s `hooks` block into",\n        "your repo\'s `.claude/settings.json` yourself, after checking every",\n        "row below against your repo.",\n        "",\n        "| field | what must match your repo |",\n        "| --- | --- |",\n    ]\n    lines += [f"| {field} | {note} |" for field, note in _SET_FILL_ROWS]\n    lines += [\n        "",\n        "All four hooks are advisory and fail open: they always exit 0 and",\n        "never block a tool, an edit, or a session stop.",\n    ]\n    return "\\n".join(lines) + "\\n"\n',
-    'engine/render.py': '"""Render the project\'s content docs from templates + filled interview slots.\n\nTemplates use ``${slot_name}`` placeholders (``string.Template``). A slot the\ninterview has filled substitutes in; an unfilled slot is left as ``${slot_name}``\nand reported — so a half-onboarded project\'s gaps stay visible rather than going\nsilently blank. Templates ship embedded in the bootstrap (the generated\n``_TEMPLATES`` dict) and, in the source/pip layouts, under\n``engine/templates/`` (inside the package so a wheel ships them).\n"""\n\nfrom __future__ import annotations\n\nimport re\nfrom pathlib import Path\nfrom typing import Any\n\n_PLACEHOLDER_RE = re.compile(r"\\$\\{([a-zA-Z_][a-zA-Z0-9_]*)\\}")\n\n\ndef find_placeholders(text: str) -> set[str]:\n    """Return the set of ``${name}`` placeholders remaining in ``text``."""\n    return set(_PLACEHOLDER_RE.findall(text))\n\n\ndef render(text: str, context: dict[str, str]) -> str:\n    """Substitute ``${slot}`` placeholders from ``context`` (unfilled left as-is).\n\n    Only the braced ``${name}`` form is a placeholder — the *same* form\n    ``find_placeholders`` reports, so render and the "unfilled slots stay\n    visible" safety net can never disagree. Deliberately NOT\n    ``string.Template.safe_substitute``: that also collapses ``$$`` → ``$`` and\n    substitutes unbraced ``$word``, silently mangling host-authored ``$``\n    content (shell ``$$``/``$1``, ``$5`` prices, ``$$LaTeX$$``) on the routine\n    ``render --live`` in-place fill — and turning an escaped ``$${VERSION}``\n    into a live-looking ``${VERSION}`` that then reports as an unfilled slot.\n    A regex sub over the braced form leaves every other ``$`` byte untouched.\n    """\n    return _PLACEHOLDER_RE.sub(\n        lambda m: context[m.group(1)] if m.group(1) in context else m.group(0),\n        text,\n    )\n\n\ndef build_context(state: dict[str, Any]) -> dict[str, str]:\n    """Build the substitution context from a state document\'s filled slots."""\n    values = state.get("slot_values", {})\n    return {slot: str(entry.get("value", "")) for slot, entry in values.items()}\n\n\ndef load_templates() -> dict[str, str]:\n    """Return ``{filename: text}`` for every template (embedded or packaged).\n\n    The single-file bootstrap embeds them as ``_TEMPLATES``; the source/pip\n    layouts read ``engine/templates/`` (INSIDE the package, so a wheel ships\n    them — they once lived a level up and a pip install silently had none).\n    An empty template set is a hard error, never a silent no-op render.\n    """\n    embedded = globals().get("_TEMPLATES")\n    if embedded is not None:\n        return dict(embedded)\n    root = Path(__file__).resolve().parent / "templates"\n    templates = {\n        p.name: p.read_text(encoding="utf-8") for p in sorted(root.glob("*.tmpl"))\n    }\n    if not templates:\n        msg = f"no templates found at {root} — broken install"\n        raise FileNotFoundError(msg)\n    return templates\n',
-    'engine/derive.py': '"""Adopt-time slot derivation — "adopt renders what it knows" (the Phase-2.5 G2 fix).\n\nThe cold-start A/B (``phase-2.5-cold-start-report-2026-07-07.md``) failed\nbecause ``adopt`` planted raw ``${...}`` templates: a task-focused cold\nsession paid the reading cost and (correctly) ignored them. The fix has two\nhalves; this module is the first — derive every slot the kit can know\n**deterministically** from the target tree (project name, primary language,\nverify command, docs root) and record each as a *provisional* interview\nanswer before the adopt render, so the planted docs open readable instead of\ninert. Provisional answers never count toward graduation until confirmed\n(the interview contract is unchanged) and ``bootstrap ask`` still asks —\nderivation seeds the interview, it does not replace it. Detection is\nfile-presence based, never a guess: a slot with no confident signal stays\nunfilled (and the adopt banner marks it — the second half, in ``adopt.py``).\nPure stdlib.\n"""\n\nfrom __future__ import annotations\n\nimport re\nfrom pathlib import Path\nfrom typing import Any\n\nfrom engine.interview.interview import record_answer\nfrom engine.interview.question_bank import QUESTIONS\n\n_REQUIRES_PYTHON_RE = re.compile(r\'requires-python\\s*=\\s*"([^"]+)"\')\n_MAKEFILE_TEST_RE = re.compile(r"^test\\s*:", re.MULTILINE)\n\n# Marker files that make a tree confidently Python before any other check.\n_PYTHON_MARKERS = ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt")\n\n\ndef _read_if_exists(path: Path) -> str:\n    """Return the file\'s text, or empty for a missing/unreadable file."""\n    try:\n        return path.read_text(encoding="utf-8")\n    except (OSError, UnicodeDecodeError):\n        return ""\n\n\ndef detect_language(root: Path) -> str | None:\n    """Return the project\'s primary language from marker files, or None.\n\n    Python wins ties deliberately (the kit\'s own tooling is Python-first and a\n    mixed tree with a ``pyproject.toml`` is Python-led for verification\n    purposes). The version qualifier comes only from an explicit\n    ``requires-python`` — never inferred.\n    """\n    if any((root / marker).is_file() for marker in _PYTHON_MARKERS):\n        match = _REQUIRES_PYTHON_RE.search(_read_if_exists(root / "pyproject.toml"))\n        return f"Python {match.group(1)}" if match else "Python"\n    if (root / "package.json").is_file():\n        return "TypeScript" if (root / "tsconfig.json").is_file() else "JavaScript"\n    if (root / "Cargo.toml").is_file():\n        return "Rust"\n    if (root / "go.mod").is_file():\n        return "Go"\n    return None\n\n\ndef _python_has_tests(root: Path) -> bool:\n    """True when the tree carries a recognizable pytest surface."""\n    if (root / "tests").is_dir() or (root / "pytest.ini").is_file():\n        return True\n    pyproject = _read_if_exists(root / "pyproject.toml")\n    return "[tool.pytest" in pyproject\n\n\ndef _npm_has_real_test_script(root: Path) -> bool:\n    """True when package.json declares a test script that isn\'t npm\'s stub."""\n    text = _read_if_exists(root / "package.json")\n    if \'"test"\' not in text:\n        return False\n    return "no test specified" not in text\n\n\ndef detect_verify_command(root: Path) -> str | None:\n    """Return the one-command verification entry point, or None.\n\n    Order mirrors :func:`detect_language`; each candidate requires a positive\n    marker (a test tree, a real test script, a ``test:`` target) so the\n    derived command is runnable, not aspirational.\n    """\n    if any((root / marker).is_file() for marker in _PYTHON_MARKERS):\n        if _python_has_tests(root):\n            return "python3 -m pytest"\n        return None\n    if (root / "package.json").is_file() and _npm_has_real_test_script(root):\n        return "npm test"\n    if (root / "Cargo.toml").is_file():\n        return "cargo test"\n    if (root / "go.mod").is_file():\n        return "go test ./..."\n    if _MAKEFILE_TEST_RE.search(_read_if_exists(root / "Makefile")):\n        return "make test"\n    return None\n\n\ndef derive_slots(root: Path, docs_root: str) -> dict[str, str]:\n    """Return every slot value derivable from the target tree.\n\n    Keys match the question bank\'s slot names. Only confidently-derived\n    entries appear — absent key means "leave the slot to the interview".\n    """\n    derived: dict[str, str] = {"project_name": root.resolve().name}\n    language = detect_language(root)\n    if language:\n        derived["primary_language"] = language\n    verify = detect_verify_command(root)\n    if verify:\n        derived["verify_command"] = verify\n    if docs_root:\n        derived["doc_roots"] = docs_root\n    return derived\n\n\ndef record_derived_slots(backend: Any, derived: dict[str, str]) -> list[str]:\n    """Record derived values as provisional answers for still-empty slots.\n\n    Existing answers of any status (filled / partial / provisional) are never\n    overwritten — derivation only seeds blanks. Returns report lines in the\n    adopt-report format.\n    """\n    by_slot = {question["slot"]: question for question in QUESTIONS}\n    slots = backend.get("slots", {})\n    lines: list[str] = []\n    for slot, value in derived.items():\n        question = by_slot.get(slot)\n        if question is None or slots.get(slot):\n            continue\n        record_answer(backend, question, value, source="derived")\n        lines.append(\n            f"derived: {slot} = {value!r} (provisional — confirm or correct "\n            f"via `bootstrap answer {slot} ...`)",\n        )\n    return lines\n',
-    'engine/contextpack.py': '"""AgentContextPack generator — index-or-manifest input (Lane B8, spec 2.10).\n\nGenerates per-area *context packs* — the curated "what an agent must know to\nwork in this area" bundles — from a project index. Two input forms are\naccepted (design-spec 2.10: the generator meets hosts where they are):\n\n  1. the kit\'s own ``project.index.json`` (``{"areas": [...]}``, planted by\n     the adopt flow as a skeleton), and\n  2. a manifest snapshot (``{"subsystems": [...]}``) as produced by a host\'s\n     existing subsystem manifest — mapped onto the same area shape with\n     sensible fallbacks.\n\nEach pack is written under ``<state_dir>/contextpacks/`` and opens with the\n``NOT SOURCE OF TRUTH`` marker: packs are build artifacts — regenerate them\nfrom the index, never hand-edit them. Pure stdlib; every write goes through\n``atomic_write_text``.\n"""\n\nfrom __future__ import annotations\n\nimport json\nimport re\nfrom pathlib import Path\n\nfrom engine.lib.atomicio import atomic_write_text\nfrom engine.lib.config import Config\n\n_PACK_MARKER = (\n    "<!-- NOT SOURCE OF TRUTH — generated by substrate-kit; "\n    "regenerate, do not edit. -->"\n)\n\n# The list-valued fields of the canonical area shape, in emit order.\n_PACK_LIST_KEYS = (\n    "binding_docs",\n    "source_roots",\n    "do_not_create",\n    "gates",\n    "verification",\n)\n\n_PACK_SECTION_TITLES = {\n    "binding_docs": "Binding docs",\n    "source_roots": "Source roots",\n    "do_not_create": "Do-not-create",\n    "gates": "Gates",\n    "verification": "Verification",\n}\n\n_PACK_SLUG_STRIP_RE = re.compile(r"[^a-z0-9._-]")\n_PACK_SLUG_SEP_RE = re.compile(r"[\\s/\\\\]+")\n\n\ndef _pack_slug(name: str) -> str:\n    """Slugify an area name for its pack filename (spaces/slashes -> dashes)."""\n    slug = _PACK_SLUG_SEP_RE.sub("-", name.strip().lower())\n    slug = _PACK_SLUG_STRIP_RE.sub("", slug)\n    slug = re.sub(r"-{2,}", "-", slug).strip("-")\n    return slug or "area"\n\n\ndef _pack_as_list(value: object) -> list[str]:\n    """Coerce an index field to a list of strings (unknown/missing -> [])."""\n    if isinstance(value, str):\n        return [value] if value.strip() else []\n    if isinstance(value, list):\n        return [str(item) for item in value if str(item).strip()]\n    return []\n\n\ndef _pack_area(entry: dict) -> dict:\n    """Normalise one raw index entry onto the canonical area shape."""\n    name = str(entry.get("name") or "").strip() or "unnamed-area"\n    folio = entry.get("folio")\n    area: dict = {\n        "name": name,\n        "folio": str(folio).strip() if isinstance(folio, str) else "",\n    }\n    for key in _PACK_LIST_KEYS:\n        area[key] = _pack_as_list(entry.get(key))\n    return area\n\n\ndef _pack_from_subsystem(entry: dict) -> dict:\n    """Map a manifest-snapshot subsystem entry onto the area shape."""\n    mapped = dict(entry)\n    if not mapped.get("binding_docs"):\n        mapped["binding_docs"] = mapped.get("docs")\n    if not mapped.get("source_roots"):\n        mapped["source_roots"] = mapped.get("roots")\n    return _pack_area(mapped)\n\n\ndef load_pack_index(path: Path) -> list[dict]:\n    """Load a pack index from ``path``, accepting both supported forms.\n\n    Detects the form by top-level key: ``{"areas": [...]}`` is the kit\'s own\n    ``project.index.json``; ``{"subsystems": [...]}`` is a host manifest\n    snapshot (``docs``/``roots`` map onto ``binding_docs``/``source_roots``).\n    Unknown or missing per-entry keys become empty lists. Raises ``ValueError``\n    when the document is neither form (a wrong file, not a quiet no-op).\n    """\n    data = json.loads(path.read_text(encoding="utf-8"))\n    if isinstance(data, dict) and isinstance(data.get("areas"), list):\n        return [_pack_area(e) for e in data["areas"] if isinstance(e, dict)]\n    if isinstance(data, dict) and isinstance(data.get("subsystems"), list):\n        return [\n            _pack_from_subsystem(e) for e in data["subsystems"] if isinstance(e, dict)\n        ]\n    msg = f"{path.name}: expected top-level \'areas\' or \'subsystems\' list"\n    raise ValueError(msg)\n\n\ndef _pack_section(title: str, items: list[str]) -> list[str]:\n    """Render one pack section as markdown lines (empty section -> no lines)."""\n    if not items:\n        return []\n    return [f"## {title}", "", *(f"- {item}" for item in items), ""]\n\n\ndef _pack_body(root: Path, area: dict) -> str:\n    """Compose one pack\'s full markdown text from a normalised area."""\n    lines = [_PACK_MARKER, "", f"# {area[\'name\']} — agent context pack", ""]\n    lines += _pack_section("Folio", [area["folio"]] if area["folio"] else [])\n    for key in _PACK_LIST_KEYS:\n        items = area[key]\n        if key == "source_roots":\n            items = [\n                entry if (root / entry).exists() else f"{entry} (MISSING)"\n                for entry in items\n            ]\n        lines += _pack_section(_PACK_SECTION_TITLES[key], items)\n    return "\\n".join(lines).rstrip() + "\\n"\n\n\ndef generate_packs(root: Path, config: Config, index: list[dict]) -> list[Path]:\n    """Write one context pack per index area; return the written paths.\n\n    Packs land in ``<root>/<state_dir>/contextpacks/<slug>.context.md``.\n    ``source_roots`` entries are existence-checked against ``root`` and\n    suffixed `` (MISSING)`` when absent, so a stale index is visible in the\n    pack instead of silently misleading the agent reading it.\n    """\n    out_dir = root / config.state_dir / "contextpacks"\n    written: list[Path] = []\n    used: set[str] = set()\n    for entry in index:\n        area = _pack_area(entry)\n        # Two areas whose names slugify alike (``Economy``/``economy``,\n        # ``API v1``/``API-v1``, two unnamed areas → ``area``) must not land on\n        # one filename: the later ``atomic_write_text`` would silently erase the\n        # earlier pack and ``written`` would double-count one file. Disambiguate\n        # to the first free ``slug`` / ``slug-2`` / ``slug-3`` … (robust even if\n        # a real ``slug-2`` area also exists); the pack body still names its area\n        # in the heading, so a suffixed file stays identifiable.\n        base = _pack_slug(area["name"])\n        slug, n = base, 2\n        while slug in used:\n            slug, n = f"{base}-{n}", n + 1\n        used.add(slug)\n        path = out_dir / f"{slug}.context.md"\n        atomic_write_text(path, _pack_body(root, area))\n        written.append(path)\n    return written\n\n\ndef pack_index_skeleton(project_name: str) -> str:\n    """Return the planted ``project.index.json`` skeleton (JSON text).\n\n    One example area with every field present-but-empty, plus a ``_comment``\n    explaining how each field feeds the AgentContextPack generator\n    (index-or-manifest input, design-spec 2.10).\n    """\n    skeleton = {\n        "_comment": (\n            "AgentContextPack index (design-spec 2.10). Each `areas` entry "\n            "feeds one generated <state_dir>/contextpacks/<name>.context.md: "\n            "`name` (the area; slugified into the pack filename), `folio` "\n            "(the canonical entry-point doc for the area), `binding_docs` "\n            "(authoritative contracts to read first), `source_roots` (key "\n            "files/dirs; existence-checked at generation, missing ones "\n            "flagged), `do_not_create` (existing systems an agent must not "\n            "duplicate), `gates` (currently active expansion conditions), "\n            "`verification` (commands to run before pushing). The generator "\n            \'also accepts a manifest snapshot ({"subsystems": [...]}) \'\n            "instead of this file."\n        ),\n        "project": project_name,\n        "areas": [\n            {\n                "name": "example-area",\n                "folio": "",\n                "binding_docs": [],\n                "source_roots": [],\n                "do_not_create": [],\n                "gates": [],\n                "verification": [],\n            },\n        ],\n    }\n    return json.dumps(skeleton, indent=2) + "\\n"\n',
-    'engine/adopt.py': '"""One-step adopt flow — plant the workflow docs, stage the packs (Lane B8).\n\n``adopt`` turns a bare host repo into a substrate-governed one in a single\nidempotent pass: it renders every content template with the currently filled\ninterview slots and *plants* the live docs (constitution, contracts, ledgers,\nsession scaffolding) — **skip-if-exists, never clobbering** a file the host\nalready owns — then *stages* the ``.claude`` material (working agreement,\nskill pack, persona pack, hook wiring, CI example) under ``<state_dir>`` for\nthe host to install deliberately. Only an explicit ``include_claude=True``\nwrites a live ``.claude/`` tree, and even then only files that are absent\n(the host opt-in stays non-destructive).\n\nAdopt renders what it knows (the Phase-2.5 G2 fix): before rendering, every\ndeterministically-derivable slot (project name, language, verify command,\ndocs root — ``engine/derive.py``) is recorded as a provisional interview\nanswer, and any doc still carrying unfilled ``${slot}`` placeholders is\nplanted under a loud UNRENDERED banner instead of silently inert — a cold\nsession sees at a glance which prose is live and which is an unfilled slot.\nThe guardrail runs first: the kit refuses to adopt into its own tree. Pure\nstdlib; every write goes through ``atomic_write_text``.\n"""\n\nfrom __future__ import annotations\n\nimport sys\nfrom datetime import date\nfrom pathlib import Path\nfrom typing import Any\n\nfrom engine.agents.agents import AGENTS, agent_document, agent_relpath\nfrom engine.contextpack import pack_index_skeleton\nfrom engine.derive import derive_slots, record_derived_slots\nfrom engine.hooks.settings import full_settings_template, hooks_fill_table\nfrom engine.lib.atomicio import atomic_write_text\nfrom engine.lib.config import Config\nfrom engine.lib.guardrail import assert_safe_target\nfrom engine.render import build_context, find_placeholders, load_templates, render\nfrom engine.skills.skills import SKILLS, skill_document, skill_relpath\n\n# Template filename -> planted relpath. CLAUDE.md.tmpl is deliberately absent:\n# it is STAGED under <state_dir>/claude/ (the kit never live-writes .claude/\n# without the explicit include_claude opt-in).\nADOPT_PLAN: list[tuple[str, str]] = [\n    ("CONSTITUTION.md.tmpl", "CONSTITUTION.md"),\n    ("decisions.md.tmpl", "docs/decisions.md"),\n    ("architecture.md.tmpl", "docs/architecture.md"),\n    ("ownership.md.tmpl", "docs/ownership.md"),\n    ("runtime_contracts.md.tmpl", "docs/runtime_contracts.md"),\n    ("repo-navigation-map.md.tmpl", "docs/repo-navigation-map.md"),\n    ("helper-policy.md.tmpl", "docs/helper-policy.md"),\n    ("collaboration-model.md.tmpl", "docs/collaboration-model.md"),\n    ("ai-project-workflow.md.tmpl", "docs/ai-project-workflow.md"),\n    ("owner-profile.md.tmpl", "docs/owner-profile.md"),\n    ("AGENT_ORIENTATION.md.tmpl", "docs/AGENT_ORIENTATION.md"),\n    ("current-state.md.tmpl", "docs/current-state.md"),\n    ("question-router.md.tmpl", "docs/question-router.md"),\n    ("ideas-README.md.tmpl", "docs/ideas/README.md"),\n    ("session-journal.md.tmpl", ".session-journal.md"),\n]\n\n_ADOPT_NEXT_STEPS = (\n    "next steps: run `bootstrap ask` to see the pending interview questions, "\n    "answer them and fill the planted docs in place (`bootstrap render --live`), and set "\n    "the integration mode with `bootstrap mode <observe|guided|active>`."\n)\n\n# First line doubles as the removal marker `strip_unrendered_banner` keys off.\nUNRENDERED_BANNER_FIRST_LINE = (\n    "> ⚠️ **UNRENDERED SLOTS BELOW — run `python3 bootstrap.py ask`.**"\n)\n_UNRENDERED_BANNER = (\n    UNRENDERED_BANNER_FIRST_LINE + "\\n"\n    "> Every `${...}` token in this file is an unfilled interview slot, not\\n"\n    "> project truth. Fill: `bootstrap answer <slot> <value...>`, then\\n"\n    "> `bootstrap render --live` (fills in place and removes this banner).\\n"\n    "> Prose without `${...}` tokens is live guidance already.\\n\\n"\n)\n\n\ndef with_unrendered_banner(text: str) -> str:\n    """Prepend the loud UNRENDERED banner when ``text`` has unfilled slots.\n\n    An inert-looking doc was the measured Phase-2.5 failure mode: raw\n    ``${...}`` placeholders read as non-actionable scaffolding and only cost\n    orientation. The banner names what the tokens are and the exact two\n    commands that fill them; a fully-rendered doc gets no banner.\n    """\n    if not find_placeholders(text):\n        return text\n    return _UNRENDERED_BANNER + text\n\n\ndef strip_unrendered_banner(text: str) -> str:\n    """Remove the adopt-time banner (used once a file has no placeholders)."""\n    if not text.startswith(UNRENDERED_BANNER_FIRST_LINE):\n        return text\n    lines = text.split("\\n")\n    index = 0\n    while index < len(lines) and lines[index].startswith(">"):\n        index += 1\n    while index < len(lines) and not lines[index].strip():\n        index += 1\n    return "\\n".join(lines[index:])\n\n\ndef _vendor_bootstrap(root: Path, report: list[str]) -> str:\n    """Vendor the running single-file bootstrap into ``root``; return hook path.\n\n    The staged hook commands run ``<interpreter> bootstrap.py hook <event>``\n    relative to the host repo root — in the Phase-2.5 A/B the file was never\n    there, so every staged hook pointed outside the target repo (the second\n    G2 failure cause). When adopt runs *as* the single-file ``bootstrap.py``,\n    copy it to the target root (skip-if-exists, like every plant) so those\n    commands resolve. Running from the source/pip layout there is no single\n    file to vendor: fall back to an existing root copy, else the absolute\n    path of the running entry point, else the documented bare-name contract\n    (the hooks README fill-table row covers relocation).\n    """\n    at_root = root / "bootstrap.py"\n    entry = Path(sys.argv[0]).resolve() if sys.argv and sys.argv[0] else None\n    is_bootstrap_entry = (\n        entry is not None and entry.name == "bootstrap.py" and entry.is_file()\n    )\n    if not at_root.exists() and is_bootstrap_entry and entry != at_root:\n        _adopt_plant(\n            at_root,\n            "bootstrap.py",\n            entry.read_text(encoding="utf-8"),\n            report,\n        )\n    if at_root.exists():\n        return "bootstrap.py"\n    if is_bootstrap_entry:\n        return str(entry)\n    return "bootstrap.py"\n\n\ndef _adopt_dest(relpath: str, config: Config) -> str:\n    """Remap the plan\'s ``docs/`` prefix onto the host\'s configured docs root."""\n    prefix = "docs/"\n    if relpath.startswith(prefix) and config.docs_root != "docs":\n        return f"{config.docs_root}/{relpath[len(prefix) :]}"\n    return relpath\n\n\ndef _adopt_plant(path: Path, relpath: str, text: str, report: list[str]) -> None:\n    """Write ``text`` at ``path`` unless it exists; report planted/kept."""\n    if path.exists():\n        report.append(f"kept: {relpath}")\n        return\n    atomic_write_text(path, text)\n    report.append(f"planted: {relpath}")\n\n\ndef _adopt_stage(path: Path, relpath: str, text: str, report: list[str]) -> None:\n    """Write a staged (generated, regenerable) artifact and report it."""\n    atomic_write_text(path, text)\n    report.append(f"staged: {relpath}")\n\n\ndef _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:\n    """Compose the one-paragraph ``.sessions/README.md`` (born-red convention)."""\n    labels = ", ".join(m.get("label", "") for m in markers if m.get("label"))\n    labels = labels or "(no markers configured)"\n    return (\n        "# Session logs\\n\\n"\n        "Per-session logs live here as `<date>-<slug>.md`, newest first. "\n        "Create the log as the session\'s FIRST commit with a born-red status "\n        "(`> **Status:** `in-progress``) so in-flight work is visible to "\n        "parallel sessions, then flip it to `complete` as the deliberate LAST "\n        "step once the close-out is written — a half-done session never reads "\n        "as finished. Before it counts as complete, a log must carry these "\n        f"markers: {labels}.\\n"\n    )\n\n\ndef ci_snippet() -> str:\n    """Return the staged, fully-commented GitHub-Actions-style CI example.\n\n    Everything is commented out: the host copies it into\n    ``.github/workflows/`` and uncomments/adjusts deliberately — the kit never\n    installs live CI.\n    """\n    return (\n        "# Example GitHub-Actions-style quality gate for a substrate-kit host.\\n"\n        "# Copy into .github/workflows/, uncomment, and adjust the interpreter\\n"\n        "# and bootstrap path to match your repo.\\n"\n        "#\\n"\n        "# `bootstrap.py check --strict` runs every kit checker in one pass:\\n"\n        "# docs hygiene (badges / links / reachability), session-log markers,\\n"\n        "# namespace shadowing, seam authority, orientation budget, and the\\n"\n        "# decision ledger.\\n"\n        "#\\n"\n        "# name: substrate-quality\\n"\n        "# on:\\n"\n        "#   pull_request:\\n"\n        "#   push:\\n"\n        "#     branches: [main]\\n"\n        "# jobs:\\n"\n        "#   substrate-check:\\n"\n        "#     runs-on: ubuntu-latest\\n"\n        "#     steps:\\n"\n        "#       - uses: actions/checkout@v4\\n"\n        "#       - name: substrate checks\\n"\n        "#         run: python3 bootstrap.py check --strict\\n"\n    )\n\n\nLIVE_CI_RELPATH = ".github/workflows/substrate-gate.yml"\n\n\ndef live_ci_workflow(interpreter: str = "python3") -> str:\n    """Return the LIVE (uncommented) CI gate workflow — the locked door.\n\n    Unlike :func:`ci_snippet` (a commented example the host installs by hand),\n    this is a working GitHub-Actions workflow ``adopt --wire-enforcement``\n    writes into ``.github/workflows/``. It runs\n    ``bootstrap.py check --strict --require-session-log`` on every pull request,\n    so the merge is **held red** until the session\'s journal is written and the\n    whole hygiene suite passes. This is the forcing function that makes the\n    memory ritual non-optional: a nag can be ignored, a failing required check\n    cannot. `fetch-depth: 0` gives the checkout full history (the gate itself is\n    git-free, but hosts commonly extend this workflow with diff-aware steps).\n    A docs-only or bot PR that shouldn\'t need a session card is handled by the\n    host adding a `paths-ignore:` or a label carve-out — kept strict by default\n    on purpose (the discipline is the point).\n    """\n    return (\n        "# substrate-kit enforcement gate (LIVE — installed by "\n        "`bootstrap.py adopt --wire-enforcement`).\\n"\n        "# Holds the merge red until the session journal is written and every\\n"\n        "# hygiene check passes. Edit `paths-ignore` / add a label carve-out if\\n"\n        "# some PRs legitimately need no session card.\\n"\n        "name: substrate-gate\\n"\n        "on:\\n"\n        "  pull_request:\\n"\n        "  push:\\n"\n        "    branches: [main]\\n"\n        "jobs:\\n"\n        "  substrate-gate:\\n"\n        "    runs-on: ubuntu-latest\\n"\n        "    steps:\\n"\n        "      - uses: actions/checkout@v4\\n"\n        "        with:\\n"\n        "          fetch-depth: 0\\n"\n        "      - uses: actions/setup-python@v5\\n"\n        "        with:\\n"\n        \'          python-version: "3.x"\\n\'\n        "      - name: substrate gate (docs + session-log required)\\n"\n        f"        run: {interpreter} bootstrap.py check --strict --require-session-log\\n"\n    )\n\n\ndef adopt(\n    root: Path,\n    config: Config,\n    backend: Any,\n    *,\n    kit_root: Path,\n    include_claude: bool = False,\n    wire_enforcement: bool = False,\n) -> list[str]:\n    """Adopt the substrate workflow into ``root``; return the report lines.\n\n    Steps (all idempotent): (0) guardrail — refuse the kit\'s own tree; then\n    derive what the tree can tell us (provisional slots) and vendor the\n    single-file bootstrap so hook commands resolve in-repo;\n    (1) plant every ``ADOPT_PLAN`` doc rendered from the current slots —\n    skip-if-exists, unrendered docs bannered; (2) plant\n    ``<sessions_dir>/README.md``; (3) plant the ``project.index.json``\n    skeleton; (4) stage the ``.claude`` material (CLAUDE.md, skills,\n    personas, hook settings + fill-table README) under ``<state_dir>``;\n    (5) stage the CI example; (6) with ``include_claude``, additionally\n    write ``.claude/CLAUDE.md`` + ``.claude/settings.json`` if absent;\n    (7) close with the next-steps line.\n\n    ``wire_enforcement`` turns on the two **forcing functions** that make the\n    memory ritual actually get used (the Phase-2.5 re-run showed docs alone get\n    read but not written back): it implies ``include_claude`` (the live Stop-hook\n    **nag**) **and** plants a live CI workflow (:data:`LIVE_CI_RELPATH`) running\n    the ``--require-session-log`` gate — the **locked door** that holds a merge\n    red until the journal is written. Kept opt-in: the kit still never installs\n    executable CI/hooks silently (the deliberate safety default), but a host —\n    or the rebuild\'s K0 session — flips this on to reproduce the enforcement\n    this repo\'s discipline actually runs on.\n    """\n    include_claude = include_claude or wire_enforcement\n    assert_safe_target(root, kit_root)\n    templates = load_templates()\n    report: list[str] = []\n\n    # (0b) Adopt renders what it knows: seed derivable slots (provisional,\n    # never overwriting an existing answer), then build the render context.\n    report.extend(record_derived_slots(backend, derive_slots(root, config.docs_root)))\n    bootstrap_path = _vendor_bootstrap(root, report)\n    context = build_context(backend.data)\n    # The live integration mode is state, not a slot — render it truthfully.\n    context.setdefault("integration_mode", str(backend.get("mode", "guided")))\n\n    # (1) Plant the live docs — never clobber; a doc with unfilled ${slots}\n    # is planted under the loud UNRENDERED banner (visible, never inert).\n    for template_name, plan_rel in ADOPT_PLAN:\n        rel = _adopt_dest(plan_rel, config)\n        text = render(templates[template_name], context)\n        if template_name == "decisions.md.tmpl":\n            # The example D-0001 records THIS adoption — stamp the real date so\n            # the planted ledger is check_ledger-clean from its first commit.\n            text = text.replace("- date:\\n", f"- date: {date.today().isoformat()}\\n")\n        _adopt_plant(root / rel, rel, with_unrendered_banner(text), report)\n\n    # (2) Session-log scaffolding.\n    sessions_rel = f"{config.sessions_dir}/README.md"\n    readme = _adopt_sessions_readme(config.session_markers)\n    _adopt_plant(root / config.sessions_dir / "README.md", sessions_rel, readme, report)\n\n    # (3) The context-pack index skeleton.\n    project_name = context.get("project_name") or root.name\n    skeleton = pack_index_skeleton(project_name)\n    _adopt_plant(root / "project.index.json", "project.index.json", skeleton, report)\n\n    # (4) Stage the .claude material under <state_dir> (regenerated each run).\n    state_base = root / config.state_dir\n    claude_doc = with_unrendered_banner(render(templates["CLAUDE.md.tmpl"], context))\n    claude_rel = f"{config.state_dir}/claude/CLAUDE.md"\n    _adopt_stage(state_base / "claude" / "CLAUDE.md", claude_rel, claude_doc, report)\n    for skill in SKILLS:\n        rel = skill_relpath(skill)\n        body = render(skill["body"], context)\n        document = skill_document(skill, body)\n        _adopt_stage(state_base / rel, f"{config.state_dir}/{rel}", document, report)\n    for agent in AGENTS:\n        rel = agent_relpath(agent)\n        body = render(agent["body"], context)\n        document = agent_document(agent, body)\n        _adopt_stage(state_base / rel, f"{config.state_dir}/{rel}", document, report)\n    settings_text = full_settings_template(config, bootstrap_path=bootstrap_path)\n    settings_rel = f"{config.state_dir}/hooks/settings.template.json"\n    settings_path = state_base / "hooks" / "settings.template.json"\n    _adopt_stage(settings_path, settings_rel, settings_text, report)\n    hooks_readme_rel = f"{config.state_dir}/hooks/README.md"\n    hooks_readme = hooks_fill_table()\n    _adopt_stage(\n        state_base / "hooks" / "README.md",\n        hooks_readme_rel,\n        hooks_readme,\n        report,\n    )\n\n    # (5) Stage the CI example.\n    ci_rel = f"{config.state_dir}/ci/quality.yml.example"\n    _adopt_stage(\n        state_base / "ci" / "quality.yml.example",\n        ci_rel,\n        ci_snippet(),\n        report,\n    )\n\n    # (6) Explicit host opt-in: live .claude/ (still never overwrites).\n    if include_claude:\n        claude_dir = root / ".claude"\n        _adopt_plant(claude_dir / "CLAUDE.md", ".claude/CLAUDE.md", claude_doc, report)\n        _adopt_plant(\n            claude_dir / "settings.json",\n            ".claude/settings.json",\n            settings_text,\n            report,\n        )\n\n    # (6b) Enforcement opt-in: the LIVE CI gate (the locked door). include_claude\n    # above already wired the live nag; this adds the required check that a\n    # missing journal can never merge past.\n    if wire_enforcement:\n        _adopt_plant(\n            root / LIVE_CI_RELPATH,\n            LIVE_CI_RELPATH,\n            live_ci_workflow(config.interpreter_for_checks or "python3"),\n            report,\n        )\n\n    # (7) Point the adopter at the interview loop.\n    report.append(_ADOPT_NEXT_STEPS)\n    return report\n',
-    'engine/cli.py': '"""The substrate-kit bootstrap command line.\n\nSurface: ``init`` (idempotent), ``status``, ``mode <name>``, ``stance [name]``\n(show or set the task stance), ``ask`` (list the pending interview questions),\n``answer`` / ``confirm`` (fill / confirm a slot), ``render`` (write content\ndocs), ``skills`` / ``agents`` / ``hooks`` (list / ``--build`` the packs),\n``hook <event>`` (the runtime hook entry points), ``check`` (every hygiene\nchecker), ``triggers``, ``reflect``, ``episodes``, ``metrics``, ``maintain``,\n``review`` (the independent-review seam), ``economy`` (the context-economy\nengine), ``ledger`` (the [D-NNNN] decisions ledger), and ``--simulate N\n[--mode m]`` (the CI / proving smoke that drives the staged interview and\nasserts per-mode behavior). Output goes through ``_emit`` (``sys.stdout.write``)\nrather than ``print`` to keep the engine lint-clean.\n"""\n\nfrom __future__ import annotations\n\nimport argparse\nimport json\nimport sys\nimport tempfile\nfrom datetime import date\nfrom pathlib import Path\n\nfrom engine.adopt import ADOPT_PLAN, _adopt_dest, adopt, strip_unrendered_banner\nfrom engine.agents.agents import AGENTS, agent_document, agent_relpath\nfrom engine.checks.check_docs import run_doc_checks\nfrom engine.checks.check_namespace import check_namespace\nfrom engine.checks.check_orientation_budget import check_orientation_budget\nfrom engine.checks.check_seam_authority import check_seam_authority\nfrom engine.checks.check_session_log import check_log, latest_session_log\nfrom engine.contextpack import generate_packs, load_pack_index\nfrom engine.economy.engine import economy_actuate, economy_check, issue_body\nfrom engine.economy.harvest import harvest_sources, parse_harvest_tables\nfrom engine.economy.simulator import calibration_recipe, default_calibration, run_search\nfrom engine.hooks.post_edit import evaluate_edit\nfrom engine.hooks.session_start import compose_orientation\nfrom engine.hooks.settings import full_settings_template, hooks_fill_table\nfrom engine.hooks.stance_guard import evaluate_tool, settings_snippet, tool_from_payload\nfrom engine.hooks.stop_check import evaluate_stop\nfrom engine.interview.interview import (\n    confirm_slot,\n    critical_slots,\n    pending_questions,\n    record_answer,\n    run_session,\n    session_questions,\n)\nfrom engine.interview.question_bank import QUESTIONS\nfrom engine.ledger import (\n    LEDGER_FILENAME,\n    append_decision,\n    check_ledger,\n    check_stamp_discipline,\n)\nfrom engine.lib.atomicio import atomic_write_text\nfrom engine.lib.config import Config, config_path, load_config, save_config\nfrom engine.lib.guardrail import UnsafeTargetError, assert_safe_target\nfrom engine.lib.modes import actuators_may_apply, triggers_mandate\nfrom engine.lib.state import JsonStateBackend, default_state\nfrom engine.loop.episodes import (\n    EPISODIC_INDEX_FILENAME,\n    rebuild_episodic_index,\n    search_episodes,\n)\nfrom engine.loop.kpis import kpi_footer, workflow_kpis\nfrom engine.loop.maintenance import compaction_due, maintenance_report, run_compaction\nfrom engine.loop.reflections import (\n    REFLECTIONS_FILENAME,\n    add_reflection,\n    lessons_block,\n    load_reflections,\n    mine_reflections,\n)\nfrom engine.loop.review_seam import (\n    apply_review_verdict,\n    build_review_payload,\n    clear_review_payload,\n    seam_wiring_doc,\n    write_review_payload,\n)\nfrom engine.loop.triggers import check_triggers, mandatory_questions, trigger_block\nfrom engine.render import build_context, find_placeholders, load_templates, render\nfrom engine.skills.skills import (\n    SKILLS,\n    skill_capabilities,\n    skill_document,\n    skill_relpath,\n)\nfrom engine.stances.stances import DEFAULT_STANCE, stance_briefing, stance_names\n\n\ndef _emit(line: str = "") -> None:\n    """Write a line to stdout (avoids the print() lint ban in engine code)."""\n    sys.stdout.write(line + "\\n")\n\n\ndef _kit_root() -> Path:\n    """Return the tree the guardrail protects (the kit\'s own checkout).\n\n    Only the source layout (``.../src/engine/cli.py``) has a kit tree to\n    protect: there, the checkout root is ``parents[2]``. Running as the\n    copied single-file bootstrap or a pip install, this returns the module\n    file itself — a *file* matches no target directory, so the guardrail\n    never engages (there is no kit tree). The old unconditional\n    ``parents[2]`` made the dist\'s guardrail root the grandparent of the\n    user\'s repo, refusing EVERY real ``adopt``/``init`` outside the temp\n    tree — the documented primary flow.\n    """\n    here = Path(__file__).resolve()\n    if here.parent.name == "engine" and here.parent.parent.name == "src":\n        return here.parents[2]\n    return here\n\n\ndef _state_path(root: Path, config: Config) -> Path:\n    """Return the state-file path under a project ``root``."""\n    return root / config.state_dir / "state.json"\n\n\ndef cmd_init(target: Path) -> int:\n    """Create config + state under ``target`` if absent; never clobber."""\n    assert_safe_target(target, _kit_root())\n    target.mkdir(parents=True, exist_ok=True)\n    if config_path(target).exists():\n        config = load_config(target)\n    else:\n        config = Config()\n        save_config(target, config)\n    state_path = _state_path(target, config)\n    if state_path.exists():\n        _emit(f"init: already initialised at {target} (idempotent no-op).")\n        return 0\n    backend = JsonStateBackend(state_path)\n    with backend.transaction():\n        for key, value in default_state(config.project_id).items():\n            backend.set(key, value)\n    _emit(f"init: created {state_path} (project_id={config.project_id}).")\n    return 0\n\n\ndef cmd_status(target: Path) -> int:\n    """Print a one-screen summary of the install\'s state."""\n    config = load_config(target)\n    backend = JsonStateBackend(_state_path(target, config))\n    data = backend.data\n    if not data:\n        _emit(f"status: no state at {target} (run init first).")\n        return 1\n    _emit(f"project_id : {data.get(\'project_id\')}")\n    _emit(f"stage      : {data.get(\'stage\')}")\n    _emit(f"mode       : {data.get(\'mode\')}")\n    _emit(f"stance     : {data.get(\'stance\')}")\n    _emit(f"sessions   : {data.get(\'session_count\')}")\n    return 0\n\n\ndef cmd_mode(target: Path, name: str) -> int:\n    """Set the integration mode (observe | guided | active)."""\n    valid = ("observe", "guided", "active")\n    if name not in valid:\n        _emit(f"mode: invalid mode {name!r} (choose from {list(valid)}).")\n        return 2\n    config = load_config(target)\n    backend = JsonStateBackend(_state_path(target, config))\n    if not backend.data:\n        _emit(f"mode: no state at {target} (run init first).")\n        return 1\n    history = list(backend.get("mode_history", []))\n    history.append(\n        {\n            "mode": name,\n            "session": int(backend.get("session_count", 0)),\n            "date": date.today().isoformat(),\n        },\n    )\n    with backend.transaction():\n        backend.set("mode", name)\n        backend.set("mode_history", history)\n    _emit(f"mode: set to {name} (audit trail: {len(history)} switch(es)).")\n    return 0\n\n\ndef cmd_stance(target: Path, name: str | None) -> int:\n    """Show or set the active task stance (question|analysis|debug|review|plan).\n\n    With no ``name``, prints the active stance\'s briefing (reading-route +\n    tool-scope + output contract) and the available set. With a ``name``, switches\n    the active stance in state. The stance is advisory — it scopes orientation, it\n    does not block actions.\n    """\n    config = load_config(target)\n    backend = JsonStateBackend(_state_path(target, config))\n    if not backend.data:\n        _emit(f"stance: no state at {target} (run init first).")\n        return 1\n    if name is None:\n        active = backend.data.get("stance", DEFAULT_STANCE)\n        _emit(stance_briefing(active))\n        _emit(f"  available: {\', \'.join(stance_names())}")\n        return 0\n    if name not in stance_names():\n        _emit(f"stance: invalid stance {name!r} (choose from {stance_names()}).")\n        return 2\n    backend.set("stance", name)\n    _emit(f"stance: set to {name}.")\n    _emit(stance_briefing(name))\n    return 0\n\n\ndef cmd_ask(target: Path) -> int:\n    """List the interview\'s currently pending questions."""\n    config = load_config(target)\n    backend = JsonStateBackend(_state_path(target, config))\n    if not backend.data:\n        _emit(f"ask: no state at {target} (run init first).")\n        return 1\n    pending = pending_questions(backend.data)\n    if not pending:\n        _emit("ask: no pending questions — all slots filled.")\n        return 0\n    asked = session_questions(backend.data)\n    _emit(f"ask: {len(asked)} question(s) this session (mode quota):")\n    for question in asked:\n        _emit(\n            f"  [{question[\'id\']}] "\n            f"({question[\'audience\']}/{question[\'priority\']}) {question[\'prompt\']}",\n        )\n    remaining = len(pending) - len(asked)\n    if remaining > 0:\n        _emit(f"  (+{remaining} more later — the mode paces the interview)")\n    return 0\n\n\ndef _render_live(target: Path, context: dict[str, str]) -> int:\n    """Fill remaining ``${slot}`` placeholders in the PLANTED docs, in place.\n\n    Placeholders survive verbatim in a planted file until their slot fills, so\n    substituting over the live text updates exactly the newly-answered slots\n    while preserving every hand edit around them. Returns the leftover count.\n    """\n    leftover_total = 0\n    for _, plan_rel in ADOPT_PLAN:\n        rel = _adopt_dest(plan_rel, load_config(target))\n        path = target / rel\n        if not path.exists():\n            continue\n        text = path.read_text(encoding="utf-8")\n        filled = render(text, context)\n        leftover = find_placeholders(filled)\n        leftover_total += len(leftover)\n        if not leftover:\n            # Fully rendered — the adopt-time UNRENDERED banner has done its job.\n            filled = strip_unrendered_banner(filled)\n        if filled != text:\n            atomic_write_text(path, filled)\n            suffix = f" ({len(leftover)} slot(s) still unfilled)" if leftover else ""\n            _emit(f"render: filled {rel}{suffix}")\n    _emit(f"render: {leftover_total} unfilled placeholder(s) across planted docs.")\n    return 0\n\n\ndef cmd_render(target: Path, live: bool = False) -> int:\n    """Render the content docs from the current filled slots.\n\n    Default: stage fresh renders of every template into\n    ``<state_dir>/rendered/``. With ``live``: fill remaining placeholders in\n    the *planted* docs in place (hand edits preserved) — the post-interview\n    "make the live docs catch up" pass.\n    """\n    assert_safe_target(target, _kit_root())\n    config = load_config(target)\n    backend = JsonStateBackend(_state_path(target, config))\n    if not backend.data:\n        _emit(f"render: no state at {target} (run init first).")\n        return 1\n    context = build_context(backend.data)\n    if live:\n        return _render_live(target, context)\n    out_dir = target / config.state_dir / "rendered"\n    leftover_total = 0\n    for name, text in load_templates().items():\n        rendered = render(text, context)\n        leftover = find_placeholders(rendered)\n        leftover_total += len(leftover)\n        out_name = name[:-5] if name.endswith(".tmpl") else name\n        atomic_write_text(out_dir / out_name, rendered)\n        suffix = f" ({len(leftover)} slot(s) unfilled)" if leftover else ""\n        _emit(f"render: wrote {out_name}{suffix}")\n    _emit(f"render: {leftover_total} unfilled placeholder(s) total.")\n    return 0\n\n\ndef cmd_skills(target: Path, build: bool) -> int:\n    """List the skill pack, or ``--build`` it into ``<state_dir>/skills/``.\n\n    Listing shows each skill + its declared capabilities (what it may do beyond\n    read, overriding the ambient stance). Building emits a native ``SKILL.md`` per\n    skill into the staging area, body slot-filled from the interview — the host\n    then installs them under ``.claude/skills/``. Like ``render``, the kit stages;\n    it never writes a live ``.claude/`` tree.\n    """\n    config = load_config(target)\n    if build:\n        assert_safe_target(target, _kit_root())\n    if not build:\n        _emit("skills:")\n        for skill in SKILLS:\n            caps = ", ".join(skill_capabilities(skill["name"]))\n            _emit(f"  {skill[\'name\']} — {skill[\'description\']}")\n            _emit(f"    capabilities: {caps}")\n        return 0\n    backend = JsonStateBackend(_state_path(target, config))\n    context = build_context(backend.data) if backend.data else {}\n    out_base = target / config.state_dir\n    leftover_total = 0\n    for skill in SKILLS:\n        body = render(skill["body"], context)\n        leftover = find_placeholders(body)\n        leftover_total += len(leftover)\n        atomic_write_text(out_base / skill_relpath(skill), skill_document(skill, body))\n        suffix = f" ({len(leftover)} slot(s) unfilled)" if leftover else ""\n        _emit(f"skills: wrote {skill_relpath(skill)}{suffix}")\n    _emit(f"skills: {len(SKILLS)} skill(s), {leftover_total} unfilled placeholder(s).")\n    return 0\n\n\ndef cmd_agents(target: Path, build: bool) -> int:\n    """List the persona pack, or ``--build`` it into ``<state_dir>/agents/``.\n\n    Listing shows each persona + its description. Building emits a native\n    ``.claude/agents``-style ``<name>.md`` per persona into the staging area, body\n    slot-filled from the project\'s contract slots — the host then installs them\n    under ``.claude/agents/``. Like ``render``/``skills``, the kit stages; it never\n    writes a live ``.claude/`` tree.\n    """\n    config = load_config(target)\n    if build:\n        assert_safe_target(target, _kit_root())\n    if not build:\n        _emit("agents:")\n        for agent in AGENTS:\n            _emit(f"  {agent[\'name\']} — {agent[\'description\']}")\n        return 0\n    backend = JsonStateBackend(_state_path(target, config))\n    context = build_context(backend.data) if backend.data else {}\n    out_base = target / config.state_dir\n    leftover_total = 0\n    for agent in AGENTS:\n        body = render(agent["body"], context)\n        leftover = find_placeholders(body)\n        leftover_total += len(leftover)\n        atomic_write_text(out_base / agent_relpath(agent), agent_document(agent, body))\n        suffix = f" ({len(leftover)} slot(s) unfilled)" if leftover else ""\n        _emit(f"agents: wrote {agent_relpath(agent)}{suffix}")\n    count = len(AGENTS)\n    _emit(f"agents: {count} persona(s), {leftover_total} unfilled placeholder(s).")\n    return 0\n\n\ndef _hook_command(config: Config) -> str:\n    """Return the shell command Claude Code runs for the PreToolUse guard."""\n    return f"{config.interpreter} bootstrap.py hook pretooluse"\n\n\ndef cmd_hooks(target: Path, build: bool) -> int:\n    """Show the hook wiring, or ``--build`` the settings files into staging.\n\n    Four hooks: the **PreToolUse stance guard**, **SessionStart orientation**,\n    the **PostToolUse edit advisor**, and the **Stop-check advisor**. Building\n    stages the PreToolUse snippet, the full four-event\n    ``settings.template.json``, and the fill-table README into\n    ``<state_dir>/hooks/`` — the host merges them into their own settings\n    (adjusting the bootstrap path). Like the other emitters, the kit stages;\n    it never writes a live ``.claude/`` tree.\n    """\n    config = load_config(target)\n    if build:\n        assert_safe_target(target, _kit_root())\n    command = _hook_command(config)\n    if not build:\n        _emit("hooks:")\n        _emit("  pretooluse   — stance guard: warns on an out-of-stance tool.")\n        _emit("  sessionstart — prints the mode-aware orientation injection.")\n        _emit("  postedit     — warns on generated-artifact / unbadged-doc edits.")\n        _emit("  stopcheck    — session-close advisories (log, questions, cadence).")\n        _emit(f"  wiring command: {command}")\n        return 0\n    out = target / config.state_dir / "hooks" / "settings.snippet.json"\n    atomic_write_text(out, settings_snippet(command))\n    tmpl = target / config.state_dir / "hooks" / "settings.template.json"\n    atomic_write_text(tmpl, full_settings_template(config))\n    atomic_write_text(\n        target / config.state_dir / "hooks" / "README.md",\n        hooks_fill_table(),\n    )\n    _emit(f"hooks: wrote {out.relative_to(target)}")\n    _emit(f"hooks: wrote {tmpl.relative_to(target)} (all four events) + README.md")\n    _emit("hooks: merge the hook blocks into .claude/settings.json yourself.")\n    return 0\n\n\ndef _hook_pretooluse(target: Path) -> int:\n    """PreToolUse stance guard: warn on stderr for an out-of-stance tool."""\n    tool_name = tool_from_payload(sys.stdin.read())\n    if not tool_name:\n        return 0\n    config = load_config(target)\n    backend = JsonStateBackend(_state_path(target, config))\n    stance = backend.data.get("stance") if backend.data else None\n    if not stance:\n        return 0\n    warning = evaluate_tool(stance, tool_name)\n    if warning:\n        sys.stderr.write(warning + "\\n")\n    return 0\n\n\ndef _hook_sessionstart(target: Path) -> int:\n    """SessionStart: print the mode-aware orientation composition to stdout."""\n    config = load_config(target)\n    backend = JsonStateBackend(_state_path(target, config))\n    text = compose_orientation(target, config, backend)\n    if text:\n        sys.stdout.write(text)\n    return 0\n\n\ndef _hook_postedit(target: Path) -> int:\n    """PostToolUse: warn on stderr for a generated-artifact / unbadged-doc edit.\n\n    Handles Edit/Write (``tool_input.file_path``) and NotebookEdit\n    (``tool_input.notebook_path``) — the three tools the settings matcher wires.\n    A NotebookEdit carries ``notebook_path``, not ``file_path``, so keying only\n    on the latter matched notebook edits but never advised them (the matcher\n    over-advertised its coverage).\n    """\n    raw = sys.stdin.read()\n    try:\n        payload = json.loads(raw) if raw.strip() else {}\n    except json.JSONDecodeError:\n        return 0\n    tool_input = payload.get("tool_input") if isinstance(payload, dict) else None\n    if not isinstance(tool_input, dict):\n        return 0\n    file_path = tool_input.get("file_path") or tool_input.get("notebook_path")\n    if not isinstance(file_path, str) or not file_path:\n        return 0\n    warning = evaluate_edit(target, load_config(target), file_path)\n    if warning:\n        sys.stderr.write(warning + "\\n")\n    return 0\n\n\ndef _hook_stopcheck(target: Path) -> int:\n    """Stop: print the session-close advisory lines to stderr."""\n    config = load_config(target)\n    backend = JsonStateBackend(_state_path(target, config))\n    for line in evaluate_stop(target, config, backend):\n        sys.stderr.write(line + "\\n")\n    return 0\n\n\n_HOOK_EVENTS = {\n    "pretooluse": _hook_pretooluse,\n    "sessionstart": _hook_sessionstart,\n    "postedit": _hook_postedit,\n    "stopcheck": _hook_stopcheck,\n}\n\n\ndef cmd_hook(target: Path, event: str) -> int:\n    """Run a Claude Code hook entry point (all advisory — always exit 0).\n\n    ``pretooluse`` warns on an out-of-stance tool; ``sessionstart`` prints the\n    orientation injection to stdout; ``postedit`` reads the PostToolUse stdin\n    payload (``tool_input.file_path``) and warns on stderr; ``stopcheck``\n    prints session-close advisories to stderr. Every event fails open on a\n    missing / malformed payload, config, or state.\n    """\n    handler = _HOOK_EVENTS.get(event)\n    if handler is None:\n        return 0\n    try:\n        return handler(target)\n    except Exception:  # noqa: BLE001 — hooks fail open by contract, always 0\n        return 0\n\n\ndef _extra_check_findings(target: Path, config: Config) -> list:\n    """Run the configured non-doc checkers (ledger, namespace, seams, budget).\n\n    Each checker engages only when its inputs exist — an un-adopted project\n    with no ledger, no namespace roots, no seams, and no boot docs runs none of\n    them, so ``check`` stays meaningful before onboarding.\n    """\n    findings: list = []\n    ledger_path = target / config.docs_root / LEDGER_FILENAME\n    if ledger_path.exists():\n        findings += check_ledger(ledger_path)\n        findings += check_stamp_discipline(target / config.docs_root, ledger_path)\n    roots = [target / r for r in config.namespace.get("roots", [])]\n    roots = [r for r in roots if r.exists()]\n    if roots:\n        findings += check_namespace(\n            roots,\n            reserved=config.namespace.get("reserved") or None,\n        )\n    if config.seams:\n        findings += check_seam_authority(target, config.seams)\n    boot_docs = config.orientation.get("boot_docs") or config.readpath_docs\n    docs_root = target / config.docs_root\n    if any((docs_root / doc).exists() or (target / doc).exists() for doc in boot_docs):\n        findings += check_orientation_budget(target, config)\n    return findings\n\n\ndef cmd_check(\n    target: Path,\n    strict: bool,\n    *,\n    require_session_log: bool = False,\n) -> int:\n    """Run every hygiene checker against ``target``.\n\n    Docs (badge/link/reachable), the decisions ledger + stamp discipline, the\n    namespace/shadowing guard, the seam-authority fences, and the orientation\n    word budget — each engaging only when its inputs exist. Findings always\n    count toward the exit code (under ``--strict``); an *incomplete* existing\n    session log counts. A *missing* session log is **advisory by default** (a\n    host may run ``check`` mid-session) but becomes a **hard failure** under\n    ``require_session_log`` — the gate mode the live CI workflow runs, so a\n    session that never writes its journal cannot merge (the "locked door" that\n    makes the memory ritual non-optional, not merely advised). Uses config\n    defaults if ``target`` has no ``substrate.config.json`` yet, so a project\n    can lint before onboarding.\n    """\n    config = load_config(target)\n    docs_root = target / config.docs_root\n    doc_findings = run_doc_checks(\n        docs_root,\n        config.badge_tokens,\n        config.readpath_docs,\n    )\n    doc_findings = list(doc_findings) + _extra_check_findings(target, config)\n    if doc_findings:\n        _emit(f"check: {len(doc_findings)} finding(s):")\n        for finding in doc_findings:\n            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")\n\n    log = latest_session_log(target / config.sessions_dir)\n    log_missing: list[str] = check_log(log, config.session_markers) if log else []\n    # In gate mode an absent log is itself a failing condition, so it must feed\n    # the exit code exactly like an incomplete one.\n    log_absent_fails = log is None and require_session_log\n    if log is None:\n        if require_session_log:\n            _emit(\n                f"check: MERGE HELD — no session log under {config.sessions_dir}/ "\n                "(--require-session-log): write one before merging.",\n            )\n        else:\n            _emit("check: no session log found yet (advisory — not a failure).")\n    else:\n        rel = log.relative_to(target) if log.is_relative_to(target) else log\n        if log_missing:\n            _emit(f"check: session log {rel} is missing: {\', \'.join(log_missing)}")\n        else:\n            _emit(f"check: session log {rel} complete.")\n\n    if not doc_findings and not log_missing and not log_absent_fails:\n        _emit("check: all checks passed.")\n        return 0\n    return 1 if strict else 0\n\n\ndef _require_state(\n    target: Path,\n    command: str,\n) -> tuple[Config, JsonStateBackend] | None:\n    """Load config + state; None (with a message) when the install is missing.\n\n    Also runs the live-loop guardrail: state-backed commands read AND write\n    the install, and only ``init``/``adopt`` were guarded before — ``ledger``,\n    the ``--build`` emitters, and ``episodes --rebuild`` wrote into a target\n    the guardrail would have refused.\n    """\n    assert_safe_target(target, _kit_root())\n    config = load_config(target)\n    backend = JsonStateBackend(_state_path(target, config))\n    if not backend.data:\n        _emit(f"{command}: no state at {target} (run init first).")\n        return None\n    return config, backend\n\n\ndef _question_for_slot(slot: str) -> dict | None:\n    """Return the bank question that fills ``slot`` (None when unknown)."""\n    for question in QUESTIONS:\n        if question["slot"] == slot:\n            return question\n    return None\n\n\ndef cmd_answer(target: Path, slot: str, answer: str) -> int:\n    """Record a user answer for ``slot`` (fills it, resolves its escalation)."""\n    loaded = _require_state(target, "answer")\n    if loaded is None:\n        return 1\n    _, backend = loaded\n    question = _question_for_slot(slot)\n    if question is None:\n        known = ", ".join(q["slot"] for q in QUESTIONS)\n        _emit(f"answer: unknown slot {slot!r} (known: {known}).")\n        return 2\n    record_answer(backend, question, answer, source="user")\n    status = backend.get("slots", {}).get(slot)\n    _emit(f"answer: {slot} -> {status}.")\n    if status == "partial":\n        floor = int(question.get("min_len", 1))\n        _emit(f"answer: too thin to count (needs >= {floor} chars of substance).")\n    return 0\n\n\ndef cmd_confirm(target: Path, slot: str) -> int:\n    """Confirm a provisional (self-answered) slot as user-verified."""\n    loaded = _require_state(target, "confirm")\n    if loaded is None:\n        return 1\n    _, backend = loaded\n    if confirm_slot(backend, slot, source="user"):\n        _emit(f"confirm: {slot} confirmed (provisional -> filled).")\n        return 0\n    _emit(f"confirm: {slot} is not provisional (nothing to confirm).")\n    return 1\n\n\ndef cmd_triggers(target: Path) -> int:\n    """Scan for fired triggers and show the mandated / advisory questions."""\n    loaded = _require_state(target, "triggers")\n    if loaded is None:\n        return 1\n    config, backend = loaded\n    triggers = check_triggers(target, config, backend.data)\n    if not triggers:\n        _emit("triggers: none fired.")\n        return 0\n    questions = mandatory_questions(triggers)\n    block = trigger_block(\n        triggers,\n        questions,\n        mandate=triggers_mandate(backend.data),\n    )\n    _emit(block)\n    return 0\n\n\ndef cmd_reflect(\n    target: Path,\n    *,\n    add: str | None,\n    evidence: str,\n    tags: str,\n    mine: bool,\n) -> int:\n    """List, add to, or mine the forward reflection buffer."""\n    loaded = _require_state(target, "reflect")\n    if loaded is None:\n        return 1\n    config, backend = loaded\n    path = target / config.state_dir / REFLECTIONS_FILENAME\n    buffer_size = int(config.reflection.get("buffer_size", 5))\n    if add is not None:\n        entry = add_reflection(\n            path,\n            lesson=add,\n            evidence=evidence,\n            tags=[t for t in tags.split(",") if t],\n            buffer_size=buffer_size,\n        )\n        _emit(f"reflect: added {entry[\'id\']}.")\n    if mine:\n        known = {e.get("lesson", "") for e in load_reflections(path)}\n        candidates = [\n            c\n            for c in mine_reflections(target / config.sessions_dir)\n            if c["lesson"] not in known\n        ]\n        for cand in candidates:\n            entry = add_reflection(\n                path,\n                lesson=cand["lesson"],\n                evidence=cand.get("evidence", ""),\n                tags=list(cand.get("tags", [])),\n                buffer_size=buffer_size,\n            )\n            known.add(cand["lesson"])\n            _emit(f"reflect: mined {entry[\'id\']} — {cand[\'lesson\'][:60]}")\n        if not candidates:\n            _emit("reflect: mined nothing new.")\n    entries = load_reflections(path)\n    backend.set(\n        "reflection_buffer",\n        {\n            "active_count": len(entries),\n            "last_mined": (\n                date.today().isoformat()\n                if mine\n                else (backend.get("reflection_buffer", {}) or {}).get("last_mined")\n            ),\n        },\n    )\n    block = lessons_block(entries)\n    _emit(block if block else "reflect: buffer empty.")\n    return 0\n\n\ndef cmd_episodes(target: Path, *, rebuild: bool, search: str | None) -> int:\n    """Rebuild or search the episodic index over the session logs."""\n    config = load_config(target)\n    if rebuild:\n        assert_safe_target(target, _kit_root())\n    index_path = target / config.state_dir / EPISODIC_INDEX_FILENAME\n    if rebuild:\n        entries = rebuild_episodic_index(target / config.sessions_dir, index_path)\n        _emit(f"episodes: indexed {len(entries)} session(s).")\n    if search is not None:\n        hits = search_episodes(index_path, search)\n        for hit in hits:\n            _emit(\n                f"  {hit.get(\'date\', \'?\')} {hit.get(\'slug\', \'?\')} — "\n                f"{hit.get(\'summary\', \'\')}",\n            )\n        _emit(f"episodes: {len(hits)} hit(s) for {search!r}.")\n    if not rebuild and search is None:\n        _emit("episodes: pass --rebuild and/or --search TAG.")\n    return 0\n\n\ndef cmd_metrics(target: Path) -> int:\n    """Emit the router / workflow KPIs (JSON + the one-line footer)."""\n    loaded = _require_state(target, "metrics")\n    if loaded is None:\n        return 1\n    config, backend = loaded\n    kpis = workflow_kpis(backend.data, target / config.sessions_dir)\n    _emit(json.dumps(kpis, indent=2, sort_keys=True))\n    _emit(kpi_footer(kpis))\n    return 0\n\n\ndef cmd_maintain(target: Path, *, compact: bool) -> int:\n    """Run the self-maintenance loop\'s report (and compaction when asked)."""\n    loaded = _require_state(target, "maintain")\n    if loaded is None:\n        return 1\n    config, backend = loaded\n    if compact:\n        if compaction_due(backend.data, dict(config.cadence or {})):\n            path = run_compaction(target, config, backend)\n            rel = path.relative_to(target) if path.is_relative_to(target) else path\n            _emit(f"maintain: compaction written -> {rel}")\n        else:\n            _emit("maintain: compaction not due.")\n    triggers = check_triggers(target, config, backend.data)\n    economy = economy_check(target, config)\n    ledger_path = target / config.docs_root / LEDGER_FILENAME\n    ledger_findings = check_ledger(ledger_path) if ledger_path.exists() else []\n    kpis = workflow_kpis(backend.data, target / config.sessions_dir)\n    _emit(\n        maintenance_report(\n            target,\n            config,\n            backend,\n            triggers=triggers,\n            economy_findings=list(economy.get("findings", [])),\n            ledger_findings=ledger_findings,\n            kpis=kpis,\n        ),\n    )\n    return 0\n\n\ndef cmd_review(\n    target: Path,\n    action: str,\n    slot: str | None,\n    *,\n    verdict: str,\n    reviewer: str,\n) -> int:\n    """Drive the independent-review seam: build payloads, record verdicts."""\n    if action == "doc":\n        _emit(seam_wiring_doc())\n        return 0\n    if slot is None:\n        _emit("review: a slot is required for build/confirm.")\n        return 2\n    loaded = _require_state(target, "review")\n    if loaded is None:\n        return 1\n    config, backend = loaded\n    if action == "build":\n        payload = build_review_payload(backend, slot)\n        if not payload:\n            _emit(f"review: slot {slot!r} is not provisional — nothing to review.")\n            return 1\n        path = write_review_payload(target, config, payload)\n        rel = path.relative_to(target) if path.is_relative_to(target) else path\n        _emit(f"review: payload written -> {rel}")\n        return 0\n    if action == "confirm":\n        if verdict not in ("pass", "fail"):\n            _emit("review: --verdict must be pass or fail.")\n            return 2\n        outcome = apply_review_verdict(\n            backend,\n            slot,\n            verdict=verdict,\n            reviewer=reviewer,\n        )\n        _emit(f"review: {slot} -> {outcome}.")\n        if outcome == "not-provisional":\n            _emit(\n                "review: nothing recorded — the slot is not provisional "\n                "(typo, already confirmed, or never answered).",\n            )\n            return 1\n        # The verdict is recorded → the payload is consumed. Remove it so the\n        # maintenance "awaiting a reviewer" count reflects reality.\n        if clear_review_payload(target, config, slot):\n            _emit(f"review: cleared consumed payload for {slot}.")\n        return 0\n    _emit(f"review: unknown action {action!r} (build | confirm | doc).")\n    return 2\n\n\ndef cmd_economy(\n    target: Path,\n    action: str,\n    *,\n    strict: bool,\n    apply: bool,\n    reviewed: bool,\n    bands: int,\n) -> int:\n    """Drive the context-economy engine: check, apply, simulate, recipe."""\n    config = load_config(target)\n    if action == "recipe":\n        _emit(calibration_recipe())\n        return 0\n    if action == "simulate":\n        result = run_search(default_calibration(), bands=bands)\n        _emit(str(result.get("why_it_won", "")))\n        winner = result.get("winner", {})\n        name = winner.get("name") if isinstance(winner, dict) else winner\n        _emit(f"economy: winner {name} (feasible: {result.get(\'feasible_count\')}).")\n        return 0\n    pass_records = (\n        target / config.docs_root / config.economy.get("pass_records_dir", "planning")\n    )\n    harvested = parse_harvest_tables(pass_records)\n    report = economy_check(\n        target,\n        config,\n        harvested=harvested,\n        harvest_exclude=harvest_sources(pass_records),\n    )\n    if action == "issue-body":\n        _emit(issue_body(report))\n        return 0\n    if action == "check":\n        census = report.get("census", {})\n        for name in sorted(census):\n            row = census[name]\n            _emit(\n                f"  class {name}: {row.get(\'files\', 0)} file(s), "\n                f"{row.get(\'words\', 0)} word(s)",\n            )\n        for gauge in report.get("gauges", []):\n            flag = "OVER" if gauge.get("over") else "ok"\n            _emit(f"  gauge {gauge[\'name\']}: {gauge[\'value\']}/{gauge[\'cap\']} [{flag}]")\n        findings = report.get("findings", [])\n        for finding in findings:\n            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")\n        for line in economy_actuate(target, config, report, apply=False):\n            _emit(f"  would-act: {line}")\n        debt = report.get("debt", 0)\n        threshold = int(config.economy.get("debt_threshold", 10))\n        _emit(f"economy: debt {debt} (threshold {threshold}).")\n        over = bool(findings) or debt >= threshold\n        return 1 if strict and over else 0\n    if action == "apply":\n        if apply:\n            backend = JsonStateBackend(_state_path(target, config))\n            if backend.data and not actuators_may_apply(backend.data):\n                _emit(\n                    "economy: refused — the mode/promotion policy does not "\n                    "permit actuators to apply (promotion_rights must be "\n                    "\'promote\'); dry-run only.",\n                )\n                return 1\n        lines = economy_actuate(\n            target,\n            config,\n            report,\n            apply=apply,\n            acknowledged=reviewed,\n        )\n        for line in lines:\n            _emit(f"  {line}")\n        if not apply:\n            _emit("economy: dry-run (pass --yes to act; maturity gates apply).")\n        return 0\n    _emit(\n        f"economy: unknown action {action!r} "\n        "(check | apply | simulate | recipe | issue-body).",\n    )\n    return 2\n\n\ndef cmd_adopt(\n    target: Path,\n    include_claude: bool,\n    wire_enforcement: bool = False,\n) -> int:\n    """Adopt the workflow into ``target``: init, plant the docs, stage the packs.\n\n    The one-step flow: ``init`` runs first (idempotent — config + state), so a\n    bare directory with nothing but the bootstrap file becomes a fully\n    substrate-governed project in this single command. ``wire_enforcement``\n    additionally turns on the live nag hook + the CI locked door.\n    """\n    rc = cmd_init(target)\n    if rc != 0:\n        return rc\n    config = load_config(target)\n    backend = JsonStateBackend(_state_path(target, config))\n    lines = adopt(\n        target,\n        config,\n        backend,\n        kit_root=_kit_root(),\n        include_claude=include_claude,\n        wire_enforcement=wire_enforcement,\n    )\n    for line in lines:\n        _emit(f"adopt: {line}")\n    return 0\n\n\ndef cmd_contextpack(target: Path, index: Path | None) -> int:\n    """Generate agent context packs from the project index (or a manifest)."""\n    assert_safe_target(target, _kit_root())\n    config = load_config(target)\n    index_path = index if index is not None else target / "project.index.json"\n    if not index_path.exists():\n        _emit(f"contextpack: no index at {index_path} (run adopt first).")\n        return 1\n    try:\n        areas = load_pack_index(index_path)\n    except ValueError as exc:\n        _emit(f"contextpack: {exc}")\n        return 2\n    if not areas:\n        _emit("contextpack: index has no areas — nothing to generate.")\n        return 0\n    for path in generate_packs(target, config, areas):\n        rel = path.relative_to(target) if path.is_relative_to(target) else path\n        _emit(f"contextpack: wrote {rel}")\n    return 0\n\n\ndef cmd_session_start(target: Path) -> int:\n    """Print this session\'s orientation injection (the SessionStart composition)."""\n    loaded = _require_state(target, "session-start")\n    if loaded is None:\n        return 1\n    config, backend = loaded\n    _emit(compose_orientation(target, config, backend))\n    return 0\n\n\ndef cmd_session_close(target: Path) -> int:\n    """Run the session-close ritual: mine, index, advise, and report KPIs.\n\n    Mines the session logs into the reflection buffer, rebuilds the episodic\n    index, prints the stop-check advisories, and ends with the KPI footer —\n    the engine analog of the one-idea / previous-session-review enders.\n    """\n    loaded = _require_state(target, "session-close")\n    if loaded is None:\n        return 1\n    config, _ = loaded\n    rc = cmd_reflect(target, add=None, evidence="", tags="", mine=True)\n    if rc != 0:\n        return rc\n    index_path = target / config.state_dir / EPISODIC_INDEX_FILENAME\n    entries = rebuild_episodic_index(target / config.sessions_dir, index_path)\n    _emit(f"session-close: indexed {len(entries)} session(s).")\n    # Re-read state: the mine above stamped reflection_buffer.last_mined, and\n    # a pre-mine snapshot would re-advise the mine it just ran.\n    backend = JsonStateBackend(_state_path(target, config))\n    for line in evaluate_stop(target, config, backend):\n        _emit(f"session-close: [advisory] {line}")\n    kpis = workflow_kpis(backend.data, target / config.sessions_dir)\n    _emit(kpi_footer(kpis))\n    return 0\n\n\ndef cmd_ledger(\n    target: Path,\n    *,\n    title: str,\n    verdict: str,\n    why: str,\n    provenance: str,\n    supersedes: str | None,\n) -> int:\n    """Append a decision to the [D-NNNN] ledger (created on first use)."""\n    assert_safe_target(target, _kit_root())\n    config = load_config(target)\n    path = target / config.docs_root / LEDGER_FILENAME\n    entry = append_decision(\n        path,\n        title=title,\n        verdict=verdict,\n        why=why,\n        provenance=provenance,\n        supersedes=supersedes,\n    )\n    _emit(f"ledger: recorded {entry[\'id\']} — {title}")\n    if supersedes:\n        _emit(f"ledger: {supersedes} stamped superseded-by {entry[\'id\']}.")\n    return 0\n\n\ndef _simulate_mode_asserts(\n    mode: str,\n    data: dict,\n    graduated: bool,\n    n: int,\n) -> str | None:\n    """Return the per-mode behavior violation, or None when behavior held.\n\n    The behavior-assert half of the simulation: observe must never\n    auto-graduate (it proposes), guided/active must graduate once the quiet\n    streak is long enough.\n    """\n    quiet_needed = 3\n    if mode == "observe":\n        if graduated or data.get("stage") != "integration":\n            return "observe mode auto-graduated (must only propose)"\n        if n > quiet_needed and not data.get("graduation_proposed"):\n            return "observe mode never proposed graduation"\n        return None\n    if n > quiet_needed and not graduated:\n        return f"{mode} mode failed to graduate after the quiet streak"\n    return None\n\n\ndef cmd_simulate(n: int, mode: str = "guided") -> int:\n    """Init into a temp dir and drive ``n`` interview sessions; verify behavior.\n\n    Session 1 supplies confirmed answers for every critical slot; later sessions\n    supply none. Asserts the critical slots fill and that the run behaves\n    per ``mode``: guided/active graduate integration -> steady once quiet;\n    observe only ever *proposes* graduation.\n    """\n    with tempfile.TemporaryDirectory(prefix="substrate-sim-") as tmp:\n        target = Path(tmp)\n        rc = cmd_init(target)\n        if rc != 0:\n            return rc\n        state_path = _state_path(target, load_config(target))\n        if mode != "guided":\n            rc = cmd_mode(target, mode)\n            if rc != 0:\n                return rc\n        crit = critical_slots()\n        answers = {slot: f"value-for-{slot}" for slot in crit}\n        graduated = False\n        for index in range(n):\n            backend = JsonStateBackend(state_path)\n            result = run_session(backend, answers if index == 0 else {})\n            graduated = graduated or result["graduated"]\n        data = JsonStateBackend(state_path).data\n        missing = [s for s in crit if data.get("slots", {}).get(s) != "filled"]\n        if missing:\n            _emit(f"simulate: FAILED — critical slots unfilled: {missing}")\n            return 1\n        violation = _simulate_mode_asserts(mode, data, graduated, n)\n        if violation:\n            _emit(f"simulate: FAILED — {violation}")\n            return 1\n        _emit(\n            f"simulate: OK — {n} session(s), {len(crit)} critical slots filled, "\n            f"mode={mode}, stage={data.get(\'stage\')} (graduated={graduated}).",\n        )\n    return 0\n\n\ndef build_parser() -> argparse.ArgumentParser:\n    """Construct the bootstrap argument parser."""\n    parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")\n    parser.add_argument(\n        "--simulate",\n        type=int,\n        metavar="N",\n        help="run N synthetic sessions in a temp dir, then exit",\n    )\n    parser.add_argument(\n        "--mode",\n        default="guided",\n        choices=("observe", "guided", "active"),\n        help="integration mode for --simulate (behavior asserts differ per mode)",\n    )\n    sub = parser.add_subparsers(dest="command")\n    for name, helptext in (\n        ("init", "initialise a project"),\n        ("status", "show install state"),\n        ("ask", "list pending interview questions"),\n        ("triggers", "scan for fired triggers / mandatory questions"),\n        ("metrics", "emit the router + workflow KPIs"),\n        ("session-start", "print this session\'s orientation injection"),\n        ("session-close", "mine reflections, index the session, report KPIs"),\n    ):\n        child = sub.add_parser(name, help=helptext)\n        child.add_argument("--target", type=Path, default=Path.cwd())\n    adopt_p = sub.add_parser("adopt", help="plant the workflow docs + stage the packs")\n    adopt_p.add_argument(\n        "--include-claude",\n        action="store_true",\n        help="also write .claude/CLAUDE.md + .claude/settings.json (skip-if-exists)",\n    )\n    adopt_p.add_argument(\n        "--wire-enforcement",\n        action="store_true",\n        help=(\n            "turn on the forcing functions: the live nag hook (implies "\n            "--include-claude) + a live CI gate that holds the merge red until "\n            "the session journal is written"\n        ),\n    )\n    adopt_p.add_argument("--target", type=Path, default=Path.cwd())\n    contextpack = sub.add_parser(\n        "contextpack",\n        help="generate agent context packs from the index",\n    )\n    contextpack.add_argument(\n        "--index",\n        type=Path,\n        default=None,\n        help="index or manifest path (default: <target>/project.index.json)",\n    )\n    contextpack.add_argument("--target", type=Path, default=Path.cwd())\n    render_p = sub.add_parser("render", help="render content docs from filled slots")\n    render_p.add_argument(\n        "--live",\n        action="store_true",\n        help="fill remaining placeholders in the PLANTED docs in place",\n    )\n    render_p.add_argument("--target", type=Path, default=Path.cwd())\n    answer = sub.add_parser("answer", help="record a user answer for a slot")\n    answer.add_argument("slot")\n    answer.add_argument("value", nargs="+", help="the answer text")\n    answer.add_argument("--target", type=Path, default=Path.cwd())\n    confirm = sub.add_parser("confirm", help="confirm a provisional slot")\n    confirm.add_argument("slot")\n    confirm.add_argument("--target", type=Path, default=Path.cwd())\n    reflect = sub.add_parser("reflect", help="list/add/mine the reflection buffer")\n    reflect.add_argument("--add", metavar="LESSON", default=None)\n    reflect.add_argument("--evidence", default="")\n    reflect.add_argument("--tags", default="", help="comma-separated tags")\n    reflect.add_argument("--mine", action="store_true")\n    reflect.add_argument("--target", type=Path, default=Path.cwd())\n    episodes = sub.add_parser("episodes", help="rebuild/search the episodic index")\n    episodes.add_argument("--rebuild", action="store_true")\n    episodes.add_argument("--search", metavar="TAG", default=None)\n    episodes.add_argument("--target", type=Path, default=Path.cwd())\n    maintain = sub.add_parser("maintain", help="run the self-maintenance report")\n    maintain.add_argument("--compact", action="store_true")\n    maintain.add_argument("--target", type=Path, default=Path.cwd())\n    review = sub.add_parser("review", help="drive the independent-review seam")\n    review.add_argument("action", choices=("build", "confirm", "doc"))\n    review.add_argument("slot", nargs="?", default=None)\n    review.add_argument("--verdict", default="", help="pass | fail (for confirm)")\n    review.add_argument("--reviewer", default="external")\n    review.add_argument("--target", type=Path, default=Path.cwd())\n    economy = sub.add_parser("economy", help="run the context-economy engine")\n    economy.add_argument(\n        "action",\n        choices=("check", "apply", "simulate", "recipe", "issue-body"),\n    )\n    economy.add_argument("--strict", action="store_true")\n    economy.add_argument("--yes", action="store_true", help="really act (apply)")\n    economy.add_argument(\n        "--reviewed",\n        action="store_true",\n        help="acknowledge the human review a \'gated\' maturity first prune needs",\n    )\n    economy.add_argument("--bands", type=int, default=24)\n    economy.add_argument("--target", type=Path, default=Path.cwd())\n    ledger = sub.add_parser("ledger", help="append a [D-NNNN] decision")\n    ledger.add_argument("--title", required=True)\n    ledger.add_argument("--verdict", required=True)\n    ledger.add_argument("--why", required=True)\n    ledger.add_argument("--provenance", required=True)\n    ledger.add_argument("--supersedes", default=None)\n    ledger.add_argument("--target", type=Path, default=Path.cwd())\n    mode = sub.add_parser("mode", help="set the integration mode")\n    mode.add_argument("name")\n    mode.add_argument("--target", type=Path, default=Path.cwd())\n    stance = sub.add_parser("stance", help="show or set the task stance")\n    stance.add_argument("name", nargs="?", default=None)\n    stance.add_argument("--target", type=Path, default=Path.cwd())\n    skills = sub.add_parser("skills", help="list or --build the skill pack")\n    skills.add_argument(\n        "--build",\n        action="store_true",\n        help="emit SKILL.md files into <state_dir>/skills/",\n    )\n    skills.add_argument("--target", type=Path, default=Path.cwd())\n    agents = sub.add_parser("agents", help="list or --build the persona pack")\n    agents.add_argument(\n        "--build",\n        action="store_true",\n        help="emit agent .md files into <state_dir>/agents/",\n    )\n    agents.add_argument("--target", type=Path, default=Path.cwd())\n    hooks = sub.add_parser("hooks", help="show or --build the hook wiring")\n    hooks.add_argument(\n        "--build",\n        action="store_true",\n        help="emit the PreToolUse settings snippet into <state_dir>/hooks/",\n    )\n    hooks.add_argument("--target", type=Path, default=Path.cwd())\n    hook = sub.add_parser("hook", help="run a hook check (e.g. `hook pretooluse`)")\n    hook.add_argument("event")\n    hook.add_argument("--target", type=Path, default=Path.cwd())\n    check = sub.add_parser("check", help="run the doc + session-log hygiene checks")\n    check.add_argument("--target", type=Path, default=Path.cwd())\n    check.add_argument("--strict", action="store_true", help="exit 1 if any violation")\n    check.add_argument(\n        "--require-session-log",\n        action="store_true",\n        help="fail (not just advise) when the session log is missing — the CI gate mode",\n    )\n    return parser\n\n\ndef main(argv: list[str] | None = None) -> int:\n    """Run the bootstrap CLI; return a process exit code."""\n    parser = build_parser()\n    args = parser.parse_args(argv)\n    try:\n        if args.simulate is not None:\n            return cmd_simulate(args.simulate, args.mode)\n        if args.command == "init":\n            return cmd_init(args.target)\n        if args.command == "status":\n            return cmd_status(args.target)\n        if args.command == "ask":\n            return cmd_ask(args.target)\n        if args.command == "render":\n            return cmd_render(args.target, live=args.live)\n        if args.command == "mode":\n            return cmd_mode(args.target, args.name)\n        if args.command == "stance":\n            return cmd_stance(args.target, args.name)\n        if args.command == "skills":\n            return cmd_skills(args.target, args.build)\n        if args.command == "agents":\n            return cmd_agents(args.target, args.build)\n        if args.command == "hooks":\n            return cmd_hooks(args.target, args.build)\n        if args.command == "hook":\n            return cmd_hook(args.target, args.event)\n        if args.command == "check":\n            return cmd_check(\n                args.target,\n                args.strict,\n                require_session_log=args.require_session_log,\n            )\n        if args.command == "answer":\n            return cmd_answer(args.target, args.slot, " ".join(args.value))\n        if args.command == "confirm":\n            return cmd_confirm(args.target, args.slot)\n        if args.command == "triggers":\n            return cmd_triggers(args.target)\n        if args.command == "reflect":\n            return cmd_reflect(\n                args.target,\n                add=args.add,\n                evidence=args.evidence,\n                tags=args.tags,\n                mine=args.mine,\n            )\n        if args.command == "episodes":\n            return cmd_episodes(args.target, rebuild=args.rebuild, search=args.search)\n        if args.command == "metrics":\n            return cmd_metrics(args.target)\n        if args.command == "maintain":\n            return cmd_maintain(args.target, compact=args.compact)\n        if args.command == "review":\n            return cmd_review(\n                args.target,\n                args.action,\n                args.slot,\n                verdict=args.verdict,\n                reviewer=args.reviewer,\n            )\n        if args.command == "economy":\n            return cmd_economy(\n                args.target,\n                args.action,\n                strict=args.strict,\n                apply=args.yes,\n                reviewed=args.reviewed,\n                bands=args.bands,\n            )\n        if args.command == "adopt":\n            return cmd_adopt(\n                args.target,\n                args.include_claude,\n                wire_enforcement=args.wire_enforcement,\n            )\n        if args.command == "contextpack":\n            return cmd_contextpack(args.target, args.index)\n        if args.command == "session-start":\n            return cmd_session_start(args.target)\n        if args.command == "session-close":\n            return cmd_session_close(args.target)\n        if args.command == "ledger":\n            return cmd_ledger(\n                args.target,\n                title=args.title,\n                verdict=args.verdict,\n                why=args.why,\n                provenance=args.provenance,\n                supersedes=args.supersedes,\n            )\n    except UnsafeTargetError as exc:\n        _emit(f"refused: {exc}")\n        return 2\n    parser.print_help()\n    return 0\n',
-}
-
 _TEMPLATES = {
     'AGENT_ORIENTATION.md.tmpl': '# ${project_name} — agent orientation & reading order\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The task reading-router: start here to find which\n> docs a given task needs. **NOT SOURCE OF TRUTH** — the binding contracts win.\n\n## Start every session\n\n1. `.claude/CLAUDE.md` — the working agreement.\n2. `docs/current-state.md` — the living status ledger.\n3. This file — task-specific reading routes.\n\n## Binding contracts\n\n- **Architecture / layering:** ${architecture_layers}\n- **Ownership** (who owns each write path): ${ownership_model}\n- **Mutation seam** (how writes are gated): ${mutation_seam}\n\n## Where things live\n\nDocumentation root(s): ${doc_roots}\n\nThe planted doc set (this router reaches every live doc — keep it that way):\n`docs/architecture.md` · `docs/ownership.md` · `docs/runtime_contracts.md` ·\n`docs/collaboration-model.md` · `docs/helper-policy.md` ·\n`docs/repo-navigation-map.md` · `docs/ai-project-workflow.md` ·\n`docs/owner-profile.md` · `docs/current-state.md` · `docs/decisions.md` ·\n`docs/question-router.md` · `docs/ideas/README.md` — plus the root\n`CONSTITUTION.md` (the working agreement) and `.session-journal.md`.\n\n## Verifying any change\n\n```\n${verify_command}\n```\n',
     'CLAUDE.md.tmpl': '# ${project_name} — agent working agreement\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit from the staged interview. **NOT SOURCE OF TRUTH**\n> for code — source files always win. Re-render (`bootstrap render`) after the\n> interview fills more slots.\n\n## What this project is\n\n${project_name} is built in ${primary_language}.\n\n## Orientation — read first, in order\n\n1. This file — the working agreement.\n2. `docs/current-state.md` — what is true right now.\n3. `docs/AGENT_ORIENTATION.md` — the task-specific reading router.\n\n## Architecture — layers & import rules\n\n${architecture_layers}\n\n## Verifying a change\n\nRun before every push:\n\n```\n${verify_command}\n```\n\n## How the maintainer works\n\n${owner_profile}\n\n## Workflow adoption\n\nCurrent adoption pace for the substrate workflow: **${integration_mode}**.\n',
-    'CONSTITUTION.md.tmpl': "# ${project_name} — constitution\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. The working agreement + autonomy rails. **NOT\n> SOURCE OF TRUTH** for code — source files always win. Rules state their\n> **current value only**; provenance lives in `docs/decisions.md` as [D-NNNN]\n> links and is never narrated inline.\n\n## Working agreement\n\n- **The goal comes first.** Achieve the session's goal end-to-end; don't ship\n  the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — no re-confirming.\n- **Understand-and-reflect.** The owner often hands over a rough fragment, not\n  a full spec — and sometimes doesn't know yet if the idea is even possible.\n  Before substantive work, restate the fuller picture built from the ask —\n  the specs it implied but didn't state, and, when feasibility is uncertain,\n  the possibility space — inline in the first substantive response, never as\n  a separate blocking question. Two payoffs, not one: it catches a misread\n  before work happens, and the filled-in picture is itself new material the\n  owner reasons against and redirects.\n- When a doc and a source file disagree: ${drift_resolution}\n\n## Autonomy rails — act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task.\n- **Ask** before anything irreversible (data loss, external publish),\n  large / cross-cutting (architectural), or when the goal itself is\n  genuinely ambiguous. No live owner to ask? Record the question in\n  `docs/question-router.md` instead of skipping it or guessing.\n\n## Changing the rules — propose, don't apply\n\n- A binding rule in this file changes by **proposal**, never by silent edit:\n  record the decision in `docs/decisions.md`, cite it here as its [D-NNNN]\n  id, and let the owner (or the review ritual) confirm before the rule text\n  changes.\n- Every rule change ships with its provenance id. This file carries **no\n  history** — the ledger does; superseded rules are looked up there.\n\n## Rails specific to ${project_name}\n\n(Hand-filled: the project's own hard rules, one bullet each, each citing its\n[D-NNNN]. Keep the whole hand-filled file under 150 lines.)\n",
+    'CONSTITUTION.md.tmpl': "# ${project_name} — constitution\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. The working agreement + autonomy rails. **NOT\n> SOURCE OF TRUTH** for code — source files always win. Rules state their\n> **current value only**; provenance lives in `docs/decisions.md` as [D-NNNN]\n> links and is never narrated inline.\n\n## Working agreement\n\n- **The goal comes first.** Achieve the session's goal end-to-end; don't ship\n  the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — no re-confirming.\n- **Understand-and-reflect.** The owner often hands over a rough fragment, not\n  a full spec — and sometimes doesn't know yet if the idea is even possible.\n  Before substantive work, restate the fuller picture built from the ask —\n  the specs it implied but didn't state, and, when feasibility is uncertain,\n  the possibility space — inline in the first substantive response, never as\n  a separate blocking question. Two payoffs, not one: it catches a misread\n  before work happens, and the filled-in picture is itself new material the\n  owner reasons against and redirects.\n- When a doc and a source file disagree: ${drift_resolution}\n\n## Autonomy rails — act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task.\n- **Ask** before anything irreversible (data loss, external publish),\n  large / cross-cutting (architectural), or when the goal itself is\n  genuinely ambiguous. No live owner to ask? Record the question in\n  `docs/question-router.md` instead of skipping it or guessing.\n\n## Changing the rules — propose, don't apply\n\n- A binding rule in this file changes by **proposal**, never by silent edit:\n  record the decision in `docs/decisions.md`, cite it here as its [D-NNNN]\n  id, and let the owner (or the review ritual) confirm before the rule text\n  changes.\n- Every rule change ships with its provenance id. This file carries **no\n  history** — the ledger does; superseded rules are looked up there.\n\n## Program law\n\nRulings that bind **every** repo in this program live canonically in the\nsubstrate-kit repo at `docs/program/rulings.md` — the [PL-NNN] register\n(https://github.com/menno420/substrate-kit/blob/main/docs/program/rulings.md):\nPL-001 decide-and-flag · PL-002 never-wait rebuild autonomy · PL-003\nrail-before-scale · PL-004 empirical model allocation · PL-005 observe-first\nbudgets · PL-006 source-wins / false-green · PL-007 enforce-don't-exhort ·\nPL-008 adopt-freely with a kill-switch · PL-009 the kit-lab's rails.\n**Cite PL-IDs — never copy ruling bodies into this repo.** The register is\nthe one home; a local copy is drift by construction. Repo-local rulings stay\nin `docs/decisions.md` / `docs/question-router.md`; a local ruling promoted\nprogram-wide becomes a PL-block there and a pointer here.\n\n## Rails specific to ${project_name}\n\n(Hand-filled: the project's own hard rules, one bullet each, each citing its\n[D-NNNN]. Keep the whole hand-filled file under 150 lines.)\n",
     'ai-project-workflow.md.tmpl': "# ${project_name} — AI project workflow\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The multi-agent pipeline: how ideas become work\n> and how sessions run. **NOT SOURCE OF TRUTH** — the binding contracts win.\n\n## Idea lifecycle\n\n```\ncaptured -> classified -> planned -> built -> verified\n```\n\nEvery idea ends implemented, planned, in discussion, or explicitly rejected —\nnever orphaned. Backlog + routing: `docs/ideas/README.md`.\n\n## Session workflow\n\n```\norient -> claim -> born-red card -> build -> verify -> close\n```\n\n1. **Orient** — working agreement, current state, task-specific reading route.\n2. **Claim** — declare your lane so parallel sessions don't collide.\n3. **Born-red card** — open the session record first, marked in-progress, so\n   the work is visible while it is still incomplete.\n4. **Build** — the goal, end-to-end.\n5. **Verify** — run `${verify_command}` before shipping.\n6. **Close** — flip the card complete; log the session, groom one idea, hand\n   off.\n\n## Handoff template\n\n(What the next session needs, four lines: state of the work · what is\nverified · what is still open · the first next step.)\n\n## Adoption pace\n\nCurrent substrate-workflow adoption: **${integration_mode}**.\n",
     'architecture.md.tmpl': '# ${project_name} — architecture\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. Layering, invariants, and decomposition rules.\n> **NOT SOURCE OF TRUTH** for code — source files always win.\n\n## Layers & import rules\n\n${architecture_layers}\n\n| Layer | May import | Must NOT import |\n|---|---|---|\n| (one row per layer, expanded from the summary above) | | |\n\n## Invariants\n\n(The rules that must survive every refactor — write each one as a testable\nstatement, and name the check that enforces it where one exists.)\n\n## Namespace protection — two mechanisms, both required\n\nTwo separate mechanisms guard the namespace, and they catch different\nfailure classes:\n\n1. **A registry for runtime string identities** — event names, command\n   names, settings keys, and any other string that selects behavior at\n   runtime. Collisions here are invisible to static analysis.\n2. **A static AST pass for Python symbol shadowing** — a later top-level\n   `def` / `class` with the same name silently shadows the earlier one, and\n   no import fails.\n\nNeither mechanism subsumes the other. The registry cannot see symbol\nshadowing; the AST pass cannot see string-keyed dispatch. Do not delete one\nbelieving the other covers it.\n\n## Verifying a change\n\n```\n${verify_command}\n```\n',
-    'collaboration-model.md.tmpl': "# ${project_name} — collaboration model\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. How the owner and agents work together. **NOT\n> SOURCE OF TRUTH** for code — source files always win.\n\n## The model\n\n- **Goal first.** The owner designs and directs; agents build. Each session\n  achieves its goal end-to-end — not the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting; a\n  prompt is one input, never a command list.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — code, verify, ship —\n  without re-confirming.\n\n## Act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task (that is expected, not scope creep).\n- **Ask** when the change is irreversible (data loss / external publish),\n  large and cross-cutting (architectural), or the goal itself is genuinely\n  ambiguous.\n\n## Friction → guard\n\nAnything that interrupts a session's workflow — a stale file, a checker that\nlied, a footgun — is converted into the **cheapest enforcing prevention**\nbefore the session ends: checker / CI / test first, then hook, then written\nrule. Enforce, don't exhort.\n\n## Guiding questions\n\nDuring exploratory / brainstorming work, surface the single most useful\nquestion about the owner's idea that the agent genuinely cannot derive\nitself — rare and selective, never during routine execution, and only when\nthe answer would actually matter and be actionable. A big or vague idea\nearns a dedicated research pass or its own session before being answered\nfrom memory alone.\n\n## Drift & staleness\n\n- When a doc and a source file disagree: ${drift_resolution}\n- Staleness review cadence: ${staleness_review}\n",
+    'collaboration-model.md.tmpl': "# ${project_name} — collaboration model\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. How the owner and agents work together. **NOT\n> SOURCE OF TRUTH** for code — source files always win.\n\n## The model\n\n- **Goal first.** The owner designs and directs; agents build. Each session\n  achieves its goal end-to-end — not the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting; a\n  prompt is one input, never a command list.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — code, verify, ship —\n  without re-confirming.\n\n## Act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task (that is expected, not scope creep).\n- **Ask** when the change is irreversible (data loss / external publish),\n  large and cross-cutting (architectural), or the goal itself is genuinely\n  ambiguous.\n\n## Friction → guard\n\nAnything that interrupts a session's workflow — a stale file, a checker that\nlied, a footgun — is converted into the **cheapest enforcing prevention**\nbefore the session ends: checker / CI / test first, then hook, then written\nrule. Enforce, don't exhort.\n\n## Guiding questions\n\nDuring exploratory / brainstorming work, surface the single most useful\nquestion about the owner's idea that the agent genuinely cannot derive\nitself — rare and selective, never during routine execution, and only when\nthe answer would actually matter and be actionable. A big or vague idea\nearns a dedicated research pass or its own session before being answered\nfrom memory alone.\n\n## Program law\n\nThis model's program-wide form, and the rulings that bind every repo in the\nprogram, live canonically in the substrate-kit repo at\n`docs/program/rulings.md` (the [PL-NNN] register — e.g. PL-001\ndecide-and-flag, PL-002 never-wait, PL-007 enforce-don't-exhort) and\n`docs/program/collaboration-model.md`\n(https://github.com/menno420/substrate-kit/tree/main/docs/program).\n**Cite PL-IDs — never copy ruling bodies into this repo.**\n\n## Drift & staleness\n\n- When a doc and a source file disagree: ${drift_resolution}\n- Staleness review cadence: ${staleness_review}\n",
     'current-state.md.tmpl': '# ${project_name} — Current State\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. **Living status ledger.** Source code and merged\n> work always win over this file. Read it second (right after the working\n> agreement) and keep it current as the project moves.\n\n## Stability baseline\n\n(Describe the accepted-stable baseline once established — what is known-good and\nshould not be re-audited without a reported regression.)\n\n## In flight\n\n(Verify against live source control — this section is a dated snapshot.)\n\n## Recently shipped (newest first)\n\n(Merged work only, newest first.)\n\n## Review rhythm\n\n${review_ritual}\n',
     'decisions.md.tmpl': '# ${project_name} — decisions\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. Append-only decision ledger — entries are\n> superseded, never deleted. Rule docs cite entries as bare [D-NNNN] ids;\n> this file holds the provenance so rules never narrate it inline.\n\n<!-- Grammar: ## [D-NNNN] <title> / - status: decided|superseded|retired / - date: YYYY-MM-DD / - supersedes: D-NNNN (opt) / - superseded-by: D-NNNN (opt) / - verdict: <one line> / - why: <2-3 lines> / - provenance: <ref> -->\n\n## [D-0001] Adopt the substrate-kit workflow\n\n- status: decided\n- date:\n- verdict: ${project_name} runs on the substrate-kit agent workflow.\n- why: A repo-resident working agreement, decision ledger, and session\n  discipline let agents work correctly with little steering; adopting the\n  kit starts ${project_name} governed instead of accreting rules ad hoc.\n- provenance: substrate-kit adoption interview\n',
     'helper-policy.md.tmpl': '# ${project_name} — helper policy\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. When to create / move / promote a helper —\n> read this **before** adding a utility function anywhere. **NOT SOURCE OF\n> TRUTH** for code — source files always win.\n\n## Rules\n\n1. **One source of truth.** A behavior lives in exactly one function. Never\n   copy a helper into a second module "for convenience" — import it, or move\n   it (rule 2).\n2. **Shared helpers live below both consumers.** A helper needed by two\n   layers goes in the shared layer *below* both — never in either consumer\n   layer, and never duplicated into each.\n3. **Exact-name guard.** Before defining a new function, grep for\n   `def <exact_name>` in the target module and its siblings (plus the 1–2\n   nearest concept synonyms). A later same-name `def` silently shadows the\n   earlier one — no import fails, no warning fires.\n4. **Promote on second use.** The moment a private helper is wanted by a\n   second module, promote it to the shared layer — don\'t copy it.\n\n## Where helpers go in ${project_name}\n\n(Hand-filled: the concrete shared-layer path(s) for this repo, lowest layer\nfirst, with one line on what belongs in each.)\n',
-    'ideas-README.md.tmpl': '# ${project_name} — idea backlog & lifecycle\n\n> **Status:** `ideas`\n>\n> Generated by substrate-kit. Capture ideas here so they live in the repo, not in\n> chat. Nothing here is approved until it graduates. A **conveyor, not a graveyard**:\n> every idea ends implemented, on a roadmap, in discussion, or explicitly rejected.\n\n## Lifecycle\n\n```\n(1) INTAKE   capture the idea (raw -> captured)\n(2) MAP      name the owning area, rough size, rough risk\n(3) ROUTE    -> quick-win | structured plan | discuss-first (question router)\n(4) GROOM    pull one routable idea forward each session\n(5) OUTCOME  implemented | on a roadmap | in discussion | rejected\n```\n\n## Backlog\n\n(Captured ideas, each with a state and a next destination — none left at `raw`.)\n',
+    'ideas-README.md.tmpl': '# ${project_name} — idea backlog & lifecycle\n\n> **Status:** `ideas`\n>\n> Generated by substrate-kit. Capture ideas here so they live in the repo, not in\n> chat. Nothing here is approved until it graduates. A **conveyor, not a graveyard**:\n> every idea ends implemented, on a roadmap, in discussion, or explicitly rejected.\n\n## Lifecycle\n\n```\n(1) INTAKE   capture the idea (raw -> captured)\n(2) MAP      name the owning area, rough size, rough risk\n(3) ROUTE    -> quick-win | structured plan | discuss-first (question router)\n(4) GROOM    pull one routable idea forward each session\n(5) OUTCOME  implemented | on a roadmap | in discussion | rejected\n```\n\n## Frontmatter — the idea-outcome record\n\nEvery idea file in this directory (README excepted) opens with a flat\nYAML-subset frontmatter block — the machine-readable outcome record\n("ideas that ship and survive"), so a sweep can score the backlog without\nparsing prose:\n\n```\n---\nstate: captured | routed | promoted | historical\norigin: lab | owner | consumer:<owner>/<repo>\nshipped_pr: null | <PR number in shipped_repo>\nshipped_repo: null | <owner>/<repo>\nmerged_date: null | YYYY-MM-DD\noutcome: open | shipped | survived | reverted | rejected\n---\n```\n\nConventions: `shipped`/`survived`/`reverted` require all three ship fields;\n`open`/`rejected` keep them null; `survived` means the merge is ≥ 30 days old\nwith no revert; name files `<slug>-YYYY-MM-DD.md` (the generation-date cohort\nkey) and link every file from this README. The prose keeps the story, the\nfrontmatter keeps the score.\n\n## Backlog\n\n(Captured ideas, each with a state and a next destination — none left at `raw`.)\n',
     'owner-profile.md.tmpl': "# ${project_name} — owner working profile\n\n> **Status:** `owner-guidance`\n>\n> Generated by substrate-kit. Captures the owner's **working style** so\n> agents collaborate well — never personal data. The person is not shipped\n> with the kit.\n\n## How the owner works\n\n${owner_profile}\n\n## Review ritual\n\n${review_ritual}\n\n## Privacy note\n\nThis doc records working style only: communication preferences, review\ncadence, decision boundaries, autonomy expectations. No contact details, no\npersonal history, nothing that identifies the person beyond their role on\n${project_name}. When in doubt, leave it out.\n",
     'ownership.md.tmpl': "# ${project_name} — ownership\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. Which area / service / pipeline owns each\n> table, event, and write path. **NOT SOURCE OF TRUTH** for code — source\n> files always win.\n\n> **Steady state:** this doc's table is **generated** from store / manifest\n> specs where those exist — a projection, not hand-prose. This skeleton is\n> the interim hand-maintained form until that projection lands.\n\n## Ownership model\n\n${ownership_model}\n\n## Ownership table\n\n| Area | Owner (module / service) | Writes it owns | Notes |\n|---|---|---|---|\n| (one row per owned area) | | | |\n\n## New areas\n\n${new_area_ownership}\n",
     'question-router.md.tmpl': '# ${project_name} — maintainer question router\n\n> **Status:** `owner-guidance`\n>\n> Generated by substrate-kit. Append-only `## Q-NNNN` blocks capture owner-intent\n> decisions and open questions. The interview writes here; confirmed answers route\n> into the durable docs. **Append only** (next free Q-number) — never rewrite history.\n> Any session may append a block, not only the interview — including an unattended\n> run that hits a genuinely useful, non-derivable question with no live owner to ask.\n\n## Block format\n\n```\n## Q-0001\n- **Area / Type / Priority / Status:** ...\n- **Question:** ...\n- **Why agents need this:** ...\n- **Options:** ...\n- **Safe default:** ...\n- **Maintainer answer:** (verbatim)\n- **Routing result:** (which doc / slot the answer landed in)\n```\n\n## Open questions\n\n(Unanswered Q-blocks live here until the maintainer decides; a blocking one gates\ngraduation.)\n',

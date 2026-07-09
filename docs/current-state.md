@@ -46,7 +46,13 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   `scripts/check_no_ambient_railway_ids.py` guard, plus every service's pytest
   suite. **`quality` is now a REQUIRED status check on `main`** (owner set the
   ruleset 2026-07-09; verified live on PR #18) — PRs are blocked until it is
-  green.
+  green. The session-gate step is **PR-diff-aware** (kit v1.0.0, [D-0017]):
+  it derives the session card from the PR/push diff and passes it via
+  `check --session-log <card>`, so a stale `complete` card can't mask THIS
+  PR's `in-progress` one (`fetch-depth: 0` on checkout feeds the diff). The
+  vendored `bootstrap.py` is kit **v1.0.0** whose checker fails a born-red
+  (`in-progress`/`wip`/`hold`/`drafted`) card under `--strict` — the leak that
+  let PR #19 auto-merge on a born-red card alone is closed.
 - **Railway safety:** the three ambient `RAILWAY_*_ID` env vars point at the
   **live production bot** and must never reach a Railway call — see
   `docs/RAILWAY-SAFETY.md` (enforced by `scripts/check_no_ambient_railway_ids.py`
@@ -94,6 +100,20 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **Born-red session-gate fix** ([D-0017]). The vendored substrate engine was
+  **pre-1.0.0** and leaked: PR #19 auto-merged an empty PR on its born-red
+  (`in-progress`) card alone. Two holes — (1) the checker never inspected the
+  Status VALUE, so an in-progress card passed `--strict`; (2) the card was
+  picked newest-by-mtime, which a fresh CI checkout flattens, so a stale
+  `complete` card could mask the in-progress one. **Fix = upstream ADOPTION**
+  (not a hand-fork): re-vendored kit-main HEAD `dist/bootstrap.py` (kit **v1.0.0**,
+  `status_in_progress` closes hole #1, `check --session-log` closes hole #2),
+  recorded `kit_version` in `substrate.config.json`, and folded the kit's exact
+  diff-aware `--session-log` derivation into the single `quality` gate (no
+  second workflow, one enforced path). Both directions proven empirically +
+  regression-tested (`tests/test_born_red_session_gate.py`). The upstream
+  substrate-kit repo fix is handled by a **separate session** (no collision —
+  substrate-kit untouched here).
 - **PR #21** — botsite content depth ([D-0016]). Added **per-command detail pages**
   `/commands/{name}` (`command_detail.html`) rendering every real `site.json` field
   (invocation, description, category, permissions, status, aliases, examples, linked

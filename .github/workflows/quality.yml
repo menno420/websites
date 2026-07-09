@@ -15,6 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so the session-gate step can diff PR/push ranges.
+          fetch-depth: 0
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -34,8 +37,27 @@ jobs:
       # markers, namespace shadowing, seam authority, orientation budget, and
       # the decision ledger. --require-session-log fails (not just advises)
       # when a PR adds a session card that is not yet complete.
-      - name: substrate check (strict)
-        run: python3 bootstrap.py check --strict --require-session-log
+      #
+      # PR-diff-aware card selection (kit v1.0.0, `adopt --wire-enforcement`):
+      # a fresh CI checkout flattens every file mtime to checkout time, so the
+      # engine's newest-by-mtime card guess is arbitrary here — an OLD complete
+      # card could mask THIS PR's in-progress one (the leak that let #19
+      # auto-merge on a born-red card alone). Derive the card from what the
+      # PR/push diff touches under .sessions/ and pass it via --session-log; no
+      # card in the diff -> argument omitted -> the engine's mtime fallback
+      # (fail-open). This snippet is the kit's generated substrate-gate step,
+      # folded into this single required `quality` gate so there is exactly one
+      # enforced session-log path (no double / conflicting logic).
+      - name: substrate check (strict, diff-aware session gate)
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          card="$(git diff --name-only --diff-filter=d "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null | tail -1)"
+          echo "session gate card: ${card:-<none - mtime fallback>}"
+          python3 bootstrap.py check --strict --require-session-log ${card:+--session-log "$card"}
 
       # Enforcing guard: no tracked code may read the ambient production-bot
       # Railway IDs (RAILWAY_PROJECT_ID / SERVICE_ID / ENVIRONMENT_ID), and a
