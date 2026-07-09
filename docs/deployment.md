@@ -75,12 +75,36 @@ token's scope or GitHub egress cannot reach — the site never fakes a value.
 
 ## Guardrails (binding for agents)
 
-- The agent container carries ambient `RAILWAY_PROJECT_ID` /
-  `RAILWAY_SERVICE_ID` / `RAILWAY_ENVIRONMENT_ID` that point at the **live
-  production bot** project. **Never pass those to any Railway API call.**
-  Use `RAILWAY_API_KEY` alone and the explicit `superbot-websites` IDs above.
+> ## 🚨 NEVER pass the three ambient production-bot Railway IDs to any call 🚨
+>
+> The agent container carries ambient **`RAILWAY_PROJECT_ID`** /
+> **`RAILWAY_SERVICE_ID`** / **`RAILWAY_ENVIRONMENT_ID`** that point at the
+> **LIVE PRODUCTION BOT** project. **Never pass any of them to any Railway
+> API/CLI call.** Use `RAILWAY_API_KEY` alone plus the explicit
+> `superbot-websites` IDs in the table above. Full rule + the enforcing guard:
+> **`docs/RAILWAY-SAFETY.md`** (checked in CI by
+> `scripts/check_no_ambient_railway_ids.py`, wired into `quality.yml`).
+
+- This repo's services make **no Railway API calls at all** — no Railway SDK, no
+  `RAILWAY_API_KEY` in any app env, no deploy hook. The guard
+  `scripts/check_no_ambient_railway_ids.py` fails CI if any tracked code ever
+  starts reading one of the three ambient IDs from the environment.
 - Never call a delete/restore/destructive Railway mutation against anything.
   Misconfigured something? Update it or create a replacement.
+
+## Post-deploy verification (habit)
+
+Merge = deploy — each service auto-redeploys on merge to `main`. After a merge,
+run the reusable 3-URL healthcheck:
+
+```
+python3 scripts/healthcheck.py
+```
+
+It GETs `/healthz` and `/` on all three live services (`control-plane`,
+`botsite`, `dashboard`), prints a PASS/FAIL table, and exits non-zero if any is
+down. All three are **public**, so `/` is expected `200`. Verbatim output on
+2026-07-09: all six endpoints `200` / `PASS`, `RESULT: all healthy`.
 
 ## Verification evidence (2026-07-09, first deploy)
 

@@ -37,6 +37,12 @@ jobs:
       - name: substrate check (strict)
         run: python3 bootstrap.py check --strict --require-session-log
 
+      # Enforcing guard: no tracked code may read the ambient production-bot
+      # Railway IDs (RAILWAY_PROJECT_ID / SERVICE_ID / ENVIRONMENT_ID), and a
+      # safety doc must carry the warning. See docs/RAILWAY-SAFETY.md.
+      - name: no ambient production Railway IDs
+        run: python3 scripts/check_no_ambient_railway_ids.py
+
       # Every service's test suite. FastAPI apps in app/, botsite/, dashboard/.
       - name: pytest (all services)
         run: python3 -m pytest tests/ botsite/tests dashboard/tests -q

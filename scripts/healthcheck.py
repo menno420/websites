@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""Post-deploy healthcheck: GET /healthz and / on the three live services.
+
+──────────────────────────────────────────────────────────────────────────────
+PROVENANCE / KILL-SWITCH HEADER
+  Why:   "Merge = deploy" — each service auto-redeploys on merge to main. This
+         is the reusable post-deploy verification habit: one command confirms
+         all three Railway services answer `/healthz` and serve their public
+         `/` with HTTP 200. Beats hand-curling three URLs after every merge.
+  Added: 2026-07-09 (websites hardening pass, PR #19, [D-0015]).
+  Trust: DETERMINISTIC (pure stdlib urllib) — but UNVERIFIED as a habit; sanity
+         check its verdict against a manual curl a few times before trusting.
+  KILL-SWITCH: if the URLs change or this proves flaky/noisy over several
+         sessions, update the SERVICES table or DELETE this file. It is a
+         convenience helper, not infrastructure.
+──────────────────────────────────────────────────────────────────────────────
+
+All three services are PUBLIC (2026-07-09 auth-drop), so `/` is expected 200.
+
+Usage:  python3 scripts/healthcheck.py
+Exit 0 = every checked endpoint returned its expected status; exit 1 = any down.
+"""
+
+from __future__ import annotations
+
+import sys
+import urllib.error
+import urllib.request
+
+# (label, base URL). Endpoints checked per service: /healthz and / (both expect
+# 200 now that all three are public).
+SERVICES = [
+    ("control-plane", "https://control-plane-production-abb0.up.railway.app"),
+    ("botsite", "https://botsite-production-cfd7.up.railway.app"),
+    ("dashboard", "https://dashboard-production-a91b.up.railway.app"),
+]
+ENDPOINTS = ("/healthz", "/")
+EXPECTED = 200
+TIMEOUT = 15
+
+
+def _probe(url: str) -> tuple[int, str]:
+    """Return (status_code, note). Network/HTTP errors degrade to (0, reason)."""
+    req = urllib.request.Request(url, method="GET", headers={"User-Agent": "healthcheck"})
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            return resp.status, ""
+    except urllib.error.HTTPError as exc:  # a real HTTP status (e.g. 404/500)
+        return exc.code, exc.reason or ""
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        return 0, str(getattr(exc, "reason", exc))
+
+
+def main() -> int:
+    rows: list[tuple[str, str, int, bool, str]] = []
+    ok_all = True
+    for label, base in SERVICES:
+        for ep in ENDPOINTS:
+            status, note = _probe(base + ep)
+            ok = status == EXPECTED
+            ok_all = ok_all and ok
+            rows.append((label, ep, status, ok, note))
+
+    width = max(len(lbl) for lbl, _ in SERVICES)
+    print(f"{'service'.ljust(width)}  {'endpoint':9}  status  ok")
+    print(f"{'-' * width}  {'-' * 9}  ------  --")
+    for label, ep, status, ok, note in rows:
+        mark = "PASS" if ok else "FAIL"
+        shown = str(status) if status else "DOWN"
+        extra = f"  ({note})" if note and not ok else ""
+        print(f"{label.ljust(width)}  {ep:9}  {shown:>6}  {mark}{extra}")
+
+    print()
+    print("RESULT:", "all healthy" if ok_all else "ONE OR MORE DOWN")
+    return 0 if ok_all else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
