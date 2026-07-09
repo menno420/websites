@@ -47,6 +47,7 @@ mounted on another app.
 | `/status` | Inventory counts + bug health snapshot | `status.html` |
 | `/palette.json` | Command-palette index (pages + subsystems + commands) | `app.py` |
 | `/healthz` | Liveness probe (JSON, no network dependency) | `app.py` |
+| `/version` | Deployed commit SHA `{service, sha, short}` — read from `RAILWAY_GIT_COMMIT_SHA` → `GIT_SHA` → `"unknown"`; powers the control-plane deploy-state cell (see `docs/site.md`) | `app.py` |
 | `/static/*` | `ds/` assets + `app.js` + `site.css` | `StaticFiles` |
 
 ### Control panel — a deliberate, clearly-labeled STUB

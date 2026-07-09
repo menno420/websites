@@ -37,6 +37,7 @@ mounted on the private control-plane app (the public/private split the plan requ
 | `/submit` | Suggestion/bug form — **write path stubbed** (see open items) | `submit.html` |
 | `/palette.json` | Command-palette index (pages + features + games + commands) | `app.py` |
 | `/healthz` | Liveness probe (JSON, unauthenticated, no network dependency) | `app.py` |
+| `/version` | Deployed commit SHA `{service, sha, short}` — read from `RAILWAY_GIT_COMMIT_SHA` → `GIT_SHA` → `"unknown"`; powers the control-plane deploy-state cell (see `docs/site.md`) | `app.py` |
 | `/static/*` | `ds/` assets + `app.js` + `site.css` | `StaticFiles` |
 
 ## Data source — read-only toward superbot, never fake

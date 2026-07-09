@@ -13,6 +13,15 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    only — names masked), auto-merge + enabler-workflow presence, open-PR health (count +
    oldest). This generalizes superbot's hand-maintained
    `docs/operations/repo-settings-state.md` ledger into a live view.
+   - **Deploy-state drift (websites row only, [D-0018]):** an extra "deploy
+     state" cell shows, per websites Railway service (control-plane, botsite,
+     dashboard), the **DEPLOYED** commit short-sha vs the `main` HEAD short-sha
+     the board already fetches live. Reads `in sync` (deployed == head), `DRIFT`
+     (deployed ≠ head, both shown), or `unknown` (fetch failed / sha unset). All
+     three services deploy from `main` on merge (Railway auto-deploy), so drift =
+     a deploy in progress or a stale/failed deploy. control-plane reads its own
+     deployed sha from the environment (no network); botsite/dashboard are read
+     over their public `/version` JSON through the TTL cache.
    - **Known trap honored:** superbot-next's `report` job (golden-parity
      workflow) is red-until-parity BY DESIGN — the board badges it
      `red-by-design` (purple) and never counts it toward "broken checks".
@@ -46,12 +55,37 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/journal/{repo}` | public | per-repo sessions / ledgers / PRs / commits |
 | `/journal/{repo}/file?path=…&ref=main` | public | render a repo file (markdown → HTML) |
 | `/healthz` | public | Railway healthcheck |
+| `/version` | public | deployed commit SHA (`{service, sha, short}`) — powers the deploy-state cell ([D-0018]) |
 | `/owner` | **gated** | full-detail board — un-masked Actions **secret names** + broken-check/oldest-PR detail |
 | `/owner/api/readiness.json` | **gated** | authed JSON, including secret names |
 | `/owner/actions/refresh` (POST) | **gated** | clear the in-memory TTL cache (in-process) |
 | `/owner/actions/rerun-ci` (POST) | **gated** | re-run the latest FAILED Actions run on a selected repo |
 
 `?refresh=1` on any page bypasses the cache for that load.
+
+## Deploy-state drift + `/version` ([D-0018])
+
+Every service (control-plane, botsite, dashboard) exposes an **unauthenticated
+`/version`** JSON — `{"service", "sha", "short"}` — reporting the commit it is
+actually running. The SHA is read **live from the environment** (no network) in
+this order:
+
+1. **`RAILWAY_GIT_COMMIT_SHA`** — Railway injects the deployed commit
+   automatically. **Primary source; no wiring needed.**
+2. **`GIT_SHA`** — a build arg baked into each service's Dockerfile
+   (`ARG GIT_SHA` → `ENV GIT_SHA`) as a **fallback** for local / non-Railway
+   builds. Optional (pass `--build-arg GIT_SHA=$(git rev-parse HEAD)`, or a
+   Railway service build variable).
+3. Neither set → the literal `"unknown"` (honest, never faked or crashed).
+
+The board's **websites-row deploy-state cell** compares each service's deployed
+short-sha to the `main` HEAD short-sha it already fetches from the GitHub API.
+control-plane knows its own deployed sha directly (env); botsite and dashboard
+are read over their public `/version` through the same TTL cache. Because Railway
+auto-deploys each service from `main` on merge, `in sync` means the live site
+runs the latest merged code and `DRIFT` means a deploy is in progress or has
+stalled/failed. **No secret and no Railway account token is involved** — the sha
+is public data, so `/version` is public like `/healthz`.
 
 ## Public site + gated `/owner` area
 

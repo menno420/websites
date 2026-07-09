@@ -30,6 +30,30 @@
   <table>
     <tr><th>signal</th><th>configured?</th><th>working now?</th><th>detail</th></tr>
 
+    {% if r.deploy_state %}
+    <tr>
+      <td>deploy state</td>
+      <td>
+        {% if r.deploy_state.head_short %}{{ badge('ok', 'head ' ~ r.deploy_state.head_short) }}
+        {% else %}{{ badge('unknown', 'head unknown') }}{% endif %}
+      </td>
+      <td>
+        {% if r.deploy_state.any_drift %}{{ badge('bad', 'DRIFT') }}
+        {% elif r.deploy_state.all_in_sync %}{{ badge('ok', 'in sync') }}
+        {% else %}{{ badge('unknown', 'unknown') }}{% endif %}
+      </td>
+      <td class="small">
+        {% for s in r.deploy_state.services %}
+          {{ s.service }}
+          {% if s.state == 'in_sync' %}{{ badge('ok', 'in sync') }} <span class="dim">{{ s.deployed_short }}</span>
+          {% elif s.state == 'drift' %}{{ badge('bad', 'DRIFT') }} <span class="dim">deployed {{ s.deployed_short }} ≠ head {{ s.head_short }}</span>
+          {% else %}{{ badge('unknown', 'unknown') }}{% if s.error %}<span class="dim"> — {{ s.error }}</span>{% endif %}{% endif %}<br>
+        {% endfor %}
+        <span class="dim">Railway auto-deploys each service from <code>main</code> on merge; drift = a deploy in progress or a stale/failed deploy.</span>
+      </td>
+    </tr>
+    {% endif %}
+
     <tr>
       <td>ruleset / branch protection</td>
       <td>

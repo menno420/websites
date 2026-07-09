@@ -29,6 +29,7 @@ own Dockerfile, binds ``0.0.0.0:$PORT``.
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -101,6 +102,29 @@ async def _base_ctx(request: Request, active: str) -> dict[str, Any]:
 async def healthz() -> dict[str, Any]:
     """Liveness probe (Railway). Unauthenticated, no network dependency."""
     return {"status": "ok", "service": "dashboard"}
+
+
+def _version_info() -> dict[str, Any]:
+    """Which commit this container is running (deployed SHA). Read live from the
+    env: ``RAILWAY_GIT_COMMIT_SHA`` (Railway injects the deployed commit) first,
+    then a build-time ``GIT_SHA`` fallback, then ``"unknown"``."""
+    sha = (
+        os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+        or os.environ.get("GIT_SHA")
+        or ""
+    ).strip()
+    return {
+        "service": "dashboard",
+        "sha": sha or "unknown",
+        "short": sha[:8] if sha else "unknown",
+    }
+
+
+@app.get("/version")
+async def version() -> dict[str, Any]:
+    """Deployed SHA (unauthenticated, no network dependency). The control-plane
+    readiness board queries this to compute the deploy-state drift cell."""
+    return _version_info()
 
 
 # ---------------------------------------------------------------------------

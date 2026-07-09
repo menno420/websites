@@ -118,6 +118,81 @@ def _run_state(run: dict | None) -> str:
     return run.get("conclusion") or "unknown"
 
 
+async def _service_deploy_state(
+    service: str, url: str | None, head_sha: str, refresh: bool
+) -> dict:
+    """One service's deploy state: its DEPLOYED short-sha vs the repo HEAD short-sha.
+
+    control-plane (``url is None``) is THIS app — it knows its own deployed sha
+    from the environment directly, no network. The other two are queried over
+    their public ``/version`` JSON through the shared TTL cache (raw client, no
+    token). A failed fetch or an absent sha is reported as ``unknown`` honestly,
+    never a crash or a faked value.
+    """
+    head_short = head_sha[:8] if head_sha else ""
+
+    def _clean(val: str) -> str:
+        # `/version` reports the literal "unknown" when no sha is set; treat that
+        # (and empty) as "not known", not as a real short-sha to compare.
+        return "" if val in ("", "unknown") else val
+
+    if url is None:
+        sha = config.deployed_sha()
+        deployed_short = sha[:8] if sha else ""
+        error = "" if deployed_short else "GIT_SHA / RAILWAY_GIT_COMMIT_SHA unset"
+    else:
+        res = await github._get(url, refresh=refresh, raw=True)
+        if res["ok"] and isinstance(res["data"], dict):
+            deployed_short = _clean(str(res["data"].get("short") or "")) or _clean(
+                str(res["data"].get("sha") or "")
+            )[:8]
+            error = "" if deployed_short else "service reports unknown sha"
+        else:
+            deployed_short = ""
+            error = f"HTTP {res['status']} {res['error']}".strip()
+
+    known = bool(deployed_short)
+    if not known or not head_short:
+        state = "unknown"
+    elif deployed_short == head_short:
+        state = "in_sync"
+    else:
+        state = "drift"
+    return {
+        "service": service,
+        "state": state,
+        "deployed_short": deployed_short,
+        "head_short": head_short,
+        "known": known,
+        "error": error,
+    }
+
+
+async def _deploy_board(head_sha: str, refresh: bool) -> dict:
+    """Deploy-state summary for every websites Railway service.
+
+    All three services deploy from this repo's ``main`` on merge (Railway
+    auto-deploy), so drift = a deploy in progress or a failed/stale deploy.
+    """
+    services = list(
+        await asyncio.gather(
+            *[
+                _service_deploy_state(name, url, head_sha, refresh)
+                for name, url in config.SERVICE_DEPLOY_TARGETS.items()
+            ]
+        )
+    )
+    any_drift = any(s["state"] == "drift" for s in services)
+    known = [s for s in services if s["known"]]
+    all_in_sync = bool(known) and all(s["state"] == "in_sync" for s in known)
+    return {
+        "head_short": head_sha[:8] if head_sha else "",
+        "services": services,
+        "any_drift": any_drift,
+        "all_in_sync": all_in_sync,
+    }
+
+
 async def repo_readiness(
     repo: str, refresh: bool = False, reveal_secrets: bool = False
 ) -> dict[str, Any]:
@@ -160,6 +235,14 @@ async def repo_readiness(
         if runs:
             head_sha = runs[0].get("head_sha", "") or ""
     red_by_design = cfg.get("red_by_design", {})
+
+    # --- deploy-state drift (websites row only) ---
+    # The three websites Railway services all deploy from this repo's `main`, so
+    # the websites row shows whether each running service is on the latest merged
+    # commit. Other repos have no such coupling → no deploy-state cell.
+    deploy_state = None
+    if repo == "websites":
+        deploy_state = await _deploy_board(head_sha, refresh)
 
     def annotate(run: dict) -> dict:
         job = (run.get("name") or "").split(",")[0].strip()
@@ -271,6 +354,7 @@ async def repo_readiness(
         "github_url": _gh(repo),
         "default_branch": default_branch,
         "head_sha": head_sha,
+        "deploy_state": deploy_state,
         "meta": meta,
         "visibility": (meta.get("data") or {}).get("visibility")
         if meta["ok"]

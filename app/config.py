@@ -20,6 +20,48 @@ import os
 
 OWNER = "menno420"
 
+
+def deployed_sha() -> str:
+    """The commit SHA this container is actually running.
+
+    Read live from the environment on every call (so Railway's per-deploy value
+    is always current). Order: ``RAILWAY_GIT_COMMIT_SHA`` — the deployed commit
+    Railway injects automatically — first, then a ``GIT_SHA`` baked at Docker
+    build time as a local/fallback source, then empty ("unknown"). No network.
+    """
+    return (
+        os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+        or os.environ.get("GIT_SHA")
+        or ""
+    ).strip()
+
+
+def version_info(service: str) -> dict:
+    """The `/version` JSON payload: which commit a service is running.
+
+    ``sha``/``short`` fall back to the literal string ``"unknown"`` (never an
+    empty string) when neither env var is set, so callers and the drift cell can
+    detect the unknown state honestly instead of guessing.
+    """
+    sha = deployed_sha()
+    return {
+        "service": service,
+        "sha": sha or "unknown",
+        "short": sha[:8] if sha else "unknown",
+    }
+
+
+# Public `/version` endpoints of the three superbot-websites Railway services.
+# The readiness board's websites-row "deploy state" cell compares each service's
+# DEPLOYED sha to the websites repo's `main` HEAD. control-plane is THIS app, so
+# its deployed sha is read straight from the environment with no network hop
+# (url = None); the other two are fetched over their public /version JSON.
+SERVICE_DEPLOY_TARGETS: dict = {
+    "control-plane": None,
+    "botsite": "https://botsite-production-cfd7.up.railway.app/version",
+    "dashboard": "https://dashboard-production-a91b.up.railway.app/version",
+}
+
 GITHUB_API_BASE = os.environ.get("GITHUB_API_BASE", "https://api.github.com").rstrip("/")
 GITHUB_RAW_BASE = os.environ.get(
     "GITHUB_RAW_BASE", "https://raw.githubusercontent.com"

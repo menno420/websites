@@ -72,6 +72,126 @@ def test_healthz(client):
     assert r.status_code == 200 and r.json()["ok"] is True
 
 
+def test_version_returns_env_sha(client, monkeypatch):
+    """/version reports the control-plane's deployed SHA from the environment."""
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "abc12345def67890")
+    r = client.get("/version")
+    assert r.status_code == 200
+    assert r.json() == {
+        "service": "control-plane",
+        "sha": "abc12345def67890",
+        "short": "abc12345",
+    }
+
+
+def test_version_unknown_when_unset(client, monkeypatch):
+    """No env var set → honest 'unknown', not a crash or a fabricated sha."""
+    monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
+    monkeypatch.delenv("GIT_SHA", raising=False)
+    assert client.get("/version").json() == {
+        "service": "control-plane",
+        "sha": "unknown",
+        "short": "unknown",
+    }
+
+
+def _deploy_state_row(monkeypatch, head_sha, self_sha, service_short):
+    """Build the websites row with mocked HEAD sha + service /version shas.
+
+    Returns row["deploy_state"] after driving readiness.repo_readiness("websites")
+    with a fake check-runs head_sha, a fake control-plane deployed sha (env), and
+    a fake botsite/dashboard /version fetch reporting ``service_short``.
+    """
+    monkeypatch.setattr(config, "deployed_sha", lambda: self_sha)
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        if subpath.startswith("/commits/") and "check-runs" in subpath:
+            return {
+                "ok": True, "status": 200, "error": "", "cached": False,
+                "fetched_at": "", "url": "",
+                "data": {"check_runs": [
+                    {"name": "quality", "status": "completed", "conclusion": "success",
+                     "html_url": "u", "head_sha": head_sha, "app": {"name": "GA"}},
+                ]},
+            }
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def fake_get(url, refresh=False, raw=False):
+        # the botsite/dashboard /version fetches
+        if url.endswith("/version"):
+            return {"ok": True, "status": 200,
+                    "data": {"service": "x", "sha": service_short + "00", "short": service_short},
+                    "error": "", "fetched_at": "", "cached": False, "url": url}
+        return {"ok": False, "status": 0, "data": None, "error": "offline",
+                "fetched_at": "", "cached": False, "url": url}
+
+    async def run():
+        orig_api, orig_get = github.repo_api, github._get
+        github.repo_api = fake_repo_api
+        github._get = fake_get
+        try:
+            row = await readiness.repo_readiness("websites")
+        finally:
+            github.repo_api, github._get = orig_api, orig_get
+        return row
+
+    return asyncio.run(run())["deploy_state"]
+
+
+def test_deploy_state_in_sync_when_deployed_equals_head(monkeypatch):
+    """deployed short-sha == head short-sha → in_sync for every service."""
+    ds = _deploy_state_row(
+        monkeypatch, head_sha="abc12345ffffffff", self_sha="abc12345ffffffff",
+        service_short="abc12345",
+    )
+    assert ds is not None
+    assert ds["head_short"] == "abc12345"
+    assert ds["all_in_sync"] is True and ds["any_drift"] is False
+    states = {s["service"]: s["state"] for s in ds["services"]}
+    assert states == {
+        "control-plane": "in_sync", "botsite": "in_sync", "dashboard": "in_sync",
+    }
+
+
+def test_deploy_state_drift_when_deployed_differs(monkeypatch):
+    """A different deployed short-sha → DRIFT, with both shas surfaced."""
+    ds = _deploy_state_row(
+        monkeypatch, head_sha="aaaaaaaabbbbbbbb", self_sha="99999999cccccccc",
+        service_short="99999999",
+    )
+    assert ds["any_drift"] is True and ds["all_in_sync"] is False
+    cp = next(s for s in ds["services"] if s["service"] == "control-plane")
+    assert cp["state"] == "drift"
+    assert cp["deployed_short"] == "99999999" and cp["head_short"] == "aaaaaaaa"
+
+
+def test_deploy_state_unknown_sha_renders_clean(monkeypatch):
+    """Env var absent (deployed sha unknown) is a clean non-error state, not a crash,
+    and the board still renders."""
+    monkeypatch.setattr(config, "deployed_sha", lambda: "")
+
+    async def fake_get(url, refresh=False, raw=False):
+        # /version fetch fails → that service is 'unknown' honestly
+        return {"ok": False, "status": 0, "data": None, "error": "offline test",
+                "fetched_at": "", "cached": False, "url": url}
+
+    monkeypatch.setattr(github, "_get", fake_get)
+    with TestClient(app) as c:
+        r = c.get("/")
+        assert r.status_code == 200
+        assert "deploy state" in r.text  # the cell renders
+        assert "unknown" in r.text       # unknown state, never faked
+
+    async def run():
+        row = await readiness.repo_readiness("websites")
+        return row["deploy_state"]
+
+    ds = asyncio.run(run())
+    cp = next(s for s in ds["services"] if s["service"] == "control-plane")
+    assert cp["state"] == "unknown" and cp["known"] is False and cp["error"]
+
+
 def test_routes_public_no_auth(client):
     # No credentials: every route serves 200 (the auth gate is gone).
     for path in ["/", "/journal", "/journal/superbot", "/api/readiness.json"]:

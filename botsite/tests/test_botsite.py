@@ -70,6 +70,31 @@ def test_healthz(client):
     assert r.json()["status"] == "ok"
 
 
+def test_version_returns_env_sha(client, monkeypatch):
+    """/version reports the deployed SHA from RAILWAY_GIT_COMMIT_SHA (primary)."""
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "deadbeef1234567890")
+    r = client.get("/version")
+    assert r.status_code == 200
+    body = r.json()
+    assert body == {"service": "botsite", "sha": "deadbeef1234567890", "short": "deadbeef"}
+
+
+def test_version_falls_back_to_git_sha(client, monkeypatch):
+    """GIT_SHA (baked at Docker build) is the fallback when Railway's var is absent."""
+    monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
+    monkeypatch.setenv("GIT_SHA", "cafebabecafebabe")
+    body = client.get("/version").json()
+    assert body["sha"] == "cafebabecafebabe" and body["short"] == "cafebabe"
+
+
+def test_version_unknown_when_unset(client, monkeypatch):
+    """Neither env var set → honest 'unknown', never a crash or a faked value."""
+    monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
+    monkeypatch.delenv("GIT_SHA", raising=False)
+    body = client.get("/version").json()
+    assert body == {"service": "botsite", "sha": "unknown", "short": "unknown"}
+
+
 @pytest.mark.parametrize("path", ["/", "/features", "/commands", "/games", "/changelog", "/status", "/design", "/submit"])
 def test_pages_render(client, path):
     r = client.get(path)
