@@ -84,12 +84,21 @@ DASHBOARD_FIXTURE = {
     "bot_changelog": [{"date": "2026-06-19", "title": "New site", "kind": "improvement", "summary": "New."}],
 }
 
+# Shaped per the pinned cross-repo contract (dashboard/console_data_contract.json,
+# v1): ideas/bugs are counter DICTS, meta carries schema_version, telemetry exists.
 CONSOLE_FIXTURE = {
-    "meta": {"generated_at": "2026-07-08T16:20:05Z", "build": {"commit": "e9988b3b"}},
+    "meta": {"generated_at": "2026-07-08T16:20:05Z", "build": {"commit": "e9988b3b"},
+             "schema_version": 1},
     "sessions": [{"file": "2026-07-08-x.md", "date": "2026-07-08", "title": "Session X",
                   "status": "complete", "run_type": "", "self_initiated": False}],
-    "ideas": [], "bugs": [],
+    "ideas": {"total": 221, "by_status": {"ideas": 200, "historical": 21}},
+    "bugs": {"total": 30, "by_status": {"fixed": 27, "open": 3}, "open_count": 3,
+             "open": [{"id": "BUG-0031", "title": "Something is off", "status": "open"}]},
     "bot_changelog": [{"date": "2026-06-19", "title": "New site", "kind": "improvement", "summary": "New."}],
+    "telemetry": [{"session": "2026-07-08-x", "date": "2026-07-08", "model": "fable-5",
+                   "effort": "high", "task_class": "docs-only", "tokens_out": None,
+                   "outcome": {"ci_green_first_push": None, "checker_findings": None,
+                               "merged_pr": None, "reverted_within_window": None}}],
 }
 
 READ_ONLY_PATHS = [
@@ -233,3 +242,61 @@ def test_palette_index(client):
     labels = [i.get("label") for i in r.json()]
     assert "Overview" in labels
     assert "Economy" in labels  # subsystem indexed
+
+
+# --- console feed shape contract (cross-repo pin) --------------------------
+def test_console_renders_contracted_counter_dicts(client):
+    """ideas/bugs are contracted counter DICTS; the tiles show total/open_count
+    (the dict-vs-list defect the contract surfaced), and no drift banner shows."""
+    r = client.get("/console", headers=AUTH)
+    assert r.status_code == 200
+    assert "221" in r.text  # ideas.total, not len(dict)==2
+    assert "Open bugs" in r.text and "BUG-0031" in r.text
+    assert "schema drift" not in r.text.lower()
+
+
+def test_console_schema_version_mismatch_shows_banner():
+    drifted = {**CONSOLE_FIXTURE, "meta": {**CONSOLE_FIXTURE["meta"], "schema_version": 99}}
+    ds.clear_cache()
+    ds.prime_cache(ds.DASHBOARD_JSON_URL, DASHBOARD_FIXTURE)
+    ds.prime_cache(ds.CONSOLE_JSON_URL, drifted)
+    ds.set_client(ds.make_client())
+    with TestClient(app_module.app) as c:
+        r = c.get("/console", headers=AUTH)
+        assert r.status_code == 200
+        assert "schema drift" in r.text.lower()
+        assert "schema_version=99" in r.text
+    ds.clear_cache()
+
+
+def test_console_missing_family_shows_banner():
+    shrunk = {k: v for k, v in CONSOLE_FIXTURE.items() if k != "telemetry"}
+    ds.clear_cache()
+    ds.prime_cache(ds.DASHBOARD_JSON_URL, DASHBOARD_FIXTURE)
+    ds.prime_cache(ds.CONSOLE_JSON_URL, shrunk)
+    ds.set_client(ds.make_client())
+    with TestClient(app_module.app) as c:
+        r = c.get("/console", headers=AUTH)
+        assert r.status_code == 200
+        assert "schema drift" in r.text.lower()
+        assert "telemetry" in r.text
+    ds.clear_cache()
+
+
+def test_pinned_contract_matches_what_this_consumer_reads():
+    """The pinned copy must cover everything the console route/template reads,
+    and the fixture must satisfy it (so tests exercise the real shape)."""
+    contract = ds.load_console_contract()
+    assert isinstance(contract["version"], int)
+    # Every family the route reads is contracted.
+    for family in ("meta", "sessions", "ideas", "bugs", "bot_changelog"):
+        assert family in contract["top_level"]
+    # The fixture IS the contracted shape (version + families + counter dicts).
+    assert ds.console_contract_issue(CONSOLE_FIXTURE) == ""
+    assert set(CONSOLE_FIXTURE) == set(contract["top_level"])
+    assert set(CONSOLE_FIXTURE["ideas"]) <= set(contract["ideas"])
+    assert set(CONSOLE_FIXTURE["bugs"]) <= set(contract["bugs"])
+    for row in CONSOLE_FIXTURE["sessions"]:
+        assert set(row) == set(contract["session"])
+    for row in CONSOLE_FIXTURE["telemetry"]:
+        assert set(row) == set(contract["telemetry"])

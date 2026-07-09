@@ -1,0 +1,13 @@
+{
+  "_comment": "PINNED COPY of the console.json shape contract — the version of the cross-repo feed contract THIS dashboard was built against. The CANONICAL contract lives in the producer repo: https://github.com/menno420/superbot/blob/main/botsite/data/console_data_contract.json (superbot PR #1884; producer-side parity + fail-closed checks run in superbot's CI). The /console page fetches superbot's committed botsite/data/console.json over raw GitHub and verifies at render time that the feed's meta.schema_version equals this file's version and that every top_level family is present — a mismatch renders an honest schema-drift banner instead of a silently wrong page (the BUG-0022 class). To upgrade: sync this copy from the canonical file, adapt the templates to the new shape, and update the fixture in dashboard/tests/test_dashboard.py in the same commit.",
+  "version": 1,
+  "top_level": ["meta", "sessions", "ideas", "bugs", "bot_changelog", "telemetry"],
+  "meta": ["generated_at", "build", "schema_version"],
+  "session": ["file", "date", "title", "status", "run_type", "self_initiated"],
+  "ideas": ["total", "by_status"],
+  "bugs": ["total", "by_status", "open_count", "open"],
+  "bug_open": ["id", "title", "status"],
+  "bot_changelog": ["date", "title", "kind", "summary"],
+  "telemetry": ["session", "date", "model", "effort", "task_class", "tokens_out", "outcome"],
+  "telemetry_outcome": ["ci_green_first_push", "checker_findings", "merged_pr", "reverted_within_window"]
+}
