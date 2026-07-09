@@ -1,0 +1,13 @@
+{# Auto-refresh indicator — included ONLY on the live-monitoring pages
+   (board `/` and `/fleet`). Sits OUTSIDE the swapped `#live-content` region so
+   its toggle keeps its listener across refreshes. Requires `autorefresh_seconds`
+   in the template context and app/static/autorefresh.js loaded once. #}
+<div class="autorefresh" data-autorefresh="{{ autorefresh_seconds }}"
+     role="status" aria-live="polite">
+  <span class="ar-dot" aria-hidden="true"></span>
+  <span id="ar-status">auto-refreshing every {{ autorefresh_seconds }}s</span>
+  <span class="dim">· last updated <time id="ar-updated" datetime="">just now</time></span>
+  <button type="button" id="ar-toggle" class="ar-toggle" aria-pressed="false"
+          title="pause / resume live auto-refresh">pause</button>
+  <noscript><span class="dim">(auto-refresh needs JavaScript; reload manually)</span></noscript>
+</div>

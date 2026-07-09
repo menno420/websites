@@ -70,6 +70,14 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 # Gates ONLY the /owner area (see app/owner.py). The public site never reads it.
 SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "")
 CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "180"))
+# Client-side poll interval for the LIVE-MONITORING pages only (the board `/`
+# and `/fleet`). A small unobtrusive JS refresh (app/static/autorefresh.js)
+# re-fetches the page and swaps its `#live-content` region in place every
+# this-many seconds, so the owner's control glance stays current without a
+# manual reload. Polling more often than the 180s server cache TTL just
+# re-renders the same cached data cheaply (fine); 45s is a responsive-but-gentle
+# default. The content/journal pages are deliberately NOT auto-refreshed.
+AUTOREFRESH_SECONDS = int(os.environ.get("AUTOREFRESH_SECONDS", "45"))
 
 # Per-repo knowledge the API cannot tell us: what the required checks are
 # *supposed* to be (seeded from superbot docs/operations/repo-settings-state.md,
