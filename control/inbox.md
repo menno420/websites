@@ -31,3 +31,9 @@ priority: P1
 do: Two control-plane additions. (1) OWNER QUEUE page (/queue): aggregate every lane's ⚑ needs-owner field (already in /fleet.json) PLUS menno420/fleet-manager docs/owner-queue.md into ONE deduplicated list, newest first, each item showing its source lane and, where present, the WHAT/WHERE/HOW/WHY/UNBLOCKS fields (the fleet's new owner-action format) — this becomes the owner's single to-do surface. (2) ENVIRONMENTS page (/environments): render menno420/fleet-manager environments/ (README, templates with copy-to-clipboard code blocks, specs) so the owner can view + copy setup scripts and env-var schemas when creating/editing a claude.ai environment; read-only, secrets never present by design (the registry stores names/placeholders only — merged today as fleet-manager PR #5: environments/README.md, templates/setup-universal.sh, templates/env-vars.md, multi-repo.md, SPEC-TEMPLATE.md). Same honest-degradation patterns as /fleet.
 why: the owner asked for one place to see everything he needs to do, and an environment builder — the site renders, the manager's repo stores.
 done-when: /queue and /environments live and verified against the running deploy; status acks+done.
+
+## ORDER 006 · 2026-07-09T17:50:23Z · status: new
+priority: P0
+do: LATENCY PING — the moment you read this order, acknowledge BEFORE any other work: add one line to your control status file (or, if faster, a new file docs/retro/ping-ack.md): "PING-ACK ORDER 006 · discovered <UTC timestamp, seconds precision> · via <how you came to read this inbox: session-start ritual / routine wake / owner prompt / mid-session inbox check>". Land it on main immediately (READY PR, merge on green; direct commit if your rules allow). Then resume whatever you were doing.
+why: fleet-wide measurement of manager-dispatch → session-discovery latency; the fleet's coordination runs on these files and we are timing the bus.
+done-when: the ack line is on main; the manager computes the latency.
