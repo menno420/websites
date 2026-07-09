@@ -2,6 +2,8 @@
 {% block title %}fleet heartbeat{% endblock %}
 {% block headright %}<a href="/fleet?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
+{% include "_autorefresh.html" %}
+<div id="live-content">
 <div class="card">
   <h2>fleet heartbeat — which agents are running, and how far along</h2>
   <p class="dim small">One card per fleet lane, rendering each Project's
@@ -75,4 +77,7 @@
   {% endif %}
 </div>
 {% endfor %}
+</div>
 {% endblock %}
+
+{% block scripts %}<script src="/static/autorefresh.js" defer></script>{% endblock %}

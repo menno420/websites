@@ -218,6 +218,56 @@ def test_unknown_repo_404(client):
     assert r.status_code == 404
 
 
+# --- live-monitoring auto-refresh (board / + /fleet only) ---
+
+
+def _has_autorefresh(html: str) -> bool:
+    """The auto-refresh indicator + poll script both present on a page."""
+    return (
+        'class="autorefresh"' in html
+        and "data-autorefresh=" in html
+        and 'id="live-content"' in html
+        and "/static/autorefresh.js" in html
+    )
+
+
+def test_board_has_autorefresh_indicator_and_poll_script(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert _has_autorefresh(r.text)
+    # the interval config constant is what the indicator advertises
+    assert (
+        "auto-refreshing every %ds" % config.AUTOREFRESH_SECONDS in r.text
+    )
+    assert 'data-autorefresh="%d"' % config.AUTOREFRESH_SECONDS in r.text
+    # the pause/resume control is present
+    assert 'id="ar-toggle"' in r.text
+
+
+def test_fleet_has_autorefresh_indicator_and_poll_script(client):
+    r = client.get("/fleet")
+    assert r.status_code == 200
+    assert _has_autorefresh(r.text)
+    assert 'id="ar-toggle"' in r.text
+
+
+def test_content_pages_do_not_autorefresh(client):
+    # Journal / content surfaces stay static — no auto-refresh markup or script.
+    for path in ["/journal", "/journal/superbot", "/activity", "/ideas"]:
+        html = client.get(path).text
+        assert "/static/autorefresh.js" not in html, path
+        assert 'class="autorefresh"' not in html, path
+        assert 'id="live-content"' not in html, path
+
+
+def test_autorefresh_js_served_static(client):
+    r = client.get("/static/autorefresh.js")
+    assert r.status_code == 200
+    assert "javascript" in r.headers["content-type"]
+    # the module polls the current page and swaps the live region in place
+    assert "live-content" in r.text and "setInterval" in r.text
+
+
 def test_secret_names_never_reach_served_html(monkeypatch):
     """The public board masks secrets to a COUNT: the real GitHub secret NAMES
     (admin-scope-only data) must be absent from the served HTML, and the count

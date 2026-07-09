@@ -13,6 +13,8 @@
 {%- endmacro %}
 
 {% block content %}
+{% include "_autorefresh.html" %}
+<div id="live-content">
 {% for r in rows %}
 <div class="card">
   <h2><a href="{{ r.github_url }}">{{ r.repo }}</a>
@@ -173,4 +175,7 @@
 fetched with the current token (scope or egress) — the board degrades per-cell, it
 never fakes a value. expected-check lists are seeded from
 <a href="https://github.com/menno420/superbot/blob/main/docs/operations/repo-settings-state.md">repo-settings-state.md</a>.</p>
+</div>
 {% endblock %}
+
+{% block scripts %}<script src="/static/autorefresh.js" defer></script>{% endblock %}

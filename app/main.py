@@ -15,6 +15,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import activity, config, fleet, github, ideas, journal, owner, readiness
@@ -32,6 +33,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+# Static assets (the live-monitoring auto-refresh JS). Public, no credentials —
+# served straight from app/static/ (mirrors the credential-free public site).
+app.mount(
+    "/static",
+    StaticFiles(directory=str(Path(__file__).parent / "static")),
+    name="static",
+)
 
 # The one gated area — /owner and /owner/*. Every route in THIS module stays
 # public; the gate lives entirely on the included router.
@@ -65,6 +74,7 @@ async def board(request: Request):
             "rows": rows,
             "ttl": config.CACHE_TTL_SECONDS,
             "active": "board",
+            "autorefresh_seconds": config.AUTOREFRESH_SECONDS,
         },
     )
 
@@ -91,7 +101,13 @@ async def activity_timeline_json(request: Request):
 async def fleet_heartbeat(request: Request):
     data = await fleet.overview(refresh=_refresh(request))
     return templates.TemplateResponse(
-        request, "fleet.html", {"f": data, "active": "fleet"}
+        request,
+        "fleet.html",
+        {
+            "f": data,
+            "active": "fleet",
+            "autorefresh_seconds": config.AUTOREFRESH_SECONDS,
+        },
     )
 
 
