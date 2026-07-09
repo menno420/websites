@@ -21,7 +21,117 @@
 - **Routing result:** (which doc / slot the answer landed in)
 ```
 
+> **Note on decision links.** To keep each decision stamped at a single home (the
+> kit's stamp-discipline check), blocks below reference resolving decisions by
+> effect and point to the decision ledger (`docs/decisions.md`) rather than
+> repeating the bare `D-NNNN` id, which already lives in the ledger and its home
+> doc.
+
 ## Open questions
 
 (Unanswered Q-blocks live here until the maintainer decides; a blocking one gates
 graduation.)
+
+> The seven blocks below are the open questions from the dashboard/botsite rework
+> plan (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md` § 5). They
+> previously lived only in the plan doc; routed here so owner-intent calls are
+> tracked in one append-only place. Some have been partially answered by work
+> shipped since the plan (noted per block); the rework itself is still gated on
+> the owner's review of the genuinely open ones (esp. Q-0004).
+
+## Q-0001
+- **Area / Type / Priority / Status:** rework · product-intent · high · **partially resolved**
+- **Question:** Public vs. private, per site. botsite is assumed to stay **public**
+  (as today). Are the dashboard's **read-only catalogues** public too, or gated
+  behind the control-plane's Basic auth? (The control panel + moderation are
+  private regardless.)
+- **Why agents need this:** it sets the auth model each rebuilt service ships with
+  and whether secrets must be isolated per surface.
+- **Options:** all read surfaces public · dashboard read pages gated · a public/gated split per surface.
+- **Safe default:** keep botsite public; ship dashboard read pages public but secret-safe.
+- **Maintainer answer:** (verbatim) "Yes drop the auth" — auth was dropped from
+  control-plane + dashboard, and a gated `/owner` overlay was later added for full
+  detail + power while the main site stays public.
+- **Routing result:** the auth-drop + gated-`/owner` decisions (see
+  `docs/decisions.md` and `docs/current-state.md`, `docs/site.md`). Still open
+  only for botsite `/submit` gating (paired with Q-0005).
+
+## Q-0002
+- **Area / Type / Priority / Status:** rework · product-intent · normal · **open**
+- **Question:** Preserve exact visual design, or restyle onto `ds/`? botsite v1 is
+  design-owned Claude-Design files copied verbatim; the rebuild recommendation is
+  to standardize on the `ds/` system (and the v2 baseline). Confirm that's wanted
+  vs. preserving the exact v1 look pixel-for-pixel.
+- **Why agents need this:** it decides whether the rebuild lifts `ds/` as the one
+  design system or must reproduce v1 verbatim.
+- **Options:** standardize on `ds/` + v2 baseline · preserve v1 pixel-for-pixel · hybrid.
+- **Safe default:** rebuild on `ds/` + v2 (the intended future); keep v1 as reference.
+- **Maintainer answer:** (unanswered)
+- **Routing result:** (pending) — plan § 2b.
+
+## Q-0003
+- **Area / Type / Priority / Status:** rework · product-intent · normal · **open**
+- **Question:** Merge or keep separate? Three candidates overlap the control-plane's
+  owner-oversight job: botsite `/console`, and the dashboard's read-only oversight
+  pages (updates/ideas/bugs). Fold them into the control-plane, or keep dashboard
+  and botsite as distinct sites?
+- **Why agents need this:** it sets the service topology and where duplicated
+  oversight surfaces live.
+- **Options:** fold overlaps into control-plane · keep three distinct sites · merge only `/console`.
+- **Safe default:** keep the three sites distinct for now; revisit `/console` at cutover.
+- **Maintainer answer:** (unanswered)
+- **Routing result:** (pending) — plan § 2b / § 3.
+
+## Q-0004
+- **Area / Type / Priority / Status:** rework · product-intent · **blocking** · **open**
+- **Question:** Does the Discord-OAuth control panel come over at all? It writes the
+  **live production bot's** control API — coupling websites to a running bot across
+  the repo boundary. Carry it here, leave it in superbot, or move control to
+  `superbot-next`?
+- **Why agents need this:** it is the one cross-repo, production-coupling call the
+  rework cannot make itself; it decides whether a control-API credential ever
+  enters a websites service.
+- **Options:** carry the panel into websites · leave it in superbot · move control to `superbot-next`.
+- **Safe default:** ship the panel as a labeled stub with **zero** production
+  control-API credentials until the owner decides (current state — `/admin` stub).
+- **Maintainer answer:** (unanswered — the panel is a deliberate credential-free
+  stub; see the dashboard decision in `docs/decisions.md`)
+- **Routing result:** (pending) — `docs/dashboard.md` § control panel; plan § 2a.
+
+## Q-0005
+- **Area / Type / Priority / Status:** rework · infra · normal · **open**
+- **Question:** Submissions pipeline (`/submit` → dashboard-owned Postgres →
+  GitHub-issue mirror). Carry it? It needs a new Postgres + the mirror PAT
+  provisioned in the `superbot-websites` project.
+- **Why agents need this:** the botsite `/submit` write path stays a stub until
+  the store + mirror PAT exist; carrying it is an infra + secret provisioning call.
+- **Options:** carry + provision Postgres/PAT · drop the submissions ring · defer.
+- **Safe default:** keep `/submit` stubbed (INSERT-only, no store) until provisioned.
+- **Maintainer answer:** (unanswered — `/submit` currently stubbed, plan Q5)
+- **Routing result:** (pending) — `docs/botsite.md` § `/submit`; plan § 2a/§ 2b.
+
+## Q-0006
+- **Area / Type / Priority / Status:** rework · product-intent · normal · **open (deferred to cutover)**
+- **Question:** Domain names. Which custom domains, and which site gets the apex vs.
+  a subdomain? (Deferred to cutover, but the target shapes the plan.)
+- **Why agents need this:** the apex/subdomain assignment shapes cutover and DNS;
+  no DNS is touched until the owner approves cutover.
+- **Options:** apex → control-plane · apex → botsite · all on subdomains.
+- **Safe default:** dark-launch on Railway URLs; defer all DNS to cutover.
+- **Maintainer answer:** (unanswered — deferred to cutover)
+- **Routing result:** (pending) — plan § 4 (DNS / domains).
+
+## Q-0007
+- **Area / Type / Priority / Status:** rework · technical · normal · **open (recommendation standing)**
+- **Question:** Data feed. OK to consume superbot's committed JSON artifacts
+  (`dashboard.json` / `site.json` / `console.json`) via raw GitHub (clean,
+  read-only, forward-only) — or should the `scripts/export_dashboard_data.py`
+  scanning tooling be rebuilt inside websites?
+- **Why agents need this:** it decides whether websites stays a pure read-only
+  consumer of superbot's artifacts or grows its own export tooling.
+- **Options:** consume the committed artifacts via raw GitHub · rebuild the export tooling here.
+- **Safe default:** consume the artifacts (the plan's recommendation) — already how
+  botsite/dashboard/control-plane work today; the pinned console.json contract
+  (see `docs/decisions.md`) hardens exactly this seam.
+- **Maintainer answer:** (unanswered — recommendation followed in shipped work)
+- **Routing result:** (pending confirmation) — plan § 3.

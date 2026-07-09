@@ -1,9 +1,3 @@
-> ⚠️ **UNRENDERED SLOTS BELOW — run `python3 bootstrap.py ask`.**
-> Every `${...}` token in this file is an unfilled interview slot, not
-> project truth. Fill: `bootstrap answer <slot> <value...>`, then
-> `bootstrap render --live` (fills in place and removes this banner).
-> Prose without `${...}` tokens is live guidance already.
-
 # websites — constitution
 
 > **Status:** `binding`
@@ -29,7 +23,7 @@
   a separate blocking question. Two payoffs, not one: it catches a misread
   before work happens, and the filled-in picture is itself new material the
   owner reasons against and redirects.
-- When a doc and a source file disagree: ${drift_resolution}
+- When a doc and a source file disagree: Source code and merged PRs win over any doc. When a doc and a source file disagree, treat the doc as stale, follow the source, and fix the doc in the same session — drift you can see (a wrong ledger entry, a stale pointer) is fixed on sight, not deferred.
 
 ## Autonomy rails — act vs. ask
 
@@ -51,5 +45,19 @@
 
 ## Rails specific to websites
 
-(Hand-filled: the project's own hard rules, one bullet each, each citing its
-[D-NNNN]. Keep the whole hand-filled file under 150 lines.)
+- **Read-only toward superbot; forward-only git.** Never import superbot's
+  `disbot/` and never write back to it — consume its committed JSON over raw
+  GitHub. All history moves forward (squash-merge, no force-push) [D-0001].
+- **One repo, many Railway services — share code, not a process.** `control-plane`
+  (`app/`), `botsite/`, and `dashboard/` are separate services so the public
+  sites stay secret-isolated from the private overlay [D-0007].
+- **Never deploy into, or configure via, the production-bot Railway project.**
+  Use only `superbot-websites` IDs and `RAILWAY_API_KEY`; the ambient
+  `RAILWAY_*` env in agent containers points at the live bot — never pass it to
+  a Railway call. No destructive Railway mutation without an explicit owner
+  go-ahead [D-0005].
+- **The public surface is always browsable and credential-free.** Secrets never
+  reach public HTML or `/api/readiness.json` (masked to a count); power lives
+  behind the gated `/owner` overlay only [D-0011], [D-0012].
+- **Never fake data.** A missing feed renders as a declared pending/unknown
+  lane, never a fabricated value [D-0003], [D-0004].

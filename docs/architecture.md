@@ -1,9 +1,3 @@
-> ⚠️ **UNRENDERED SLOTS BELOW — run `python3 bootstrap.py ask`.**
-> Every `${...}` token in this file is an unfilled interview slot, not
-> project truth. Fill: `bootstrap answer <slot> <value...>`, then
-> `bootstrap render --live` (fills in place and removes this banner).
-> Prose without `${...}` tokens is live guidance already.
-
 # websites — architecture
 
 > **Status:** `binding`
@@ -13,16 +7,30 @@
 
 ## Layers & import rules
 
-${architecture_layers}
+Three independent server-rendered FastAPI services in one repo — control-plane (app/), botsite (botsite/), dashboard (dashboard/) — that share code, never a running process (each has its own Dockerfile + requirements.txt + Railway service). Inside a service the layers are: routes (app/main.py or app.py, plus app/owner.py) -> domain/data (readiness.py, journal.py, data_source.py) -> client (app/github.py: live GitHub REST + raw-content fetch behind a TTL cache) -> templates (Jinja2). Import rules: routes may import the domain, data, and client layers; lower layers never import routes or templates; no service imports another service's package; and no service ever imports superbot's disbot/ — cross-repo data arrives only as committed JSON read over raw.githubusercontent.com (read-only, forward-only).
 
 | Layer | May import | Must NOT import |
 |---|---|---|
-| (one row per layer, expanded from the summary above) | | |
+| routes (`app/main.py`, `app/owner.py`, `botsite/app.py`, `dashboard/app.py`) | domain, data, client, templates | another service's package; `disbot/` |
+| domain / data (`readiness.py`, `journal.py`, `data_source.py`) | client, stdlib | routes; templates; another service's package |
+| client (`app/github.py` and per-service data sources) | stdlib, httpx | routes; domain (stays a leaf) |
+| templates (Jinja2 under each `templates/`) | — (rendered by routes) | any Python module directly |
 
 ## Invariants
 
-(The rules that must survive every refactor — write each one as a testable
-statement, and name the check that enforces it where one exists.)
+- **No service imports `disbot/`** (superbot's bot code). Cross-repo data
+  arrives only as committed JSON read over `raw.githubusercontent.com`. This
+  keeps websites read-only and forward-only toward superbot.
+- **No service imports another service's package.** `app/`, `botsite/`, and
+  `dashboard/` share *code* (via a future in-repo shared package), never a
+  running process — each is its own Dockerfile + `requirements.txt` + Railway
+  service.
+- **The public surface is credential-free and byte-identical** whether or not
+  `SITE_PASSWORD` is set. Secrets never reach public HTML or the public
+  `/api/readiness.json` (the Actions-secrets cell is masked to a count);
+  `tests/test_app.py` asserts zero secret names in the public output.
+- **Never fake data.** A missing or degraded feed renders as a declared
+  "unknown (reason)" / pending lane, never a fabricated value or a 500.
 
 ## Namespace protection — two mechanisms, both required
 
@@ -43,5 +51,5 @@ believing the other covers it.
 ## Verifying a change
 
 ```
-${verify_command}
+python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)
 ```

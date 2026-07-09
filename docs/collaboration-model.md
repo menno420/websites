@@ -1,9 +1,3 @@
-> ⚠️ **UNRENDERED SLOTS BELOW — run `python3 bootstrap.py ask`.**
-> Every `${...}` token in this file is an unfilled interview slot, not
-> project truth. Fill: `bootstrap answer <slot> <value...>`, then
-> `bootstrap render --live` (fills in place and removes this banner).
-> Prose without `${...}` tokens is live guidance already.
-
 # websites — collaboration model
 
 > **Status:** `binding`
@@ -48,5 +42,5 @@ from memory alone.
 
 ## Drift & staleness
 
-- When a doc and a source file disagree: ${drift_resolution}
-- Staleness review cadence: ${staleness_review}
+- When a doc and a source file disagree: Source code and merged PRs win over any doc. When a doc and a source file disagree, treat the doc as stale, follow the source, and fix the doc in the same session — drift you can see (a wrong ledger entry, a stale pointer) is fixed on sight, not deferred.
+- Staleness review cadence: Reconcile the ledger and docs against merged PRs at least every 20 PRs and every 20 sessions (the kit cadence), and whenever a doc contradicts source. docs/current-state.md is the living snapshot: keep its Recently-shipped list current at every session close so drift never accumulates past the one or two newest merges.

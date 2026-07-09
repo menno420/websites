@@ -85,6 +85,13 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **PR #15** — docs: live `/owner`-area deploy evidence + method recorded
+  (`docs/deployment.md` + the owner-area session log). control-plane
+  auto-deployed the PR #14 merge (`71a8ca1`) to SUCCESS; verified live: public
+  `/` 200 no-auth with **zero** secret names (masking not regressed), `/owner`
+  401 then 200 with real secret names, `refresh` works, `rerun-ci` wired + gated,
+  `/healthz` 200. `SITE_PASSWORD` now gates `/owner` only; no new prod
+  credential; Railway account actions + live-bot control still unwired.
 - **PR #14** — gated `/owner` area on control-plane ([D-0012]). Owner-directed:
   keep the site public/browsable, add a password-gated overlay for full detail +
   real power. New `app/owner.py` router (HTTP Basic on `SITE_PASSWORD`, gate on
@@ -105,6 +112,11 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   into `/api/readiness.json`. Tests rewritten for the public model + a new
   assertion that a secret name is absent from the served HTML. Docs:
   `docs/site.md`, `docs/dashboard.md`, `docs/deployment.md`.
+- **PR #13** — docs: live auth-drop deploy evidence + method recorded
+  (`docs/deployment.md` + the drop-auth session log). Follow-up to PR #12: both
+  `superbot-websites` services confirmed live-public post-merge — control-plane
+  auto-deployed the merge; `dashboard` lagged and was redeployed pinned to the
+  merged SHA (`serviceInstanceDeployV2`). No code change.
 - **PR #11** — console.json consumed under a pinned, versioned cross-repo shape
   contract ([D-0010]). Superbot PR #1884 commits the canonical
   `console_data_contract.json` + stamps `meta.schema_version`; this repo pins the
@@ -112,6 +124,12 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   drift shows an honest schema banner on `/console`. Also fixed the dict-vs-list
   `ideas`/`bugs` defect the contract surfaced (stat tiles showed dict-key counts)
   and added the Open-bugs list. Doc: `docs/dashboard.md` § Data source.
+- **PR #10** — dashboard `/admin` stub hardening: dropped the literal
+  control-API env-var name (`CONTROL_API_TOKEN`) from the served stub HTML so no
+  production bot control-API identifier appears in any shipped file, and extended
+  `test_no_control_api_token_or_url_anywhere` to scan `*.html` templates too. No
+  functional change — the control panel stays a disabled, credential-free stub.
+  (Backfill session card: `.sessions/2026-07-09-dashboard-stub-denylist.md`.)
 - **PR #8** — dashboard rebuilt + deployed ([D-0009]; **made public later by
   [D-0011]**). New Railway service `dashboard` (`39007299…`) in
   `superbot-websites`, private at ship time (HTTP Basic via `SITE_PASSWORD`,
@@ -134,6 +152,14 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   ([D-0006]). Closes the deploy session's owner TODO: the board now runs on
   the authenticated GitHub rate limit and the auth-gated cells (secrets,
   auto-merge, CODEOWNERS) render live — verified on the deployed site.
+- **PR #4** (`f7d3def`) — plan-only doc for sequence step 3: rework superbot's
+  `dashboard/` + `botsite/` into this repo
+  (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`; decision stamped
+  in `docs/decisions.md`). Covers what each
+  site does today (cited to superbot source), carry-vs-rebuild tables, a
+  one-repo/multi-Railway-service fit-alongside recommendation, botsite-first
+  migration order + rollback, and seven open questions for the owner (now routed
+  into `docs/question-router.md`). No code ported; live sites untouched.
 - **PR #3** (`2f93b32`) — Railway deployment recorded (`docs/deployment.md`,
   this ledger filled from kit template, [D-0005]). Deploy itself is
   operational, not code: fresh Railway project `superbot-websites` created

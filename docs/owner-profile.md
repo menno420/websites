@@ -1,9 +1,3 @@
-> ⚠️ **UNRENDERED SLOTS BELOW — run `python3 bootstrap.py ask`.**
-> Every `${...}` token in this file is an unfilled interview slot, not
-> project truth. Fill: `bootstrap answer <slot> <value...>`, then
-> `bootstrap render --live` (fills in place and removes this banner).
-> Prose without `${...}` tokens is live guidance already.
-
 # websites — owner working profile
 
 > **Status:** `owner-guidance`
@@ -14,11 +8,11 @@
 
 ## How the owner works
 
-${owner_profile}
+The owner designs and directs; agents build. He is strongest at product vision, honest feedback, and describing intent through conversation, and he builds ideas iteratively in fragments — a rough draft now, more shape later — so reason a partial idea forward to its fuller form before starting. He cannot code and relies on agents (cross-checked by other agents) for correct, complete, end-to-end work — achieve the session goal, don't ship the smallest safe slice. He thinks associatively: idea order is not implementation order, so capture and classify new ideas rather than derailing the current task. He welcomes contained, reversible, self-initiated improvements taken even in sessions he isn't watching, and prefers decide-and-flag over stop-and-ask for anything reversible until a downstream gate. Aim for a positive, preferably noticeable, result each session.
 
 ## Review ritual
 
-${review_ritual}
+Owner-directed work IS the review: open the PR ready and let it merge on green CI. Merge = deploy — Railway auto-redeploys each service on merge to main, so a merged change is live within minutes with no manual deploy step. Every session drives its PR to a terminal state (merged or closed); git is forward-only, squash-merged, with no long-lived branches. The independent-review seam (a second agent auditing a merged change) is the durable check rather than a blocking pre-merge gate.
 
 ## Privacy note
 

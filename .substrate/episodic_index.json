@@ -1,0 +1,189 @@
+[
+  {
+    "slug": "adopt-substrate-kit",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "adopt",
+      "substrate-kit",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 shipped as PR #1 (`claude/adopt-substrate-kit`, squash-merged)."
+  },
+  {
+    "slug": "console-feed-contract",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "pin",
+      "console",
+      "json",
+      "feed",
+      "contract",
+      "consumer",
+      "half",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 PR #11; producer half is superbot PR #1884."
+  },
+  {
+    "slug": "control-plane-site",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "build",
+      "control-plane",
+      "site",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 shipped as PR #2 (`claude/control-plane-site`, squash-merged)."
+  },
+  {
+    "slug": "dashboard-botsite-rework-plan",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "dashboard",
+      "botsite",
+      "rework",
+      "plan",
+      "only",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 plan doc shipped as PR #4 (`claude/dashboard-botsite-rework-plan`); no implementation, live sites untouched."
+  },
+  {
+    "slug": "dashboard-stub-denylist",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "dashboard",
+      "stub",
+      "control-api",
+      "denylist",
+      "hardening",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 PR #10 (#8afd397). **Backfill card** written"
+  },
+  {
+    "slug": "drop-auth",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "drop",
+      "basic",
+      "auth",
+      "control-plane",
+      "dashboard",
+      "both",
+      "go",
+      "public",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 auth removed from both services, board secrets cell"
+  },
+  {
+    "slug": "engage-kit",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "engage",
+      "substrate-kit",
+      "machinery"
+    ],
+    "summary": "> **Status:** `in-progress`"
+  },
+  {
+    "slug": "owner-area",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "gated",
+      "owner",
+      "area",
+      "public",
+      "site",
+      "unchanged",
+      "privileged",
+      "overlay",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 shipped as PR #14 (`claude/owner-area`); live deploy"
+  },
+  {
+    "slug": "railway-deploy",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "deploy",
+      "control-plane",
+      "site",
+      "railway",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 deployed live; docs shipped as PR #3 (`claude/railway-deploy`, squash-merged)."
+  },
+  {
+    "slug": "rework-botsite",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "rework",
+      "botsite",
+      "into",
+      "websites",
+      "build",
+      "deploy",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "rework-dashboard",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "rework",
+      "dashboard",
+      "into",
+      "websites",
+      "build",
+      "deploy",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wire-github-token",
+    "date": "2026-07-09",
+    "tags": [
+      "2026-07-09",
+      "wire",
+      "durable",
+      "github",
+      "pat",
+      "into",
+      "control-plane",
+      "service",
+      "\ud83d\udca1",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` \u2014 token set on `control-plane`, board cells verified live, docs updated; shipped as PR #6 (token-only, based on cur"
+  }
+]
