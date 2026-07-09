@@ -19,16 +19,19 @@ Railway project** — deliberately separate from the production bot project
 | Build | Root `Dockerfile`, auto-detected (python:3.12-slim; first build succeeded 2026-07-09) |
 | Deployed at | main @ `73cc501` (PR #2 squash-merge) |
 
-**Public — no login.** The site serves every route without credentials (owner
-decision 2026-07-09, "Yes drop the auth"). The one non-public datum, the GitHub
-Actions secret *names*, is masked to a **count** on the board (see below), so
-the public site exposes no secret. There is no auth challenge on any route.
+**Public main site + one gated `/owner` area.** Every route *except* `/owner*`
+serves without credentials; the public board masks the one non-public datum, the
+GitHub Actions secret *names*, to a **count** (see below). The single gated
+corner is the `/owner` area (`app/owner.py`, HTTP Basic on `SITE_PASSWORD`): it
+un-masks the secret names and exposes privileged actions (cache refresh, re-run
+failed CI). No credentials on `/owner*` → 401; `SITE_PASSWORD` unset → `/owner*`
+fails closed 503 while the public site keeps serving.
 
 ## Environment variables (names only — values never in the repo)
 
 | Var | Set? | Notes |
 |---|---|---|
-| `SITE_PASSWORD` | left set but **unused** | The Basic-auth gate was removed (2026-07-09 auth-drop decision); the app no longer reads this. Left set in Railway is harmless and reversible (removing it is also fine). |
+| `SITE_PASSWORD` | ✅ set (secret) | Gates ONLY the `/owner` area (HTTP Basic, any username). The public site never reads it. If unset, `/owner*` fails closed 503 and the public site still works. Value held by the owner, committed nowhere. |
 | `GITHUB_TOKEN` | ✅ set (secret) | Durable owner PAT. Lifts the board onto the authenticated GitHub rate limit and unlocks the admin-scope cells (secret **count**, auto-merge, CODEOWNERS presence). Value held by the owner, committed nowhere. |
 | `PORT` | injected by Railway | Do not set manually. |
 | `CACHE_TTL_SECONDS` | not set (default 180) | Optional. |
@@ -139,3 +142,38 @@ Live production (after PR #12 merged to `main` @ `f6628fe`):
 - **dashboard** — `GET /healthz` `200`; `GET /` `HTTP/2 200` with no auth;
   `/commands` renders real data (`!daily`, `!shop`, `Economy`); `/admin` still
   shows the "requires owner wiring — not connected to the live bot" stub.
+
+## Verification evidence (2026-07-09, gated `/owner` area added)
+
+PR #14 (`claude/owner-area`) merged to `main` @ `71a8ca1`. **Deploy method:**
+`control-plane` **auto-deployed** the merge (repo-connect) — the new deployment
+built and reached `SUCCESS` on `71a8ca1` on its own (polled via
+`serviceInstanceDeployV2`-style `deployments` query; no manual nudge needed).
+Non-destructive; `RAILWAY_API_KEY` + explicit `superbot-websites` IDs only;
+ambient production-bot IDs never passed; **no `RAILWAY_API_KEY` added to the app
+env, no destructive mutation.**
+
+Live evidence (captured verbatim from
+`https://control-plane-production-abb0.up.railway.app`):
+
+- **public `/` (no auth)** → `200`, **no** `www-authenticate`; `grep -c
+  ANTHROPIC_API_KEY` on the served HTML = **0**; board shows `5 secret(s)`
+  (count only). Public `/api/readiness.json` → `200`, `ANTHROPIC_API_KEY` count
+  **0**. **Public masking NOT regressed.**
+- **`/owner` no creds** → `401`.
+- **`/owner` with `SITE_PASSWORD`** (any username) → `200`; the served HTML
+  **contains** the real secret names — `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
+  `ROUTINE_PAT`, `DATABASE_URL`, `DATABASE_PUBLIC_URL`, `SITE_PASSWORD`.
+  Authed `/owner/api/readiness.json` → `200` with a `names` array carrying
+  `ANTHROPIC_API_KEY`.
+- **`POST /owner/actions/refresh`** (authed) → `200`, banner
+  `cache cleared — 40 entries dropped; the board below is re-fetched live`.
+- **`POST /owner/actions/rerun-ci`** — unauthed → `401` (gated); `GET` on the
+  route → `405` (route exists, POST-only). Wired + reachable; a real re-run was
+  deliberately **not** fired during verification (it is a live write).
+- **`/healthz`** → `200` `{"ok":true,...}`.
+
+The `/owner` gate uses `SITE_PASSWORD` (already set on the service since the
+auth-drop); no new production credential was introduced. Railway account-token
+actions and any live production-bot control API remain **unwired** by design
+(separate owner approval).
