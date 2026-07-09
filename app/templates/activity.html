@@ -1,13 +1,15 @@
 {% extends "base.html" %}
 {% block title %}activity timeline{% endblock %}
-{% block headright %}<a href="/activity?refresh=1">refresh now</a>{% endblock %}
+{% block head %}<link rel="alternate" type="application/atom+xml" title="SuperBot fleet activity" href="/activity.xml">{% endblock %}
+{% block headright %}<a href="/activity.xml">subscribe (Atom)</a> · <a href="/activity?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
 <div class="card">
   <h2>cross-repo activity</h2>
   <p class="dim small">Recent pull requests across the fleet
     ({{ a.repos_ok|join(', ') if a.repos_ok else 'no repos reachable' }}),
     merged into one reverse-chronological stream. Each item deep-links to GitHub.
-    Newest {{ a['items']|length }} of {{ a.total }} shown.</p>
+    Newest {{ a['items']|length }} of {{ a.total }} shown.
+    <a href="/activity.xml">Subscribe (Atom) ↗</a></p>
 
   {% for e in a.errors %}
   <div class="banner">⚠ {{ e.repo }}: could not fetch PRs — {{ e.error }}

@@ -106,6 +106,21 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **`/activity.xml` — subscribable Atom feed for the activity timeline** (self-directed;
+  decision stamped in `docs/site.md` §§ Views/Routes and the decision ledger).
+  The `/activity` cross-repo PR timeline is now also served as a valid **Atom 1.0
+  feed** at `/activity.xml` (`application/atom+xml`) so the owner can subscribe in
+  any reader/webhook instead of polling. It is a **second serializer over the exact
+  same TTL-cached `activity.timeline()` list** — no new fetch, no new dependency, no
+  new secret, no Railway op. `activity.atom_feed` builds the feed with
+  `xml.etree.ElementTree` (every field XML-escaped by the library, never
+  hand-concatenated): each dated PR → an `<entry>` (title `repo #num title`, `id` =
+  the PR's GitHub URL, `updated` = its real merge/update time, `link`, author,
+  summary); feed `updated` = newest entry's time; self link → `/activity.xml`.
+  Honest degradation — a PR with no timestamp is omitted, and a failed fetch still
+  yields a valid feed with one diagnostic entry (never malformed / never a fake PR).
+  `/activity` advertises it with a `<link rel="alternate" type="application/atom+xml">`
+  discovery tag + a visible **Subscribe (Atom)** link. Tests +4 (121 → 125).
 - **Full project self-review + wake-up pass** (PR #40, [D-0024]; ORDERS 003 + 004).
   Owner-directed. Read the inbox first and found ORDERS **003** (gen-1 retro) and
   **004** (Model-line backfill) still **unexecuted** — PRs #38/#39 were the *manager*

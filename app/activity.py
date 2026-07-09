@@ -10,9 +10,14 @@ degrades to an honest banner row instead of 500ing the whole timeline.
 from __future__ import annotations
 
 import asyncio
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from typing import Any
 
 from . import config, github
+
+ATOM_NS = "http://www.w3.org/2005/Atom"
+FEED_TITLE = "SuperBot fleet activity"
 
 OWNER = config.OWNER
 
@@ -105,3 +110,99 @@ async def timeline(refresh: bool = False) -> dict[str, Any]:
         "repos_ok": [pr["repo"] for pr in per_repo if pr["result"]["ok"]],
         "total": len(items),
     }
+
+
+# --------------------------------------------------------------------------- #
+# Atom 1.0 serializer — a second serializer over the exact timeline() list, so a
+# reader/webhook can subscribe to fleet activity instead of polling /activity.
+# Rides the same TTL-cached data source (no second fetch path). All text/attrs
+# are escaped by ElementTree; we never hand-concatenate XML.
+# --------------------------------------------------------------------------- #
+
+
+def _now_rfc3339() -> str:
+    """Feed-generation time in RFC3339 (Atom's required timestamp form). Used
+    only as a *clearly-derived* fallback for the feed-level ``updated`` and the
+    diagnostic entry when there are no real dated entries — never to fake a PR."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _el(parent: ET.Element, tag: str, text: str | None = None) -> ET.Element:
+    """Namespaced Atom child element; ElementTree escapes ``text`` for us."""
+    child = ET.SubElement(parent, f"{{{ATOM_NS}}}{tag}")
+    if text is not None:
+        child.text = text
+    return child
+
+
+def _summary_of(item: dict) -> str:
+    """Short human summary for an entry: repo + collapsed state + author."""
+    who = f" by {item['author']}" if item.get("author") else ""
+    return f"{item['repo']} · {item['state']} pull request{who}"
+
+
+def atom_feed(data: dict[str, Any], self_url: str, alternate_url: str) -> str:
+    """Render a timeline() result as a valid Atom 1.0 feed string.
+
+    Each PR with a real timestamp becomes an ``<entry>`` (title = ``repo #num
+    title``, id = the PR's GitHub URL, updated = its merge/update time, a link to
+    GitHub, author, and a short summary). Entries without a timestamp are omitted
+    (honest — never dated with an invented value). If nothing dated is available
+    the feed still validates: it carries one diagnostic entry noting the empty /
+    errored state, timestamped with the clearly-derived generation time.
+    """
+    ET.register_namespace("", ATOM_NS)
+    feed = ET.Element(f"{{{ATOM_NS}}}feed")
+
+    entries = [it for it in data.get("items", []) if it.get("ts")]
+    # Items arrive newest-first, so entries[0] is the newest dated one.
+    feed_updated = entries[0]["ts"] if entries else _now_rfc3339()
+
+    _el(feed, "title", FEED_TITLE)
+    _el(feed, "id", self_url)
+    _el(feed, "updated", feed_updated)
+    self_link = _el(feed, "link")
+    self_link.set("rel", "self")
+    self_link.set("type", "application/atom+xml")
+    self_link.set("href", self_url)
+    alt_link = _el(feed, "link")
+    alt_link.set("rel", "alternate")
+    alt_link.set("type", "text/html")
+    alt_link.set("href", alternate_url)
+
+    if entries:
+        for it in entries:
+            entry = _el(feed, "entry")
+            _el(entry, "title", f"{it['repo']} #{it['number']} {it['title']}".strip())
+            _el(entry, "id", it["url"])
+            _el(entry, "updated", it["ts"])
+            link = _el(entry, "link")
+            link.set("rel", "alternate")
+            link.set("type", "text/html")
+            link.set("href", it["url"])
+            if it.get("author"):
+                author = _el(entry, "author")
+                _el(author, "name", it["author"])
+            _el(entry, "summary", _summary_of(it))
+    else:
+        # Honest degradation: a valid feed with one diagnostic entry rather than a
+        # malformed feed or an invented PR.
+        errors = data.get("errors", [])
+        if errors:
+            detail = "; ".join(
+                f"{e['repo']}: {e.get('error') or 'HTTP ' + str(e.get('status'))}"
+                for e in errors
+            )
+            summary = f"Fleet activity could not be fetched — {detail}"
+        else:
+            summary = "No recent pull requests across the fleet."
+        gen = _now_rfc3339()
+        entry = _el(feed, "entry")
+        _el(entry, "title", FEED_TITLE + " — status")
+        # Day-stable id so readers dedupe a persisting empty/error state per day.
+        _el(entry, "id", f"{self_url}#status-{gen[:10]}")
+        _el(entry, "updated", gen)
+        _el(entry, "summary", summary)
+
+    body = ET.tostring(feed, encoding="unicode")
+    return '<?xml version="1.0" encoding="utf-8"?>\n' + body

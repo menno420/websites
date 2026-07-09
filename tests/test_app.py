@@ -689,6 +689,124 @@ def test_activity_route_degrades_no_auth(client):
 
 
 # --------------------------------------------------------------------------- #
+# Atom feed (/activity.xml) — a subscribable serializer over the same timeline
+# --------------------------------------------------------------------------- #
+
+ATOM = "{http://www.w3.org/2005/Atom}"
+
+
+def _atom_client(monkeypatch, pulls):
+    """A TestClient whose repo_api serves the given per-repo PR lists (offline)."""
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        if subpath.startswith("/pulls"):
+            return {"ok": True, "status": 200, "data": pulls.get(repo, []),
+                    "error": "", "fetched_at": "", "cached": False, "url": ""}
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    monkeypatch.setattr(github, "repo_api", fake_repo_api)
+    return TestClient(app)
+
+
+def test_activity_xml_is_wellformed_atom_with_real_links(monkeypatch):
+    """/activity.xml returns 200 + application/atom+xml, parses as well-formed
+    Atom, and each entry carries the PR's real GitHub link + real timestamp."""
+    import xml.etree.ElementTree as ET
+
+    pulls = {
+        "superbot": [
+            {"number": 900, "title": "ship the feed", "state": "closed",
+             "merged_at": "2026-07-09T15:00:00Z", "updated_at": "2026-07-09T15:00:00Z",
+             "user": {"login": "alice"},
+             "html_url": "https://github.com/menno420/superbot/pull/900"},
+        ],
+        "superbot-next": [], "substrate-kit": [], "websites": [],
+    }
+    with _atom_client(monkeypatch, pulls) as c:
+        r = c.get("/activity.xml")
+
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/atom+xml")
+
+    root = ET.fromstring(r.text)  # raises on malformed XML
+    assert root.tag == ATOM + "feed"
+    assert root.findtext(ATOM + "title") == "SuperBot fleet activity"
+
+    # feed self link points at the route
+    self_hrefs = [
+        ln.get("href") for ln in root.findall(ATOM + "link")
+        if ln.get("rel") == "self"
+    ]
+    assert self_hrefs and self_hrefs[0].endswith("/activity.xml")
+    # feed updated == the newest entry's real timestamp
+    assert root.findtext(ATOM + "updated") == "2026-07-09T15:00:00Z"
+
+    entries = root.findall(ATOM + "entry")
+    assert len(entries) == 1
+    e = entries[0]
+    assert "#900" in (e.findtext(ATOM + "title") or "")
+    assert e.findtext(ATOM + "id") == "https://github.com/menno420/superbot/pull/900"
+    assert e.findtext(ATOM + "updated") == "2026-07-09T15:00:00Z"
+    hrefs = [ln.get("href") for ln in e.findall(ATOM + "link")]
+    assert "https://github.com/menno420/superbot/pull/900" in hrefs
+    assert (e.find(ATOM + "author") or ET.Element("x")).findtext(ATOM + "name") == "alice"
+
+
+def test_activity_xml_escapes_xml_special_chars(monkeypatch):
+    """A PR title with XML metacharacters is escaped, not hand-concatenated raw —
+    the payload never contains the unescaped markup and round-trips cleanly."""
+    import xml.etree.ElementTree as ET
+
+    raw_title = 'fix <tag> & "quotes" in PR'
+    pulls = {
+        "superbot": [
+            {"number": 1, "title": raw_title, "state": "open", "merged_at": None,
+             "draft": False, "updated_at": "2026-07-09T10:00:00Z",
+             "user": {"login": "bob"},
+             "html_url": "https://github.com/menno420/superbot/pull/1"},
+        ],
+        "superbot-next": [], "substrate-kit": [], "websites": [],
+    }
+    with _atom_client(monkeypatch, pulls) as c:
+        r = c.get("/activity.xml")
+
+    # the raw wire bytes must not carry the unescaped tag; must carry the escape
+    assert "<tag>" not in r.text
+    assert "&lt;tag&gt;" in r.text
+    root = ET.fromstring(r.text)  # parses despite the special chars
+    titles = [e.findtext(ATOM + "title") for e in root.findall(ATOM + "entry")]
+    assert any(raw_title in (t or "") for t in titles)  # round-trips to original
+
+
+def test_activity_xml_degrades_to_valid_feed_when_offline(client):
+    """When GitHub is unreachable the feed still validates: a single honest
+    diagnostic entry rather than a malformed feed or an invented PR."""
+    import xml.etree.ElementTree as ET
+
+    r = client.get("/activity.xml")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/atom+xml")
+    root = ET.fromstring(r.text)
+    assert root.tag == ATOM + "feed"
+    assert root.findtext(ATOM + "title") == "SuperBot fleet activity"
+    entries = root.findall(ATOM + "entry")
+    assert len(entries) == 1
+    assert "status" in (entries[0].findtext(ATOM + "title") or "").lower()
+
+
+def test_activity_page_has_atom_discovery_and_subscribe_link(client):
+    """/activity advertises the feed: a discovery <link rel=alternate> in the head
+    and a visible Subscribe link."""
+    r = client.get("/activity")
+    assert r.status_code == 200
+    assert 'rel="alternate"' in r.text
+    assert 'type="application/atom+xml"' in r.text
+    assert '/activity.xml' in r.text
+    assert "subscribe" in r.text.lower()
+
+
+# --------------------------------------------------------------------------- #
 # Idea backlog
 # --------------------------------------------------------------------------- #
 

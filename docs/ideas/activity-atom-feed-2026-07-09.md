@@ -1,16 +1,17 @@
 ---
-state: captured
+state: shipped
 origin: control-plane
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: activity-atom-feed
+shipped_repo: websites
+merged_date: 2026-07-09
+outcome: implemented
 ---
 
 # `/activity.xml` — an Atom feed for the cross-repo activity timeline (2026-07-09)
 
-> **Status:** `ideas` — capture only, not a plan and not approval. Source code
-> and the binding contracts win over this file.
+> **Status:** `reference` — SHIPPED (implemented as `/activity.xml`, Atom 1.0,
+> `application/atom+xml`; see the decision ledger and `docs/site.md`). Kept as the
+> idea's origin record. Source code and the binding contracts win over this file.
 
 **One line:** emit the `/activity` timeline (see `docs/site.md`) as an Atom/RSS
 feed at `/activity.xml` so the owner can subscribe to fleet PR activity in any
