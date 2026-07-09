@@ -33,7 +33,21 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    state (`merged` / `open` / `draft` / `closed`) and deep-linked to GitHub.
    Reuses the shared TTL-cached `github.repo_api` layer the board already rides;
    a failing per-repo fetch degrades to an honest banner, never a silent drop.
-   ([D-0020])
+   ([D-0020]) The same timeline is **subscribable as an Atom 1.0 feed** at
+   **`/activity.xml`** (`application/atom+xml`) so a reader or webhook can *watch*
+   fleet PR activity instead of polling the page ([D-0025]): a second serializer
+   over the exact same TTL-cached list (no second fetch path). `activity.atom_feed`
+   maps each dated PR to an `<entry>` (title `repo #num title`, `id` = the PR's
+   GitHub URL, `updated` = its real merge/update time, a `link` to GitHub, author,
+   a short summary); the feed `updated` is the newest entry's time and its self
+   link points back at `/activity.xml`. All text/attributes are escaped by
+   `xml.etree.ElementTree` (never hand-concatenated). Honest degradation: a PR
+   with no timestamp is omitted (never dated with an invented value), and when the
+   fetch fails the feed still validates — one diagnostic `<entry>` noting the
+   empty/errored state (clearly-derived generation timestamp), never a malformed
+   feed or a fake PR. The `/activity` page advertises it with a
+   `<link rel="alternate" type="application/atom+xml">` discovery tag in the head
+   and a visible **Subscribe (Atom)** link.
 3. **Idea backlog** (`/ideas`, `.json` variant) — the `docs/ideas/` conveyor
    across every repo that keeps one (superbot ~220, substrate-kit ~16; the other
    two only a README). Each idea's title + one-line summary is parsed from the
@@ -99,6 +113,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/fleet.json` | public | same fleet heartbeat as JSON (rendered body stripped) |
 | `/activity` | public | cross-repo PR activity timeline (HTML) — [D-0020] |
 | `/activity.json` | public | same timeline as JSON |
+| `/activity.xml` | public | same timeline as a subscribable Atom 1.0 feed (`application/atom+xml`) — [D-0025] |
 | `/ideas` | public | cross-repo `docs/ideas/` backlog (HTML) — [D-0020] |
 | `/ideas.json` | public | same backlog as JSON |
 | `/journal` | public | journal overview, all repos |

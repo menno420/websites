@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -95,6 +95,19 @@ async def activity_timeline(request: Request):
 @app.get("/activity.json")
 async def activity_timeline_json(request: Request):
     return JSONResponse(await activity.timeline(refresh=_refresh(request)))
+
+
+@app.get("/activity.xml")
+async def activity_feed(request: Request):
+    """The /activity timeline as a subscribable Atom 1.0 feed. Same TTL-cached
+    data as /activity — a second serializer, not a second fetch — so a reader or
+    webhook can watch fleet PR activity without polling the page."""
+    data = await activity.timeline(refresh=_refresh(request))
+    base = str(request.base_url).rstrip("/")
+    xml = activity.atom_feed(
+        data, self_url=f"{base}/activity.xml", alternate_url=f"{base}/activity"
+    )
+    return Response(content=xml, media_type="application/atom+xml")
 
 
 @app.get("/fleet", response_class=HTMLResponse)

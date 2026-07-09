@@ -20,8 +20,19 @@
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- **Per-repo `?repo=` filter on the activity views** —
+  [activity-per-repo-filter-2026-07-09.md](activity-per-repo-filter-2026-07-09.md) ·
+  state: `captured` · next: quick-win (small/decided) — let `/activity`,
+  `/activity.json`, and `/activity.xml` narrow to one repo (`?repo=superbot`) so a
+  reader can subscribe to a single lane's feed, reusing the same cached timeline.
+
+## Shipped
+
+(Ideas that graduated all the way to a merged implementation.)
+
 - **`/activity.xml` Atom feed** —
   [activity-atom-feed-2026-07-09.md](activity-atom-feed-2026-07-09.md) · state:
-  `captured` · next: quick-win (small/decided) — emit the shipped `/activity`
-  timeline as an Atom/RSS feed so fleet PR activity is subscribable
-  (reader or webhook), reusing the data the route already builds.
+  `shipped` (see the decision ledger + `docs/site.md`) — the `/activity` timeline is
+  now served as a valid Atom 1.0 feed at `/activity.xml` (`application/atom+xml`), a
+  second serializer over the same cached data, with a discovery link + Subscribe
+  link on `/activity`.
