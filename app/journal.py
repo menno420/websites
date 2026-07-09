@@ -5,15 +5,71 @@ narrated or summarized."""
 from __future__ import annotations
 
 import asyncio
+import html as _html
 from typing import Any
 
 from . import config, github
 
 OWNER = config.OWNER
 
+# Cross-repo search scans the most-recent N session logs per repo (plus every
+# configured ledger/router doc). Bounded so a search never fans out to hundreds
+# of fetches; all fetches ride the server-side TTL cache in github.py.
+SEARCH_SESSION_LIMIT = 25
+SNIPPET_RADIUS = 90
+
+# Markdown output allow-list for bleach sanitization (defense-in-depth: the docs
+# are trusted repo content, but we still render safely). Covers everything the
+# markdown extensions below can emit.
+_ALLOWED_TAGS = [
+    "p", "br", "hr", "pre", "code", "blockquote", "span", "div",
+    "h1", "h2", "h3", "h4", "h5", "h6",
+    "ul", "ol", "li", "dl", "dt", "dd",
+    "strong", "em", "b", "i", "del", "sub", "sup",
+    "a", "img",
+    "table", "thead", "tbody", "tr", "th", "td",
+]
+_ALLOWED_ATTRS = {
+    "a": ["href", "title", "id"],
+    "img": ["src", "alt", "title"],
+    "th": ["align"],
+    "td": ["align"],
+    "code": ["class"],
+    "span": ["class"],
+    "div": ["class"],
+    "h1": ["id"], "h2": ["id"], "h3": ["id"], "h4": ["id"], "h5": ["id"], "h6": ["id"],
+}
+
 
 def _gh(repo: str, tail: str = "") -> str:
     return f"https://github.com/{OWNER}/{repo}{tail}"
+
+
+def render_markdown(text: str) -> str:
+    """Render trusted repo markdown to sanitized HTML.
+
+    Lazy-imports ``markdown`` (pinned in requirements) so a missing/broken lib
+    degrades to an escaped ``<pre>`` block rather than 500ing the whole page.
+    When ``bleach`` is present the rendered HTML is sanitized to an allow-list
+    (defense-in-depth); when it is absent we return the rendered HTML as-is,
+    since the source is trusted repo content.
+    """
+    try:
+        import markdown as _md
+    except Exception:  # pragma: no cover - markdown is pinned in requirements
+        return f"<pre>{_html.escape(text)}</pre>"
+    rendered = _md.markdown(
+        text,
+        extensions=["fenced_code", "tables", "sane_lists"],
+        output_format="html5",
+    )
+    try:
+        import bleach
+    except Exception:  # pragma: no cover - bleach is pinned in requirements
+        return rendered
+    return bleach.clean(
+        rendered, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS, strip=True
+    )
 
 
 async def repo_journal(repo: str, refresh: bool = False) -> dict[str, Any]:
@@ -118,3 +174,139 @@ async def overview(refresh: bool = False) -> list[dict]:
             *[repo_journal(r, refresh=refresh) for r in config.REPOS]
         )
     )
+
+
+# --------------------------------------------------------------------------- #
+# Cross-repo journal search
+# --------------------------------------------------------------------------- #
+
+
+async def _corpus(repo: str, refresh: bool) -> list[dict]:
+    """Journal files to search for ``repo``: configured ledgers/routers + the
+    most-recent session logs. Each entry carries the path and its GitHub blob
+    URL so a hit can deep-link back."""
+    cfg = config.REPOS[repo]["journal"]
+    entries: list[dict] = [
+        {"path": path, "blob": _gh(repo, f"/blob/main/{path}"), "kind": "doc"}
+        for (_label, path) in cfg["docs"]
+    ]
+    if cfg["sessions_dir"]:
+        res = await github.repo_api(
+            repo, f"/contents/{cfg['sessions_dir']}", refresh=refresh
+        )
+        if res["ok"] and isinstance(res["data"], list):
+            files = sorted(
+                (
+                    f
+                    for f in res["data"]
+                    if f.get("type") == "file" and f.get("name", "").endswith(".md")
+                ),
+                key=lambda x: x.get("name", ""),
+                reverse=True,
+            )[:SEARCH_SESSION_LIMIT]
+            for f in files:
+                entries.append(
+                    {
+                        "path": f["path"],
+                        "blob": f.get("html_url") or _gh(repo, f"/blob/main/{f['path']}"),
+                        "kind": "session",
+                    }
+                )
+    return entries
+
+
+def _snippet_html(text: str, idx: int, qlen: int) -> str:
+    """An escaped, single-line context window around the first match, with the
+    matched span wrapped in ``<mark>``. XSS-safe: every text segment is escaped,
+    only the literal ``<mark>`` tags are injected."""
+    start = max(0, idx - SNIPPET_RADIUS)
+    end = min(len(text), idx + qlen + SNIPPET_RADIUS)
+    before = _html.escape(text[start:idx].replace("\n", " "))
+    match = _html.escape(text[idx : idx + qlen])
+    after = _html.escape(text[idx + qlen : end].replace("\n", " "))
+    return (
+        ("… " if start > 0 else "")
+        + before
+        + "<mark>"
+        + match
+        + "</mark>"
+        + after
+        + (" …" if end < len(text) else "")
+    )
+
+
+def _snippet_text(text: str, idx: int, qlen: int) -> str:
+    start = max(0, idx - SNIPPET_RADIUS)
+    end = min(len(text), idx + qlen + SNIPPET_RADIUS)
+    frag = text[start:end].replace("\n", " ").strip()
+    return ("… " if start > 0 else "") + frag + (" …" if end < len(text) else "")
+
+
+async def search_journal(q: str, refresh: bool = False) -> dict[str, Any]:
+    """Case-insensitive search across every repo's journal corpus.
+
+    Fetches each corpus file through the TTL-cached raw-content path and greps
+    for ``q``; returns ranked hits (most matches first) each with repo, file,
+    line, a highlighted snippet, and a GitHub deep-link. Fetch failures are
+    collected into ``errors`` so the UI can show an honest banner rather than
+    silently dropping a repo.
+    """
+    q = (q or "").strip()
+    if not q:
+        return {"q": q, "results": [], "errors": [], "scanned": 0, "empty": True}
+    ql = q.lower()
+    qlen = len(q)
+
+    corpora = await asyncio.gather(
+        *[_corpus(r, refresh) for r in config.REPOS]
+    )
+    targets: list[tuple[str, dict]] = []
+    for repo, entries in zip(config.REPOS, corpora):
+        for e in entries:
+            targets.append((repo, e))
+
+    fetched = await asyncio.gather(
+        *[github.fetch_file(repo, e["path"], refresh=refresh) for (repo, e) in targets]
+    )
+
+    results: list[dict] = []
+    errors: list[dict] = []
+    for (repo, e), res in zip(targets, fetched):
+        if not res["ok"] or not isinstance(res["data"], str):
+            errors.append(
+                {
+                    "repo": repo,
+                    "path": e["path"],
+                    "status": res.get("status"),
+                    "error": res.get("error") or f"HTTP {res.get('status')}",
+                }
+            )
+            continue
+        text = res["data"]
+        lower = text.lower()
+        if ql not in lower:
+            continue
+        idx = lower.index(ql)
+        line = text.count("\n", 0, idx) + 1
+        results.append(
+            {
+                "repo": repo,
+                "path": e["path"],
+                "kind": e["kind"],
+                "matches": lower.count(ql),
+                "line": line,
+                "snippet_html": _snippet_html(text, idx, qlen),
+                "snippet": _snippet_text(text, idx, qlen),
+                "github_url": f"{e['blob']}#L{line}",
+                "internal_url": f"/journal/{repo}/file?path={e['path']}",
+            }
+        )
+
+    results.sort(key=lambda r: (-r["matches"], r["repo"], r["path"]))
+    return {
+        "q": q,
+        "results": results,
+        "errors": errors,
+        "scanned": len(targets),
+        "empty": False,
+    }

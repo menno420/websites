@@ -22,6 +22,17 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
    substrate-kit has no docs/.sessions tree — it shows PR/commit history.
+   - **Markdown is rendered server-side** ([D-0014]): `.md` files open as real
+     HTML (headings, code blocks, tables, links) via `journal.render_markdown()`,
+     which **lazy-imports** `markdown` and **sanitizes** the output with `bleach`
+     to an allow-list — a missing lib degrades to an escaped `<pre>` instead of
+     500ing. GitHub deep-links are preserved.
+   - **Cross-repo search** (`/journal/search`, `.json` variant): one case-
+     insensitive query fans out across **all four repos'** journal corpus —
+     session-log filenames + contents, decision-ledger entries, question-router
+     Q-blocks — fetched through the TTL cache, ranked by match count, each hit
+     showing repo · file · line · highlighted snippet + a GitHub deep-link
+     (`…#L{n}`). Fetch failures surface an honest banner, never a silent drop.
 
 ## Routes
 
@@ -30,6 +41,8 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/` | public | readiness board (secrets masked to a count) |
 | `/api/readiness.json` | public | board data as JSON (no secret names) |
 | `/journal` | public | journal overview, all repos |
+| `/journal/search?q=…` | public | cross-repo journal search (HTML) — [D-0014] |
+| `/journal/search.json?q=…` | public | same search as JSON (plain snippets) |
 | `/journal/{repo}` | public | per-repo sessions / ledgers / PRs / commits |
 | `/journal/{repo}/file?path=…&ref=main` | public | render a repo file (markdown → HTML) |
 | `/healthz` | public | Railway healthcheck |
@@ -88,6 +101,17 @@ account-token action and any **live production-bot** control API. No
 | `CACHE_TTL_SECONDS` | no | server-side GitHub cache TTL, default `180` |
 | `GITHUB_API_BASE` | no | REST base override (testing behind restricted egress) |
 | `GITHUB_RAW_BASE` | no | raw-content base override |
+
+## Mobile / responsive ([D-0014])
+
+The owner browses from tablet/phone, so the single inline stylesheet in
+`app/templates/base.html` carries a `@media (max-width: 640px)` block: the
+readiness board's wide tables get a `min-width` and **scroll horizontally
+inside their card** (`.card { overflow-x:auto }`) instead of squashing or
+breaking the layout; the header, nav, and the journal **search box** reflow to
+full width with tap-friendly targets; the rendered-markdown pages stay within
+the viewport. Desktop rules are untouched — the media query only adds. Verified
+by CSS inspection at 375 px and 768 px widths.
 
 ## Data + caching model ([D-0004])
 

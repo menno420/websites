@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}journal search{% endblock %}
+{% block headright %}cross-repo journal search{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>search the journal</h2>
+  <form class="searchbox" action="/journal/search" method="get" role="search">
+    <input type="search" name="q" value="{{ s.q }}" placeholder="search all four repos' session logs, ledgers &amp; routers…" aria-label="search journal" autofocus>
+    <button type="submit">search</button>
+  </form>
+  {% if not s.empty %}
+  <p class="dim small">
+    {{ s.results|length }} hit(s) across {{ s.scanned }} journal file(s) ·
+    <a href="/journal/search.json?q={{ s.q | urlencode }}">json</a>
+    {% if s.q %}· <a href="/journal/search?q={{ s.q | urlencode }}&amp;refresh=1">refresh</a>{% endif %}
+  </p>
+  {% endif %}
+</div>
+
+{% if s.errors %}
+<div class="card">
+  <p class="dim small">⚠ {{ s.errors|length }} journal file(s) could not be fetched
+     (rate-limit or egress) — results below are from the files that did load:</p>
+  <table>
+    {% for e in s.errors %}
+    <tr><td class="small">{{ e.repo }}</td><td class="small dim">{{ e.path }}</td>
+        <td class="small dim">HTTP {{ e.status }} {{ e.error }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if s.empty %}
+<div class="card"><p class="dim small">type a term above to search across every repo's journal corpus.</p></div>
+{% elif s.results %}
+<div class="card">
+  <table>
+    {% for r in s.results %}
+    <tr>
+      <td class="small">
+        <span class="b {{ 'ok' if r.kind == 'session' else 'unknown' }}">{{ r.kind }}</span>
+        <strong>{{ r.repo }}</strong>
+      </td>
+      <td>
+        <a href="{{ r.internal_url }}">{{ r.path }}</a>
+        <span class="dim small">· L{{ r.line }} · {{ r.matches }} match(es) ·
+          <a href="{{ r.github_url }}" class="dim">github ↗</a></span>
+        <div class="snippet small">{{ r.snippet_html | safe }}</div>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% else %}
+<div class="card"><p class="dim small">no matches for “{{ s.q }}”.</p></div>
+{% endif %}
+{% endblock %}
