@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ command.usage }} — SuperBot{% endblock %}
+{% block description %}{{ command.description }}{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="sb-crumb" style="margin-top:20px">
+    <a href="/commands">{{ icon("back", 13) }} Commands</a>
+    <span class="sep">/</span>
+    <span>{{ command.category_label }}</span>
+  </div>
+
+  <div class="sb-detail-head" style="--c:{{ command.color }}; border:1px solid var(--sb-line)">
+    <span class="glow sb-glow" aria-hidden="true"></span>
+    <div class="row">
+      <span class="sb-tile sb-tile-lg">{{ icon(command.icon, 26) }}</span>
+      <div>
+        <div class="sb-feat-cat">{{ command.category_label }}</div>
+        <h1 class="sb-mono">{{ command.usage }}</h1>
+      </div>
+      <span class="sb-badge {{ 'sb-badge-ok' if command.status == 'stable' else 'sb-badge-info' }} sb-right">
+        {{ command.status or 'command' }}
+      </span>
+    </div>
+    <p class="tagline">{{ command.description }}</p>
+  </div>
+
+  <section class="section-sm">
+    <dl class="sb-kv-grid">
+      <div class="sb-kv"><dt>Invocation</dt><dd class="sb-mono">{{ command.usage }}</dd></div>
+      <div class="sb-kv"><dt>Area</dt><dd>{{ command.category_label }}</dd></div>
+      <div class="sb-kv"><dt>Permissions</dt><dd>{{ command.permissions or 'Anyone' }}</dd></div>
+      {% if command.aliases %}
+      <div class="sb-kv"><dt>Aliases</dt><dd>
+        {% for a in command.aliases %}<code class="sb-mono">!{{ a }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      </dd></div>
+      {% endif %}
+      {% if command.status %}
+      <div class="sb-kv"><dt>Status</dt><dd>{{ command.status }}</dd></div>
+      {% endif %}
+    </dl>
+  </section>
+
+  {% if command.examples %}
+  <section class="section-sm">
+    <div class="sb-panel">
+      <h3>Examples</h3>
+      <div class="sb-cmdlist">
+        {% for ex in command.examples %}
+        <div class="sb-cmdrow" style="--c:{{ command.color }}">
+          <code>{{ ex }}</code>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if command.linked_ideas %}
+  <section class="section-sm">
+    <div class="sb-panel">
+      <h3>Related ideas</h3>
+      <p class="eyebrow-note" style="margin-bottom:12px">Design notes and ideas linked to this command in the bot's own registry.</p>
+      <div class="tags">
+        {% for li in command.linked_ideas %}<span class="sb-chip">{{ li.title }}</span>{% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if related %}
+  <section class="section-sm">
+    <div class="sb-panel">
+      <h3>More {{ command.category_label }} commands</h3>
+      <div class="sb-cmdlist">
+        {% for c in related %}
+        <a class="sb-cmdrow" href="/commands/{{ c.name|urlencode }}" style="--c:{{ c.color }}">
+          <code>{{ c.usage }}</code>
+          <span class="desc">{{ c.summary }}</span>
+          <span class="end">
+            <span class="sb-badge {{ 'sb-badge-ok' if c.status == 'stable' else 'sb-badge-info' }}">{{ c.status or 'command' }}</span>
+            {{ icon("chevron", 15) }}
+          </span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="cta" style="margin:0 0 40px">
+    <a class="sb-btn sb-btn-primary" href="{{ add_url }}" target="_blank" rel="noopener">Add to Discord</a>
+    <a class="sb-btn sb-btn-ghost" href="/commands">All commands {{ icon("arrow", 16) }}</a>
+  </div>
+</div>
+{% endblock %}

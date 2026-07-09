@@ -28,7 +28,7 @@
 
     <div class="sb-cmdlist">
       {% for c in commands %}
-      <div class="sb-cmdrow" id="cmd-{{ c.name }}" data-filter-item data-cat="{{ c.category }}"
+      <a class="sb-cmdrow" href="/commands/{{ c.name|urlencode }}" id="cmd-{{ c.name }}" data-filter-item data-cat="{{ c.category }}"
            data-search="{{ c.name }} {{ c.summary }} {{ c.aliases|join(' ') }} {{ c.category_label }}"
            style="--c:{{ c.color }}">
         <code>{{ c.usage }}</code>
@@ -37,8 +37,9 @@
           {% if c.aliases %}<span class="cmd-count v2-alias">{{ c.aliases|join(', ') }}</span>{% endif %}
           <span class="sb-badge sb-badge-neutral">{{ c.permissions }}</span>
           <span class="sb-badge {{ 'sb-badge-ok' if c.status == 'stable' else 'sb-badge-info' }}">{{ c.status or 'command' }}</span>
+          {{ icon("chevron", 15) }}
         </span>
-      </div>
+      </a>
       {% endfor %}
     </div>
     <div data-filter-empty style="display:none">

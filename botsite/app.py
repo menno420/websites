@@ -130,6 +130,20 @@ async def commands(request: Request):
     return templates.TemplateResponse(request, "commands.html", ctx)
 
 
+@app.get("/commands/{name}", response_class=HTMLResponse)
+async def command_detail(request: Request, name: str):
+    res = await ds.fetch_site(refresh=_refresh(request))
+    site = res.get("data", {}) or {}
+    command = ds.command_by_name(site, name)
+    if command is None:
+        ctx = _base_ctx(request, "commands", res)
+        ctx.update({"key": name, "what": "command"})
+        return templates.TemplateResponse(request, "not_found.html", ctx, status_code=404)
+    ctx = _base_ctx(request, "commands", res)
+    ctx.update({"command": command, "related": ds.related_commands(site, command)})
+    return templates.TemplateResponse(request, "command_detail.html", ctx)
+
+
 @app.get("/games", response_class=HTMLResponse)
 async def games(request: Request):
     res = await ds.fetch_site(refresh=_refresh(request))
@@ -144,7 +158,13 @@ async def changelog(request: Request):
     res = await ds.fetch_site(refresh=_refresh(request))
     site = res.get("data", {}) or {}
     ctx = _base_ctx(request, "changelog", res)
-    ctx.update({"changelog": ds.changelog(site)})
+    ctx.update(
+        {
+            "changelog": ds.changelog(site),
+            "changelog_kinds": ds.changelog_by_kind(site),
+            "changelog_ctx": ds.changelog_context(site),
+        }
+    )
     return templates.TemplateResponse(request, "changelog.html", ctx)
 
 
