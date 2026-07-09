@@ -106,6 +106,18 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **Cross-repo activity timeline + idea-backlog views** (decision + full detail
+  in `docs/site.md` § Routes). Two new
+  public control-plane routes, same TTL-cached `github` layer as the board:
+  **`/activity`** (+ `.json`) merges recent PRs across all four repos into one
+  reverse-chronological, repo/state-badged, GitHub-deep-linked stream
+  (`app/activity.py`, `activity.html`); **`/ideas`** (+ `.json`) surfaces the
+  `docs/ideas/` backlog per repo — title + one-line summary parsed from each
+  file, newest enriched + rest counted with a browse-all link, no-ideas repo =
+  honest absence, each idea deep-linking to GitHub and the in-app markdown view
+  (`app/ideas.py`, `ideas.html`). Nav links added; per-repo fetch errors degrade
+  to honest banners. Self-directed improvement batch. Tests +9. No new
+  dependency, no secret, no Railway op.
 - **substrate-kit v1.0.0 → v1.2.0 upgrade + engagement close-out** (PR #31,
   [D-0019]). First release-artifact upgrade via the kit's §4.3 `upgrade` verb:
   sha256-verified against the Release's `release.json`, archive-first
@@ -276,9 +288,10 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 2. **Done:** `websites` now has a ruleset with `quality` as a REQUIRED check
    (owner set it 2026-07-09). Remaining owner-gated calls are tracked in
    `docs/owner/OWNER-ACTIONS.md`.
-3. Optional: add a `deploy-state` cell to the websites board row (bake
-   `GIT_SHA` into the Docker build and compare to the live `main` head) so a
-   failed build after a merge shows up as a visible drift cell.
+3. **Done (ORDER 001, deploy-state drift — see `docs/site.md`):** the websites board row now carries the
+   `deploy-state` cell (DEPLOYED sha vs live `main` head, per service) — a
+   stalled/failed deploy shows as a visible `DRIFT`. Follow-up idea captured:
+   a "trigger present?" companion cell (`docs/ideas/`).
 
 ## Review rhythm
 

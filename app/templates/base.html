@@ -57,6 +57,17 @@ header .searchbox { margin:0; flex:1 1 220px; max-width:340px; }
 header .searchbox input { padding:.25rem .5rem; }
 header .searchbox button { padding:.25rem .6rem; }
 .snippet { margin-top:.25rem; color:var(--fg); line-height:1.5; word-break:break-word; }
+/* cross-repo activity timeline + idea backlog */
+.b.repo { color:var(--blue); border-color:var(--blue); }
+.tl td { padding:.45rem .6rem .45rem 0; }
+.tl .when { color:var(--dim); font-size:12px; white-space:nowrap; }
+.tl .who { color:var(--dim); font-size:12px; }
+.banner { color:var(--amber); border:1px solid var(--amber); border-radius:6px;
+          padding:.4rem .7rem; margin:.3rem 0 .6rem; font-size:12px; }
+.idea-title { font-weight:600; }
+.idea-sum { color:var(--dim); font-size:12px; margin-top:.15rem; line-height:1.5;
+            word-break:break-word; }
+.idea-row + .idea-row { border-top:1px solid #21262d; padding-top:.5rem; margin-top:.5rem; }
 mark { background:rgba(210,153,34,.35); color:var(--fg); border-radius:3px; padding:0 .1rem; }
 
 /* --- mobile polish: tablet/phone (owner browses at ~375px) --- */
@@ -85,6 +96,8 @@ mark { background:rgba(210,153,34,.35); color:var(--fg); border-radius:3px; padd
   <span class="brand">superbot control plane</span>
   <nav>
     <a href="/" class="{{ 'on' if active == 'board' else '' }}">readiness board</a>
+    <a href="/activity" class="{{ 'on' if active == 'activity' else '' }}">activity</a>
+    <a href="/ideas" class="{{ 'on' if active == 'ideas' else '' }}">ideas</a>
     <a href="/journal" class="{{ 'on' if active == 'journal' else '' }}">journal browser</a>
   </nav>
   <form class="searchbox" action="/journal/search" method="get" role="search">

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}activity timeline{% endblock %}
+{% block headright %}<a href="/activity?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>cross-repo activity</h2>
+  <p class="dim small">Recent pull requests across the fleet
+    ({{ a.repos_ok|join(', ') if a.repos_ok else 'no repos reachable' }}),
+    merged into one reverse-chronological stream. Each item deep-links to GitHub.
+    Newest {{ a['items']|length }} of {{ a.total }} shown.</p>
+
+  {% for e in a.errors %}
+  <div class="banner">⚠ {{ e.repo }}: could not fetch PRs — {{ e.error }}
+     (HTTP {{ e.status }}) · <a href="{{ e.url }}">open on GitHub ↗</a></div>
+  {% endfor %}
+
+  {% if a['items'] %}
+  <table class="tl">
+    <tr><th>when</th><th>repo</th><th>state</th><th>pull request</th></tr>
+    {% for it in a['items'] %}
+    <tr>
+      <td class="when">{{ it.date }}{% if it.time %} {{ it.time }}{% endif %}</td>
+      <td><span class="b repo">{{ it.repo }}</span></td>
+      <td><span class="b {{ 'ok' if it.state == 'merged' else ('warn' if it.state == 'open' else ('bad' if it.state == 'closed' else 'unknown')) }}">{{ it.state }}</span></td>
+      <td>
+        <a href="{{ it.url }}">#{{ it.number }} {{ it.title }}</a>
+        {% if it.author %}<span class="who"> · {{ it.author }}</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% elif not a.errors %}
+  <p class="dim small">no recent pull requests.</p>
+  {% endif %}
+</div>
+{% endblock %}

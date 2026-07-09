@@ -19,3 +19,9 @@
 ## Backlog
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
+
+- **`/activity.xml` Atom feed** —
+  [activity-atom-feed-2026-07-09.md](activity-atom-feed-2026-07-09.md) · state:
+  `captured` · next: quick-win (small/decided) — emit the shipped `/activity`
+  timeline as an Atom/RSS feed so fleet PR activity is subscribable
+  (reader or webhook), reusing the data the route already builds.

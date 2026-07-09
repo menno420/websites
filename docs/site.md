@@ -27,7 +27,22 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
      `red-by-design` (purple) and never counts it toward "broken checks".
    - Any signal the token can't read renders `unknown (reason)` — the board
      degrades per-cell, it never fakes a value.
-2. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
+2. **Activity timeline** (`/activity`, `.json` variant) — recent pull requests
+   across **all four repos** (superbot, superbot-next, substrate-kit, websites)
+   merged into ONE reverse-chronological stream, each row badged by repo and
+   state (`merged` / `open` / `draft` / `closed`) and deep-linked to GitHub.
+   Reuses the shared TTL-cached `github.repo_api` layer the board already rides;
+   a failing per-repo fetch degrades to an honest banner, never a silent drop.
+   ([D-0020])
+3. **Idea backlog** (`/ideas`, `.json` variant) — the `docs/ideas/` conveyor
+   across every repo that keeps one (superbot ~220, substrate-kit ~16; the other
+   two only a README). Each idea's title + one-line summary is parsed from the
+   file (frontmatter stripped, first `# H1`, then a `**One line:**` marker or the
+   first real paragraph); newest ideas per repo are enriched, the rest counted
+   with a browse-all link. A repo with no `docs/ideas/` shows an absence, not an
+   error. Every idea deep-links to GitHub and to the in-app markdown file view
+   (`/journal/{repo}/file`). ([D-0020])
+4. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
    substrate-kit has no docs/.sessions tree — it shows PR/commit history.
@@ -49,6 +64,10 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 |---|---|---|
 | `/` | public | readiness board (secrets masked to a count) |
 | `/api/readiness.json` | public | board data as JSON (no secret names) |
+| `/activity` | public | cross-repo PR activity timeline (HTML) — [D-0020] |
+| `/activity.json` | public | same timeline as JSON |
+| `/ideas` | public | cross-repo `docs/ideas/` backlog (HTML) — [D-0020] |
+| `/ideas.json` | public | same backlog as JSON |
 | `/journal` | public | journal overview, all repos |
 | `/journal/search?q=…` | public | cross-repo journal search (HTML) — [D-0014] |
 | `/journal/search.json?q=…` | public | same search as JSON (plain snippets) |
