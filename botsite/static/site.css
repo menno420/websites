@@ -1,0 +1,49 @@
+/* Bot-site page layout on top of the ds component library. Layout-only:
+   colors, type, and component looks all come from tokens.css + components.css. */
+
+/* hero */
+.hero { position: relative; padding: var(--sb-s-10) 0 var(--sb-s-9); overflow: hidden; }
+.hero .glow {
+  position: absolute; top: -220px; left: 50%; transform: translateX(-50%);
+  width: 760px; max-width: 100vw; height: 460px; pointer-events: none; filter: blur(30px);
+  background: var(--sb-hero-glow);
+}
+.hero h1 { position: relative; font-size: var(--sb-text-hero); font-weight: 800; letter-spacing: var(--sb-track-tight); line-height: 1.02; max-width: 14ch; }
+.hero .sb-lead { position: relative; max-width: 60ch; margin-top: var(--sb-s-5); }
+.hero .cta { position: relative; margin-top: var(--sb-s-7); display: flex; gap: var(--sb-s-3); flex-wrap: wrap; }
+
+/* section spacing */
+.wrap { max-width: var(--sb-wrap-wide); margin: 0 auto; padding: 0 var(--sb-gutter); }
+.section { padding: var(--sb-s-8) 0; }
+.section-sm { padding: var(--sb-s-6) 0; }
+
+/* feature/game/area cards use the ds .sb-feat look; small helpers here */
+.card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sb-s-4); }
+.card-grid.two { grid-template-columns: repeat(2, 1fr); }
+.card-grid > * { min-width: 0; }
+@media (max-width: 880px) { .card-grid, .card-grid.two { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .card-grid, .card-grid.two { grid-template-columns: 1fr; } }
+
+.feat-link { display: flex; flex-direction: column; }
+.feat-desc { margin-top: 9px; font-size: 13.5px; line-height: 1.55; color: var(--sb-ink-3); flex: 1;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.feat-tags { margin-top: var(--sb-s-4); display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* command list tweaks */
+.cmd-meta { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+.cmd-count { font-family: var(--sb-font-mono); font-size: 12px; color: var(--sb-ink-4); }
+
+/* filter bar sits under a page hero */
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--sb-s-3); align-items: center; margin: var(--sb-s-5) 0 var(--sb-s-5); }
+.toolbar .sb-search { flex: 1; min-width: 220px; }
+
+/* detail page */
+.kv-row { display: flex; flex-wrap: wrap; gap: var(--sb-s-3); }
+
+/* styleguide swatches */
+.swatch { height: 54px; border-radius: var(--sb-r-md); border: 1px solid var(--sb-line); display: flex; align-items: flex-end; padding: 6px 8px; font-family: var(--sb-font-mono); font-size: 10px; color: var(--sb-ink-1); }
+
+/* status banner list */
+.sys-list { border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); background: var(--sb-surface-soft); padding: 0 var(--sb-s-5); }
+
+.eyebrow-note { font-family: var(--sb-font-mono); font-size: 12px; color: var(--sb-ink-4); margin-top: var(--sb-s-3); }

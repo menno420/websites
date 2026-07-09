@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Games — SuperBot{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ games|length }} games</span>
+    <div class="head-row"><h1>Play in chat</h1></div>
+    <p class="sb-lead">Mini-games and casino modes that run right inside your channels — wins
+      and progress feed into XP and the leaderboards.</p>
+  </section>
+
+  {% if games %}
+  <div class="card-grid section-sm">
+    {% for g in games %}
+    <a class="sb-card sb-card-hover sb-feat feat-link" href="/features/{{ g.key }}" style="--c:{{ g.color }}">
+      <span class="corner" aria-hidden="true"></span>
+      <div class="sb-feat-top">
+        <span class="sb-tile sb-tile-emoji">{{ g.emoji or icon('gamepad', 22) }}</span>
+        <h3 style="font-size:var(--sb-text-lg)">{{ g.name }}</h3>
+      </div>
+      <div class="feat-desc">{{ g.description }}</div>
+      <div class="sb-feat meta"><span class="go">How to play {{ icon("chevron", 14) }}</span></div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="sb-empty section"><span class="ico">{{ icon("gamepad", 20) }}</span><h4>No games in the feed</h4>
+    <p>The public data feed lists no game features right now. Nothing is faked here.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

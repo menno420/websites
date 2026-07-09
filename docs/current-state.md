@@ -32,11 +32,15 @@ Full site doc: `docs/site.md`. Deployment: `docs/deployment.md`.
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- **Dashboard + botsite rework plan (PLAN ONLY — awaiting owner review):**
-  `docs/planning/dashboard-botsite-rework-plan-2026-07-09.md` (PR #4).
-  Sequence step 3 of the kickoff, which is plan-first by design — the rework
-  itself begins only after the owner reviews the seven open questions in that
-  doc. No code ported; the live sites in superbot stay untouched.
+- **Botsite half of the rework is built + deployed** (PR #7, [D-0008]): the
+  public bot site now runs as a second Railway service `botsite` in
+  `superbot-websites` at https://botsite-production-cfd7.up.railway.app,
+  server-rendered on the `ds/` design system, reading superbot's committed
+  `site.json` live. See `docs/botsite.md`. The **dashboard half** of
+  `docs/planning/dashboard-botsite-rework-plan-2026-07-09.md` (PR #4) is still
+  plan-only, awaiting owner review of the remaining open questions (esp. Q4,
+  the control panel's coupling to the live bot). Live sites in superbot stay
+  untouched.
 - Otherwise nothing in flight. The former owner TODO is **closed**: a durable
   owner PAT is set as the `control-plane` service token, so the board runs on
   the authenticated GitHub rate limit and the secrets / auto-merge /
@@ -44,6 +48,13 @@ Full site doc: `docs/site.md`. Deployment: `docs/deployment.md`.
 
 ## Recently shipped (newest first)
 
+- **PR #7** — botsite rebuilt + deployed ([D-0008]). New Railway service
+  `botsite` (`4314f839…`) in `superbot-websites`, server-rendered FastAPI +
+  Jinja2 on the promoted `ds/` design system, reading superbot's committed
+  `site.json` via raw GitHub (read-only, never fakes data). Public surface:
+  Home / Features (+detail) / Commands / Games / Changelog / Status / Design /
+  Submit + `/healthz` + `/palette.json`. `/submit` write path stubbed until the
+  submissions Postgres is provisioned (plan Q5). Doc: `docs/botsite.md`.
 - **PR #6** — durable owner PAT wired as the `control-plane` service token
   ([D-0006]). Closes the deploy session's owner TODO: the board now runs on
   the authenticated GitHub rate limit and the auth-gated cells (secrets,
@@ -63,10 +74,12 @@ Full site doc: `docs/site.md`. Deployment: `docs/deployment.md`.
 
 ## Next steps
 
-1. **Owner review:** read the dashboard + botsite rework plan
-   (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`) and answer
-   its seven open questions — the rework of the two existing sites begins
-   only after that review.
+1. **Verify the live botsite** at https://botsite-production-cfd7.up.railway.app
+   and decide on the deferred items in `docs/botsite.md` (submissions pipeline
+   Q5, custom domain Q6, exact-v1-look Q2). Then answer the remaining
+   **dashboard-half** open questions in the rework plan
+   (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`, esp. Q4) — the
+   dashboard rebuild begins after that review.
 2. Consider repo settings for `websites` itself (ruleset, required checks)
    — owner-only settings layer; board already shows this repo's row.
 3. Optional: add a `deploy-state` cell to the websites board row (bake

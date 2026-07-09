@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Not found — SuperBot{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="sb-empty section" style="padding:80px 16px">
+    <span class="ico">{{ icon("search", 22) }}</span>
+    <h4>Page not found</h4>
+    <p>{% if key %}No feature named <code>{{ key }}</code>.{% else %}That page doesn't exist.{% endif %}</p>
+    <div class="act"><a class="sb-btn sb-btn-ghost sb-btn-sm" href="/">{{ icon("back", 15) }} Back home</a></div>
+  </div>
+</div>
+{% endblock %}

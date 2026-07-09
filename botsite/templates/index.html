@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}SuperBot — {{ counts.commands }} commands for your Discord server{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="glow" aria-hidden="true"></div>
+  <div class="wrap">
+    <span class="sb-kicker"><span class="d"></span> Public reference · live from the bot's own data</span>
+    <h1>One bot for your <span class="sb-grad">whole server</span>.</h1>
+    <p class="sb-lead">Moderation, economy, games, leveling, utilities — {{ counts.commands }}
+      commands across {{ counts.features }} features, all in one Discord bot. Browse
+      exactly what it does before you add it. Nothing here is marketing fluff: every
+      number and command below is read straight from the bot's committed data.</p>
+    <div class="cta">
+      <a class="sb-btn sb-btn-primary sb-btn-lg" href="{{ add_url }}" target="_blank" rel="noopener">Add to Discord</a>
+      <a class="sb-btn sb-btn-ghost sb-btn-lg" href="/commands">Browse commands {{ icon("arrow", 16) }}</a>
+    </div>
+  </div>
+</section>
+
+<section class="section-sm">
+  <div class="wrap">
+    <div class="sb-statrow">
+      <a class="sb-stat" href="/commands"><span class="v">{{ counts.commands }}</span><span class="l">commands</span></a>
+      <a class="sb-stat" href="/features"><span class="v">{{ counts.features }}</span><span class="l">features</span></a>
+      <a class="sb-stat" href="/games"><span class="v">{{ counts.games }}</span><span class="l">games</span></a>
+    </div>
+  </div>
+</section>
+
+{% if categories %}
+<section class="section">
+  <div class="wrap">
+    <div class="sb-sec-head">
+      <div><h2>Everything it does</h2><p>Grouped into {{ categories|length }} areas. Open any one for its full command set.</p></div>
+      <a class="sb-more" href="/features">All features {{ icon("arrow", 14) }}</a>
+    </div>
+    <div class="card-grid">
+      {% for c in categories %}
+      <a class="sb-card sb-card-hover sb-feat feat-link" href="/features#{{ c.id }}" style="--c:{{ c.color }}">
+        <span class="corner" aria-hidden="true"></span>
+        <div class="sb-feat-top">
+          <span class="sb-tile">{{ icon(c.icon, 22) }}</span>
+          <div>
+            <div class="sb-feat-cat">{{ c.label }}</div>
+            <div class="cmd-count">{{ c.feature_count }} feature{{ '' if c.feature_count == 1 else 's' }}</div>
+          </div>
+        </div>
+        <div class="feat-desc">{{ c.command_count }} command{{ '' if c.command_count == 1 else 's' }} in the {{ c.label|lower }} area.</div>
+        <div class="sb-feat meta"><span class="go">Explore {{ icon("chevron", 14) }}</span></div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if changelog %}
+<section class="section">
+  <div class="wrap">
+    <div class="sb-sec-head">
+      <div><h2>Latest updates</h2><p>What changed recently, from the bot's user-facing changelog.</p></div>
+      <a class="sb-more" href="/changelog">Full changelog {{ icon("arrow", 14) }}</a>
+    </div>
+    <div class="card-grid">
+      {% for e in changelog %}
+      <div class="sb-card">
+        <span class="sb-badge sb-badge-{{ 'ok' if e.kind == 'added' else ('info' if e.kind == 'improved' else 'warn') }}">{{ e.kind }}</span>
+        <h3 style="margin-top:12px">{{ e.title }}</h3>
+        <p>{{ e.summary }}</p>
+        <div class="eyebrow-note">{{ e.date }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="section">
+  <div class="wrap">
+    <div class="sb-status-banner" style="--c:var(--sb-brand)">
+      <span class="sb-pulse" aria-hidden="true"></span>
+      <div>
+        <strong>Ready to add SuperBot?</strong>
+        <span class="sub">Free to add. Works out of the box; configure only what you need.</span>
+      </div>
+      <a class="sb-btn sb-btn-primary sb-right" href="{{ add_url }}" target="_blank" rel="noopener">Add to Discord</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

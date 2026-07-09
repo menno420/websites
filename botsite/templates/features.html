@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Features — SuperBot{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ features|length }} features</span>
+    <div class="head-row">
+      <h1>Every feature, one catalogue</h1>
+    </div>
+    <p class="sb-lead">The complete public catalogue of what SuperBot ships — one entry per
+      subsystem. Filter by area or search; open any feature for its commands.</p>
+  </section>
+
+  <div data-filter-root>
+    <div class="toolbar">
+      <div class="sb-search" role="search">
+        {{ icon("search", 16) }}
+        <input type="text" data-filter-search placeholder="Search features…" aria-label="Search features">
+      </div>
+      <span class="cmd-count"><span data-filter-count>{{ features|length }}</span> shown</span>
+    </div>
+    <div class="sb-filterbar">
+      <button class="sb-pill" data-filter-pill="all" aria-pressed="true">all</button>
+      {% for c in categories %}
+      <button class="sb-pill" data-filter-pill="{{ c.id }}" aria-pressed="false">{{ c.label|lower }}</button>
+      {% endfor %}
+    </div>
+
+    <div class="card-grid">
+      {% for f in features %}
+      <a class="sb-card sb-card-hover sb-feat feat-link" href="/features/{{ f.key }}"
+         id="{{ f.category }}" data-filter-item data-cat="{{ f.category }}"
+         data-search="{{ f.name }} {{ f.description }} {{ f.tags|join(' ') }} {{ f.category_label }}"
+         style="--c:{{ f.color }}">
+        <span class="corner" aria-hidden="true"></span>
+        <div class="sb-feat-top">
+          <span class="sb-tile sb-tile-emoji">{{ f.emoji or icon(f.icon, 22) }}</span>
+          <div>
+            <div class="sb-feat-cat">{{ f.category_label }}</div>
+            <h3 style="font-size:var(--sb-text-lg)">{{ f.name }}</h3>
+          </div>
+        </div>
+        <div class="feat-desc">{{ f.description }}</div>
+        <div class="sb-feat meta">
+          {% if f.is_game %}<span class="sb-badge sb-badge-flag">{{ icon("gamepad", 11) }} game</span>{% endif %}
+          <span class="go">Open {{ icon("chevron", 14) }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    <div data-filter-empty style="display:none">
+      <div class="sb-empty"><span class="ico">{{ icon("search", 20) }}</span><h4>No features match</h4><p>Try a different search or clear the filter.</p></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
