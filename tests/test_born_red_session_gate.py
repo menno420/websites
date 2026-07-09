@@ -35,6 +35,8 @@ _COMPLETE_CARD = """# {title}
 
 > **Status:** `complete`
 
+- **📊 Model:** test-model · low · fixture
+
 Real close-out prose. 💡 Session idea: something worth keeping.
 
 ## Previous-session review
@@ -127,7 +129,12 @@ def test_diff_aware_selection_beats_mtime(tmp_path):
 
 
 def test_config_names_kit_v1(tmp_path):
-    """The vendored engine is kit v1.0.0 and the config records it."""
+    """The vendored engine's version pin: config records the adopted release.
+
+    Bumped 1.0.0 -> 1.2.0 by the D-0019 §4.3 upgrade (PR #31). Keep this an
+    EXACT pin on purpose: an upgrade must consciously move it, and a silent
+    re-vendor without recording `kit_version` reddens here.
+    """
     cfg = json.loads(CONFIG.read_text())
-    assert cfg.get("kit_version") == "1.0.0"
+    assert cfg.get("kit_version") == "1.2.0"
     assert "status_in_progress" in BOOTSTRAP.read_text()

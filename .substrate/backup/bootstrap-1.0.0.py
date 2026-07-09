@@ -1,4 +1,4 @@
-"""substrate-kit bootstrap v1.2.0 — GENERATED, DO NOT EDIT.
+"""substrate-kit bootstrap v1.0.0 — GENERATED, DO NOT EDIT.
 
 Single-file, stdlib-only. Regenerate from source with:
     python3 substrate-kit/src/build_bootstrap.py
@@ -18,7 +18,6 @@ from dataclasses import dataclass, field
 from datetime import date
 from datetime import date as _led_date
 from datetime import date, datetime, timezone
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from typing import Any, NamedTuple
@@ -82,7 +81,7 @@ DEFAULT_STATE_DIR = ".substrate"
 # (`kit_version`) + state by `adopt`/`upgrade`. Bump together with
 # `pyproject.toml` `[project] version` (a test pins them equal) and a new
 # CHANGELOG.md section (the release workflow refuses to publish without one).
-KIT_VERSION = "1.2.0"
+KIT_VERSION = "1.0.0"
 
 
 def _new_project_id() -> str:
@@ -1919,155 +1918,6 @@ def check_orientation_budget(root: Path, config: Config) -> list[Finding]:
             msg = f"doc is {words} words, over its {cap}-word self-cap"
             findings.append(Finding(_ob_rel(doc, root), "orientation-doc-cap", msg))
     return findings
-
-# --- engine/checks/check_status_current.py ---
-"""Status-freshness checker — the ``control/`` heartbeat must exist and beat.
-
-Why + provenance: the fleet coordination protocol (canonical spec: superbot
-``docs/planning/fleet-coordination-protocol-2026-07-09.md``; kit band KL-8,
-inbox ORDER 002) makes ``control/status.md`` each Project's heartbeat — the
-manager treats a stale status as a **dark** Project. The protocol's whole
-value collapses if a Project silently stops writing it, so the discipline is
-enforced, not exhorted (PL-007), exactly like the session-card gate.
-
-Two postures, deliberately split (the spec's "warns → graduates to the
-born-red post-adopt gate" wording, resolved so a *required CI check* never
-reds on wall-clock time alone):
-
-- **Gate findings** (ride the ordinary strict finding loop — RED under
-  ``check --strict``): *static, deterministic* protocol states —
-  ``status-missing`` (the control bus exists but ``status.md`` doesn't) and
-  ``status-no-heartbeat`` (``status.md`` is still the adopt-time seed, or
-  carries no parseable ``updated:`` ISO-8601 line). These are the born-red
-  graduation: an adopted host stays red until its first real heartbeat, the
-  same shape as ``session-loop-idle``.
-- **Advisory findings** (warn-only — emitted + telemetry-recorded, **never**
-  exit-affecting): ``status-stale`` — the heartbeat parses but is older than
-  ``max_age_hours`` (default 72h). Time-based red in a required check would
-  be a bomb: an untouched-for-a-week repo's next unrelated PR would arrive
-  pre-reddened. The warning still surfaces in every ``check`` run and the
-  Stop hook separately nags when ``status.md`` wasn't overwritten this
-  session (``hooks/stop_check.py``).
-
-Input-gated like every checker: engages only when the protocol is present
-(any ``control/{README,inbox,status}.md`` exists) — a host that never adopted
-the bus adds nothing here. Stdlib only; unreadable files fail open.
-"""
-
-
-
-
-CONTROL_DIR = "control"
-STATUS_RELPATH = "control/status.md"
-INBOX_RELPATH = "control/inbox.md"
-CONTROL_README_RELPATH = "control/README.md"
-
-# The manager's stale-= -dark horizon. Wider than the self-poll cadence the
-# spec suggests (2-4h) on purpose: the checker warns about *abandonment*, not
-# about a quiet afternoon — revise with data (KF-8 posture).
-DEFAULT_MAX_AGE_HOURS = 72
-
-_UPDATED_RE = re.compile(r"^updated:\s*(\S+)", re.MULTILINE)
-
-
-def parse_heartbeat(text: str) -> datetime | None:
-    """Return the ``updated:`` line's timestamp as an aware UTC datetime.
-
-    Accepts the contract's ISO-8601 shapes (``2026-07-09T12:07Z``,
-    ``...T12:07:00+00:00``, minutes or seconds precision). A trailing ``Z``
-    is normalized for ``fromisoformat`` (Python 3.10 floor). A naive
-    timestamp is taken as UTC — the contract says ISO8601, sessions write
-    UTC, and treating it otherwise would fabricate staleness. None when the
-    line is absent or unparseable (the adopt seed's prose sentinel lands
-    here by design).
-    """
-    match = _UPDATED_RE.search(text)
-    if not match:
-        return None
-    raw = match.group(1)
-    if raw.endswith(("Z", "z")):
-        raw = raw[:-1] + "+00:00"
-    try:
-        parsed = datetime.fromisoformat(raw)
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
-
-
-def _control_present(target: Path) -> bool:
-    """True when the control bus exists (any of the three protocol files)."""
-    return any(
-        (target / rel).is_file()
-        for rel in (STATUS_RELPATH, INBOX_RELPATH, CONTROL_README_RELPATH)
-    )
-
-
-def check_status_current(
-    target: Path,
-    *,
-    now: datetime | None = None,
-    max_age_hours: int = DEFAULT_MAX_AGE_HOURS,
-) -> tuple[list[Finding], list[Finding]]:
-    """Return ``(gate_findings, advisory_findings)`` for ``target``'s heartbeat.
-
-    Gate findings ride the strict finding loop (exit-affecting under
-    ``--strict``); advisory findings are surfaced + telemetry-recorded but
-    must never touch the exit code (see module docstring). Both lists are
-    empty when the ``control/`` protocol is absent.
-    """
-    if not _control_present(target):
-        return [], []
-    status_path = target / STATUS_RELPATH
-    if not status_path.is_file():
-        return (
-            [
-                Finding(
-                    STATUS_RELPATH,
-                    "status-missing",
-                    "the control/ bus exists but status.md doesn't — the "
-                    "manager reads this file as your heartbeat; write it "
-                    "(format: control/README.md).",
-                ),
-            ],
-            [],
-        )
-    try:
-        text = status_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return [], []  # fail open — an unreadable file is not a verdict
-    heartbeat = parse_heartbeat(text)
-    if heartbeat is None:
-        return (
-            [
-                Finding(
-                    STATUS_RELPATH,
-                    "status-no-heartbeat",
-                    "no parseable `updated:` ISO-8601 heartbeat — still the "
-                    "adopt seed? Overwrite the whole file with your real "
-                    "status as the session's LAST step (control/README.md).",
-                ),
-            ],
-            [],
-        )
-    current = now or datetime.now(timezone.utc)
-    age = current - heartbeat
-    if age > timedelta(hours=max_age_hours):
-        hours = int(age.total_seconds() // 3600)
-        return (
-            [],
-            [
-                Finding(
-                    STATUS_RELPATH,
-                    "status-stale",
-                    f"heartbeat is ~{hours}h old (> {max_age_hours}h) — the "
-                    "manager treats a stale status as a DARK Project; "
-                    "overwrite control/status.md this session.",
-                ),
-            ],
-        )
-    return [], []
 
 # --- engine/ledger.py ---
 """Decision ledger — the ``[D-NNNN]`` provenance-separated rulebook (Lane B6).
@@ -6798,11 +6648,7 @@ what the session ritual still owes —
 - escalated blocking questions are still open (``state["open_questions"]``);
 - the compaction cadence window has elapsed (``compaction_due``);
 - the reflection buffer has not been mined today
-  (``reflection_buffer.last_mined`` vs today's ISO date);
-- ``control/status.md`` exists but was not overwritten this session (KL-8:
-  the coordination protocol's deliberate LAST step) — the file's mtime
-  predates the KL-5 session-start anchor's epoch. Skipped, fail-open, when
-  the protocol or the anchor is absent.
+  (``reflection_buffer.last_mined`` vs today's ISO date).
 
 Returns ``[]`` when all clean. Advisory only, and it **fails open**: every
 check runs inside its own guard, so a bad state document or an unreadable log
@@ -6874,36 +6720,11 @@ def _stop_reflections(state: dict[str, Any]) -> list[str]:
     return [_STOP_UNMINED_MSG]
 
 
-def _stop_status(root: Path, state: dict[str, Any]) -> list[str]:
-    """Advise when ``control/status.md`` was not overwritten this session.
-
-    The coordination protocol's LAST step (KL-8) is overwriting the status
-    heartbeat; a session that ends without it leaves the manager reading a
-    stale (eventually dark) Project. Evidence = the file's mtime vs the KL-5
-    session-start anchor's epoch — no anchor (or no protocol) means no basis
-    for the claim, so the advisory is skipped rather than guessed.
-    """
-    status = root / STATUS_RELPATH
-    if not status.is_file():
-        return []
-    anchor = state.get(SESSION_ANCHOR_KEY)
-    epoch = anchor.get("epoch") if isinstance(anchor, dict) else None
-    if not isinstance(epoch, (int, float)) or isinstance(epoch, bool):
-        return []
-    if status.stat().st_mtime >= float(epoch):
-        return []
-    return [
-        "control/status.md not overwritten this session — the protocol's "
-        "deliberate LAST step (see control/README.md)",
-    ]
-
-
 def evaluate_stop(root: Path, config: Config, backend: Any) -> list[str]:
     """Return the session-close advisory lines ([] when all clean).
 
-    Five checks in fixed order: session log, open blocking questions,
-    compaction cadence, reflection mining, the control-status heartbeat
-    (KL-8). Each runs inside its own guard so
+    Four checks in fixed order: session log, open blocking questions,
+    compaction cadence, reflection mining. Each runs inside its own guard so
     one failing check never suppresses the others — the stop hook is advisory
     and fails open by contract.
     """
@@ -6913,7 +6734,6 @@ def evaluate_stop(root: Path, config: Config, backend: Any) -> list[str]:
         lambda: _stop_questions(state),
         lambda: _stop_compaction(state, config),
         lambda: _stop_reflections(state),
-        lambda: _stop_status(root, state),
     )
     advisories: list[str] = []
     for check in checks:
@@ -7487,16 +7307,6 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     ("question-router.md.tmpl", "docs/question-router.md"),
     ("ideas-README.md.tmpl", "docs/ideas/README.md"),
     ("session-journal.md.tmpl", ".session-journal.md"),
-    # The fleet coordination protocol (band KL-8, spec: superbot
-    # docs/planning/fleet-coordination-protocol-2026-07-09.md §2): committed
-    # git files are the only medium Projects share, so every adopted repo
-    # gets the control/ bus — the manager-written inbox, the project-written
-    # status heartbeat, and the local protocol contract. Root-level on
-    # purpose (a bus, not documentation): _adopt_dest's docs_root remap
-    # never applies.
-    ("control-README.md.tmpl", "control/README.md"),
-    ("control-inbox.md.tmpl", "control/inbox.md"),
-    ("control-status.md.tmpl", "control/status.md"),
 ]
 
 # State key holding {planted relpath: sha256 hex} for every doc the kit last
@@ -7729,14 +7539,8 @@ def ci_snippet() -> str:
         "#\n"
         "# `bootstrap.py check --strict` runs every kit checker in one pass:\n"
         "# docs hygiene (badges / links / reachability), session-log markers,\n"
-        "# namespace shadowing, seam authority, orientation budget, the\n"
-        "# decision ledger, and the control/ status heartbeat.\n"
-        "#\n"
-        "# Coordination-only writes (control/** heartbeats) should skip heavy\n"
-        "# suites — but if a check is REQUIRED, use an in-job short-circuit\n"
-        "# (see the staged substrate-gate.yml's control lane), never\n"
-        "# `paths-ignore`: a required context that never reports stays\n"
-        "# pending and blocks auto-merge.\n"
+        "# namespace shadowing, seam authority, orientation budget, and the\n"
+        "# decision ledger.\n"
         "#\n"
         "# name: substrate-quality\n"
         "# on:\n"
@@ -7778,24 +7582,13 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     diff touches under ``sessions_dir`` and passes it via
     ``check --session-log``; when the diff names no card the argument is
     simply omitted and the engine's mtime fallback applies (fail-open).
-
-    **Control fast lane (KL-8):** a diff touching only ``control/**`` (a
-    status heartbeat, a manager inbox append) short-circuits the job GREEN
-    *in-job* — deliberately **not** a ``paths-ignore``, because when this
-    check is REQUIRED a workflow that never runs leaves the context pending
-    forever and auto-merge jams (the fleet-protocol heartbeat-lane lesson,
-    2026-07-09). The required context always reports; coordination writes
-    never pay the heavy suite and never need a session card.
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
         "`bootstrap.py adopt --wire-enforcement`).\n"
         "# Holds the merge red until the session journal is written and every\n"
-        "# hygiene check passes. Add a label carve-out if some PRs legitimately\n"
-        "# need no session card — but if this check is REQUIRED, prefer an\n"
-        "# in-job short-circuit (like the control lane below) over\n"
-        "# `paths-ignore`: a required context that never reports stays\n"
-        "# pending and blocks auto-merge forever.\n"
+        "# hygiene check passes. Edit `paths-ignore` / add a label carve-out if\n"
+        "# some PRs legitimately need no session card.\n"
         "name: substrate-gate\n"
         "on:\n"
         "  pull_request:\n"
@@ -7808,32 +7601,10 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "      - uses: actions/checkout@v4\n"
         "        with:\n"
         "          fetch-depth: 0\n"
-        "      - name: control fast lane (control/**-only diff short-circuits green)\n"
-        "        # Heartbeat/inbox commits are coordination, not code: they\n"
-        "        # skip the heavy gate but the job still REPORTS green so a\n"
-        "        # required context never jams auto-merge. Empty/unreadable\n"
-        "        # diffs fail safe onto the full suite.\n"
-        "        id: lane\n"
-        "        run: |\n"
-        '          if [ -n "${{ github.base_ref }}" ]; then\n'
-        '            range="origin/${{ github.base_ref }}...HEAD"\n'
-        "          else\n"
-        '            range="${{ github.event.before }}..${{ github.sha }}"\n'
-        "          fi\n"
-        '          files="$(git diff --name-only "$range" 2>/dev/null || true)"\n'
-        "          control_only=false\n"
-        '          if [ -n "$files" ] && [ -z "$(printf \'%s\\n\' "$files" '
-        "| grep -v '^control/')\" ]; then\n"
-        "            control_only=true\n"
-        "          fi\n"
-        '          echo "control_only=$control_only" >> "$GITHUB_OUTPUT"\n'
-        '          echo "control-only diff: $control_only"\n'
         "      - uses: actions/setup-python@v5\n"
-        "        if: steps.lane.outputs.control_only != 'true'\n"
         "        with:\n"
         '          python-version: "3.x"\n'
         "      - name: substrate gate (docs + session-log required)\n"
-        "        if: steps.lane.outputs.control_only != 'true'\n"
         "        # Gate on the session card THIS PR/push touches (CI flattens\n"
         "        # mtimes, so the engine's newest-by-mtime guess is unreliable\n"
         "        # here). No card in the diff -> no --session-log argument ->\n"
@@ -9241,14 +9012,7 @@ def cmd_check(
         config.badge_tokens,
         config.readpath_docs,
     )
-    # The control-protocol heartbeat (KL-8): static gate findings (missing /
-    # heartbeat-less status.md) ride the strict loop like every checker;
-    # wall-clock staleness is advisory-only and handled below — a required CI
-    # check must never red on time alone (see check_status_current's docstring).
-    status_gate, status_advisories = check_status_current(target)
-    doc_findings = (
-        list(doc_findings) + _extra_check_findings(target, config) + status_gate
-    )
+    doc_findings = list(doc_findings) + _extra_check_findings(target, config)
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
@@ -9279,25 +9043,6 @@ def cmd_check(
             surface="check",
             posture=posture,
             findings=doc_findings,
-        )
-    if status_advisories:
-        # Warn-only by contract: surfaced + telemetry-recorded, never counted
-        # toward the exit code (a stale heartbeat must not red a required CI
-        # check on wall-clock time alone — the Stop hook and this warning are
-        # the nag; the manager's dark-Project read is the consequence).
-        _emit(
-            f"check: {len(status_advisories)} control-status advisory "
-            "warning(s) (never exit-affecting):",
-        )
-        for finding in status_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
-            target,
-            config.state_dir,
-            cmd="check",
-            surface="check",
-            posture="advisory",
-            findings=status_advisories,
         )
 
     if session_log is not None:
@@ -9736,11 +9481,7 @@ def cmd_adopt(
         _emit(f"adopt: {line}")
     # KL-7 — the adopter is told, in the adopt output itself, exactly what the
     # born-red engagement gate needs: the gate's findings ARE the checklist.
-    # KL-8 rider: the control-protocol gate findings (the just-planted seed
-    # status.md has no heartbeat yet) join the same checklist — "write your
-    # first real heartbeat" is part of engaging, same shape as the first card.
-    status_gate, _ = check_status_current(target)
-    engage = check_engagement(target, config) + status_gate
+    engage = check_engagement(target, config)
     if engage:
         _emit(
             f"adopt: NOT ENGAGED — `check --strict` holds RED until these "
@@ -10419,9 +10160,6 @@ _TEMPLATES = {
     'ai-project-workflow.md.tmpl': "# ${project_name} — AI project workflow\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The multi-agent pipeline: how ideas become work\n> and how sessions run. **NOT SOURCE OF TRUTH** — the binding contracts win.\n\n## Idea lifecycle\n\n```\ncaptured -> classified -> planned -> built -> verified\n```\n\nEvery idea ends implemented, planned, in discussion, or explicitly rejected —\nnever orphaned. Backlog + routing: `docs/ideas/README.md`.\n\n## Session workflow\n\n```\norient -> claim -> born-red card -> build -> verify -> close\n```\n\n1. **Orient** — working agreement, current state, task-specific reading route.\n2. **Claim** — declare your lane so parallel sessions don't collide.\n3. **Born-red card** — open the session record first, marked in-progress, so\n   the work is visible while it is still incomplete.\n4. **Build** — the goal, end-to-end.\n5. **Verify** — run `${verify_command}` before shipping.\n6. **Close** — flip the card complete; log the session, groom one idea, hand\n   off.\n\n## Handoff template\n\n(What the next session needs, four lines: state of the work · what is\nverified · what is still open · the first next step.)\n\n## Adoption pace\n\nCurrent substrate-workflow adoption: **${integration_mode}**.\n",
     'architecture.md.tmpl': '# ${project_name} — architecture\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. Layering, invariants, and decomposition rules.\n> **NOT SOURCE OF TRUTH** for code — source files always win.\n\n## Layers & import rules\n\n${architecture_layers}\n\n| Layer | May import | Must NOT import |\n|---|---|---|\n| (one row per layer, expanded from the summary above) | | |\n\n## Invariants\n\n(The rules that must survive every refactor — write each one as a testable\nstatement, and name the check that enforces it where one exists.)\n\n## Namespace protection — two mechanisms, both required\n\nTwo separate mechanisms guard the namespace, and they catch different\nfailure classes:\n\n1. **A registry for runtime string identities** — event names, command\n   names, settings keys, and any other string that selects behavior at\n   runtime. Collisions here are invisible to static analysis.\n2. **A static AST pass for Python symbol shadowing** — a later top-level\n   `def` / `class` with the same name silently shadows the earlier one, and\n   no import fails.\n\nNeither mechanism subsumes the other. The registry cannot see symbol\nshadowing; the AST pass cannot see string-keyed dispatch. Do not delete one\nbelieving the other covers it.\n\n## Verifying a change\n\n```\n${verify_command}\n```\n',
     'collaboration-model.md.tmpl': "# ${project_name} — collaboration model\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. How the owner and agents work together. **NOT\n> SOURCE OF TRUTH** for code — source files always win.\n\n## The model\n\n- **Goal first.** The owner designs and directs; agents build. Each session\n  achieves its goal end-to-end — not the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting; a\n  prompt is one input, never a command list.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — code, verify, ship —\n  without re-confirming.\n\n## Act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task (that is expected, not scope creep).\n- **Ask** when the change is irreversible (data loss / external publish),\n  large and cross-cutting (architectural), or the goal itself is genuinely\n  ambiguous.\n\n## Friction → guard\n\nAnything that interrupts a session's workflow — a stale file, a checker that\nlied, a footgun — is converted into the **cheapest enforcing prevention**\nbefore the session ends: checker / CI / test first, then hook, then written\nrule. Enforce, don't exhort.\n\n## Guiding questions\n\nDuring exploratory / brainstorming work, surface the single most useful\nquestion about the owner's idea that the agent genuinely cannot derive\nitself — rare and selective, never during routine execution, and only when\nthe answer would actually matter and be actionable. A big or vague idea\nearns a dedicated research pass or its own session before being answered\nfrom memory alone.\n\n## Program law\n\nThis model's program-wide form, and the rulings that bind every repo in the\nprogram, live canonically in the substrate-kit repo at\n`docs/program/rulings.md` (the [PL-NNN] register — e.g. PL-001\ndecide-and-flag, PL-002 never-wait, PL-007 enforce-don't-exhort) and\n`docs/program/collaboration-model.md`\n(https://github.com/menno420/substrate-kit/tree/main/docs/program).\n**Cite PL-IDs — never copy ruling bodies into this repo.**\n\n## Drift & staleness\n\n- When a doc and a source file disagree: ${drift_resolution}\n- Staleness review cadence: ${staleness_review}\n",
-    'control-README.md.tmpl': "# Fleet coordination protocol — `control/`\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. Canonical spec: `menno420/superbot` →\n> `docs/planning/fleet-coordination-protocol-2026-07-09.md` (§1). Projects cannot talk to each\n> other directly — committed git files are the only shared medium; this directory is the bus.\n\n## The two files\n\n- `control/inbox.md` — ORDERS to this Project. **One writer: the manager** (appends via the\n  GitHub Contents API). Never edit this file.\n- `control/status.md` — STATE from this Project. **One writer: this Project** (overwrite it each\n  session).\n\n## The one rule that keeps it conflict-free\n\n**One writer per file.** The manager is the sole writer of `inbox.md`; this Project is the sole\nwriter of its own `status.md`. Two writers never touch the same file, so there are no merge\nconflicts. Everything is append-only / overwrite-own — forward-only git.\n\n## Per-session ritual (every session, and every routine wake)\n\n- **FIRST:** git pull (a stale clone reads stale orders); read `control/inbox.md`; execute any\n  order whose status is `new`, in priority order (P0 before P1). An order's `do:` is a pointer to\n  a committed doc — read it. If an order is ambiguous or you disagree, do NOT guess: write it in\n  your status under `⚑ needs-owner` and proceed with the rest.\n- **LAST (deliberate final step):** overwrite `control/status.md` — updated timestamp, current\n  phase, health (green / red-by-design+why / broken+what), last-shipped PR, blockers, orders\n  acked/done, `⚑ needs-owner`. You report order progress ONLY here; never edit `inbox.md`\n  (the manager owns it — one writer per file).\n\nThe kit enforces this loop: `check` flags a missing or heartbeat-less `status.md`\n(strict = red), warns when the heartbeat goes stale, and the Stop hook reminds you when\n`status.md` was not overwritten this session.\n\n## `status.md` format (what you write every session — your heartbeat)\n\n```markdown\n# <project> · status\nupdated: <ISO8601>            # heartbeat — stale = the manager treats the Project as dark\nphase: <what I'm doing right now, one line>\nhealth: green | red-by-design (<why>) | broken (<what>)\nlast-shipped: #<PR> — <one line>\nblockers: <what's stopping me, or `none`>\norders: acked=<ids> done=<ids>\n⚑ needs-owner: <a decision/action only the owner can give, or `none`>\nnotes: <anything the manager should know>\n```\n\n## `inbox.md` order format (manager-written, append-only)\n\n```markdown\n## ORDER <nnn> · <ISO8601> · status: new     # manager flips new→done after seeing status done=\npriority: P0 | P1 | P2\ndo: <pointer to a committed doc/section + the ask, kept short>\nwhy: <one line>\ndone-when: <acceptance test>\n```\n\n## CI + auto-merge notes (learned live, 2026-07-09)\n\n- **Heartbeat commits ride a fast lane, not a `paths-ignore`.** A control-only diff (only\n  `control/**` files changed) must still *report* every required status check, or GitHub treats\n  the missing contexts as pending and auto-merge jams forever. The kit's planted\n  `substrate-gate.yml` therefore short-circuits GREEN inside the job on control-only diffs\n  instead of skipping the workflow — copy that pattern (an in-job early exit) into any other\n  heavy suite rather than adding `paths-ignore: [control/**]` to a workflow whose check is\n  required.\n- **API-authored PRs may not trigger CI.** A PR created purely through an app/integration token\n  (e.g. the GitHub Contents API + a REST PR create) can sit with **zero check runs** — required\n  checks then never report and the PR cannot auto-merge. The manager's canonical write path is\n  therefore a **direct Contents-API commit to the default branch of `inbox.md`** (it is the sole\n  writer, so no PR is needed). When this Project ships control changes by PR, push the branch\n  over git (a real `git push` triggers `pull_request`/`push` events) before or after creating\n  the PR, and verify the PR shows check runs before relying on auto-merge.\n",
-    'control-inbox.md.tmpl': '# ${project_name} · inbox\n\n> ORDERS to this Project. **ONE writer: the manager** — never edit this file. Report order\n> progress in `control/status.md` (`orders: acked=… done=…`). Protocol: `control/README.md`.\n\n*(no orders yet — the manager appends `## ORDER 001 · <ISO8601> · status: new` blocks here)*\n',
-    'control-status.md.tmpl': '# ${project_name} · status\nupdated: (seeded at adopt — no real heartbeat yet: overwrite this whole file at your first session close)\nphase: adopted — first session not yet run\nhealth: green\nlast-shipped: none\nblockers: none\norders: acked= done=\n⚑ needs-owner: none\nnotes: seeded skeleton planted by substrate-kit adopt. This Project is the SOLE writer of this\nfile — overwrite it (never append) as the deliberate LAST step of every session, per\n`control/README.md`. `check` holds strict RED until the first real heartbeat replaces this seed.\n',
     'current-state.md.tmpl': '# ${project_name} — Current State\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. **Living status ledger.** Source code and merged\n> work always win over this file. Read it second (right after the working\n> agreement) and keep it current as the project moves.\n\n## Stability baseline\n\n(Describe the accepted-stable baseline once established — what is known-good and\nshould not be re-audited without a reported regression.)\n\n## In flight\n\n(Verify against live source control — this section is a dated snapshot.)\n\n## Recently shipped (newest first)\n\n(Merged work only, newest first.)\n\n## Review rhythm\n\n${review_ritual}\n',
     'decisions.md.tmpl': '# ${project_name} — decisions\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. Append-only decision ledger — entries are\n> superseded, never deleted. Rule docs cite entries as bare [D-NNNN] ids;\n> this file holds the provenance so rules never narrate it inline.\n\n<!-- Grammar: ## [D-NNNN] <title> / - status: decided|superseded|retired / - date: YYYY-MM-DD / - supersedes: D-NNNN (opt) / - superseded-by: D-NNNN (opt) / - verdict: <one line> / - why: <2-3 lines> / - provenance: <ref> -->\n\n## [D-0001] Adopt the substrate-kit workflow\n\n- status: decided\n- date:\n- verdict: ${project_name} runs on the substrate-kit agent workflow.\n- why: A repo-resident working agreement, decision ledger, and session\n  discipline let agents work correctly with little steering; adopting the\n  kit starts ${project_name} governed instead of accreting rules ad hoc.\n- provenance: substrate-kit adoption interview\n',
     'helper-policy.md.tmpl': '# ${project_name} — helper policy\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. When to create / move / promote a helper —\n> read this **before** adding a utility function anywhere. **NOT SOURCE OF\n> TRUTH** for code — source files always win.\n\n## Rules\n\n1. **One source of truth.** A behavior lives in exactly one function. Never\n   copy a helper into a second module "for convenience" — import it, or move\n   it (rule 2).\n2. **Shared helpers live below both consumers.** A helper needed by two\n   layers goes in the shared layer *below* both — never in either consumer\n   layer, and never duplicated into each.\n3. **Exact-name guard.** Before defining a new function, grep for\n   `def <exact_name>` in the target module and its siblings (plus the 1–2\n   nearest concept synonyms). A later same-name `def` silently shadows the\n   earlier one — no import fails, no warning fires.\n4. **Promote on second use.** The moment a private helper is wanted by a\n   second module, promote it to the shared layer — don\'t copy it.\n\n## Where helpers go in ${project_name}\n\n(Hand-filled: the concrete shared-layer path(s) for this repo, lowest layer\nfirst, with one line on what belongs in each.)\n',

@@ -106,6 +106,20 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **substrate-kit v1.0.0 → v1.2.0 upgrade + engagement close-out** (PR #31,
+  [D-0019]). First release-artifact upgrade via the kit's §4.3 `upgrade` verb:
+  sha256-verified against the Release's `release.json`, archive-first
+  (rollback banked in `.substrate/backup/`, committed like superbot-next),
+  upgrade-report classes 15 `consumer-edited` / 3 `diverged` (the hand-planted
+  `control/` trio — kept). `.claude/CLAUDE.md` (fully rendered) +
+  `.claude/settings.json` (advisory fail-open hooks) planted via
+  `adopt --include-claude`; last interview slots answered
+  (`integration_mode=guided`, `doc_roots=docs`) — `ask` empty, engagement gate
+  prints **ENGAGED**. v1.2.0 **control fast lane** folded into the required
+  `quality` gate: `control/**`-only diffs short-circuit green in-job, so
+  status heartbeats stop paying the heavy suite (and need no session card).
+  New card marker: `📊 Model:` line (v1.2.0 session_markers). No separate
+  substrate-gate.yml — one enforced gate stays the rule (D-0017 reasoning).
 - **Deploy-state drift cell + `/version`** (ORDER 001 — decision + full detail in
   `docs/site.md`). The board's
   **websites row** now shows each service's DEPLOYED commit sha vs `main` HEAD —
