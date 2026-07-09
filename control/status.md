@@ -1,61 +1,9 @@
-# Fleet control — builder status
-
-> **Status:** `builder-status`
->
-> Canonical progress record for the **websites** Project builder. The owner talks
-> to a manager Project, not to the builder directly; they coordinate through
-> committed files under `control/`. The manager writes orders to `control/inbox.md`
-> (builder **never** edits it); the builder reports progress **only** here.
-> Overwrite this file every session.
-
-## Timestamp
-2026-07-09 (session)
-
-## Phase
-Websites improvement/hardening pass — post-launch.
-
-## Health
-- **control-plane** — 🟢 GREEN (live)
-- **botsite** — 🟢 GREEN (live)
-- **dashboard** — 🟢 GREEN (live)
-
-3 live services; last verified **6/6 endpoints returned HTTP 200**.
-
-> Note: superbot-next `report/golden-parity` is **red-BY-DESIGN** — it is a parity
-> tracker that is intentionally red until parity closes, **not** a broken build.
-
-## Last-shipped PR
-- **#21** — Botsite content depth: per-command detail pages + enriched changelog (merged, `d839710`).
-
-Recent merges:
-- **#20** — Hardening + verification batch: Railway-ID guard, stub labels, healthcheck, OWNER-ACTIONS.
-- **#18** — Journal browser: sanitized markdown render + cross-repo search; mobile polish.
-- **#14 / #15** — `/owner` area.
-
-## In flight
-- Born-red **session-gate fix** — re-vendoring kit-HEAD bootstrap + `adopt --wire-enforcement`
-  to close two holes (PR pending). A separate worker is finishing it **this session**.
-
-## Blockers
-- None currently.
-- Environment note: no scheduling primitive (`send_later`) available in the sandbox.
-- Environment note: the CI gate can't be set **required** via API from the sandbox —
-  owner set it manually (**done**; see OWNER-ACTIONS row A).
-
-## Orders acked / done
-- **Acked** the fleet-coordination protocol adoption — this status write confirms adoption.
-- `control/inbox.md` currently **does not exist** (no `new` orders to dispatch).
-
-## ⚑ needs-owner
-Open OWNER ACTIONS (`docs/owner/OWNER-ACTIONS.md`):
-1. Dashboard `/admin` live-bot control — build/wire vs. keep labeled stub.
-2. Botsite `/submit` — provision submissions Postgres + moderation mirror vs. keep stub.
-3. Redeploy-from-browser scoped Railway deploy hook — yes/no.
-4. Custom domains for the three sites (deferred to cutover).
-5. Preserve v1 visual design vs. the shipped restyle.
-6. OLD-site cutover / retirement in superbot — go/no-go.
-
-**⚑ Contract file absent:** `control/README.md` does **not** exist in the repo. The
-fleet-coordination contract (expected format/sections for `status.md` and `inbox.md`,
-order status values, cadence) has not been committed. This `status.md` uses a sensible
-default format pending the contract. Owner/manager: please add `control/README.md`.
+# websites · status
+updated: 2026-07-09T13:32Z
+phase: ORDER 001 shipped (deploy-state drift cell + /version on all 3 services); live-verified against the running deploy.
+health: green (control-plane + botsite verified running main head e8265d5c; dashboard is UP — /healthz 200 — but its Railway redeploy is lagging behind the merge, so it still serves the pre-/version build; the board correctly shows that service as `unknown` while it catches up)
+last-shipped: #26 — ORDER 001: deploy-state drift cell + /version endpoints (squash-merged to main as e8265d5c; all three services auto-redeploy from main)
+blockers: none
+orders: acked=001 done=001
+⚑ needs-owner: (parked, from docs/owner/OWNER-ACTIONS.md — none are agent-executable) Q4 dashboard /admin live-bot control (build/wire vs keep stub); Q5 botsite /submit submissions Postgres + moderation mirror (provision vs keep stub); redeploy-from-browser scoped Railway deploy hook (yes/no); custom domains (deferred to cutover); preserve v1 visual design vs shipped restyle; OLD-site cutover/retirement in superbot (go/no-go). NEW: the **dashboard** Railway service's redeploy is lagging well behind control-plane/botsite (~15 min, still on the pre-/version build) — worth a glance at that service's deploy/watch settings; the drift cell exists precisely to surface exactly this.
+notes: ORDER 001 done-when MET — the drift cell is live on the board and verified against the running deploy. Live evidence (2026-07-09T~13:32Z): main HEAD e8265d5c; control-plane /version {"service":"control-plane","sha":"e8265d5c051fa0ffae4a1eeaa9c83461639b3034","short":"e8265d5c"}; botsite /version short e8265d5c; board websites-row deploy-state cell reads `head e8265d5c` · overall `in sync` · control-plane `in sync e8265d5c` · botsite `in sync e8265d5c` · dashboard `unknown — HTTP 404` (its /version not yet deployed). scripts/healthcheck.py: all 6 endpoints (/healthz + / on all three) 200. Implementation: /version JSON reads RAILWAY_GIT_COMMIT_SHA (primary) -> GIT_SHA Docker build-arg (fallback) -> "unknown"; deployed short-sha compared to the main HEAD the board already fetches; per-service degrade is honest (never faked). CI: quality green on the merged head; kit check --strict green; pytest 95 passed (+11). Rails held: forward-only, websites repo only, no RAILWAY_API_KEY/secret, no ambient production RAILWAY_* IDs (guard green), no destructive Railway op. Decision D-0018 (docs/decisions.md); full detail docs/site.md section "Deploy-state drift + /version". Contract note now RESOLVED: control/README.md + control/inbox.md landed on main in #25 during this session; this status.md conforms to the README format. Shipped as a tiny follow-up PR so status.md reflects the FINAL post-merge, post-redeploy state.
