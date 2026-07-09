@@ -41,7 +41,11 @@
       <textarea class="sb-inp" id="body" name="body" rows="6" placeholder="What should the bot do, or what went wrong?" required></textarea>
       <span class="sb-hint">Please don't include passwords, tokens, or personal data.</span>
     </div>
-    <button class="sb-btn sb-btn-primary" type="submit">Send submission</button>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+      <button class="sb-btn sb-btn-primary" type="submit">Send submission</button>
+      <span class="sb-badge sb-badge-warn" title="This form is a labeled stub — submissions are not stored or sent anywhere yet.">{{ icon("alert", 11) }} Stub — not wired</span>
+    </div>
+    <p class="sb-hint" style="margin-top:8px">Submitting shows a status note — it does <strong>not</strong> store or send your message anywhere yet.</p>
   </form>
   <div class="sb-lane-pending" style="margin-top:8px">
     <div class="head">{{ icon("info", 16) }}<h4>Heads up</h4></div>

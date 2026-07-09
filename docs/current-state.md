@@ -41,9 +41,18 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   cache model per `docs/site.md` (which stamps the stack + data-model
   decisions). Routes: `/` board, `/journal/…` browser,
   `/api/readiness.json`, `/healthz`.
-- Quality gates: `python3 bootstrap.py check --strict` + `tests/test_app.py`
-  (8 tests). No required checks / ruleset on this repo yet (owner applies
-  settings later).
+- Quality gates: the `quality` CI workflow (`.github/workflows/quality.yml`) —
+  `python3 bootstrap.py check --strict --require-session-log`, the
+  `scripts/check_no_ambient_railway_ids.py` guard, plus every service's pytest
+  suite. **`quality` is now a REQUIRED status check on `main`** (owner set the
+  ruleset 2026-07-09; verified live on PR #18) — PRs are blocked until it is
+  green.
+- **Railway safety:** the three ambient `RAILWAY_*_ID` env vars point at the
+  **live production bot** and must never reach a Railway call — see
+  `docs/RAILWAY-SAFETY.md` (enforced by `scripts/check_no_ambient_railway_ids.py`
+  in CI). Post-deploy habit: `python3 scripts/healthcheck.py` (3 live URLs).
+- **Owner-gated decisions** live in one skimmable list:
+  `docs/owner/OWNER-ACTIONS.md`.
 
 ## In flight
 
@@ -85,6 +94,21 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **PR #19** — hardening + verification batch ([D-0015]). Verified #16's
+  definition-of-done live (session_count 12; **0** UNRENDERED banners / unfilled
+  slots in the 8 binding docs; `quality.yml` green on `main`). Added an
+  **enforcing guard** `scripts/check_no_ambient_railway_ids.py` (+ test, wired
+  into `quality.yml`) that fails CI if any tracked code reads the ambient
+  production-bot `RAILWAY_*_ID` env vars, plus a loud `docs/RAILWAY-SAFETY.md`.
+  Added a reusable `scripts/healthcheck.py` (3 live URLs → all 200). Strengthened
+  the botsite `/submit` stub with a visible "Stub — not wired" badge (dashboard
+  `/admin` was already unmistakable). Verified the readiness board renders live
+  signals for all four repos. Seeded `docs/owner/OWNER-ACTIONS.md` (living
+  owner-decision list). No production credential added; forward-only;
+  non-destructive.
+- **PR #18** — journal browser: sanitized markdown render + cross-repo search;
+  mobile polish; `websites` board row `expected_required_checks` → `["quality"]`
+  (decision stamped in `docs/site.md`).
 - **PR #15** — docs: live `/owner`-area deploy evidence + method recorded
   (`docs/deployment.md` + the owner-area session log). control-plane
   auto-deployed the PR #14 merge (`71a8ca1`) to SUCCESS; verified live: public
@@ -184,8 +208,9 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
    as a **separate** service. Paired: the submissions moderation ring (Q5) needs a
    Postgres + mirror PAT. Custom domains (Q6) stay deferred to cutover. Verify the
    live dashboard + botsite URLs before any cutover.
-2. Consider repo settings for `websites` itself (ruleset, required checks)
-   — owner-only settings layer; board already shows this repo's row.
+2. **Done:** `websites` now has a ruleset with `quality` as a REQUIRED check
+   (owner set it 2026-07-09). Remaining owner-gated calls are tracked in
+   `docs/owner/OWNER-ACTIONS.md`.
 3. Optional: add a `deploy-state` cell to the websites board row (bake
    `GIT_SHA` into the Docker build and compare to the live `main` head) so a
    failed build after a merge shows up as a visible drift cell.

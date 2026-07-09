@@ -1,0 +1,34 @@
+# Owner actions — decisions & actions waiting on you
+
+> **Status:** `owner-guidance`
+>
+> A single **living** list of decisions/actions that only the owner can make,
+> and the ones already made. Future sessions keep this current: when the owner
+> decides one, move it to **Decided** with the decision + provenance; when a new
+> owner-gated fork appears, add it to **Open**. Skimmable by design.
+
+## 🟡 Open — waiting on the owner
+
+| # | Decision | What it unblocks | Notes / where it lives |
+|---|---|---|---|
+| 1 | **Dashboard `/admin` live-bot control** — build + wire a production control path, or keep it a labeled stub? | The Discord-OAuth panel that writes the live bot's control API (settings / help / cog routing / submission moderation). | Needs your direct word. Stub today: `dashboard/templates/admin.html`, zero control-API credentials present. Wiring = a **separate** service (OAuth app + control-API token) + deciding *where bot control lives* (websites / superbot / superbot-next). Rework-plan **Q4** (`docs/question-router.md`). |
+| 2 | **Botsite `/submit`** — provision a submissions Postgres + moderation mirror, or keep the stub? | The public feature/bug intake pipeline (moderated queue → GitHub-issue mirror). | Stub today: `botsite/templates/submit.html` (now shows a "Stub — not wired" badge). Needs a Postgres + mirror PAT. Rework-plan **Q5**. |
+| 3 | **Redeploy-from-browser scoped deploy hook** — yes / no? | A gated `/owner` button that triggers a Railway redeploy of a websites service from the site itself. | Would require a Railway deploy hook (scoped to `superbot-websites` only — never the ambient production IDs, see `docs/RAILWAY-SAFETY.md`). Currently deploy = merge to `main` (auto). |
+| 4 | **Custom domains** for the three sites (control-plane / botsite / dashboard). | Friendly URLs instead of `*.up.railway.app`. | Deferred to cutover. Rework-plan **Q6**. |
+| 5 | **Preserve v1 visual design vs. the shipped restyle** (rework Q2). | Whether the ds/-based restyle stands or the original superbot visual design is carried over. | Rework-plan **Q2** (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`). |
+| 6 | **OLD-site cutover / retirement in superbot** — go / no-go? | Retiring the `dashboard/` + `botsite/` still living in `menno420/superbot` once these replace them. | Gated: needs your go. Verify the live websites URLs first (`python3 scripts/healthcheck.py`). |
+
+## 🟢 Decided / resolved
+
+| # | Item | Decision | Provenance |
+|---|---|---|---|
+| A | **Required `quality` CI check on `main`** | **Owner set the ruleset** — `quality` is now a REQUIRED status check; PRs blocked until green. | Owner-configured ruleset 2026-07-09; verified live (PR #18 `mergeable_state=blocked` while `quality` pended). Board row shows `quality` configured + expected. |
+| B | **Basic-auth gate on control-plane + dashboard** | **Dropped** — both sites are fully public; the readiness board masks Actions-secret names to a count. | Owner verbatim "Yes drop the auth"; decision stamped in `docs/decisions.md`. |
+| C | **superbot kickoff doc (was PR #1876) → README link** | **Resolved** — the doc is merged on superbot `main`; the README link now returns HTTP 200 (verified 2026-07-09). Was a 404 while the PR was unmerged. | `README.md` → `superbot/docs/planning/websites-project-kickoff-2026-07-09.md`. |
+
+## How to use this doc
+
+- New owner-gated fork → add a row to **Open** with where it lives.
+- Owner decides → move it to **Decided / resolved** with the decision + a
+  provenance pointer (a `[D-NNNN]`, a `Q-NNNN`, or a dated verification).
+- Keep it short. Detail belongs in the linked decision/plan/router, not here.
