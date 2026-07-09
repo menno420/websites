@@ -33,7 +33,7 @@ Full site doc: `docs/site.md`. Deployment: `docs/deployment.md`.
 (Verify against live source control — this section is a dated snapshot.)
 
 - **Dashboard + botsite rework plan (PLAN ONLY — awaiting owner review):**
-  `docs/planning/dashboard-botsite-rework-plan-2026-07-09.md` (PR #4, [D-0007]).
+  `docs/planning/dashboard-botsite-rework-plan-2026-07-09.md` (PR #4).
   Sequence step 3 of the kickoff, which is plan-first by design — the rework
   itself begins only after the owner reviews the seven open questions in that
   doc. No code ported; the live sites in superbot stay untouched.
@@ -60,9 +60,9 @@ Full site doc: `docs/site.md`. Deployment: `docs/deployment.md`.
 ## Next steps
 
 1. **Owner review:** read the dashboard + botsite rework plan
-   (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`, [D-0007]) and
-   answer its seven open questions — the rework of the two existing sites
-   begins only after that review.
+   (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`) and answer
+   its seven open questions — the rework of the two existing sites begins
+   only after that review.
 2. **Owner:** mint the `GITHUB_TOKEN` PAT (min `public_repo` read; full
    board `repo` + `admin:repo` read) and set it on the Railway service.
 3. Eyeball the **secrets** and **ruleset** cells on the live board once the
