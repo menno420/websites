@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Control panel (stub) — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> control panel · not connected</span>
+    <div class="head-row"><h1>Control panel <span class="sb-grad">(stub)</span></h1></div>
+    <p class="sb-lead">In superbot, this is a Discord-OAuth control panel that writes the <strong>live production
+      bot</strong>'s control API — sign in, pick a server you administer, and edit its settings, help appearance,
+      and cog enable/disable, applied live. That live-write path is deliberately <strong>not connected</strong>
+      here.</p>
+  </section>
+
+  <div class="stub-banner">
+    <span class="ico">{{ icon("alert", 22) }}</span>
+    <div>
+      <strong>Requires owner wiring — not connected to the live bot.</strong>
+      <p>This service is the <em>read-only</em> oversight surface. The control panel writes the running production
+      bot across a repo boundary, which is an owner decision (rework-plan open question Q4). To keep production safe,
+      this build ships the panel as a <strong>labeled stub</strong>: the UI below shows the shape, but every mutating
+      action is a disabled placeholder.</p>
+      <p><strong>No production bot control-API URL or token exists anywhere in this service.</strong> There is no
+      Discord OAuth client, no <code class="sb-mono">CONTROL_API_TOKEN</code>, and no write path — by design, until the
+      owner decides where bot control should live (here, in superbot, or in superbot-next).</p>
+    </div>
+  </div>
+
+  {# The UI shape, rendered so the intent is visible — but inert. #}
+  <div class="group-head"><h2>Sign in</h2></div>
+  <div class="sb-panel">
+    <p class="sb-panel-title">Discord OAuth</p>
+    <div class="kv-row" style="align-items:center; gap:14px">
+      <span class="stub-action sb-btn sb-btn-primary sb-btn-sm" aria-disabled="true">{{ icon("shield", 14) }} Sign in with Discord</span>
+      <span class="stub-tag">disabled — not connected</span>
+    </div>
+  </div>
+
+  <div class="group-head"><h2>Per-server editors</h2></div>
+  <div class="card-grid two">
+    {% for title, desc in [
+      ('Settings', 'Edit any per-guild setting through the bot\'s audited seam.'),
+      ('Help appearance', 'Hide / rename / re-describe Help entities and the Home message.'),
+      ('Cog routing', 'Enable or disable a cog per server, applied live.'),
+      ('Submission moderation', 'Owner-gated review of public /submit suggestions → GitHub-issue mirror.')
+    ] %}
+    <div class="sb-card" style="cursor:default">
+      <div style="font-weight:700; margin-bottom:6px">{{ title }}</div>
+      <p class="feat-desc" style="-webkit-line-clamp:3">{{ desc }}</p>
+      <div class="feat-tags" style="align-items:center">
+        <span class="stub-action sb-btn sb-btn-soft sb-btn-sm" aria-disabled="true">{{ icon("clock", 14) }} Manage</span>
+        <span class="stub-tag">requires owner wiring</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <p class="src-note">{{ icon("info", 14) }} The read-only oversight pages
+    (<a href="/functions">functions</a>, <a href="/commands">commands</a>, <a href="/settings">settings</a>,
+    <a href="/access">access</a>, <a href="/env">env map</a>) are fully live. Only this live-bot-write control
+    panel is stubbed. Rationale: <code>docs/dashboard.md</code> · rework-plan Q4.</p>
+</div>
+{% endblock %}

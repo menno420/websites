@@ -1,0 +1,87 @@
+/* Dashboard page layout on top of the ds component library. Layout-only:
+   colors, type, and component looks all come from tokens.css + components.css. */
+
+.wrap { max-width: var(--sb-wrap-wide); margin: 0 auto; padding: 0 var(--sb-gutter); }
+.section { padding: var(--sb-s-7) 0; }
+.section-sm { padding: var(--sb-s-5) 0; }
+
+/* card grids */
+.card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sb-s-4); }
+.card-grid.two { grid-template-columns: repeat(2, 1fr); }
+.card-grid > * { min-width: 0; }
+@media (max-width: 880px) { .card-grid, .card-grid.two { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .card-grid, .card-grid.two { grid-template-columns: 1fr; } }
+
+.feat-link { display: flex; flex-direction: column; }
+.feat-desc { margin-top: 9px; font-size: 13.5px; line-height: 1.55; color: var(--sb-ink-3); flex: 1;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.feat-tags { margin-top: var(--sb-s-4); display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* command list tweaks */
+.cmd-meta { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.cmd-count { font-family: var(--sb-font-mono); font-size: 12px; color: var(--sb-ink-4); }
+
+/* filter bar under a page hero */
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--sb-s-3); align-items: center; margin: var(--sb-s-5) 0; }
+.toolbar .sb-search { flex: 1; min-width: 220px; }
+
+.eyebrow-note { font-family: var(--sb-font-mono); font-size: 12px; color: var(--sb-ink-4); margin-top: var(--sb-s-3); }
+.kv-row { display: flex; flex-wrap: wrap; gap: var(--sb-s-3); }
+
+/* section headings inside pages */
+.group-head { display: flex; align-items: center; gap: 11px; margin: var(--sb-s-7) 0 var(--sb-s-4); }
+.group-head h2 { font-size: var(--sb-text-xl); font-weight: 700; }
+.group-head .n { font-family: var(--sb-font-mono); font-size: 12px; color: var(--sb-ink-4); }
+
+/* honest "data source" footer note reused across pages */
+.src-note { font-family: var(--sb-font-mono); font-size: 11.5px; color: var(--sb-ink-4);
+  margin: var(--sb-s-6) 0 40px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.src-note code { font-size: 11px; }
+
+/* the deliberate control-panel STUB banner — unmistakable, not an error */
+.stub-banner {
+  border: 1px dashed color-mix(in oklab, var(--sb-amber) 55%, var(--sb-line));
+  background: radial-gradient(ellipse 90% 160% at 0% 50%, color-mix(in oklab, var(--sb-amber) 12%, transparent), transparent 60%), var(--sb-surface);
+  border-radius: var(--sb-r-lg); padding: 20px 24px; margin: var(--sb-s-5) 0;
+  display: flex; gap: 14px; align-items: flex-start;
+}
+.stub-banner .ico { color: var(--sb-amber); flex: none; margin-top: 2px; }
+.stub-banner strong { font-family: var(--sb-font-display); font-size: 17px; display: block; margin-bottom: 4px; }
+.stub-banner p { color: var(--sb-ink-3); font-size: 13.5px; line-height: 1.6; margin: 0; }
+.stub-banner p + p { margin-top: 8px; }
+
+/* disabled placeholder action (the mutating controls that stay stubbed) */
+.stub-action {
+  display: inline-flex; align-items: center; gap: 8px; opacity: .55; cursor: not-allowed;
+  pointer-events: none; user-select: none;
+}
+.stub-tag { font-family: var(--sb-font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--sb-amber); border: 1px solid color-mix(in oklab, var(--sb-amber) 45%, var(--sb-line));
+  border-radius: var(--sb-r-pill); padding: 2px 8px; white-space: nowrap; }
+
+/* env-map usage sub-rows */
+.env-usages { display: flex; flex-direction: column; gap: 4px; }
+.env-usages a { font-family: var(--sb-font-mono); font-size: 12px; color: var(--sb-ink-3); }
+.env-usages a:hover { color: var(--sb-brand-hi); }
+
+/* small inline meta list (settings keys) */
+.keylist { display: flex; flex-direction: column; gap: 10px; }
+.keyrow { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--sb-line);
+  border-radius: var(--sb-r-md); background: var(--sb-surface-soft); }
+.keyrow .top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.keyrow code { font-size: 12.5px; }
+.keyrow .hint { font-size: 13px; color: var(--sb-ink-3); line-height: 1.5; }
+
+/* access ladder */
+.tier { border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); background: var(--sb-surface-soft);
+  padding: var(--sb-s-5); margin-bottom: var(--sb-s-4); }
+.tier-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: var(--sb-s-4); flex-wrap: wrap; }
+.tier-head h3 { font-size: var(--sb-text-lg); font-weight: 700; text-transform: capitalize; }
+.tier-subs { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* alias collision-checker */
+.alias-tool { display: grid; grid-template-columns: 1fr; gap: var(--sb-s-4); max-width: 640px; }
+#alias-result { min-height: 24px; }
+.ok-line { color: var(--sb-ok); } .bad-line { color: var(--sb-danger); }
+pre.snippet { background: var(--sb-well); border: 1px solid var(--sb-line); border-radius: var(--sb-r-md);
+  padding: 14px 16px; overflow-x: auto; font-family: var(--sb-font-mono); font-size: 12.5px; color: var(--sb-ink-1); }

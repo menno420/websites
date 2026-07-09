@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Access — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ access.total_visible or 0 }} visible · {{ access.internal_count or 0 }} internal</span>
+    <div class="head-row"><h1>Permissions &amp; access map</h1></div>
+    <p class="sb-lead">The visibility-tier ladder and which subsystems each tier can see — a faithful static
+      mirror of the bot's <code class="sb-mono">visibility_rules</code>. This is <strong>visibility</strong>,
+      not execution: a higher tier sees everything below it.</p>
+  </section>
+
+  {% for tier in access.tiers or [] %}
+  <div class="tier">
+    <div class="tier-head">
+      <h3>{{ tier.tier }}</h3>
+      {% if tier.discord_permission %}<span class="sb-badge sb-badge-info">{{ tier.discord_permission }}</span>{% else %}<span class="sb-badge sb-badge-ok">anyone</span>{% endif %}
+      <span class="n cmd-count">{{ (tier.subsystems or [])|length }} subsystems</span>
+    </div>
+    <div class="tier-subs">
+      {% for s in tier.subsystems or [] %}
+      <span class="sb-chip">{{ s.emoji }} {{ s.display_name or s.key }}</span>
+      {% endfor %}
+      {% if not tier.subsystems %}<span class="sb-muted">— none unique to this tier —</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% if not access.tiers %}
+  <div class="sb-empty"><span class="ico">{{ icon("shield", 20) }}</span><h4>No access data</h4><p>The feed did not include an access ladder.</p></div>
+  {% endif %}
+
+  {% include "_src_note.html" %}
+</div>
+{% endblock %}

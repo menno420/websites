@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Overview — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> developer dashboard · private</span>
+    <div class="head-row">
+      <h1>SuperBot <span class="sb-grad">oversight</span></h1>
+      {% if build.commit %}
+      <a class="sb-badge sb-badge-neutral" href="https://github.com/menno420/superbot/commit/{{ build.commit }}" target="_blank" rel="noopener">build {{ build.commit[:8] }}</a>
+      {% endif %}
+    </div>
+    <p class="sb-lead">A read-only view over the bot's own generated inventory — every subsystem,
+      command, setting, access tier, and environment variable, straight from superbot's committed
+      data. Nothing here writes to the bot.</p>
+  </section>
+
+  {% set c = counts %}
+  <div class="sb-statrow sb-statrow-4" style="margin-bottom:var(--sb-s-6)">
+    <a class="sb-stat hoverable" href="/functions"><span class="v">{{ c.functions or 0 }}</span><span class="l">Subsystems</span></a>
+    <a class="sb-stat hoverable" href="/commands"><span class="v">{{ c.commands or 0 }}</span><span class="l">Commands</span></a>
+    <a class="sb-stat hoverable" href="/settings"><span class="v">{{ c.setting_keys or 0 }}</span><span class="l">Setting keys</span></a>
+    <a class="sb-stat hoverable" href="/env"><span class="v">{{ c.env_vars or 0 }}</span><span class="l">Env vars</span></a>
+  </div>
+  <div class="sb-statrow sb-statrow-4" style="margin-bottom:var(--sb-s-6)">
+    <a class="sb-stat hoverable" href="/ideas"><span class="v">{{ c.ideas or 0 }}</span><span class="l">Ideas</span></a>
+    <a class="sb-stat hoverable" href="/bugs"><span class="v">{{ c.bugs or 0 }}</span><span class="l">Bugs ({{ open_bugs|length }} open)</span></a>
+    <a class="sb-stat hoverable" href="/updates"><span class="v">{{ c.updates or 0 }}</span><span class="l">Session updates</span></a>
+    <a class="sb-stat hoverable" href="/aliases"><span class="v">{{ c.synonyms or 0 }}</span><span class="l">Synonyms</span></a>
+  </div>
+
+  <div class="group-head"><h2>Subsystems by area</h2><span class="n">{{ c.functions or 0 }} total</span></div>
+  {% for cat, m, entries in groups %}
+  <div class="group-head" style="margin-top:var(--sb-s-5)">
+    <span class="sb-tile" style="--c:{{ m.color }}; width:32px; height:32px">{{ icon(m.icon, 16) }}</span>
+    <h2 style="font-size:var(--sb-text-lg)">{{ m.label }}</h2><span class="n">{{ entries|length }}</span>
+  </div>
+  <div class="card-grid">
+    {% for e in entries %}
+    <a class="sb-card sb-card-hover feat-link" href="/functions#fn-{{ e.key }}" style="--c:{{ m.color }}">
+      <div class="sb-feat-top">
+        <span class="sb-tile" style="--c:{{ m.color }}">{{ e.emoji or '·' }}</span>
+        <div style="min-width:0">
+          <div class="sb-cmd-name" style="font-weight:700">{{ e.display_name or e.key }}</div>
+          <span class="sb-feat-cat">{{ m.label }}</span>
+        </div>
+      </div>
+      <p class="feat-desc">{{ e.description }}</p>
+    </a>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  {% if updates %}
+  <div class="group-head" style="margin-top:var(--sb-s-8)"><h2>Latest sessions</h2><a class="n" href="/updates">all updates →</a></div>
+  <div class="sb-cmdlist">
+    {% for u in updates %}
+    <div class="sb-cmdrow" style="cursor:default">
+      <span class="cmd-count">{{ u.date }}</span>
+      <span class="desc">{{ u.title }}</span>
+      <span class="cmd-meta">
+        {% if u.self_initiated %}<span class="sb-badge sb-badge-flag">self-initiated</span>{% endif %}
+        <span class="sb-badge {{ 'sb-badge-ok' if u.status == 'complete' else 'sb-badge-info' }}">{{ u.status or 'session' }}</span>
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% include "_src_note.html" %}
+</div>
+{% endblock %}

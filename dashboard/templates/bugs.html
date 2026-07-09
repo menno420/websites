@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Bugs — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ bugs|length }} bugs · {{ open_bugs|length }} open</span>
+    <div class="head-row"><h1>Bug board</h1></div>
+    <p class="sb-lead">The bot's bug board, from <code class="sb-mono">docs/health/bug-book.md</code>. Read-only —
+      report a new bug on <a href="https://github.com/menno420/superbot/issues/new" target="_blank" rel="noopener">GitHub issues</a>.</p>
+  </section>
+
+  <div data-filter-root>
+    <div class="toolbar">
+      <div class="sb-search" role="search">
+        {{ icon("search", 16) }}
+        <input type="text" data-filter-search placeholder="Search bugs…" aria-label="Search bugs">
+      </div>
+      <span class="cmd-count"><span data-filter-count>{{ bugs|length }}</span> shown</span>
+    </div>
+
+    <div class="sb-cmdlist">
+      {% for b in bugs %}
+      <div class="sb-card" style="cursor:default; display:block" data-filter-item data-cat="all"
+           data-search="{{ b.id }} {{ b.title }} {{ b.summary }} {{ b.status }}">
+        <div class="top" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px">
+          <code class="sb-chip">{{ b.id }}</code>
+          {% set st = (b.status or '')|upper %}
+          <span class="sb-badge {{ 'sb-badge-danger' if st == 'OPEN' else ('sb-badge-ok' if st in ('FIXED','CLOSED','RESOLVED') else 'sb-badge-neutral') }}">{{ b.status or 'unknown' }}</span>
+        </div>
+        <div style="font-weight:700; margin-bottom:6px">{{ b.title }}</div>
+        {% if b.summary %}<p class="feat-desc" style="-webkit-line-clamp:3">{{ b.summary }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div data-filter-empty style="display:none">
+      <div class="sb-empty"><span class="ico">{{ icon("search", 20) }}</span><h4>No bugs match</h4><p>Try a different search.</p></div>
+    </div>
+  </div>
+
+  {% include "_src_note.html" %}
+</div>
+{% endblock %}
