@@ -113,6 +113,85 @@ async def api(path: str, refresh: bool = False) -> dict:
     return await _get(config.GITHUB_API_BASE + path, refresh=refresh)
 
 
+async def api_post(path: str, json_body: Any = None) -> dict:
+    """POST an api.github.com path (must start with '/'). Never cached.
+
+    Used by the gated /owner actions (e.g. re-run a failed workflow). Returns
+    the same plain result dict as the GET path so callers degrade honestly on
+    403/404 instead of raising.
+    """
+    url = config.GITHUB_API_BASE + path
+    try:
+        resp = await get_client().post(url, json=json_body)
+        try:
+            data = resp.json()
+        except ValueError:
+            data = resp.text
+        err = ""
+        if resp.status_code >= 300:
+            err = (
+                data.get("message", "")
+                if isinstance(data, dict)
+                else str(data)[:200]
+            )
+        return _result(url, resp.status_code, data, err)
+    except httpx.HTTPError as exc:
+        return _result(url, 0, None, f"{type(exc).__name__}: {exc}")
+
+
+async def rerun_latest_failed(repo: str, branch: str = "main") -> dict:
+    """Re-run the latest FAILED Actions run on ``branch`` for ``repo``.
+
+    Owner action (gated). Looks up the newest failed workflow run on the branch,
+    then POSTs rerun-failed-jobs. Returns a small status dict the owner UI
+    renders as a banner — honest about the no-failed-run and 403 cases rather
+    than 500ing.
+    """
+    base = f"/repos/{config.OWNER}/{repo}/actions/runs"
+    listed = await _get(
+        f"{config.GITHUB_API_BASE}{base}"
+        f"?branch={branch}&status=failure&per_page=1",
+        refresh=True,  # never act on a cached list
+    )
+    if not listed["ok"] or not isinstance(listed["data"], dict):
+        reason = listed["error"] or f"HTTP {listed['status']}"
+        return {"ok": False, "repo": repo, "message": f"could not list runs: {reason}"}
+    runs = listed["data"].get("workflow_runs") or []
+    if not runs:
+        return {
+            "ok": False,
+            "repo": repo,
+            "message": f"no failed run on {branch} to re-run (nothing to do)",
+        }
+    run = runs[0]
+    run_id = run.get("id")
+    posted = await api_post(f"{base}/{run_id}/rerun-failed-jobs")
+    if posted["ok"]:
+        return {
+            "ok": True,
+            "repo": repo,
+            "run_id": run_id,
+            "name": run.get("name") or run.get("display_title") or "",
+            "url": run.get("html_url", ""),
+            "message": (
+                f"re-ran failed jobs of run #{run_id} "
+                f"({run.get('name') or 'workflow'}) on {repo}@{branch}"
+            ),
+        }
+    reason = (
+        "token lacks actions:write scope"
+        if posted["status"] in (403, 401)
+        else posted["error"] or f"HTTP {posted['status']}"
+    )
+    return {
+        "ok": False,
+        "repo": repo,
+        "run_id": run_id,
+        "url": run.get("html_url", ""),
+        "message": f"re-run rejected for run #{run_id} on {repo}: {reason}",
+    }
+
+
 async def repo_api(repo: str, subpath: str = "", refresh: bool = False) -> dict:
     return await api(f"/repos/{config.OWNER}/{repo}{subpath}", refresh=refresh)
 
@@ -156,3 +235,14 @@ async def fetch_file(
 
 def cache_size() -> int:
     return len(_cache)
+
+
+def clear_cache() -> int:
+    """Empty the in-memory TTL cache; return how many entries were dropped.
+
+    Backs the gated /owner "force refresh" action — the next page load
+    re-fetches everything live. In-process only, no external creds.
+    """
+    n = len(_cache)
+    _cache.clear()
+    return n

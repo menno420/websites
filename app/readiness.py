@@ -118,7 +118,9 @@ def _run_state(run: dict | None) -> str:
     return run.get("conclusion") or "unknown"
 
 
-async def repo_readiness(repo: str, refresh: bool = False) -> dict[str, Any]:
+async def repo_readiness(
+    repo: str, refresh: bool = False, reveal_secrets: bool = False
+) -> dict[str, Any]:
     cfg = config.REPOS[repo]
 
     meta, rulesets_res, pulls_res, workflows_res, secrets_res, co = (
@@ -215,16 +217,26 @@ async def repo_readiness(repo: str, refresh: bool = False) -> dict[str, Any]:
     # --- CODEOWNERS enforced? ---
     co_required = _codeowner_review_required(rs_details, protection)
 
-    # --- secrets (COUNT only; the names are the one non-public datum on this
-    # now-public board, so they are never rendered or serialized — [D-0011]).
-    # Degrade on 403 (token lacks admin scope) like every other cell. ---
+    # --- secrets ---
+    # The PUBLIC board masks this to a COUNT only: the secret *names* are the one
+    # non-public datum on an otherwise public-repo-derived board, so they are
+    # never rendered or serialized on the public path (the original masking
+    # decision). They ARE the point of the gated /owner area, so when
+    # `reveal_secrets=True` (the authed path only) the names ride along in a
+    # `names` key. Default False keeps the public output byte-identical.
+    # Degrade on 403 (token lacks admin scope) like every other cell.
     if secrets_res["ok"] and isinstance(secrets_res["data"], dict):
-        secret_count = len(secrets_res["data"].get("secrets", []) or [])
+        secret_names = [
+            s.get("name") for s in secrets_res["data"].get("secrets", []) or []
+        ]
+        secret_count = len(secret_names)
         secrets_cell = {
             "known": True,
             "count": secret_count,
             "detail": f"{secret_count} secret(s)" if secret_count else "none",
         }
+        if reveal_secrets:
+            secrets_cell["names"] = secret_names
     else:
         reason = (
             "token lacks admin scope"
@@ -285,7 +297,9 @@ async def repo_readiness(repo: str, refresh: bool = False) -> dict[str, Any]:
         },
         # NOTE: the raw secrets_res is deliberately NOT included — it carries the
         # secret names under data.secrets[].name, which must never reach the public
-        # board HTML or /api/readiness.json ([D-0011]). Only the count survives.
+        # board HTML or /api/readiness.json. On the public path only the count is
+        # in secrets_cell; the names ride along in secrets_cell["names"] ONLY when
+        # the authed /owner path passed reveal_secrets=True.
         "secrets": {"status": secrets_res["status"], **secrets_cell},
         "auto_merge": {
             "allowed": allow_am,
@@ -309,9 +323,12 @@ async def repo_readiness(repo: str, refresh: bool = False) -> dict[str, Any]:
     }
 
 
-async def board(refresh: bool = False) -> list[dict]:
+async def board(refresh: bool = False, reveal_secrets: bool = False) -> list[dict]:
     return list(
         await asyncio.gather(
-            *[repo_readiness(r, refresh=refresh) for r in config.REPOS]
+            *[
+                repo_readiness(r, refresh=refresh, reveal_secrets=reveal_secrets)
+                for r in config.REPOS
+            ]
         )
     )
