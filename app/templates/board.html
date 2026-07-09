@@ -88,7 +88,7 @@
     <tr>
       <td>actions secrets</td>
       <td>
-        {% if r.secrets.known %}{{ yn(r.secrets.names|length > 0, r.secrets.names|length ~ ' secret(s)', 'none') }}
+        {% if r.secrets.known %}{{ yn(r.secrets.count > 0, r.secrets.count ~ ' secret(s)', 'none') }}
         {% else %}{{ badge('unknown', 'unknown') }}{% endif %}
       </td>
       <td>{{ badge('unknown', 'n/a') }}</td>

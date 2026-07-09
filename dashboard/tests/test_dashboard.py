@@ -1,23 +1,14 @@
 """Dashboard smoke tests. Network-free: the data feeds are primed from fixtures so
-tests never depend on raw.githubusercontent.com. Auth is exercised end-to-end (the
-Basic-auth gate is the whole reason this surface is private)."""
+tests never depend on raw.githubusercontent.com. The dashboard is PUBLIC ([D-0011]):
+every route serves without credentials, so the pages are exercised with no auth header."""
 
 from __future__ import annotations
-
-import base64
-import os
 
 import pytest
 from fastapi.testclient import TestClient
 
-# The auth gate reads SITE_PASSWORD at request time via config; set it before import.
-os.environ["SITE_PASSWORD"] = "test-secret"
-
 from dashboard import app as app_module  # noqa: E402
-from dashboard import config  # noqa: E402
 from dashboard import data_source as ds  # noqa: E402
-
-AUTH = {"Authorization": "Basic " + base64.b64encode(b"any:test-secret").decode()}
 
 DASHBOARD_FIXTURE = {
     "meta": {
@@ -118,82 +109,68 @@ def client():
     ds.clear_cache()
 
 
-# --- auth ----------------------------------------------------------------
-def test_healthz_unauthenticated(client):
+# --- public access (no auth) ---------------------------------------------
+def test_healthz(client):
     r = client.get("/healthz")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
 
 
-def test_unauthenticated_is_401(client):
+def test_root_is_public_no_auth(client):
+    # The Basic-auth gate is gone ([D-0011]); every route serves without creds.
     r = client.get("/")
-    assert r.status_code == 401
-    assert "www-authenticate" in {k.lower() for k in r.headers}
-
-
-def test_bad_password_is_401(client):
-    bad = {"Authorization": "Basic " + base64.b64encode(b"any:wrong").decode()}
-    assert client.get("/", headers=bad).status_code == 401
-
-
-def test_authenticated_is_200(client):
-    assert client.get("/", headers=AUTH).status_code == 200
-
-
-def test_fail_closed_when_password_unset(client, monkeypatch):
-    monkeypatch.setattr(config, "SITE_PASSWORD", "")
-    r = client.get("/", headers=AUTH)
-    assert r.status_code == 503  # never open when unset
+    assert r.status_code == 200
+    assert "www-authenticate" not in {k.lower() for k in r.headers}
 
 
 # --- read-only pages -----------------------------------------------------
 @pytest.mark.parametrize("path", READ_ONLY_PATHS)
 def test_pages_render(client, path):
-    r = client.get(path, headers=AUTH)
+    r = client.get(path)
     assert r.status_code == 200
     assert "SuperBot" in r.text
 
 
 def test_overview_shows_real_counts(client):
-    r = client.get("/", headers=AUTH)
+    r = client.get("/")
     assert ">2<" in r.text  # subsystem count from the fixture
     assert "Economy" in r.text
 
 
 def test_commands_lists_real_commands(client):
-    r = client.get("/commands", headers=AUTH)
+    r = client.get("/commands")
     assert "!daily" in r.text
     assert "!shop buy" in r.text  # subcommand rendered with parent
 
 
 def test_env_map_shows_names_not_values(client):
-    r = client.get("/env", headers=AUTH)
+    r = client.get("/env")
     assert "DATABASE_URL" in r.text
     assert "disbot/utils/db/pool.py:41" in r.text
     assert "never a value" in r.text.lower() or "never a secret" in r.text.lower()
 
 
 def test_settings_render(client):
-    r = client.get("/settings", headers=AUTH)
+    r = client.get("/settings")
     assert "daily_amount" in r.text
     assert "Coins per daily." in r.text
 
 
 def test_access_ladder(client):
-    r = client.get("/access", headers=AUTH)
+    r = client.get("/access")
     assert "AI Platform" in r.text
     assert "administrator" in r.text
 
 
 def test_aliases_taken_map_embedded(client):
-    r = client.get("/aliases", headers=AUTH)
+    r = client.get("/aliases")
     assert "dailies" in r.text  # existing synonym shown
     assert "taken-map" in r.text  # collision map embedded for the client checker
 
 
 # --- the deliberate control-panel stub -----------------------------------
 def test_admin_is_a_labeled_stub(client):
-    r = client.get("/admin", headers=AUTH)
+    r = client.get("/admin")
     assert r.status_code == 200
     assert "requires owner wiring" in r.text.lower()
     assert "not connected to the live bot" in r.text.lower()
@@ -230,14 +207,14 @@ def test_degrades_when_feed_unavailable():
 
     ds.set_client(_Boom())  # type: ignore[arg-type]
     with TestClient(app_module.app) as c:
-        r = c.get("/", headers=AUTH)
+        r = c.get("/")
         assert r.status_code == 200
         assert "temporarily unavailable" in r.text.lower()
     ds.clear_cache()
 
 
 def test_palette_index(client):
-    r = client.get("/palette.json", headers=AUTH)
+    r = client.get("/palette.json")
     assert r.status_code == 200
     labels = [i.get("label") for i in r.json()]
     assert "Overview" in labels
@@ -248,7 +225,7 @@ def test_palette_index(client):
 def test_console_renders_contracted_counter_dicts(client):
     """ideas/bugs are contracted counter DICTS; the tiles show total/open_count
     (the dict-vs-list defect the contract surfaced), and no drift banner shows."""
-    r = client.get("/console", headers=AUTH)
+    r = client.get("/console")
     assert r.status_code == 200
     assert "221" in r.text  # ideas.total, not len(dict)==2
     assert "Open bugs" in r.text and "BUG-0031" in r.text
@@ -262,7 +239,7 @@ def test_console_schema_version_mismatch_shows_banner():
     ds.prime_cache(ds.CONSOLE_JSON_URL, drifted)
     ds.set_client(ds.make_client())
     with TestClient(app_module.app) as c:
-        r = c.get("/console", headers=AUTH)
+        r = c.get("/console")
         assert r.status_code == 200
         assert "schema drift" in r.text.lower()
         assert "schema_version=99" in r.text
@@ -276,7 +253,7 @@ def test_console_missing_family_shows_banner():
     ds.prime_cache(ds.CONSOLE_JSON_URL, shrunk)
     ds.set_client(ds.make_client())
     with TestClient(app_module.app) as c:
-        r = c.get("/console", headers=AUTH)
+        r = c.get("/console")
         assert r.status_code == 200
         assert "schema drift" in r.text.lower()
         assert "telemetry" in r.text

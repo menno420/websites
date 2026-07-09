@@ -3,7 +3,8 @@
 Everything runtime-tunable comes from env vars (documented in docs/site.md):
   GITHUB_TOKEN        PAT used for the GitHub REST API (read scopes; admin:repo
                       needed only for the secrets panel — degrades to "unknown").
-  SITE_PASSWORD       shared secret for the HTTP Basic auth gate (required).
+                      The board is PUBLIC ([D-0011]); the secrets cell renders a
+                      count only, never the individual secret names.
   PORT                bind port (Railway injects this; default 8000).
   GITHUB_API_BASE     REST base URL (default https://api.github.com; override
                       for testing behind restricted egress).
@@ -20,7 +21,6 @@ GITHUB_RAW_BASE = os.environ.get(
     "GITHUB_RAW_BASE", "https://raw.githubusercontent.com"
 ).rstrip("/")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
-SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "")
 CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "180"))
 
 # Per-repo knowledge the API cannot tell us: what the required checks are

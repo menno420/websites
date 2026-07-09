@@ -1,27 +1,31 @@
-# Developer dashboard — private oversight site
+# Developer dashboard — public oversight site
 
 > **Status:** `living-ledger` — built + deployed 2026-07-09 (rework plan step 3,
-> dashboard half). Ledger: `docs/decisions.md` (dashboard deploy entry). Plan:
+> dashboard half); made **public** 2026-07-09 (owner "Yes drop the auth").
+> Ledger: `docs/decisions.md`. Plan:
 > `docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`.
 
-The **private** developer dashboard for the SuperBot Discord bot, rebuilt on this repo's
+The developer dashboard for the SuperBot Discord bot, rebuilt on this repo's
 substrate from superbot's `dashboard/`: **same read-only ideas and functionality, fresh
 implementation.** It is a **separate Railway service** in `superbot-websites`, deployed
 alongside `control-plane` and `botsite` from the same repo — a third service, not a router
-mounted on another app (the auth-model split the plan requires).
+mounted on another app.
 
 ## What it is
 
 - **Server-rendered** FastAPI + Jinja2, no build step — the same stack as the
   control-plane and botsite apps. Drops superbot's Tailwind-CDN: one server-rendered site
   on the shared `ds/` design system.
-- **Private.** The whole surface is internal oversight data, so every route is gated
-  behind **HTTP Basic auth** (any username, password compared constant-time to
-  `SITE_PASSWORD`) — identical to the control-plane app. **Fail-closed:** an unset
-  `SITE_PASSWORD` makes every route `503`, never open. `/healthz` is the single
-  unauthenticated route (Railway probe).
+- **Public.** Every route serves without credentials (owner decision 2026-07-09, "Yes
+  drop the auth"). The former HTTP Basic gate — and its fail-closed 503-when-unset
+  behaviour — was removed; `SITE_PASSWORD` is no longer read. The surface is read-only
+  oversight of **public** data (superbot's committed `dashboard.json` / `console.json`)
+  and holds no secret, so there is nothing to gate. `/healthz` is the Railway probe.
 - **Read-only toward the bot.** It never imports bot code and holds **no bot control
   credential**. A failed feed renders an honest banner — never faked data.
+- **Names, never values.** The oversight pages already show only *names + locations*
+  (env vars, settings keys) and **never a stored value** — nothing on the surface is a
+  secret, which is what makes going public safe.
 
 ## Routes
 
@@ -42,7 +46,7 @@ mounted on another app (the auth-model split the plan requires).
 | `/console` | Owner one-glance program console — sessions/ideas/bugs/changelog from `console.json` | `console.html` |
 | `/status` | Inventory counts + bug health snapshot | `status.html` |
 | `/palette.json` | Command-palette index (pages + subsystems + commands) | `app.py` |
-| `/healthz` | Liveness probe (JSON, unauthenticated, no network dependency) | `app.py` |
+| `/healthz` | Liveness probe (JSON, no network dependency) | `app.py` |
 | `/static/*` | `ds/` assets + `app.js` + `site.css` | `StaticFiles` |
 
 ### Control panel — a deliberate, clearly-labeled STUB
@@ -119,7 +123,7 @@ never passed; no destructive mutation was ever issued. Same guardrails as
 
 | Var | Set? | Notes |
 |---|---|---|
-| `SITE_PASSWORD` | ✅ set (secret) | **Required.** Basic-auth login (any username + this value). Fail-closed: the app 503s every route if unset. Value held by the owner (written to the deploy session's scratchpad), committed nowhere. |
+| `SITE_PASSWORD` | left set but **unused** | The Basic-auth gate was removed (2026-07-09 auth-drop decision); the app no longer reads this. Left set in Railway is harmless and reversible. |
 | `PORT` | injected by Railway | Do not set manually. |
 | `DASHBOARD_JSON_URL` | not set (default superbot@main) | Optional override of the oversight feed. |
 | `CONSOLE_JSON_URL` | not set (default superbot@main) | Optional override of the console feed. |
@@ -137,8 +141,8 @@ auto-deploys the `dashboard` root directory. No manual deploy step.
 
 ```bash
 pip install -r dashboard/requirements.txt
-SITE_PASSWORD=dev uvicorn dashboard.app:app --reload   # http://127.0.0.1:8000
-python3 -m pytest dashboard/tests                       # network-free smoke tests (feeds primed from fixtures)
+uvicorn dashboard.app:app --reload   # http://127.0.0.1:8000 — public, no auth
+python3 -m pytest dashboard/tests    # network-free smoke tests (feeds primed from fixtures)
 ```
 
 ## Open items / stubs

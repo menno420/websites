@@ -9,8 +9,8 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    `substrate-kit`, `websites`), each signal shown as **configured?** AND
    **working now?**, fetched live from the GitHub REST API:
    ruleset/branch-protection, required checks + the exact check runs on the
-   `main` head commit, CODEOWNERS present/enforced, Actions secrets (names
-   only), auto-merge + enabler-workflow presence, open-PR health (count +
+   `main` head commit, CODEOWNERS present/enforced, Actions secrets (count
+   only — names masked), auto-merge + enabler-workflow presence, open-PR health (count +
    oldest). This generalizes superbot's hand-maintained
    `docs/operations/repo-settings-state.md` ledger into a live view.
    - **Known trap honored:** superbot-next's `report` job (golden-parity
@@ -27,27 +27,34 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 
 | Route | Auth | What |
 |---|---|---|
-| `/` | Basic | readiness board |
-| `/api/readiness.json` | Basic | board data as JSON |
-| `/journal` | Basic | journal overview, all repos |
-| `/journal/{repo}` | Basic | per-repo sessions / ledgers / PRs / commits |
-| `/journal/{repo}/file?path=…&ref=main` | Basic | render a repo file (markdown → HTML) |
-| `/healthz` | none | Railway healthcheck |
+| `/` | public | readiness board |
+| `/api/readiness.json` | public | board data as JSON |
+| `/journal` | public | journal overview, all repos |
+| `/journal/{repo}` | public | per-repo sessions / ledgers / PRs / commits |
+| `/journal/{repo}/file?path=…&ref=main` | public | render a repo file (markdown → HTML) |
+| `/healthz` | public | Railway healthcheck |
 
 `?refresh=1` on any page bypasses the cache for that load.
 
-## Auth
+## Auth — none (public site)
 
-HTTP Basic on every route except `/healthz`: any username, password must equal
-`SITE_PASSWORD` (constant-time compare). If `SITE_PASSWORD` is unset the site
-returns 503 — it fails **closed**, never open.
+The site is **public**: every route serves without credentials (owner decision 2026-07-09, "Yes drop the auth"). The former HTTP Basic gate — and its fail-closed
+503-when-unset behaviour — was removed. `SITE_PASSWORD` is no longer read.
+
+The board is derived almost entirely from **public** repo data. The one datum
+that is not public — the GitHub Actions **secret names** (obtainable only with an
+admin-scope token) — is **masked to a count** (`N secret(s)`): the individual
+names are never rendered in the board HTML nor serialized into
+`/api/readiness.json`. Everything else on the board (rulesets, required checks,
+CODEOWNERS presence, auto-merge, open PRs, journal contents) is public and shown
+as-is.
 
 ## Env vars
 
 | Var | Required | Meaning |
 |---|---|---|
-| `SITE_PASSWORD` | yes | shared secret for the Basic-auth gate (never committed) |
-| `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; listing Actions **secrets** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)` |
+| `SITE_PASSWORD` | no (unused) | Formerly the Basic-auth secret; the gate was removed (2026-07-09 auth-drop decision) and the app no longer reads it. |
+| `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; the Actions **secrets count** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)`. Secret *names* are never exposed regardless of scope. |
 | `PORT` | Railway sets it | bind port (default 8000) |
 | `CACHE_TTL_SECONDS` | no | server-side GitHub cache TTL, default `180` |
 | `GITHUB_API_BASE` | no | REST base override (testing behind restricted egress) |
@@ -67,12 +74,12 @@ returns 503 — it fails **closed**, never open.
 
 ```bash
 pip install -r requirements.txt
-SITE_PASSWORD=… GITHUB_TOKEN=… uvicorn app.main:app --host 0.0.0.0 --port 8000
+GITHUB_TOKEN=… uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 Railway: build the `Dockerfile` at repo root (binds `0.0.0.0:$PORT`),
-healthcheck `/healthz`, set `SITE_PASSWORD` + `GITHUB_TOKEN` as service
-variables.
+healthcheck `/healthz`, set `GITHUB_TOKEN` as a service variable
+(`SITE_PASSWORD` is no longer used — the site is public).
 
 ## Dev without api.github.com egress
 
