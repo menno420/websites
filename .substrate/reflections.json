@@ -1,0 +1,52 @@
+[
+  {
+    "id": "R-0007",
+    "lesson": "Self-initiated:** n/a (reconstructed backfill)",
+    "evidence": "2026-07-09-dashboard-stub-denylist.md:L45",
+    "tags": [
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0008",
+    "lesson": "Recurring attention on /palette.json",
+    "evidence": "2026-07-09-rework-botsite.md:L23, 2026-07-09-rework-dashboard.md:L25",
+    "tags": [
+      "recurring-path"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0009",
+    "lesson": "Recurring attention on docs/current-state.md",
+    "evidence": "2026-07-09-rework-botsite.md:L33, 2026-07-09-rework-dashboard.md:L47, 2026-07-09-wire-github-token.md:L9",
+    "tags": [
+      "recurring-path"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0010",
+    "lesson": "Recurring attention on docs/decisions.md",
+    "evidence": "2026-07-09-rework-botsite.md:L33, 2026-07-09-rework-dashboard.md:L47, 2026-07-09-wire-github-token.md:L42",
+    "tags": [
+      "recurring-path"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0011",
+    "lesson": "Recurring attention on docs/deployment.md",
+    "evidence": "2026-07-09-rework-botsite.md:L55, 2026-07-09-wire-github-token.md:L9",
+    "tags": [
+      "recurring-path"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  }
+]

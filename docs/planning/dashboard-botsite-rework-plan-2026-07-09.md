@@ -272,6 +272,9 @@ or edits the live sites.
 
 ## 5. Open questions for the owner
 
+> Also tracked as Q-blocks in `docs/question-router.md` (Q-0001…Q-0007), where
+> each carries its current status and any decision that has since touched it.
+
 Tight list — only the genuine product/intent calls the rework can't make itself:
 
 1. **Public vs. private, per site.** botsite is assumed to stay **public** (as
