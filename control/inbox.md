@@ -13,3 +13,9 @@ priority: P1
 do: Build a FLEET page on the control-plane board: one row per fleet lane (superbot, superbot-next, substrate-kit, websites, trading-strategy, codetool-lab-fable5, codetool-lab-opus4.8, codetool-lab-sonnet5, superbot-games×2 lanes) rendering each lane's control/status*.md (fetch via GitHub API at request time or short cache): updated-age (heartbeat freshness with a stale threshold badge), phase, health, last-shipped, blockers, ⚑ needs-owner, plus last-commit age and open-PR count per repo. Owner's need verbatim: one screen to "keep track of which agents are running and how far along they are" — the claude.ai UI can't show this (session activity is invisible), so the heartbeat files are the truth; make them one glanceable page. Public read-only like the rest of the board; add the websites row's own dogfood entry.
 why: 10 Projects now run in parallel; the owner tracks them by opening sessions one by one — this page replaces that.
 done-when: /fleet live on the control-plane deployment, verified against the running deploy; status.md reports done=002.
+
+## ORDER 003 · 2026-07-09T16:17Z · status: new
+priority: P1
+do: Self-review retro. Answer EVERY question in docs/retro/QUESTIONS.md, by ID, in a new file docs/retro/self-review-2026-07-09.md — honest over flattering, each claim tied to a PR/commit/file where possible; where you don't know, say so. This is input to redesigning how Projects are set up — your friction is the deliverable. Land it as a READY PR same session.
+why: the owner is designing gen-2 Projects from gen-1's lived experience.
+done-when: self-review merged; status acks the order.
