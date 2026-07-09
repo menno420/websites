@@ -4,6 +4,8 @@
 > merged on green `quality`. First reviewable PR through the now-REQUIRED kit
 > `quality` CI gate; STEP 0 confirmed the gate is enforced.
 
+- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+
 ## STEP 0 — required `quality` check verified enforced
 
 Opened PR #18 and read its live state:

@@ -2,6 +2,8 @@
 
 > **Status:** `complete` — shipped as PR #2 (`claude/control-plane-site`, squash-merged).
 
+- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+
 **What this session was about:** build the control-plane / oversight site — the
 repo's core deliverable (kickoff sequence step 2): a **readiness board** and a
 **journal browser**, live GitHub data, auth-gated, Railway-ready.

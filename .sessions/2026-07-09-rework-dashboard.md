@@ -2,6 +2,8 @@
 
 > **Status:** `complete`
 
+- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+
 ## What I did
 
 Executed the dashboard half of the rework plan

@@ -7,6 +7,8 @@
 > together with the real work (the STRICT gate fails a born-red card, so this is
 > not opened empty).
 
+- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+
 ## Fleet ritual (STEP 1)
 
 - Pulled latest `main` (`276b93e`). **`control/README.md` and `control/inbox.md`
