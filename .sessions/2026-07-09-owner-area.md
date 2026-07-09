@@ -1,6 +1,7 @@
 # 2026-07-09 — Gated /owner area (public site unchanged; privileged overlay)
 
-> **Status:** `in-progress`
+> **Status:** `complete` — shipped as PR #14 (`claude/owner-area`); live deploy
+> evidence captured in `docs/deployment.md` and the follow-up evidence PR.
 >
 > Add a password-gated `/owner` area to the control-plane app while keeping every
 > existing public route byte-identical. `/owner` un-masks the secret NAMES the
