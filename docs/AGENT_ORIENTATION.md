@@ -31,6 +31,28 @@ The planted doc set (this router reaches every live doc — keep it that way):
 `docs/question-router.md` · `docs/CAPABILITIES.md` · `docs/ideas/README.md` — plus the root
 `CONSTITUTION.md` (the working agreement) and `.session-journal.md`.
 
+## Succession (gen-1 → gen-2)
+
+The gen-1 lane wound down on 2026-07-09; these are its handover deliverables.
+A fresh (gen-2) session starts here:
+
+- `docs/succession/next-boot-2026-07-09.md` — the fresh session's entry point:
+  first-10-minutes read order, the ORDER-005 trap, every known wall with its
+  verbatim error text.
+- `docs/succession/proposed-custom-instructions-2026-07-09.md` — proposed gen-2
+  Custom Instructions (KEEP/DROP/ADD table + a paste-in ready text).
+- `docs/succession/environment-spec-2026-07-09.md` — what a fresh gen-2
+  environment needs: base assumptions, env var NAMES (never values), network
+  facts, and the setup script's recorded test evidence.
+- `docs/succession/gen2-feedback-2026-07-09.md` — blueprint/seed feedback from
+  the gen-1 lane: ranked platform gaps, verbatim wall strings, seed suggestions.
+- `docs/retro/gen1-final-retro-2026-07-09.md` — the closing gen-1
+  retrospective: the whole 46-PR day, every friction class, how it felt, what
+  remains for the owner.
+- `scripts/setup-env.sh` — the defensive always-exit-0 environment setup script
+  (installs every discovered requirements file + pytest/python-multipart;
+  proven in the runs recorded in the environment spec).
+
 ## Verifying any change
 
 ```
