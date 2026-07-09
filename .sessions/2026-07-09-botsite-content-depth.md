@@ -1,6 +1,6 @@
 # Session 2026-07-09 — botsite content depth: command detail pages + enriched changelog
 
-> **Status:** `complete` — PR #TBD (botsite content-depth batch, [D-0016]).
+> **Status:** `complete` — PR #21 (botsite content-depth batch, [D-0016]).
 
 ## What I did
 
@@ -37,7 +37,7 @@ superbot's committed `site.json`.
   URL-safe `+prize` resolves; unknown → 404; absent fields (aliases/linked-ideas)
   omitted; `/commands` rows link to detail (incl. `%2Bprize`); changelog enriched
   (build panel + grouped kinds + sourcing note); changelog honest-banner degrade path.
-  Full suite **60 passed**; `python3 bootstrap.py check --strict --require-session-log`
+  Botsite suite **23 passed**; all three CI suites **80 passed**; `python3 bootstrap.py check --strict --require-session-log`
   green at close.
 - **Docs:** `docs/botsite.md` (routes table + command-detail + changelog-source
   sections), `docs/decisions.md` [D-0016], `docs/current-state.md` ledger entry.
