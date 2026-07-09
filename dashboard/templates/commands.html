@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Commands — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ stats.total }} commands · {{ stats.cogs }} cogs</span>
+    <div class="head-row"><h1>Cog &amp; command explorer</h1></div>
+    <p class="sb-lead">Every command across every cog, badged by kind (prefix / slash / subcommand) and
+      whether it is button-backed. Search by name or brief, or filter by area.</p>
+  </section>
+
+  <div class="sb-statrow sb-statrow-4" style="margin:var(--sb-s-4) 0">
+    <div class="sb-stat"><span class="v">{{ stats.top_prefix }}</span><span class="l">Top-level prefix</span></div>
+    <div class="sb-stat"><span class="v">{{ stats.slash }}</span><span class="l">Slash</span></div>
+    <div class="sb-stat"><span class="v">{{ stats.subcommands }}</span><span class="l">Subcommands</span></div>
+    <div class="sb-stat"><span class="v">{{ stats.button }}</span><span class="l">Button-backed</span></div>
+  </div>
+
+  <div data-filter-root>
+    <div class="toolbar">
+      <div class="sb-search" role="search">
+        {{ icon("search", 16) }}
+        <input type="text" data-filter-search placeholder="Search commands…" aria-label="Search commands">
+      </div>
+      <span class="cmd-count"><span data-filter-count>{{ commands|length }}</span> shown</span>
+    </div>
+    <div class="sb-filterbar">
+      <button class="sb-pill" data-filter-pill="all" aria-pressed="true">all</button>
+      {% for c in categories %}
+      <button class="sb-pill" data-filter-pill="{{ c.id }}" aria-pressed="false">{{ c.label|lower }}</button>
+      {% endfor %}
+    </div>
+
+    <div class="sb-cmdlist">
+      {% for c in commands %}
+      {% set sys = sysmap.get(c.subsystem) %}
+      <div class="sb-cmdrow" id="cmd-{{ c.name }}" data-filter-item data-cat="{{ sys.category if sys else 'other' }}"
+           data-search="{{ c.name }} {{ c.brief }} {{ (c.aliases or [])|join(' ') }} {{ c.subsystem }}"
+           style="cursor:default">
+        <code>{% if c.parent %}!{{ c.parent }} {{ c.name }}{% else %}!{{ c.name }}{% endif %}</code>
+        <span class="desc">{{ c.brief or c.subsystem }}</span>
+        <span class="cmd-meta">
+          {% if c.aliases %}<span class="cmd-count">{{ c.aliases|join(', ') }}</span>{% endif %}
+          <span class="sb-badge sb-badge-neutral">{{ c.type or 'prefix' }}</span>
+          {% if c.is_group %}<span class="sb-badge sb-badge-info">group</span>{% endif %}
+          {% if c.button_backed %}<span class="sb-badge sb-badge-ok">button</span>{% endif %}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    <div data-filter-empty style="display:none">
+      <div class="sb-empty"><span class="ico">{{ icon("search", 20) }}</span><h4>No commands match</h4><p>Try a different search or clear the filter.</p></div>
+    </div>
+  </div>
+  <p class="eyebrow-note">Prefix is <code class="sb-mono">!</code> by default. Kinds, aliases, and button-backing come from the bot's own registry scan. Propose a new alias on the <a href="/aliases">aliases</a> page.</p>
+
+  {% include "_src_note.html" %}
+</div>
+{% endblock %}

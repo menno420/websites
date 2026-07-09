@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Functions — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ counts.functions or 0 }} subsystems</span>
+    <div class="head-row"><h1>Function catalogue</h1></div>
+    <p class="sb-lead">Every subsystem the bot registers, grouped by area — its description, visibility
+      tier, entry-point commands, and capabilities. A faithful mirror of the bot's subsystem registry.</p>
+  </section>
+
+  <div data-filter-root>
+    <div class="toolbar">
+      <div class="sb-search" role="search">
+        {{ icon("search", 16) }}
+        <input type="text" data-filter-search placeholder="Search subsystems…" aria-label="Search subsystems">
+      </div>
+      <span class="cmd-count"><span data-filter-count>{{ counts.functions or 0 }}</span> shown</span>
+    </div>
+    <div class="sb-filterbar">
+      <button class="sb-pill" data-filter-pill="all" aria-pressed="true">all</button>
+      {% for cat, m, entries in groups %}
+      <button class="sb-pill" data-filter-pill="{{ cat }}" aria-pressed="false">{{ m.label|lower }}</button>
+      {% endfor %}
+    </div>
+
+    <div class="card-grid" style="margin-top:var(--sb-s-5)">
+      {% for cat, m, entries in groups %}{% for e in entries %}
+      <div class="sb-card feat-link" id="fn-{{ e.key }}" data-filter-item data-cat="{{ cat }}"
+           data-search="{{ e.key }} {{ e.display_name }} {{ e.description }} {{ (e.tags or [])|join(' ') }}"
+           style="--c:{{ m.color }}">
+        <div class="sb-feat-top">
+          <span class="sb-tile" style="--c:{{ m.color }}">{{ e.emoji or '·' }}</span>
+          <div style="min-width:0">
+            <div class="sb-cmd-name" style="font-weight:700">{{ e.display_name or e.key }}</div>
+            <span class="sb-feat-cat">{{ m.label }} · {{ e.visibility_tier or 'user' }}</span>
+          </div>
+        </div>
+        <p class="feat-desc" style="-webkit-line-clamp:4">{{ e.description }}</p>
+        {% if e.entry_points %}
+        <div class="feat-tags">
+          {% for ep in e.entry_points[:6] %}<code class="sb-chip">!{{ ep }}</code>{% endfor %}
+        </div>
+        {% endif %}
+        {% if e.tags %}
+        <div class="feat-tags">
+          {% for t in e.tags[:5] %}<span class="sb-badge sb-badge-neutral">{{ t }}</span>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}{% endfor %}
+    </div>
+    <div data-filter-empty style="display:none">
+      <div class="sb-empty"><span class="ico">{{ icon("search", 20) }}</span><h4>No subsystems match</h4><p>Try a different search or clear the filter.</p></div>
+    </div>
+  </div>
+
+  {% include "_src_note.html" %}
+</div>
+{% endblock %}

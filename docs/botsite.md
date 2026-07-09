@@ -1,7 +1,7 @@
 # Bot site — public marketing + reference
 
 > **Status:** `living-ledger` — built + deployed 2026-07-09 (rework plan step 3,
-> botsite half). Ledger: [D-0008]. Plan:
+> botsite half). Ledger: `docs/decisions.md` (botsite deploy entry). Plan:
 > `docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`.
 
 The **public** marketing + reference site for the SuperBot Discord bot, rebuilt on

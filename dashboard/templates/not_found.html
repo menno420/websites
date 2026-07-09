@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Not found — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> 404</span>
+    <div class="head-row"><h1>Not found</h1></div>
+    <p class="sb-lead">That page doesn't exist in the dashboard.</p>
+  </section>
+  <div class="sb-empty">
+    <span class="ico">{{ icon("search", 20) }}</span>
+    <h4>Nothing here</h4>
+    <p>Head back to the <a href="/">overview</a> or use ⌘K to search.</p>
+  </div>
+</div>
+{% endblock %}

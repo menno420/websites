@@ -1,0 +1,9 @@
+{% from "_icons.html" import icon %}
+<p class="src-note">
+  {{ icon("info", 14) }}
+  Read-only. Data from superbot's committed
+  <a href="https://github.com/menno420/superbot/blob/main/dashboard/data/dashboard.json" target="_blank" rel="noopener"><code>dashboard.json</code></a>
+  {% if fetched_at %}· fetched {{ fetched_at }}{% endif %}
+  {% if res and res.cached %}· cached{% endif %}
+  · <a href="?refresh=1">refresh</a>
+</p>

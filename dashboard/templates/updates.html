@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Updates — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ updates|length }} sessions</span>
+    <div class="head-row"><h1>Updates feed</h1></div>
+    <p class="sb-lead">The bot's session log, newest first — every development session from
+      <code class="sb-mono">.sessions/</code>, with its status and whether it was self-initiated.</p>
+  </section>
+
+  <div data-filter-root>
+    <div class="toolbar">
+      <div class="sb-search" role="search">
+        {{ icon("search", 16) }}
+        <input type="text" data-filter-search placeholder="Search sessions…" aria-label="Search updates">
+      </div>
+      <span class="cmd-count"><span data-filter-count>{{ updates|length }}</span> shown</span>
+    </div>
+
+    <div class="sb-cmdlist">
+      {% for u in updates %}
+      <a class="sb-cmdrow" href="https://github.com/menno420/superbot/blob/main/.sessions/{{ u.file }}" target="_blank" rel="noopener"
+         data-filter-item data-cat="all" data-search="{{ u.title }} {{ u.date }} {{ u.status }} {{ u.run_type }}">
+        <span class="cmd-count">{{ u.date }}</span>
+        <span class="desc">{{ u.title }}</span>
+        <span class="cmd-meta">
+          {% if u.run_type %}<span class="sb-badge sb-badge-neutral">{{ u.run_type }}</span>{% endif %}
+          {% if u.self_initiated %}<span class="sb-badge sb-badge-flag">self-initiated</span>{% endif %}
+          <span class="sb-badge {{ 'sb-badge-ok' if u.status == 'complete' else 'sb-badge-info' }}">{{ u.status or 'session' }}</span>
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+    <div data-filter-empty style="display:none">
+      <div class="sb-empty"><span class="ico">{{ icon("search", 20) }}</span><h4>No sessions match</h4><p>Try a different search.</p></div>
+    </div>
+  </div>
+
+  {% include "_src_note.html" %}
+</div>
+{% endblock %}

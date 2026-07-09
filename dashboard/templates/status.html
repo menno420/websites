@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Status — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> inventory &amp; health</span>
+    <div class="head-row"><h1>Status</h1></div>
+    <p class="sb-lead">Deployed build, inventory counts, and bug health — the one-glance snapshot of what
+      the bot exposes as of its last data export.</p>
+  </section>
+
+  <div class="sb-status-banner" style="--c:{{ 'var(--sb-danger)' if open_bugs else 'var(--sb-ok)' }}">
+    <span class="sb-pulse"></span>
+    <div>
+      <strong>{{ 'Attention: ' ~ open_bugs|length ~ ' open bug(s)' if open_bugs else 'All clear' }}</strong>
+      <span class="sub">
+        {% if build.commit %}Build <a href="https://github.com/menno420/superbot/commit/{{ build.commit }}" target="_blank" rel="noopener">{{ build.commit[:8] }}</a>{% if build.committed_at %} · {{ build.committed_at }}{% endif %}{% else %}Build unknown{% endif %}
+        · {{ bugs_total }} bugs tracked · generated {{ meta.generated_at or '—' }}
+      </span>
+    </div>
+  </div>
+
+  <div class="group-head"><h2>Inventory</h2></div>
+  <div class="card-grid">
+    {% for c in cards %}
+    <a class="sb-stat hoverable" href="{{ c.href }}"><span class="v">{{ c.value }}</span><span class="l">{{ c.label }}</span></a>
+    {% endfor %}
+  </div>
+
+  {% if open_bugs %}
+  <div class="group-head" style="margin-top:var(--sb-s-7)"><h2>Open bugs</h2><span class="n">{{ open_bugs|length }}</span></div>
+  <div class="sb-cmdlist">
+    {% for b in open_bugs %}
+    <div class="sb-cmdrow" style="cursor:default">
+      <code>{{ b.id }}</code>
+      <span class="desc">{{ b.title }}</span>
+      <span class="cmd-meta"><span class="sb-badge sb-badge-danger">open</span></span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% include "_src_note.html" %}
+</div>
+{% endblock %}

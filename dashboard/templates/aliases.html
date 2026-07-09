@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Aliases — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ synonyms|length }} synonym groups</span>
+    <div class="head-row"><h1>Suggest a command alias</h1></div>
+    <p class="sb-lead">Pick a command, propose an alias, and get a live collision check against every
+      command name, alias, and synonym — plus a prefilled GitHub issue and a paste-ready
+      <code class="sb-mono">synonyms.py</code> snippet. Fully client-side; nothing is written from here.</p>
+  </section>
+
+  <div class="sb-panel alias-tool">
+    <div class="sb-field">
+      <label class="sb-label" for="alias-cmd">Command</label>
+      <input class="sb-inp" id="alias-cmd" list="cmd-options" placeholder="e.g. leaderboard" autocomplete="off">
+      <datalist id="cmd-options">
+        {% for name in commands_list %}<option value="{{ name }}">{% endfor %}
+      </datalist>
+    </div>
+    <div class="sb-field">
+      <label class="sb-label" for="alias-new">Proposed alias</label>
+      <input class="sb-inp" id="alias-new" placeholder="e.g. lb" autocomplete="off">
+    </div>
+    <div id="alias-result" class="sb-mono"></div>
+    <div id="alias-out" style="display:none">
+      <pre class="snippet" id="alias-snippet"></pre>
+      <a class="sb-btn sb-btn-primary sb-btn-sm" id="alias-issue" target="_blank" rel="noopener">{{ icon("external", 14) }} Open a prefilled GitHub issue</a>
+    </div>
+  </div>
+
+  {% if synonyms %}
+  <div class="group-head"><h2>Existing synonyms</h2><span class="n">{{ synonyms|length }}</span></div>
+  <div class="sb-cmdlist">
+    {% for s in synonyms %}
+    <div class="sb-cmdrow" style="cursor:default">
+      <code>!{{ s.canonical }}</code>
+      <span class="cmd-meta" style="margin-left:auto">
+        {% for syn in s.synonyms %}<span class="sb-badge sb-badge-neutral">{{ syn }}</span>{% endfor %}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% include "_src_note.html" %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="taken-map" type="application/json">{{ taken | tojson }}</script>
+<script>
+(function () {
+  var taken = {};
+  try { taken = JSON.parse(document.getElementById("taken-map").textContent || "{}"); } catch (e) {}
+  var cmd = document.getElementById("alias-cmd");
+  var alias = document.getElementById("alias-new");
+  var result = document.getElementById("alias-result");
+  var out = document.getElementById("alias-out");
+  var snippet = document.getElementById("alias-snippet");
+  var issue = document.getElementById("alias-issue");
+
+  function check() {
+    var command = (cmd.value || "").trim().toLowerCase();
+    var proposed = (alias.value || "").trim().toLowerCase();
+    out.style.display = "none";
+    if (!proposed) { result.textContent = ""; return; }
+    if (!/^[a-z0-9_-]+$/.test(proposed)) {
+      result.innerHTML = '<span class="bad-line">✗ Aliases may only contain letters, digits, - and _.</span>';
+      return;
+    }
+    var owner = taken[proposed];
+    if (owner) {
+      result.innerHTML = '<span class="bad-line">✗ <code>' + proposed + '</code> is already taken — ' + owner + '.</span>';
+      return;
+    }
+    result.innerHTML = '<span class="ok-line">✓ <code>' + proposed + '</code> is free.</span>';
+    if (command) {
+      out.style.display = "";
+      snippet.textContent = '"' + command + '": ["' + proposed + '"],  # add to SYNONYMS in disbot/.../synonyms.py';
+      var title = encodeURIComponent("Alias suggestion: " + proposed + " → !" + command);
+      var body = encodeURIComponent(
+        "Proposed alias `" + proposed + "` for command `!" + command + "`.\n\n" +
+        "Collision check (from the dashboard): free.\n\n" +
+        "Snippet:\n\n    \"" + command + "\": [\"" + proposed + "\"],\n"
+      );
+      issue.href = "https://github.com/menno420/superbot/issues/new?title=" + title + "&body=" + body;
+    }
+  }
+  cmd.addEventListener("input", check);
+  alias.addEventListener("input", check);
+})();
+</script>
+{% endblock %}

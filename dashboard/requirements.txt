@@ -1,0 +1,9 @@
+# Dashboard service runtime deps — pinned. Its OWN requirements (Root Directory =
+# dashboard), separate from the control-plane's and botsite's, so each Railway service
+# installs only what it needs. This is a PRIVATE (Basic-auth-gated) read-only oversight
+# surface: NO OAuth / control-API / DB-write deps here. httpx is used only to GET the
+# public dashboard.json / console.json over raw.githubusercontent.com.
+fastapi==0.139.0
+uvicorn==0.51.0
+jinja2==3.1.6
+httpx==0.28.1

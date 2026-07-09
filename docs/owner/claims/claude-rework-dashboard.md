@@ -1,1 +1,0 @@
-- claude/rework-dashboard · rebuild superbot dashboard read-only oversight surface as new websites service + Railway deploy · dashboard/ docs/dashboard.md docs/decisions.md docs/current-state.md · 2026-07-09

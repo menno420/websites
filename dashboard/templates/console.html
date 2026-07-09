@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Console — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> owner one-glance console</span>
+    <div class="head-row"><h1>Program console</h1></div>
+    <p class="sb-lead">A one-glance program console fed by superbot's committed
+      <code class="sb-mono">console.json</code> — recent sessions, live ideas, open bugs, and the user-facing
+      changelog in one place.</p>
+  </section>
+
+  {% if not console_ok %}
+  <div class="sb-error" role="alert">
+    {{ icon("alert", 16) }}
+    <div><strong>Console feed unavailable.</strong>
+      superbot's <code>console.json</code> could not be fetched{% if console_error %} (<span class="sb-mono">{{ console_error }}</span>){% endif %}.
+      Nothing below is faked. Try <a href="?refresh=1">refresh</a>.</div>
+  </div>
+  {% else %}
+
+  <div class="sb-statrow sb-statrow-4" style="margin-bottom:var(--sb-s-6)">
+    <div class="sb-stat"><span class="v">{{ sessions|length }}</span><span class="l">Recent sessions</span></div>
+    <div class="sb-stat"><span class="v">{{ console_ideas|length }}</span><span class="l">Ideas</span></div>
+    <div class="sb-stat"><span class="v">{{ console_bugs|length }}</span><span class="l">Bugs</span></div>
+    <div class="sb-stat"><span class="v">{{ console_changelog|length }}</span><span class="l">Changelog entries</span></div>
+  </div>
+
+  {% if console_changelog %}
+  <div class="group-head"><h2>Changelog</h2></div>
+  <div class="sb-cmdlist">
+    {% for e in console_changelog %}
+    <div class="sb-cmdrow" style="cursor:default">
+      <span class="cmd-count">{{ e.date }}</span>
+      <span class="desc"><strong>{{ e.title }}</strong> — {{ e.summary }}</span>
+      <span class="cmd-meta"><span class="sb-badge sb-badge-info">{{ e.kind or 'update' }}</span></span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if sessions %}
+  <div class="group-head" style="margin-top:var(--sb-s-7)"><h2>Recent sessions</h2><a class="n" href="/updates">all →</a></div>
+  <div class="sb-cmdlist">
+    {% for s in sessions[:20] %}
+    <a class="sb-cmdrow" href="https://github.com/menno420/superbot/blob/main/.sessions/{{ s.file }}" target="_blank" rel="noopener">
+      <span class="cmd-count">{{ s.date }}</span>
+      <span class="desc">{{ s.title }}</span>
+      <span class="cmd-meta">
+        {% if s.self_initiated %}<span class="sb-badge sb-badge-flag">self-initiated</span>{% endif %}
+        <span class="sb-badge {{ 'sb-badge-ok' if s.status == 'complete' else 'sb-badge-info' }}">{{ s.status or 'session' }}</span>
+      </span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <p class="src-note">{{ icon("info", 14) }} Data from superbot's committed
+    <a href="https://github.com/menno420/superbot/blob/main/botsite/data/console.json" target="_blank" rel="noopener"><code>console.json</code></a>
+    {% if console_meta.generated_at %}· generated {{ console_meta.generated_at }}{% endif %} · <a href="?refresh=1">refresh</a></p>
+  {% endif %}
+</div>
+{% endblock %}
