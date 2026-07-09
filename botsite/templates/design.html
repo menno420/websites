@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Design system — SuperBot{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> living style guide</span>
+    <div class="head-row"><h1>Design system</h1></div>
+    <p class="sb-lead">The shared program design system (<code>ds/</code>) this site is built on:
+      semantic tokens, a dark-first theme with a real light mode, and the component library.
+      Toggle the theme in the nav to see both. Everything below renders from the real CSS.</p>
+  </section>
+
+  <section class="section-sm">
+    <div class="sb-panel"><h3>Accent tokens</h3>
+      <div class="sb-grid-4">
+        {% for name, var in [("brand","--sb-brand"),("sky","--sb-sky"),("amber","--sb-amber"),("pink","--sb-pink"),("indigo","--sb-indigo"),("rose","--sb-rose"),("ok","--sb-ok"),("danger","--sb-danger")] %}
+        <div class="swatch" style="background:var({{ var }})">{{ name }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="sb-panel"><h3>Buttons</h3>
+      <div class="sb-row">
+        <button class="sb-btn sb-btn-primary">Primary</button>
+        <button class="sb-btn sb-btn-ghost">Ghost</button>
+        <button class="sb-btn sb-btn-soft">Soft</button>
+        <button class="sb-btn sb-btn-danger">Danger</button>
+        <button class="sb-btn sb-btn-primary sb-btn-sm">Small</button>
+      </div>
+    </div>
+
+    <div class="sb-panel"><h3>Badges &amp; chips</h3>
+      <div class="sb-row">
+        <span class="sb-badge sb-badge-ok">{{ icon("check", 11) }} stable</span>
+        <span class="sb-badge sb-badge-info">in progress</span>
+        <span class="sb-badge sb-badge-warn">beta</span>
+        <span class="sb-badge sb-badge-danger">deprecated</span>
+        <span class="sb-badge sb-badge-flag">{{ icon("flag", 11) }} flag</span>
+        <span class="sb-badge sb-badge-neutral">neutral</span>
+        <span class="sb-chip">tag</span>
+      </div>
+    </div>
+
+    <div class="sb-panel"><h3>Stat tiles</h3>
+      <div class="sb-statrow">
+        <div class="sb-stat"><span class="v">{{ counts.commands }}</span><span class="l">commands</span></div>
+        <div class="sb-stat"><span class="v">{{ counts.features }}</span><span class="l">features</span></div>
+        <div class="sb-stat"><span class="v">{{ counts.games }}</span><span class="l">games</span></div>
+      </div>
+    </div>
+
+    <div class="sb-panel"><h3>Cards</h3>
+      <div class="card-grid two">
+        <div class="sb-card sb-card-hover sb-feat" style="--c:var(--sb-sky)">
+          <span class="corner" aria-hidden="true"></span>
+          <div class="sb-feat-top"><span class="sb-tile">{{ icon("layers", 22) }}</span><h3 style="font-size:var(--sb-text-lg)">Feature card</h3></div>
+          <div class="feat-desc">Accent-aware entity card with a hover lift and a corner glow.</div>
+          <div class="sb-feat meta"><span class="go">Open {{ icon("chevron", 14) }}</span></div>
+        </div>
+        <div class="sb-card"><h3>Plain card</h3><p>A simple content card on the soft surface token.</p></div>
+      </div>
+    </div>
+
+    <div class="sb-panel"><h3>Command row</h3>
+      <div class="sb-cmdlist">
+        <div class="sb-cmdrow" style="--c:var(--sb-brand)">
+          <code>!ping</code><span class="desc">Check the bot's latency.</span>
+          <span class="cmd-meta"><span class="sb-badge sb-badge-neutral">Anyone</span><span class="sb-badge sb-badge-ok">stable</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-panel"><h3>Form controls</h3>
+      <div class="sb-field"><label class="sb-label">Label</label><input class="sb-inp" placeholder="Text input"><span class="sb-hint">Helper hint text.</span></div>
+    </div>
+
+    <div class="sb-panel"><h3>Pending lane (never fake data)</h3>
+      <div class="sb-lane-pending">
+        <div class="head">{{ icon("inbox", 16) }}<h4>Declared but not flowing</h4></div>
+        <p>A feed that's declared but not yet wired renders as a labeled pending lane, never as invented content.</p>
+        <span class="feed">feed: pending</span>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

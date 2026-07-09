@@ -1,0 +1,9 @@
+# Bot-site service runtime deps — pinned. Its OWN requirements (Root Directory =
+# botsite), separate from the control-plane's, so each Railway service installs only
+# what it needs. This is the PUBLIC, secret-free surface: NO httpx-auth/OAuth/DB-write
+# deps here beyond the anonymous raw-GitHub fetch. httpx is used only to GET the public
+# site.json over raw.githubusercontent.com.
+fastapi==0.139.0
+uvicorn==0.51.0
+jinja2==3.1.6
+httpx==0.28.1

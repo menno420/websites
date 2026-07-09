@@ -1,0 +1,130 @@
+"""Bot-site smoke tests. Network-free: the site data feed is primed from a fixture
+so tests never depend on raw.githubusercontent.com."""
+
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+from botsite import app as app_module
+from botsite import data_source as ds
+
+FIXTURE = {
+    "meta": {"build": {"commit": "abcdef1234", "subject": "test build", "committed_at": "2026-07-09T00:00:00Z"}},
+    "counts": {"commands": 2, "features": 2, "games": 1},
+    "catalogue": [
+        {
+            "key": "economy",
+            "display_name": "Economy",
+            "description": "Coins, shop, and daily rewards.",
+            "emoji": "💰",
+            "category": "economy",
+            "tags": ["coins", "shop"],
+            "badges": ["economy"],
+            "is_game": False,
+        },
+        {
+            "key": "blackjack",
+            "display_name": "Blackjack",
+            "description": "Play blackjack in chat.",
+            "emoji": "🃏",
+            "category": "games",
+            "tags": ["cards"],
+            "badges": ["games"],
+            "is_game": True,
+        },
+    ],
+    "commands": [
+        {"name": "daily", "aliases": ["d"], "category": "economy", "permissions": "user",
+         "usage": "Claim your daily coins.", "description": "Daily reward.", "examples": ["!daily"],
+         "status": "finished", "linked_ideas": []},
+        {"name": "blackjack", "aliases": [], "category": "games", "permissions": "user",
+         "usage": "Play blackjack.", "description": "Blackjack game.", "examples": ["!blackjack"],
+         "status": "in-progress", "linked_ideas": []},
+    ],
+    "bot_changelog": [
+        {"date": "2026-06-19", "title": "New site", "kind": "improvement", "summary": "A new public site."},
+    ],
+}
+
+
+@pytest.fixture()
+def client():
+    ds.clear_cache()
+    ds.prime_cache(FIXTURE)
+    ds.set_client(ds.make_client())  # never actually hit (cache is warm)
+    with TestClient(app_module.app) as c:
+        yield c
+    ds.clear_cache()
+
+
+def test_healthz(client):
+    r = client.get("/healthz")
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+
+
+@pytest.mark.parametrize("path", ["/", "/features", "/commands", "/games", "/changelog", "/status", "/design", "/submit"])
+def test_pages_render(client, path):
+    r = client.get(path)
+    assert r.status_code == 200
+    assert "SuperBot" in r.text
+    # data-driven content shows through
+    assert "site.json" in r.text or "SuperBot" in r.text
+
+
+def test_home_shows_real_counts(client):
+    r = client.get("/")
+    assert ">2<" in r.text  # commands/features count from the fixture
+    assert "Add to Discord" in r.text
+
+
+def test_commands_lists_real_commands(client):
+    r = client.get("/commands")
+    assert "!daily" in r.text
+    assert "!blackjack" in r.text
+
+
+def test_feature_detail_ok_and_404(client):
+    assert client.get("/features/economy").status_code == 200
+    r = client.get("/features/nope-nope")
+    assert r.status_code == 404
+    assert "not found" in r.text.lower()
+
+
+def test_games_only_games(client):
+    r = client.get("/games")
+    assert "Blackjack" in r.text
+
+
+def test_submit_stub_is_honest(client):
+    r = client.post("/submit")
+    assert r.status_code == 200
+    assert "not live yet" in r.text.lower() or "not yet provisioned" in r.text.lower()
+
+
+def test_palette_index(client):
+    r = client.get("/palette.json")
+    assert r.status_code == 200
+    labels = [i.get("label") for i in r.json()]
+    assert "Home" in labels
+
+
+def test_degrades_when_feed_unavailable():
+    """No fake data: a failed feed shows the honest error banner, still 200."""
+    ds.clear_cache()
+
+    class _Boom:
+        async def get(self, *a, **k):
+            raise RuntimeError("network down")
+
+        async def aclose(self):
+            pass
+
+    ds.set_client(_Boom())  # type: ignore[arg-type]
+    with TestClient(app_module.app) as c:
+        # lifespan warm-fetch fails silently; page still renders the honest banner
+        r = c.get("/")
+        assert r.status_code == 200
+        assert "temporarily unavailable" in r.text.lower()
+    ds.clear_cache()

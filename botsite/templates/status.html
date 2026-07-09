@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Status — SuperBot{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> service status</span>
+    <div class="head-row"><h1>System status</h1></div>
+    <p class="sb-lead">An honest snapshot of the subsystems, as of the last deploy. This page
+      does not invent uptime percentages or incident history — it reflects the areas the bot
+      ships and its build provenance.</p>
+  </section>
+
+  <div class="section-sm">
+    <div class="sb-status-banner" style="--c:var(--sb-ok)">
+      <span class="sb-pulse" aria-hidden="true"></span>
+      <div>
+        <strong>All systems operational</strong>
+        <span class="sub">As of build
+          {% if build.commit %}<a href="https://github.com/menno420/superbot/commit/{{ build.commit }}" target="_blank" rel="noopener">{{ build.commit[:8] }}</a>{% else %}(unknown){% endif %}
+          {% if build.committed_at %}· {{ build.committed_at }}{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <div class="sys-list">
+      {% for s in systems %}
+      <div class="sb-sys">
+        <div class="sb-sys-head">
+          <div class="sb-sys-id">
+            <span class="sb-dot" style="--c:{{ s.color }}" aria-hidden="true"></span>
+            <div>
+              <div class="sb-sys-name">{{ s.name }}</div>
+              <div class="sb-sys-desc">{{ s.desc }}</div>
+            </div>
+          </div>
+          <span class="sb-sys-state" style="color:var(--sb-ok)">{{ icon("check", 13) }} operational</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="eyebrow-note" style="margin-bottom:40px">Status is stated as of the last deploy, not live-probed — the site is decoupled from the running bot by design.</p>
+  </div>
+</div>
+{% endblock %}

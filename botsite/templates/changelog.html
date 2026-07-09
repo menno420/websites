@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Changelog — SuperBot{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> release notes</span>
+    <div class="head-row"><h1>What's new</h1></div>
+    <p class="sb-lead">The bot's user-facing changelog, newest first — read from the same
+      committed data the bot ships.</p>
+  </section>
+
+  {% if changelog %}
+  <div class="sb-timeline section-sm">
+    {% for e in changelog %}
+    <div class="sb-rel">
+      <div class="sb-rel-aside">
+        <span class="ver">{{ e.version or '—' }}</span>
+        <span class="when">{{ e.date }}</span>
+        {% if e.build %}<a class="build" href="https://github.com/menno420/superbot/commit/{{ e.build }}" target="_blank" rel="noopener">build {{ e.build[:8] }}</a>{% endif %}
+      </div>
+      <div class="sb-rel-body">
+        <span class="sb-rel-node" aria-hidden="true"></span>
+        <h3>{{ e.title }}</h3>
+        <ul class="sb-changes">
+          <li class="sb-ch sb-ch-{{ e.kind }}"><span class="sb-ch-tag">{{ e.kind }}</span><span>{{ e.summary }}</span></li>
+        </ul>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="sb-empty section"><span class="ico">{{ icon("clock", 20) }}</span><h4>No changelog entries yet</h4>
+    <p>The public feed carries no changelog entries right now.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

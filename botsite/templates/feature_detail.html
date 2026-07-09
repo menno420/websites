@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ feature.name }} — SuperBot{% endblock %}
+{% block description %}{{ feature.description }}{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="sb-crumb" style="margin-top:20px">
+    <a href="/features">{{ icon("back", 13) }} Features</a>
+    <span class="sep">/</span>
+    <span>{{ feature.category_label }}</span>
+  </div>
+
+  <div class="sb-detail-head" style="--c:{{ feature.color }}; border:1px solid var(--sb-line)">
+    <span class="glow sb-glow" aria-hidden="true"></span>
+    <div class="row">
+      <span class="sb-tile sb-tile-lg sb-tile-emoji">{{ feature.emoji or icon(feature.icon, 30) }}</span>
+      <div>
+        <div class="sb-feat-cat">{{ feature.category_label }}</div>
+        <h1>{{ feature.name }}</h1>
+      </div>
+      {% if feature.is_game %}<span class="sb-badge sb-badge-flag sb-right">{{ icon("gamepad", 11) }} game</span>{% endif %}
+    </div>
+    <p class="tagline">{{ feature.description }}</p>
+    {% if feature.tags %}
+    <div class="tags">
+      {% for t in feature.tags %}<span class="sb-chip">{{ t }}</span>{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <section class="section-sm">
+    <div class="sb-panel">
+      <h3>Commands in this area ({{ area_commands|length }})</h3>
+      {% if area_commands %}
+      <div class="sb-cmdlist">
+        {% for c in area_commands %}
+        <a class="sb-cmdrow" href="/commands#cmd-{{ c.name }}" style="--c:{{ c.color }}">
+          <code>{{ c.usage }}</code>
+          <span class="desc">{{ c.summary }}</span>
+          <span class="end">
+            <span class="sb-badge {{ 'sb-badge-ok' if c.status == 'stable' else 'sb-badge-info' }}">{{ c.status or 'command' }}</span>
+            {{ icon("chevron", 15) }}
+          </span>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="sb-empty"><span class="ico">{{ icon("info", 20) }}</span><h4>No individual commands listed</h4>
+        <p>This feature is used through the bot's UI panels rather than standalone commands.</p></div>
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="cta" style="margin:0 0 40px">
+    <a class="sb-btn sb-btn-primary" href="{{ add_url }}" target="_blank" rel="noopener">Add to Discord</a>
+    <a class="sb-btn sb-btn-ghost" href="/features">All features {{ icon("arrow", 16) }}</a>
+  </div>
+</div>
+{% endblock %}

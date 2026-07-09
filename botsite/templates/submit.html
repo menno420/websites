@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Submit an idea — SuperBot{% endblock %}
+
+{% block content %}
+<div class="wrap" style="max-width:var(--sb-wrap-narrow)">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> feedback</span>
+    <div class="head-row"><h1>Suggest a feature or report a bug</h1></div>
+    <p class="sb-lead">Spotted something broken, or have an idea for the bot? Send it here.
+      Submissions are reviewed before anything is published.</p>
+  </section>
+
+  {% if submitted %}
+  <div class="sb-lane-pending section-sm">
+    <div class="head">{{ icon("inbox", 16) }}<h4>Submissions intake is not live yet</h4></div>
+    <p>Thanks — but to be honest with you: the public submission pipeline (a moderated
+      queue that mirrors approved items to GitHub) is <strong>not yet provisioned</strong>
+      on this site, so your message was <strong>not stored</strong>. This is a known
+      open item, deferred to the site owner. Nothing here pretends to have saved it.</p>
+    <span class="feed">intake: pending · needs submissions Postgres + moderation service (plan Q5)</span>
+    <p style="margin-top:14px">In the meantime, open an issue directly on the bot's repo:</p>
+    <a class="sb-btn sb-btn-ghost sb-btn-sm" href="https://github.com/menno420/superbot/issues/new" target="_blank" rel="noopener">Open a GitHub issue {{ icon("external", 15) }}</a>
+  </div>
+  {% else %}
+  <form class="section-sm" method="post" action="/submit">
+    <div class="sb-field">
+      <label class="sb-label" for="kind">Type</label>
+      <select class="sb-inp" id="kind" name="kind">
+        <option value="idea">Feature idea</option>
+        <option value="bug">Bug report</option>
+        <option value="question">Question</option>
+      </select>
+    </div>
+    <div class="sb-field">
+      <label class="sb-label" for="title">Title</label>
+      <input class="sb-inp" id="title" name="title" maxlength="120" placeholder="Short summary" required>
+    </div>
+    <div class="sb-field">
+      <label class="sb-label" for="body">Details</label>
+      <textarea class="sb-inp" id="body" name="body" rows="6" placeholder="What should the bot do, or what went wrong?" required></textarea>
+      <span class="sb-hint">Please don't include passwords, tokens, or personal data.</span>
+    </div>
+    <button class="sb-btn sb-btn-primary" type="submit">Send submission</button>
+  </form>
+  <div class="sb-lane-pending" style="margin-top:8px">
+    <div class="head">{{ icon("info", 16) }}<h4>Heads up</h4></div>
+    <p>The moderated intake queue is still being provisioned for this site, so submitting
+      currently shows a status note rather than saving. This is intentional and labeled —
+      the site never fakes a successful save.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
