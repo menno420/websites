@@ -17,7 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from . import activity, config, github, ideas, journal, owner, readiness
+from . import activity, config, fleet, github, ideas, journal, owner, readiness
 
 
 @asynccontextmanager
@@ -85,6 +85,27 @@ async def activity_timeline(request: Request):
 @app.get("/activity.json")
 async def activity_timeline_json(request: Request):
     return JSONResponse(await activity.timeline(refresh=_refresh(request)))
+
+
+@app.get("/fleet", response_class=HTMLResponse)
+async def fleet_heartbeat(request: Request):
+    data = await fleet.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request, "fleet.html", {"f": data, "active": "fleet"}
+    )
+
+
+@app.get("/fleet.json")
+async def fleet_heartbeat_json(request: Request):
+    data = await fleet.overview(refresh=_refresh(request))
+    # Drop the rendered markdown body from the JSON payload — callers get the
+    # parsed fields + freshness + repo signals and the GitHub deep-link; the
+    # rendered HTML is an HTML-view concern only (mirrors /journal/search.json).
+    payload = dict(data)
+    payload["lanes"] = [
+        {k: v for k, v in lane.items() if k != "body_html"} for lane in data["lanes"]
+    ]
+    return JSONResponse(payload)
 
 
 @app.get("/ideas", response_class=HTMLResponse)

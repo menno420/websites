@@ -42,6 +42,27 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    with a browse-all link. A repo with no `docs/ideas/` shows an absence, not an
    error. Every idea deep-links to GitHub and to the in-app markdown file view
    (`/journal/{repo}/file`). ([D-0020])
+3a. **Fleet heartbeat** (`/fleet`, `.json` variant) — every fleet **lane's**
+   `control/status*.md` heartbeat on one glanceable screen ([D-0021], ORDER 002).
+   The fleet-coordination protocol has each Project overwrite a `control/status.md`
+   in its own repo every session; those committed files are the only visible truth
+   of a running agent (the claude.ai UI can't show session activity). `app/fleet.py`
+   fetches every lane's status file (shared TTL cache), parses the documented
+   `control/README.md` format (heading → project; `key: value` fields where a
+   colon *inside* a value never splits a field; `⚑ needs-owner` + the substrate-kit
+   `kit:` line handled), classifies `health:` into green / red-by-design (purple —
+   never counted broken) / broken / unknown, badges heartbeat freshness **stale**
+   past `FLEET_STALE_HOURS` (12h), attaches each repo's last-commit age + open-PR
+   count, and renders the full status body as markdown (reusing
+   `journal.render_markdown`). Lanes sort **attention-first** (fetch-error → broken
+   → stale → absent → red-by-design → healthy). A repo with no status file shows an
+   honest absence (not an error — the bare `superbot` lane, whose heartbeat is
+   written to superbot-next, is the real case); a fetch failure shows an honest
+   banner. The **canonical lane set** is the manager's registry
+   `menno420/superbot` → `docs/eap/fleet-manifest.md`; the app holds a hand-kept
+   copy in `config.FLEET_LANES` (⚑ owner note in [D-0021]: keep it in sync, or
+   evolve `/fleet` to parse the manifest live). No new dependency, no new secret,
+   no Railway op; the websites row dogfoods its own status.
 4. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
@@ -64,6 +85,8 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 |---|---|---|
 | `/` | public | readiness board (secrets masked to a count) |
 | `/api/readiness.json` | public | board data as JSON (no secret names) |
+| `/fleet` | public | fleet heartbeat — every lane's `control/status*.md` (HTML) — [D-0021] |
+| `/fleet.json` | public | same fleet heartbeat as JSON (rendered body stripped) |
 | `/activity` | public | cross-repo PR activity timeline (HTML) — [D-0020] |
 | `/activity.json` | public | same timeline as JSON |
 | `/ideas` | public | cross-repo `docs/ideas/` backlog (HTML) — [D-0020] |
