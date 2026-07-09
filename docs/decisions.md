@@ -45,3 +45,10 @@
 - verdict: The site deploys as service `control-plane` in its own fresh Railway project `superbot-websites` (IDs in docs/deployment.md), repo-connected to menno420/websites@main — merge to main IS the deploy. Never deployed into, or configured via, the production bot project.
 - why: Hard isolation from the live bot (the ambient Railway IDs in agent containers point at production — a standing footgun); repo-connect makes redeploys zero-step and keeps the forward-only-git flow the sole change path.
 - provenance: websites PR #3 (railway-deploy session, 2026-07-09); kickoff brief Phase 3
+
+## [D-0007] Rework plan for dashboard/ + botsite/ drafted, awaiting owner review
+- status: decided
+- date: 2026-07-09
+- verdict: The step-3 rework of superbot's dashboard/ and botsite/ into this repo is planned in docs/planning/dashboard-botsite-rework-plan-2026-07-09.md — plan only, no code ported, live sites untouched. Recommended shape: keep ideas/functionality, rebuild implementation on this repo's substrate; ONE repo with MULTIPLE Railway services (not one shared FastAPI process) so the public botsite stays secret-isolated from the private control-plane/dashboard; botsite reworked first, dashboard second; consume superbot's committed JSON artifacts via raw GitHub (read-only, forward-only). Seven open questions routed to the owner (public/private per site, exact-design-vs-restyle, merge-vs-separate, control-panel coupling to the live bot, submissions pipeline, domains, data feed).
+- why: The kickoff makes step 3 plan-first — describe the plan before starting the rework — because it touches tools the owner uses today. This entry records that the plan exists and is the gate; implementation waits on owner review of the open questions (esp. Q4, the control panel's coupling to the running production bot). Numbered D-0007 (not D-0006) because a concurrent token-wiring session claimed D-0006 in flight the same day.
+- provenance: websites PR #4 (dashboard-botsite-rework-plan session, 2026-07-09); superbot docs/planning/websites-project-kickoff-2026-07-09.md sequence step 3

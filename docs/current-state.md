@@ -32,11 +32,15 @@ Full site doc: `docs/site.md`. Deployment: `docs/deployment.md`.
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- Nothing in flight. Owner TODO outstanding: mint a durable GitHub PAT and
-  set it as Railway variable `GITHUB_TOKEN` on the `control-plane` service
-  (see `docs/deployment.md` — until then the secrets / auto-merge /
-  CODEOWNERS-enforced cells render `unknown (…)` and the site runs on the
-  60 req/h unauth rate limit).
+- **Dashboard + botsite rework plan (PLAN ONLY — awaiting owner review):**
+  `docs/planning/dashboard-botsite-rework-plan-2026-07-09.md` (PR #4, [D-0007]).
+  Sequence step 3 of the kickoff, which is plan-first by design — the rework
+  itself begins only after the owner reviews the seven open questions in that
+  doc. No code ported; the live sites in superbot stay untouched.
+- Owner TODO outstanding: mint a durable GitHub PAT and set it as Railway
+  variable `GITHUB_TOKEN` on the `control-plane` service (see
+  `docs/deployment.md`) — until then the secrets / auto-merge /
+  CODEOWNERS-enforced cells render `unknown (…)`.
 
 ## Recently shipped (newest first)
 
@@ -55,11 +59,15 @@ Full site doc: `docs/site.md`. Deployment: `docs/deployment.md`.
 
 ## Next steps
 
-1. **Owner:** mint the `GITHUB_TOKEN` PAT (min `public_repo` read; full
+1. **Owner review:** read the dashboard + botsite rework plan
+   (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`, [D-0007]) and
+   answer its seven open questions — the rework of the two existing sites
+   begins only after that review.
+2. **Owner:** mint the `GITHUB_TOKEN` PAT (min `public_repo` read; full
    board `repo` + `admin:repo` read) and set it on the Railway service.
-2. Eyeball the **secrets** and **ruleset** cells on the live board once the
+3. Eyeball the **secrets** and **ruleset** cells on the live board once the
    PAT is in (the one verification Phase 2/3 could not fully do).
-3. Consider repo settings for `websites` itself (ruleset, required checks)
+4. Consider repo settings for `websites` itself (ruleset, required checks)
    — owner-only settings layer; board already shows this repo's row.
 
 ## Review rhythm
