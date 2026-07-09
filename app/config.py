@@ -161,3 +161,94 @@ REPOS: dict = {
         },
     },
 }
+
+# Fleet-coordination lanes (the /fleet heartbeat page, D-0021).
+#
+# The fleet protocol has each Project write `control/status*.md` in its OWN repo;
+# `/fleet` renders every lane's heartbeat as one glanceable screen. This list is
+# the app-side copy of the canonical lane registry the MANAGER keeps in
+# `menno420/superbot` → `docs/eap/fleet-manifest.md` (one row per Project). It is
+# kept in sync by hand until/unless the page parses that manifest live — a
+# drift-risk flagged to the owner (see docs/site.md § /fleet). Each lane names
+# the repo + the status file to render (some repos hold >1 lane via
+# `status-<lane>.md`, e.g. the shared superbot-games cohabitation experiment; the
+# SuperBot coordinator spans two repos but writes its heartbeat to superbot-next,
+# so the bare `superbot` lane is expected to have no own status file — an honest
+# absence, not an error). `stale_hours` is the heartbeat-freshness threshold: an
+# `updated:` older than this badges the lane stale (the manager treats a stale
+# heartbeat as a dark Project).
+FLEET_STALE_HOURS = int(os.environ.get("FLEET_STALE_HOURS", "12"))
+
+FLEET_LANES: list = [
+    {
+        "lane": "superbot",
+        "repo": "superbot",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "SuperBot coordinator (superbot + superbot-next); its heartbeat "
+        "is written to superbot-next, so this repo has no own status file.",
+    },
+    {
+        "lane": "superbot-next",
+        "repo": "superbot-next",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "SuperBot coordinator heartbeat (rebuild + game-plugin host).",
+    },
+    {
+        "lane": "substrate-kit",
+        "repo": "substrate-kit",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "kit-lab.",
+    },
+    {
+        "lane": "websites",
+        "repo": "websites",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "this control-plane (dogfood entry).",
+    },
+    {
+        "lane": "trading-strategy",
+        "repo": "trading-strategy",
+        "status_path": "control/status.md",
+        "model": "Opus 4.8",
+        "note": "trading-lab (backtesting research; research-only).",
+    },
+    {
+        "lane": "codetool-lab-fable5",
+        "repo": "codetool-lab-fable5",
+        "status_path": "control/status.md",
+        "model": "Fable 5",
+        "note": "model-comparison coding arm.",
+    },
+    {
+        "lane": "codetool-lab-opus4.8",
+        "repo": "codetool-lab-opus4.8",
+        "status_path": "control/status.md",
+        "model": "Opus 4.8",
+        "note": "model-comparison coding arm (identical brief; only the model differs).",
+    },
+    {
+        "lane": "codetool-lab-sonnet5",
+        "repo": "codetool-lab-sonnet5",
+        "status_path": "control/status.md",
+        "model": "Sonnet 5",
+        "note": "model-comparison coding arm (third arm).",
+    },
+    {
+        "lane": "superbot-games · mining",
+        "repo": "superbot-games",
+        "status_path": "control/status-mining.md",
+        "model": "default",
+        "note": "game-mining lane (superbot-games shared-repo cohabitation).",
+    },
+    {
+        "lane": "superbot-games · exploration",
+        "repo": "superbot-games",
+        "status_path": "control/status-exploration.md",
+        "model": "default",
+        "note": "game-exploration lane (superbot-games shared-repo cohabitation).",
+    },
+]

@@ -19,7 +19,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import activity, config, github, ideas, journal, readiness  # noqa: E402
+from app import (  # noqa: E402
+    activity,
+    config,
+    fleet,
+    github,
+    ideas,
+    journal,
+    readiness,
+)
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -738,6 +746,216 @@ def test_ideas_route_degrades_no_auth(client):
     assert "what's queued to build" in r.text
     rj = client.get("/ideas.json")
     assert rj.status_code == 200 and isinstance(rj.json(), list)
+
+
+# --------------------------------------------------------------------------- #
+# Fleet heartbeat (/fleet) — ORDER 002
+# --------------------------------------------------------------------------- #
+
+# A real websites-lane heartbeat in the documented control/status.md format,
+# with value colons (timestamp, "#PR — text") and a leading-⚑ needs-owner key.
+_STATUS_MD = """# websites · status
+updated: 2026-07-09T15:25Z
+phase: shipped /activity + /ideas; control-plane auto-deployed to da35e21f
+health: green (all three services in-sync at da35e21f)
+last-shipped: #33 — cross-repo /activity timeline + /ideas backlog views
+blockers: none
+orders: acked=001,002 done=001
+⚑ needs-owner: Q4 dashboard /admin live-bot control; Q5 botsite /submit Postgres
+notes: dogfood row for the fleet page
+"""
+
+
+def test_parse_status_documented_format():
+    """parse_status reads the documented status.md: heading → project name (the
+    trailing '· status' stripped), key:value fields keyed by normalized name,
+    with value colons (timestamps, '#PR — text') NOT splitting a new field, and
+    the leading-⚑ 'needs-owner' key normalized."""
+    out = fleet.parse_status(_STATUS_MD, "fallback-lane")
+    assert out["project"] == "websites"
+    f = out["fields"]
+    assert f["updated"] == "2026-07-09T15:25Z"  # colon inside value preserved
+    assert f["health"].startswith("green")
+    assert f["last-shipped"].startswith("#33 — cross-repo")
+    assert f["blockers"] == "none"
+    assert f["orders"] == "acked=001,002 done=001"
+    assert f["needs-owner"].startswith("Q4 dashboard")  # ⚑ stripped, normalized
+    # A substrate-kit-style extra `kit:` line is captured, unknown lines don't
+    # spuriously start fields.
+    out2 = fleet.parse_status(
+        "# kit · status\nkit: v1.3.0 · check: green · engaged: yes\n", "fb"
+    )
+    assert out2["fields"]["kit"].startswith("v1.3.0")
+
+
+def test_classify_health_kinds():
+    """green→ok, red-by-design→design (purple, NOT broken), broken→bad, ''→unknown."""
+    assert fleet.classify_health("green (all in sync)")["kind"] == "ok"
+    d = fleet.classify_health("red-by-design (golden-parity report red)")
+    assert d["kind"] == "design" and d["badge"] == "design"
+    assert fleet.classify_health("broken (pytest red)")["kind"] == "broken"
+    assert fleet.classify_health("")["kind"] == "unknown"
+
+
+def test_freshness_stale_threshold():
+    """freshness computes an age and badges stale past FLEET_STALE_HOURS; an
+    unparseable timestamp is honest (ok=False), never faked fresh."""
+    from datetime import datetime, timezone
+
+    now = datetime(2026, 7, 9, 18, 0, 0, tzinfo=timezone.utc)
+    fresh = fleet.freshness("2026-07-09T15:25Z", now=now)  # ~2.5h old
+    assert fresh["ok"] and fresh["stale"] is False and "ago" in fresh["age_human"]
+    old = fleet.freshness("2026-07-07T00:00:00Z", now=now)  # >2 days old
+    assert old["ok"] and old["stale"] is True
+    bad = fleet.freshness("not-a-date", now=now)
+    assert bad["ok"] is False and bad["stale"] is False
+
+
+def _fleet_lane(repo="websites", lane="websites", path="control/status.md"):
+    return {"lane": lane, "repo": repo, "status_path": path,
+            "model": "unknown", "note": "n"}
+
+
+def test_fleet_lane_renders_parsed_health_and_body(monkeypatch):
+    """lane_status parses a lane's health + fields, renders the status body to
+    HTML, and attaches last-commit age + open-PR count from the repo meta."""
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        return {"ok": True, "status": 200, "data": _STATUS_MD, "error": "",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        if subpath.startswith("/commits"):
+            return {"ok": True, "status": 200,
+                    "data": [{"commit": {"committer": {
+                        "date": "2026-07-09T15:00:00Z"}}}],
+                    "error": "", "fetched_at": "", "cached": False, "url": ""}
+        if subpath.startswith("/pulls"):
+            return {"ok": True, "status": 200,
+                    "data": [{"number": 1}, {"number": 2}],
+                    "error": "", "fetched_at": "", "cached": False, "url": ""}
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "fetch_file", fake_fetch)
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        return await fleet.lane_status(_fleet_lane())
+
+    out = asyncio.run(run())
+    assert out["missing"] is False and out["fetch_error"] is None
+    assert out["project"] == "websites"
+    assert out["health"]["kind"] == "ok"
+    assert out["fields"]["orders"] == "acked=001,002 done=001"
+    assert out["open_prs"]["count"] == 2 and out["open_prs"]["display"] == "2"
+    assert out["last_commit"]["ok"] is True
+    # full body rendered as markdown (H1 became a heading)
+    assert "<h1" in out["body_html"] and "websites" in out["body_html"]
+    assert out["github_url"].endswith("/websites/blob/main/control/status.md")
+
+
+def test_fleet_no_status_file_is_absence_not_error(monkeypatch):
+    """A 404 status file is an honest absence (missing=True), NOT an error — the
+    bare `superbot` lane (heartbeat lives in superbot-next) is the real case."""
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        return {"ok": False, "status": 404, "data": None, "error": "Not Found",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "fetch_file", fake_fetch)
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        return await fleet.lane_status(_fleet_lane(repo="superbot", lane="superbot"))
+
+    out = asyncio.run(run())
+    assert out["missing"] is True and out["fetch_error"] is None
+    assert out["body_html"] == "" and out["health"]["kind"] == "unknown"
+
+
+def test_fleet_fetch_error_is_honest_banner(monkeypatch):
+    """A non-404 fetch failure surfaces as an honest fetch_error banner (never a
+    faked heartbeat), and is NOT treated as a legitimate absence."""
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        return {"ok": False, "status": 403, "data": None, "error": "rate limited",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        return {"ok": False, "status": 403, "data": None, "error": "rate limited",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "fetch_file", fake_fetch)
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        return await fleet.lane_status(_fleet_lane())
+
+    out = asyncio.run(run())
+    assert out["missing"] is False
+    assert out["fetch_error"] and "rate limited" in out["fetch_error"]
+    assert out["open_prs"]["display"] == "?"  # meta degrades honestly too
+
+
+def test_fleet_overview_sorts_attention_first_and_counts(monkeypatch):
+    """overview() renders every configured lane, sorts problems to the top
+    (broken/stale before healthy), and rolls up honest summary counts."""
+
+    bodies = {
+        # a broken lane
+        "superbot-next": "# superbot-next · status\nupdated: 2026-07-09T17:30Z\n"
+                         "health: broken (pytest red)\n",
+        # a healthy fresh lane
+        "websites": "# websites · status\nupdated: 2026-07-09T17:45Z\n"
+                    "health: green (in sync)\n",
+        # a healthy but STALE lane (old heartbeat)
+        "substrate-kit": "# substrate-kit · status\nupdated: 2026-07-01T00:00:00Z\n"
+                         "health: green (suite passing)\n",
+    }
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        if repo in bodies:
+            return {"ok": True, "status": 200, "data": bodies[repo], "error": "",
+                    "fetched_at": "", "cached": False, "url": ""}
+        # every other lane: no status file (honest absence)
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "fetch_file", fake_fetch)
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        return await fleet.overview()
+
+    out = asyncio.run(run())
+    assert out["summary"]["total"] == len(config.FLEET_LANES)
+    assert out["summary"]["broken"] == 1
+    assert out["summary"]["stale"] >= 1
+    # broken sorts before the stale-green sorts before healthy-green
+    lanes = out["lanes"]
+    broken_i = next(i for i, x in enumerate(lanes) if x["health"]["kind"] == "broken")
+    web_i = next(i for i, x in enumerate(lanes) if x["repo"] == "websites")
+    assert broken_i < web_i
+
+
+def test_fleet_route_degrades_no_auth(client):
+    """/fleet serves 200 with honest empty state when GitHub is unreachable;
+    /fleet.json returns the parsed lanes without the rendered body."""
+    r = client.get("/fleet")
+    assert r.status_code == 200
+    assert "fleet heartbeat" in r.text
+    rj = client.get("/fleet.json")
+    assert rj.status_code == 200
+    body = rj.json()
+    assert "lanes" in body and "summary" in body
+    assert body["summary"]["total"] == len(config.FLEET_LANES)
+    # body_html is stripped from the JSON payload
+    assert all("body_html" not in lane for lane in body["lanes"])
 
 
 def test_cache_skips_transient_errors(monkeypatch):

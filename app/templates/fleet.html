@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}fleet heartbeat{% endblock %}
+{% block headright %}<a href="/fleet?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>fleet heartbeat — which agents are running, and how far along</h2>
+  <p class="dim small">One card per fleet lane, rendering each Project's
+    <code>control/status*.md</code> — the committed heartbeat files that are the only
+    visible truth of a running agent (the claude.ai UI can't show session activity).
+    Fields are parsed from the <a href="https://github.com/menno420/superbot/blob/main/control/README.md">documented status format</a>;
+    the canonical lane set is the manager's
+    <a href="{{ f.manifest_url }}">fleet-manifest ↗</a>. A heartbeat older than
+    {{ f.stale_hours }}h badges <span class="b warn">stale</span>; a lane with no status
+    file yet shows an honest absence, not an error.</p>
+  <p class="small">
+    <span class="b repo">{{ f.summary.total }} lanes</span>
+    <span class="b ok">{{ f.summary.healthy }} live</span>
+    {% if f.summary.stale %}<span class="b warn">{{ f.summary.stale }} stale</span>{% endif %}
+    {% if f.summary.broken %}<span class="b bad">{{ f.summary.broken }} broken</span>{% endif %}
+    {% if f.summary.errored %}<span class="b bad">{{ f.summary.errored }} unreachable</span>{% endif %}
+    {% if f.summary.no_file %}<span class="b unknown">{{ f.summary.no_file }} no status file</span>{% endif %}
+  </p>
+</div>
+
+{% for l in f.lanes %}
+<div class="card">
+  <h2>{{ l.lane }}
+    <span class="b {{ l.health.badge }}">{{ l.health.label }}</span>
+    {% if l.freshness.stale %}<span class="b warn">stale</span>{% endif %}
+    <span class="dim small">·
+      <a href="{{ l.repo_url }}">{{ l.repo }}</a>
+      {% if l.model and l.model != 'unknown' %}· {{ l.model }}{% endif %}
+      · <a href="{{ l.github_url }}">status ↗</a></span>
+  </h2>
+
+  {% if l.fetch_error %}
+  <div class="banner">⚠ could not fetch <code>{{ l.status_path }}</code> — {{ l.fetch_error }}
+     · <a href="{{ l.github_url }}">view on GitHub ↗</a></div>
+  {% elif l.missing %}
+  <p class="dim small">no <code>{{ l.status_path }}</code> in this repo yet — no heartbeat.
+     {% if l.note %}<br><span class="note">{{ l.note }}</span>{% endif %}</p>
+  {% else %}
+
+  <table>
+    <tr><th>updated</th><td>
+      {% if l.fields.updated %}{{ l.fields.updated }}{% else %}<span class="dim">—</span>{% endif %}
+      <span class="dim small">· {{ l.freshness.age_human }}</span></td></tr>
+    <tr><th>phase</th><td>{{ l.fields.phase or '—' }}</td></tr>
+    <tr><th>last-shipped</th><td>{{ l.fields['last-shipped'] or '—' }}</td></tr>
+    <tr><th>blockers</th><td>{{ l.fields.blockers or '—' }}</td></tr>
+    <tr><th>orders</th><td>{{ l.fields.orders or '—' }}</td></tr>
+    {% if l.fields.kit %}<tr><th>kit</th><td>{{ l.fields.kit }}</td></tr>{% endif %}
+    <tr><th>⚑ needs-owner</th><td>
+      {% if l.fields['needs-owner'] %}<span class="note">{{ l.fields['needs-owner'] }}</span>
+      {% else %}<span class="dim">—</span>{% endif %}</td></tr>
+    <tr><th>repo</th><td class="dim small">
+      last commit {{ l.last_commit.age_human }} · {{ l.open_prs.display }} open PR{{ 's' if l.open_prs.count != 1 }}</td></tr>
+  </table>
+
+  {% if l.note %}<p class="dim small" style="margin-top:.4rem">{{ l.note }}</p>{% endif %}
+
+  <h3>status.md</h3>
+  <div class="md">{{ l.body_html | safe }}</div>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

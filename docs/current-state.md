@@ -106,6 +106,25 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **Fleet heartbeat page `/fleet`** (PR #35, **ORDER 002**; decision + full detail
+  in `docs/site.md` § Routes and the decision ledger). A new public control-plane route that
+  renders **every fleet lane's `control/status*.md`** as one glanceable screen —
+  the owner's single control glance over the parallel fleet (the claude.ai UI
+  can't show session activity, so the committed heartbeat files are the truth).
+  `app/fleet.py` fetches each lane's status over the shared TTL cache, parses the
+  documented `control/README.md` format (colon-in-value safe; `⚑ needs-owner` +
+  substrate-kit `kit:` handled), classifies health green / red-by-design (purple)
+  / broken / unknown, badges heartbeat freshness **stale** past 12h, attaches
+  last-commit age + open-PR count per repo, and renders the full status body as
+  markdown (reusing `journal.render_markdown`). Lanes sort attention-first;
+  no-status-file lane = honest absence, fetch failure = honest banner. **Lane set**
+  = the 10 lanes of the manager's registry `superbot/docs/eap/fleet-manifest.md`
+  (superbot, superbot-next, substrate-kit, websites, trading-strategy,
+  codetool-lab-fable5/opus4.8/sonnet5, superbot-games ×2 lanes), held as a
+  hand-kept `config.FLEET_LANES` (⚑ owner: keep synced with the manifest, or
+  parse it live — flagged in the decision ledger). Nav link added; mobile-safe. Tests +8
+  (103 → 111). No new dependency, no secret, no Railway op; the websites row
+  dogfoods its own status.
 - **Cross-repo activity timeline + idea-backlog views** (decision + full detail
   in `docs/site.md` § Routes). Two new
   public control-plane routes, same TTL-cached `github` layer as the board:
