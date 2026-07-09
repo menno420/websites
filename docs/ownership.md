@@ -1,9 +1,3 @@
-> ⚠️ **UNRENDERED SLOTS BELOW — run `python3 bootstrap.py ask`.**
-> Every `${...}` token in this file is an unfilled interview slot, not
-> project truth. Fill: `bootstrap answer <slot> <value...>`, then
-> `bootstrap render --live` (fills in place and removes this banner).
-> Prose without `${...}` tokens is live guidance already.
-
 # websites — ownership
 
 > **Status:** `binding`
@@ -18,14 +12,18 @@
 
 ## Ownership model
 
-${ownership_model}
+This repo owns no database in its shipped state — every service is read-only toward its sources. control-plane (app/) owns the readiness board + journal projection, derived live from the GitHub API with no persistent store (only an in-process TTL cache). botsite and dashboard own their rendered views of superbot's committed JSON (site.json, dashboard.json, console.json), consumed over raw GitHub and never written back. The only live write paths are the gated /owner actions on control-plane (cache refresh + CI re-run via GITHUB_TOKEN); the botsite /submit intake and the dashboard control panel are deliberate stubs with no production credentials present. Provisioned stores (submissions Postgres, control-API tokens) are deferred owner calls, not owned here yet.
 
 ## Ownership table
 
 | Area | Owner (module / service) | Writes it owns | Notes |
 |---|---|---|---|
-| (one row per owned area) | | | |
+| Readiness board + journal | `app/` (control-plane: `readiness.py`, `journal.py`, `github.py`) | none — in-process TTL cache only | Derived live from the GitHub API; no persistent store. |
+| Gated `/owner` actions | `app/owner.py` (control-plane) | cache refresh (in-process); CI re-run via `GITHUB_TOKEN` | HTTP Basic on `SITE_PASSWORD`; reversible; no persistent store. |
+| Public bot site | `botsite/` (`app.py`, `data_source.py`) | none | Renders superbot's committed `site.json` over raw GitHub. `/submit` is a stub. |
+| Developer dashboard | `dashboard/` (`app.py`, `data_source.py`) | none | Renders superbot's `dashboard.json` + `console.json`. Control panel (`/admin`) is a stub. |
+| Submissions Postgres · control-API tokens | (unowned — deferred) | — | Owner decision, not provisioned here yet (plan Q4/Q5). |
 
 ## New areas
 
-${new_area_ownership}
+A new surface belongs to the service that renders it (app/ control-plane, botsite/, or dashboard/): add its route + data helper there and a row to the table above — never spin up a fourth process for a page. Cross-repo data for it must arrive as committed JSON over raw GitHub, keeping the new area read-only toward superbot. Anything that needs a real write path (a store, a token, a live-bot call) is a new owner decision routed through docs/question-router.md before it lands.

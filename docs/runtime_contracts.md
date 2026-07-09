@@ -1,9 +1,3 @@
-> ⚠️ **UNRENDERED SLOTS BELOW — run `python3 bootstrap.py ask`.**
-> Every `${...}` token in this file is an unfilled interview slot, not
-> project truth. Fill: `bootstrap answer <slot> <value...>`, then
-> `bootstrap render --live` (fills in place and removes this banner).
-> Prose without `${...}` tokens is live guidance already.
-
 # websites — runtime contracts
 
 > **Status:** `binding`
@@ -15,22 +9,51 @@
 
 ### Startup
 
-(What is guaranteed initialized before work begins, and in what order.)
+Each service is a stateless FastAPI app bound to `0.0.0.0:$PORT` by its
+Dockerfile — no migrations, no warm-up, no persistent connections to
+establish. It is ready to serve the moment uvicorn is up. Config is read from
+the environment lazily (`GITHUB_TOKEN`, `SITE_PASSWORD`); a missing token
+degrades cells rather than blocking startup, and a missing `SITE_PASSWORD`
+fails the `/owner*` routes closed (503) while the public site keeps serving.
 
 ### Steady state
 
-(The invariants that hold while the system is running — connection health,
-queue bounds, cache coherence.)
+No shared mutable state beyond a per-process in-memory TTL cache (180s) in the
+control-plane's GitHub client. Every GitHub fetch degrades per-cell — a failed
+call renders "unknown (reason)", never a fabricated value or a 500.
+`?refresh=1` (or the gated `/owner` refresh action) busts the cache.
 
 ### Shutdown
 
-(What is flushed / persisted / cancelled on the way down, and in what order.)
+Nothing to flush or persist — the services own no store. A restart (every
+merge to `main` redeploys the service on Railway) simply drops the in-memory
+cache, which repopulates on the next request.
 
 ## Mutation seam
 
-${mutation_seam}
+Websites is read-only by design, so the mutation seam is small and explicit. The only live writes are the password-gated /owner POST actions on control-plane (app/owner.py, HTTP Basic on SITE_PASSWORD, fail-closed 503 if unset): refresh clears the in-process TTL cache, rerun-ci re-runs the latest failed Actions run via GITHUB_TOKEN. Both are reversible and touch no persistent store. All public routes stay credential-free and byte-identical whether or not SITE_PASSWORD is set. Any genuinely powerful lever — Railway account actions, a live-bot control API, the submissions Postgres — is deliberately unwired (no such credential exists in any service env); adding one is an owner decision, not an agent call.
 
 ## Failure modes
 
-(For each subsystem: what failing looks like from the outside, the blast
-radius, and the recovery step. One subsection per subsystem.)
+### GitHub API unreachable / unauthorized / rate-limited
+
+From the outside: individual board cells read "unknown (reason)"; the page
+still renders. Blast radius: one cell, never the whole board (per-cell
+degrade). Recovery: the TTL cache never caches transient errors, so the next
+request retries automatically; a missing/expired `GITHUB_TOKEN` drops the
+board to the unauthenticated rate limit and un-authenticates the
+secrets/auto-merge/CODEOWNERS cells — re-set the service token to restore.
+
+### Committed source JSON missing or schema-drifted
+
+From the outside: the affected botsite/dashboard section renders a declared
+pending/empty lane, or (for the pinned `console.json` contract) an honest
+schema-mismatch banner. Blast radius: one section. Recovery: the feed is
+superbot-owned — the fix lands there and this repo picks it up on the next
+raw-GitHub read; the pinned contract copy is bumped in lockstep.
+
+### `SITE_PASSWORD` unset
+
+From the outside: the public site is unaffected (fully public); the `/owner*`
+routes fail closed with 503. Blast radius: the gated overlay only. Recovery:
+set `SITE_PASSWORD` on the service.
