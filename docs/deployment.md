@@ -123,14 +123,19 @@ Local (both apps run **without** `SITE_PASSWORD` set):
   including the new assertion that a secret name (`ANTHROPIC_API_KEY`) is absent
   from the served board HTML and `/api/readiness.json`.
 
-Live production (after PR #12 merged and both `superbot-websites` services
-redeployed the merged `main`):
+Live production (after PR #12 merged to `main` @ `f6628fe`):
 
-- **control-plane** — `GET /healthz` `200`; `GET /` `200` with **no** auth and
-  **no** `www-authenticate`; `grep -c ANTHROPIC_API_KEY` on the served `/` HTML
-  = `0`; the board shows the secrets **count** and real public data
-  (`superbot-next`, real check names).
-- **dashboard** — `GET /healthz` `200`; `GET /` `200` with no auth; a read-only
-  page (`/commands`) renders real data; `/admin` still shows the stub.
-
-(Filled from the live redeploy; see the drop-auth session log.)
+- **Deploy method** — `control-plane` **auto-deployed** the merge on its own
+  (repo-connect; latest deployment `SUCCESS` on `f6628fe` within a minute of the
+  merge). `dashboard` **lagged** (the known auto-deploy lag for these services), so
+  it was redeployed **pinned to the merged SHA** via `serviceInstanceDeployV2`
+  (`commitSha=f6628fe`) → `SUCCESS`. Both non-destructive; `RAILWAY_API_KEY` +
+  explicit `superbot-websites` IDs only; ambient production-bot IDs never passed.
+- **control-plane** — `GET /healthz` `200`; `GET /` `HTTP/2 200` with **no** auth
+  and **no** `www-authenticate`; `grep -c ANTHROPIC_API_KEY` on the served `/`
+  HTML = `0` (also 0 for `ROUTINE_PAT` / `OPENAI_API_KEY` / `DATABASE_PUBLIC_URL`);
+  the board shows `5 secret(s)` and real public data (`superbot-next`,
+  `Kit test suite`).
+- **dashboard** — `GET /healthz` `200`; `GET /` `HTTP/2 200` with no auth;
+  `/commands` renders real data (`!daily`, `!shop`, `Economy`); `/admin` still
+  shows the "requires owner wiring — not connected to the live bot" stub.
