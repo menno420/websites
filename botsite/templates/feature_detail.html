@@ -35,7 +35,7 @@
       {% if area_commands %}
       <div class="sb-cmdlist">
         {% for c in area_commands %}
-        <a class="sb-cmdrow" href="/commands#cmd-{{ c.name }}" style="--c:{{ c.color }}">
+        <a class="sb-cmdrow" href="/commands/{{ c.name|urlencode }}" style="--c:{{ c.color }}">
           <code>{{ c.usage }}</code>
           <span class="desc">{{ c.summary }}</span>
           <span class="end">

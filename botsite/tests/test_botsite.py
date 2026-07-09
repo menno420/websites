@@ -36,14 +36,20 @@ FIXTURE = {
     ],
     "commands": [
         {"name": "daily", "aliases": ["d"], "category": "economy", "permissions": "user",
-         "usage": "Claim your daily coins.", "description": "Daily reward.", "examples": ["!daily"],
-         "status": "finished", "linked_ideas": []},
+         "usage": "Claim your daily coins.", "description": "Daily reward.", "examples": ["!daily", "!daily claim"],
+         "status": "finished",
+         "linked_ideas": [{"title": "Daily streak bonus idea", "status": "ideas"}]},
         {"name": "blackjack", "aliases": [], "category": "games", "permissions": "user",
          "usage": "Play blackjack.", "description": "Blackjack game.", "examples": ["!blackjack"],
          "status": "in-progress", "linked_ideas": []},
+        # A name with a URL-reserved char, mirroring superbot's real ``+prize`` command.
+        {"name": "+prize", "aliases": [], "category": "economy", "permissions": "moderator",
+         "usage": "Grant a prize.", "description": "Grant a prize to a member.", "examples": [],
+         "status": "finished", "linked_ideas": []},
     ],
     "bot_changelog": [
         {"date": "2026-06-19", "title": "New site", "kind": "improvement", "summary": "A new public site."},
+        {"date": "2026-06-08", "title": "Alias suggestions", "kind": "feature", "summary": "Suggest an alias."},
     ],
 }
 
@@ -83,6 +89,78 @@ def test_commands_lists_real_commands(client):
     r = client.get("/commands")
     assert "!daily" in r.text
     assert "!blackjack" in r.text
+
+
+def test_commands_rows_link_to_detail(client):
+    r = client.get("/commands")
+    assert 'href="/commands/daily"' in r.text
+    # URL-reserved names are percent-encoded in the link
+    assert 'href="/commands/%2Bprize"' in r.text
+
+
+def test_command_detail_renders_real_fields(client):
+    r = client.get("/commands/daily")
+    assert r.status_code == 200
+    assert "!daily" in r.text  # invocation signature
+    assert "Daily reward." in r.text  # real description
+    assert "!daily claim" in r.text  # real example
+    assert "!d" in r.text  # real alias
+    assert "Economy" in r.text  # category label
+    assert "Daily streak bonus idea" in r.text  # linked idea surfaced
+
+
+def test_command_detail_url_safe_name(client):
+    # ``+prize`` must resolve via its percent-encoded path
+    r = client.get("/commands/%2Bprize")
+    assert r.status_code == 200
+    assert "Grant a prize" in r.text
+
+
+def test_command_detail_unknown_404(client):
+    r = client.get("/commands/does-not-exist")
+    assert r.status_code == 404
+    assert "not found" in r.text.lower()
+    assert "does-not-exist" in r.text
+
+
+def test_command_detail_omits_absent_fields(client):
+    # blackjack has no aliases and no linked ideas — those sections must not appear
+    r = client.get("/commands/blackjack")
+    assert r.status_code == 200
+    assert "Related ideas" not in r.text
+    assert "Aliases" not in r.text
+
+
+def test_changelog_enriched(client):
+    r = client.get("/changelog")
+    assert r.status_code == 200
+    # real build context panel (from meta.build + counts)
+    assert "Latest build" in r.text
+    assert "abcdef12" in r.text  # short commit
+    # grouped-by-kind sections render real entries
+    assert "New site" in r.text
+    assert "Alias suggestions" in r.text
+    # honest sourcing note, no invented version history
+    assert "bot_changelog" in r.text
+
+
+def test_changelog_degrades_when_feed_unavailable():
+    """No fake data: the changelog shows the honest banner when the feed is down."""
+    ds.clear_cache()
+
+    class _Boom:
+        async def get(self, *a, **k):
+            raise RuntimeError("network down")
+
+        async def aclose(self):
+            pass
+
+    ds.set_client(_Boom())  # type: ignore[arg-type]
+    with TestClient(app_module.app) as c:
+        r = c.get("/changelog")
+        assert r.status_code == 200
+        assert "temporarily unavailable" in r.text.lower()
+    ds.clear_cache()
 
 
 def test_feature_detail_ok_and_404(client):

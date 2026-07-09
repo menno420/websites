@@ -8,10 +8,50 @@
     <span class="sb-ey"><span class="dot">·</span> release notes</span>
     <div class="head-row"><h1>What's new</h1></div>
     <p class="sb-lead">The bot's user-facing changelog, newest first — read from the same
-      committed data the bot ships.</p>
+      committed data the bot ships. The build panel below reflects the exact commit the
+      public data was generated from.</p>
   </section>
 
+  {% if changelog_ctx and changelog_ctx.commit %}
+  <section class="section-sm">
+    <div class="sb-panel" style="--c:var(--sb-brand)">
+      <div class="sb-sec-head">
+        <h3>Latest build</h3>
+        {% if changelog_ctx.committed_at %}<span class="eyebrow-note">{{ changelog_ctx.committed_at }}</span>{% endif %}
+      </div>
+      {% if changelog_ctx.subject %}<p class="sb-lead" style="margin:0 0 14px">{{ changelog_ctx.subject }}</p>{% endif %}
+      <dl class="sb-kv-grid">
+        <div class="sb-kv"><dt>Build</dt><dd>
+          <a class="sb-mono" href="https://github.com/menno420/superbot/commit/{{ changelog_ctx.commit }}" target="_blank" rel="noopener">{{ changelog_ctx.commit[:8] }} {{ icon("external", 12) }}</a>
+        </dd></div>
+        <div class="sb-kv"><dt>Commands</dt><dd>{{ changelog_ctx.commands }}</dd></div>
+        <div class="sb-kv"><dt>Features</dt><dd>{{ changelog_ctx.features }}</dd></div>
+        <div class="sb-kv"><dt>Games</dt><dd>{{ changelog_ctx.games }}</dd></div>
+      </dl>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if changelog_kinds %}
+  <section class="section-sm">
+    {% for grp in changelog_kinds %}
+    <div class="sb-panel" style="margin-bottom:16px">
+      <h3><span class="sb-ch-tag sb-ch-{{ grp.kind }}">{{ grp.kind }}</span> {{ grp.label }} ({{ grp.entries|length }})</h3>
+      <ul class="sb-changes">
+        {% for e in grp.entries %}
+        <li class="sb-ch sb-ch-{{ e.kind }}">
+          <span class="when sb-mono">{{ e.date }}</span>
+          <span><strong>{{ e.title }}</strong> — {{ e.summary }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
   {% if changelog %}
+  <h3 style="margin:8px 0 4px">Timeline</h3>
   <div class="sb-timeline section-sm">
     {% for e in changelog %}
     <div class="sb-rel">
@@ -30,6 +70,8 @@
     </div>
     {% endfor %}
   </div>
+  <p class="eyebrow-note" style="margin-bottom:40px">Changelog entries and build metadata are read from superbot's committed
+    <code class="sb-mono">site.json</code> (<code class="sb-mono">bot_changelog</code> + <code class="sb-mono">meta.build</code>). Nothing here is version-invented.</p>
   {% else %}
   <div class="sb-empty section"><span class="ico">{{ icon("clock", 20) }}</span><h4>No changelog entries yet</h4>
     <p>The public feed carries no changelog entries right now.</p></div>

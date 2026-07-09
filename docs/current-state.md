@@ -94,6 +94,18 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **PR #TBD** — botsite content depth ([D-0016]). Added **per-command detail pages**
+  `/commands/{name}` (`command_detail.html`) rendering every real `site.json` field
+  (invocation, description, category, permissions, status, aliases, examples, linked
+  ideas) + same-area cross-links; unknown → 404; absent fields omitted, never invented.
+  Every `/commands` list row + `feature_detail` area row + `/palette.json` entry now
+  **links to the detail page**, with `command_href()` percent-encoding URL-reserved
+  names (superbot's `+prize` → `/commands/%2Bprize`). **Enriched `/changelog`**: a
+  "Latest build" panel from the real `meta.build` + `counts`, entries grouped by kind,
+  timeline retained, sourcing footer — honest depth over the thin real `bot_changelog`,
+  **no invented version history**. No new dependency, no secret; tests +9 (60 passed).
+  Verified live against the feed (`/commands/access` 200 real fields; unknown 404;
+  `%2Bprize` 200; `/changelog` 200; `/healthz` 200).
 - **PR #19** — hardening + verification batch ([D-0015]). Verified #16's
   definition-of-done live (session_count 12; **0** UNRENDERED banners / unfilled
   slots in the 8 binding docs; `quality.yml` green on `main`). Added an

@@ -20,6 +20,7 @@ from __future__ import annotations
 import os
 import time
 from typing import Any, Optional
+from urllib.parse import quote
 
 import httpx
 
@@ -254,7 +255,11 @@ def commands(site: dict[str, Any]) -> list[dict[str, Any]]:
                 "category": cat,
                 "category_label": meta["label"],
                 "color": meta["color"],
+                "icon": meta["icon"],
                 "aliases": list(c.get("aliases") or []),
+                # The raw ``usage`` sentence is the bot's own one-line explainer; the
+                # invocation signature is ``!name`` above. Both are real, kept distinct.
+                "signature_note": _norm(c.get("usage")),
                 "permissions": _PERMS.get(str(c.get("permissions") or ""), str(c.get("permissions"))),
                 "summary": summary[:160],
                 "description": _norm(c.get("description") or c.get("usage")) or summary,
@@ -267,6 +272,25 @@ def commands(site: dict[str, Any]) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def command_by_name(site: dict[str, Any], name: str) -> Optional[dict[str, Any]]:
+    """One shaped command by exact name, or ``None`` — powers ``/commands/{name}``.
+
+    Reuses the same shaping as the list page so a detail row can never drift from its
+    list entry. O(n) over the (TTL-cached) command list; fine at 485 rows.
+    """
+    for c in commands(site):
+        if c["name"] == name:
+            return c
+    return None
+
+
+def related_commands(site: dict[str, Any], cmd: dict[str, Any], limit: int = 12) -> list[dict[str, Any]]:
+    """Other commands in the same category (for the detail page's cross-links)."""
+    return [
+        c for c in commands(site) if c["category"] == cmd["category"] and c["name"] != cmd["name"]
+    ][:limit]
 
 
 def present_categories(site: dict[str, Any]) -> list[dict[str, Any]]:
@@ -313,6 +337,44 @@ def changelog(site: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+_CHANGE_ORDER = ["added", "improved", "fixed"]
+_CHANGE_LABEL = {"added": "New features", "improved": "Improvements", "fixed": "Fixes"}
+
+
+def changelog_by_kind(site: dict[str, Any]) -> list[dict[str, Any]]:
+    """The real changelog entries bucketed by kind, in a stable editorial order.
+
+    Pure re-grouping of :func:`changelog` — invents nothing. Empty buckets are
+    dropped so the page only shows kinds that actually appear in the feed.
+    """
+    entries = changelog(site)
+    out: list[dict[str, Any]] = []
+    for kind in _CHANGE_ORDER:
+        items = [e for e in entries if e["kind"] == kind]
+        if items:
+            out.append({"kind": kind, "label": _CHANGE_LABEL[kind], "entries": items})
+    return out
+
+
+def changelog_context(site: dict[str, Any]) -> dict[str, Any]:
+    """Honest, real 'current build' context for the changelog page header.
+
+    Everything here is straight from the feed's ``meta.build`` + ``counts`` — the
+    committed build the public data was generated from. No fabricated version history.
+    """
+    build = build_meta(site)
+    c = counts(site)
+    return {
+        "commit": str(build.get("commit") or ""),
+        "subject": _norm(build.get("subject")),
+        "committed_at": (str(build.get("committed_at") or "")[:10]),
+        "entry_count": len(changelog(site)),
+        "commands": c["commands"],
+        "features": c["features"],
+        "games": c["games"],
+    }
+
+
 def systems(site: dict[str, Any]) -> list[dict[str, Any]]:
     """Honest status rows: derived from real areas, stated 'as of last deploy'.
 
@@ -345,6 +407,17 @@ def palette_items(site: dict[str, Any]) -> list[dict[str, str]]:
         items.append({"group": "Games", "label": g["name"], "href": "/games"})
     for c in commands(site):
         items.append(
-            {"group": "Commands", "label": c["summary"], "code": c["usage"], "sub": c["category_label"], "href": "/commands"}
+            {
+                "group": "Commands",
+                "label": c["summary"],
+                "code": c["usage"],
+                "sub": c["category_label"],
+                "href": command_href(c["name"]),
+            }
         )
     return items
+
+
+def command_href(name: str) -> str:
+    """URL-safe path to a command detail page (handles names like ``+prize``)."""
+    return "/commands/" + quote(name, safe="")

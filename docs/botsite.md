@@ -28,9 +28,10 @@ mounted on the private control-plane app (the public/private split the plan requ
 | `/` | Home — hero, live stat tiles, area cards, latest-updates teaser, CTA | `index.html` |
 | `/features` | Full 43-feature catalogue; client-side filter by area + search | `features.html` |
 | `/features/{key}` | Per-feature detail + its commands (404 for unknown keys) | `feature_detail.html` |
-| `/commands` | Full command reference (485); client-side search + area filter | `commands.html` |
+| `/commands` | Full command reference (485); client-side search + area filter. Each row links to its detail page | `commands.html` |
+| `/commands/{name}` | Per-command detail — invocation, description, aliases, permissions, examples, linked ideas + same-area cross-links (404 for unknown names; URL-safe for names like `+prize`) | `command_detail.html` |
 | `/games` | The game features (12) | `games.html` |
-| `/changelog` | User-facing changelog timeline | `changelog.html` |
+| `/changelog` | Enriched changelog — real "Latest build" panel (`meta.build` + `counts`), entries grouped by kind, and the newest-first timeline | `changelog.html` |
 | `/status` | Honest status band — subsystems "as of last deploy" (not live-probed) | `status.html` |
 | `/design` | Living style guide for the `ds/` system | `design.html` |
 | `/submit` | Suggestion/bug form — **write path stubbed** (see open items) | `submit.html` |
@@ -58,6 +59,22 @@ provides — never stale invented content. `?refresh=1` on any page busts the ca
 The only mutation toward superbot is **none**: websites stays read-only and forward-only
 toward the bot repo (plan open-question Q7, resolved: consume the artifact, don't rebuild
 the export tooling here).
+
+**Command detail** (`/commands/{name}`) reuses the exact `data_source.commands()` shaping
+(so a detail row can never drift from its list entry) — `command_by_name()` finds by exact
+name, `related_commands()` supplies same-area cross-links, and links are built with
+`command_href()` which percent-encodes URL-reserved names (superbot ships one, `+prize`).
+Absent fields (the feed leaves `cooldown`/`use_cases`/`notes` null, and many rows carry no
+aliases/examples/linked-ideas) are **omitted cleanly** — nothing is invented to fill a gap.
+
+**Changelog data source.** The real artifact is `site.json`'s **`bot_changelog`** array
+(`date`/`title`/`kind`/`summary`) — genuine but thin (a few entries, **no semantic version
+numbers**). The page deepens it honestly rather than fabricating a version history:
+`changelog_by_kind()` groups the real entries by kind (added / improved / fixed), and
+`changelog_context()` surfaces the real **`meta.build`** (commit + subject + date) and
+**`counts`** as a "Latest build" panel. Every value is straight from the feed; the page
+footer states the sourcing (`bot_changelog` + `meta.build`) so no reader mistakes it for
+invented releases.
 
 ## Railway service
 
