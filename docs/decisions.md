@@ -38,3 +38,10 @@
 - verdict: All GitHub data fetched live server-side: REST API for listings/state (GITHUB_TOKEN), raw.githubusercontent.com WITHOUT auth for public file bodies; per-URL in-memory TTL cache 180s caching successes and stable negatives (404/403/401) but never transient errors; ?refresh=1 busts. Auth = HTTP Basic, any username, password compared constant-time to SITE_PASSWORD (fail closed if unset); /healthz unauthenticated. Every fetch degrades per-cell — the board renders 'unknown (reason)' instead of faking or 500ing (e.g. secrets without admin scope, rulesets without scope).
 - why: 3-min TTL keeps a board load ~30 API calls well under PAT rate limits while staying near-live; raw host needs no token for public repos but 404s if sent a bad bearer (found live); shared-secret Basic auth is exactly the 'something simple' the kickoff asked for.
 - provenance: websites PR #2 (control-plane-site session, 2026-07-09)
+
+## [D-0005] Deployment target: dedicated Railway project `superbot-websites`
+- status: decided
+- date: 2026-07-09
+- verdict: The site deploys as service `control-plane` in its own fresh Railway project `superbot-websites` (IDs in docs/deployment.md), repo-connected to menno420/websites@main — merge to main IS the deploy. Never deployed into, or configured via, the production bot project.
+- why: Hard isolation from the live bot (the ambient Railway IDs in agent containers point at production — a standing footgun); repo-connect makes redeploys zero-step and keeps the forward-only-git flow the sole change path.
+- provenance: websites PR #3 (railway-deploy session, 2026-07-09); kickoff brief Phase 3
