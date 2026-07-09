@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ repo }}/{{ path }}{% endblock %}
+{% block headright %}<a href="{{ github_url }}">view on GitHub ↗</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ repo }} <span class="dim">/ {{ path }}</span>
+      <span class="refresh small"><a href="/journal/{{ repo }}">← back to {{ repo }} journal</a></span></h2>
+  {% if res.ok %}
+  <div class="md">{{ body_html | safe }}</div>
+  {% else %}
+  <p class="dim">could not fetch: HTTP {{ res.status }} {{ res.error }} —
+     <a href="{{ github_url }}">open it on GitHub ↗</a></p>
+  {% endif %}
+</div>
+{% endblock %}

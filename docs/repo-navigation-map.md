@@ -9,7 +9,10 @@
 
 | Path | What lives there | New code goes here when… |
 |---|---|---|
-| (one row per top-level area) | | |
+| `app/` | the control-plane site (FastAPI app, templates) — see [docs/site.md](site.md) | it is a route/view/data-fetch of the control-plane site |
+| `tests/` | offline unit tests for `app/` | it tests site behavior without network |
+| `tools/` | dev-only helpers (e.g. `dev_api_mirror.py` for egress-restricted local testing) | it aids development and never ships to production |
+| `Dockerfile` + `requirements.txt` | the Railway build (pinned deps, binds `0.0.0.0:$PORT`) | changing runtime deps or the container |
 
 ## Documentation roots
 

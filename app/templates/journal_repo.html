@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ j.repo }} — journal{% endblock %}
+{% block headright %}<a href="/journal/{{ j.repo }}?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ j.repo }} <span class="dim small">· <a href="{{ j.github_url }}">github</a> ·
+      <a href="{{ j.github_url }}/commits/main">commit history</a></span></h2>
+  <p class="dim small">{{ j.note }}</p>
+</div>
+
+{% if j.has_sessions %}
+<div class="card">
+  <h3>session logs (.sessions/) — newest first</h3>
+  {% if j.sessions %}
+  <table>
+    {% for s in j.sessions %}
+    <tr>
+      <td><a href="/journal/{{ j.repo }}/file?path={{ s.path }}">{{ s.name }}</a></td>
+      <td class="small"><a href="{{ s.github_url }}" class="dim">view on GitHub ↗</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% elif j.sessions_result and not j.sessions_result.ok %}
+  <p class="dim small">listing unavailable: HTTP {{ j.sessions_result.status }} {{ j.sessions_result.error }}
+     — <a href="{{ j.github_url }}/tree/main/.sessions">browse on GitHub ↗</a></p>
+  {% else %}<p class="dim small">no session logs yet.</p>{% endif %}
+</div>
+{% endif %}
+
+{% if j.docs %}
+<div class="card">
+  <h3>ledgers &amp; routers</h3>
+  <table>
+    {% for d in j.docs %}
+    <tr>
+      <td><a href="/journal/{{ j.repo }}/file?path={{ d.path }}">{{ d.label }}</a></td>
+      <td class="dim small">{{ d.path }}</td>
+      <td class="small"><a href="{{ d.github_url }}" class="dim">view on GitHub ↗</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>recent pull requests</h3>
+  {% if j.pulls %}
+  <table>
+    {% for p in j.pulls %}
+    <tr>
+      <td><span class="b {{ 'ok' if p.state == 'merged' else ('warn' if p.state == 'open' else 'unknown') }}">{{ p.state }}</span></td>
+      <td><a href="{{ p.url }}">#{{ p.number }}</a> {{ p.title }}</td>
+      <td class="dim small">{{ p.branch }}</td>
+      <td class="dim small">{{ p.created_at }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% elif not j.pulls_result.ok %}
+  <p class="dim small">unavailable: HTTP {{ j.pulls_result.status }} {{ j.pulls_result.error }}</p>
+  {% else %}<p class="dim small">none.</p>{% endif %}
+  <p class="small"><a href="{{ j.github_url }}/pulls?q=is%3Apr">all PRs on GitHub ↗</a></p>
+</div>
+
+<div class="card">
+  <h3>recent commits (main)</h3>
+  {% if j.commits %}
+  <table>
+    {% for c in j.commits %}
+    <tr>
+      <td class="small"><a href="{{ c.url }}">{{ c.sha }}</a></td>
+      <td>{{ c.message }}</td>
+      <td class="dim small">{{ c.date }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% elif not j.commits_result.ok %}
+  <p class="dim small">unavailable: HTTP {{ j.commits_result.status }} {{ j.commits_result.error }}</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -9,7 +9,8 @@ what exists, rebuild the implementation.
 ## What's landing here
 
 1. **Kernel/foundation**: adopted from [`menno420/substrate-kit`](https://github.com/menno420/substrate-kit).
-2. **A control-plane oversight site** — the first real deliverable: a live per-repo
+2. **A control-plane oversight site** (SHIPPED — [`docs/site.md`](docs/site.md):
+   routes, env vars, data model) — the first real deliverable: a live per-repo
    readiness board (rulesets, required checks, CODEOWNERS, secrets, auto-merge —
    configured *and* actually working, not just present) plus a cross-repo journal
    and decision-ledger browser, across `superbot`, `superbot-next`, and

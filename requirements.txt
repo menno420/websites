@@ -1,0 +1,6 @@
+# Control-plane site runtime deps — pinned (see docs/site.md, D-0003).
+fastapi==0.139.0
+uvicorn==0.51.0
+jinja2==3.1.6
+httpx==0.28.1
+Markdown==3.10.2
