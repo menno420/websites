@@ -45,3 +45,10 @@
 - verdict: The site deploys as service `control-plane` in its own fresh Railway project `superbot-websites` (IDs in docs/deployment.md), repo-connected to menno420/websites@main — merge to main IS the deploy. Never deployed into, or configured via, the production bot project.
 - why: Hard isolation from the live bot (the ambient Railway IDs in agent containers point at production — a standing footgun); repo-connect makes redeploys zero-step and keeps the forward-only-git flow the sole change path.
 - provenance: websites PR #3 (railway-deploy session, 2026-07-09); kickoff brief Phase 3
+
+## [D-0006] Durable owner PAT wired as the control-plane service token — board fully live
+- status: decided
+- date: 2026-07-09
+- verdict: A durable owner GitHub PAT is set as the `control-plane` service token in the `superbot-websites` Railway project (variable upsert via the public GraphQL API, RAILWAY_API_KEY only, ambient production-bot IDs never passed, no destructive mutation). The board now runs on the authenticated GitHub rate limit; the auth-gated cells (actions secret names, auto-merge, CODEOWNERS presence) render live and were verified on the deployed site. Per-cell degradation still stands for anything the token scope or egress can't reach — the board never fakes a value.
+- why: Closes the one outstanding owner TODO from the deploy session; lifts the board off the unauthenticated rate limit and unlocks the secrets / auto-merge / CODEOWNERS cells so the oversight board actually shows the config state it exists to surface.
+- provenance: websites PR #3 (token-wiring session, 2026-07-09); supersedes the owner-TODO left open by [D-0005]
