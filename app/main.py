@@ -17,7 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from . import config, github, journal, owner, readiness
+from . import activity, config, github, ideas, journal, owner, readiness
 
 
 @asynccontextmanager
@@ -72,6 +72,32 @@ async def board(request: Request):
 @app.get("/api/readiness.json")
 async def board_json(request: Request):
     return JSONResponse(await readiness.board(refresh=_refresh(request)))
+
+
+@app.get("/activity", response_class=HTMLResponse)
+async def activity_timeline(request: Request):
+    data = await activity.timeline(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request, "activity.html", {"a": data, "active": "activity"}
+    )
+
+
+@app.get("/activity.json")
+async def activity_timeline_json(request: Request):
+    return JSONResponse(await activity.timeline(refresh=_refresh(request)))
+
+
+@app.get("/ideas", response_class=HTMLResponse)
+async def ideas_backlog(request: Request):
+    repos = await ideas.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request, "ideas.html", {"repos": repos, "active": "ideas"}
+    )
+
+
+@app.get("/ideas.json")
+async def ideas_backlog_json(request: Request):
+    return JSONResponse(await ideas.overview(refresh=_refresh(request)))
 
 
 @app.get("/journal", response_class=HTMLResponse)

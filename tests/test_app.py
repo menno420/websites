@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, github, journal, readiness  # noqa: E402
+from app import activity, config, github, ideas, journal, readiness  # noqa: E402
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -543,6 +543,201 @@ def test_websites_row_expects_quality_required_check():
     """The board's websites row now expects `quality` as a required check
     (owner set the ruleset, 2026-07-09) — no longer 'none required'."""
     assert config.REPOS["websites"]["expected_required_checks"] == ["quality"]
+
+
+# --------------------------------------------------------------------------- #
+# Cross-repo activity timeline
+# --------------------------------------------------------------------------- #
+
+
+def test_activity_timeline_merges_sorts_and_links(monkeypatch):
+    """timeline() merges PRs across repos into one newest-first stream, collapses
+    each into a display state, keeps the author, and deep-links to GitHub."""
+
+    pulls = {
+        "superbot": [
+            {"number": 900, "title": "merge me", "state": "closed",
+             "merged_at": "2026-07-09T15:00:00Z", "updated_at": "2026-07-09T15:00:00Z",
+             "user": {"login": "alice"}, "html_url": "https://gh/superbot/900"},
+        ],
+        "superbot-next": [
+            {"number": 44, "title": "open pr", "state": "open", "merged_at": None,
+             "draft": False, "updated_at": "2026-07-09T16:00:00Z",
+             "user": {"login": "bob"}, "html_url": "https://gh/next/44"},
+        ],
+        "substrate-kit": [
+            {"number": 7, "title": "draft pr", "state": "open", "merged_at": None,
+             "draft": True, "updated_at": "2026-07-09T12:00:00Z",
+             "user": {"login": "carol"}, "html_url": "https://gh/kit/7"},
+        ],
+        "websites": [],
+    }
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        if subpath.startswith("/pulls"):
+            return {"ok": True, "status": 200, "data": pulls[repo], "error": "",
+                    "fetched_at": "", "cached": False, "url": ""}
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        return await activity.timeline()
+
+    out = asyncio.run(run())
+    # newest-first by merge/update time: next(16:00) > superbot(15:00) > kit(12:00)
+    order = [(i["repo"], i["number"], i["state"]) for i in out["items"]]
+    assert order == [
+        ("superbot-next", 44, "open"),
+        ("superbot", 900, "merged"),
+        ("substrate-kit", 7, "draft"),
+    ]
+    assert out["items"][1]["url"] == "https://gh/superbot/900"
+    assert out["items"][0]["author"] == "bob"
+    assert out["errors"] == [] and out["total"] == 3
+
+
+def test_activity_timeline_error_banner(monkeypatch):
+    """A failing per-repo fetch lands in errors (honest banner), others still render."""
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        if repo == "superbot" and subpath.startswith("/pulls"):
+            return {"ok": True, "status": 200,
+                    "data": [{"number": 1, "title": "ok", "state": "open",
+                              "merged_at": None, "updated_at": "2026-07-09T10:00:00Z",
+                              "user": {"login": "x"}, "html_url": "u"}],
+                    "error": "", "fetched_at": "", "cached": False, "url": ""}
+        return {"ok": False, "status": 403, "data": None, "error": "rate limited",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        return await activity.timeline()
+
+    out = asyncio.run(run())
+    assert [i["repo"] for i in out["items"]] == ["superbot"]
+    bad = {e["repo"] for e in out["errors"]}
+    assert bad == {"superbot-next", "substrate-kit", "websites"}
+    assert all(e["status"] == 403 for e in out["errors"])
+
+
+def test_activity_route_degrades_no_auth(client):
+    """/activity serves 200 with honest error banners when GitHub is unreachable."""
+    r = client.get("/activity")
+    assert r.status_code == 200
+    assert "cross-repo activity" in r.text
+    rj = client.get("/activity.json")
+    assert rj.status_code == 200 and "items" in rj.json()
+
+
+# --------------------------------------------------------------------------- #
+# Idea backlog
+# --------------------------------------------------------------------------- #
+
+
+def test_parse_idea_frontmatter_and_oneline():
+    """parse_idea strips frontmatter, takes the H1 (minus an 'Idea:' label) as the
+    title, and prefers an explicit **One line:** marker for the summary."""
+    src = (
+        "---\nstate: captured\noutcome: open\n---\n\n"
+        "# `bootstrap heartbeat` — a mechanical writer\n\n"
+        "> **Status:** `ideas`\n\n"
+        "**One line:** a verb that overwrites control/status.md in the exact shape.\n"
+    )
+    out = ideas.parse_idea(src, "fallback")
+    assert out["title"] == "bootstrap heartbeat — a mechanical writer"
+    assert out["summary"].startswith("a verb that overwrites control/status.md")
+
+    # 'Idea:' label stripped; no One-line marker → first real paragraph is used.
+    src2 = "# Idea: agent smoke check\n\nThe problem it solves is real and here.\n"
+    out2 = ideas.parse_idea(src2, "fb")
+    assert out2["title"] == "agent smoke check"
+    assert out2["summary"] == "The problem it solves is real and here."
+
+
+def test_ideas_lists_files_skips_readme(monkeypatch):
+    """repo_ideas lists real idea files (README excluded), newest-first, each with
+    a parsed title and deep-links."""
+
+    listing = [
+        {"type": "file", "name": "README.md", "path": "docs/ideas/README.md"},
+        {"type": "file", "name": "alpha-2026-07-01.md",
+         "path": "docs/ideas/alpha-2026-07-01.md",
+         "html_url": "https://gh/websites/blob/main/docs/ideas/alpha-2026-07-01.md"},
+        {"type": "file", "name": "beta-2026-07-08.md",
+         "path": "docs/ideas/beta-2026-07-08.md", "html_url": "https://gh/beta"},
+        {"type": "dir", "name": "sub", "path": "docs/ideas/sub"},
+    ]
+    bodies = {
+        "docs/ideas/alpha-2026-07-01.md": "# Alpha idea\n\nDo the alpha thing.\n",
+        "docs/ideas/beta-2026-07-08.md": "# Beta idea\n\n**One line:** be better.\n",
+    }
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        if subpath == "/contents/docs/ideas":
+            return {"ok": True, "status": 200, "data": listing, "error": "",
+                    "fetched_at": "", "cached": False, "url": ""}
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        return {"ok": True, "status": 200, "data": bodies[path], "error": "",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        monkeypatch.setattr(github, "fetch_file", fake_fetch)
+        return await ideas.repo_ideas("websites")
+
+    out = asyncio.run(run())
+    assert out["total"] == 2  # README excluded, dir excluded
+    titles = [i["title"] for i in out["ideas"]]
+    assert titles == ["Beta idea", "Alpha idea"]  # newest (by name) first
+    beta = out["ideas"][0]
+    assert beta["summary"] == "be better."
+    assert beta["github_url"] == "https://gh/beta"
+    assert beta["internal_url"] == "/journal/websites/file?path=docs/ideas/beta-2026-07-08.md"
+
+
+def test_ideas_no_ideas_dir_is_absence_not_error(monkeypatch):
+    """A 404 on docs/ideas is a legitimate absence (missing=True), never an error."""
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        return {"ok": False, "status": 404, "data": None, "error": "Not Found",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        return await ideas.repo_ideas("substrate-kit")
+
+    out = asyncio.run(run())
+    assert out["missing"] is True and out["has_dir"] is False
+    assert out["listing_error"] is None and out["total"] == 0
+
+
+def test_ideas_listing_error_surfaces(monkeypatch):
+    """A non-404 listing failure surfaces as an honest listing_error banner."""
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        return {"ok": False, "status": 403, "data": None, "error": "rate limited",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        return await ideas.repo_ideas("superbot")
+
+    out = asyncio.run(run())
+    assert out["missing"] is False and out["has_dir"] is False
+    assert out["listing_error"] and "rate limited" in out["listing_error"]
+
+
+def test_ideas_route_degrades_no_auth(client):
+    """/ideas serves 200 even when GitHub is unreachable (honest empty state)."""
+    r = client.get("/ideas")
+    assert r.status_code == 200
+    assert "what's queued to build" in r.text
+    rj = client.get("/ideas.json")
+    assert rj.status_code == 200 and isinstance(rj.json(), list)
 
 
 def test_cache_skips_transient_errors(monkeypatch):

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}idea backlog{% endblock %}
+{% block headright %}<a href="/ideas?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>idea backlog — what's queued to build</h2>
+  <p class="dim small">The <code>docs/ideas/</code> conveyor across the fleet. Titles and
+    one-line summaries are parsed from each idea file; every idea deep-links to its
+    source on GitHub (and to the in-app markdown view). Repos without an ideas
+    directory are simply absent below.</p>
+</div>
+
+{% for r in repos %}
+<div class="card">
+  <h2>{{ r.repo }}
+    <span class="dim small">· <a href="{{ r.github_url }}">docs/ideas ↗</a>
+      {% if r.total %}· {{ r.total }} idea{{ 's' if r.total != 1 }}{% endif %}</span></h2>
+
+  {% if r.listing_error %}
+  <div class="banner">⚠ could not list docs/ideas — {{ r.listing_error }}
+     · <a href="{{ r.github_url }}">browse on GitHub ↗</a></div>
+  {% elif r.missing %}
+  <p class="dim small">no <code>docs/ideas/</code> directory in this repo.</p>
+  {% elif r.total == 0 %}
+  <p class="dim small">no ideas captured yet (only the backlog README).</p>
+  {% else %}
+    {% for i in r.ideas %}
+    <div class="idea-row">
+      <div class="idea-title">
+        <a href="{{ i.internal_url }}">{{ i.title }}</a>
+        <span class="small"> · <a href="{{ i.github_url }}" class="dim">GitHub ↗</a></span>
+      </div>
+      {% if i.summary %}<div class="idea-sum">{{ i.summary }}</div>
+      {% elif i.degraded %}<div class="idea-sum">(summary unavailable — could not fetch file)</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% if r.more %}
+    <p class="dim small" style="margin-top:.6rem">…and {{ r.more }} more —
+       <a href="{{ r.github_url }}">browse all on GitHub ↗</a></p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}
