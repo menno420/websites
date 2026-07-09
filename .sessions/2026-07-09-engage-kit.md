@@ -2,6 +2,8 @@
 
 > **Status:** `complete` — PR #16. Contained, reversible, forward-only.
 
+- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+
 ## What this session did
 
 The kit adoption (PR #1) was ritual-clean but never engaged: the planted binding

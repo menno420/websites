@@ -2,6 +2,8 @@
 
 > **Status:** `complete`
 
+- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+
 ## What I did
 
 Executed sequence step 3 of the rework plan (botsite half): built a real,

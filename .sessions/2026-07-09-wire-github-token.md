@@ -2,6 +2,8 @@
 
 > **Status:** `complete` — token set on `control-plane`, board cells verified live, docs updated; shipped as PR #6 (token-only, based on current `main`; the deploy content it depended on landed separately as PR #3 mid-session).
 
+- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+
 **What this session is about:** Close the one outstanding owner TODO from the
 Railway deploy session — set the durable owner GitHub PAT as the
 `control-plane` service's API token so the board's auth-gated cells (actions

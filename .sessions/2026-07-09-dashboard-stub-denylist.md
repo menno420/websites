@@ -5,6 +5,8 @@
 > session card or ledger entry when it merged — the gap the engage-kit session
 > is closing).
 
+- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+
 ## What it did (reconstructed from the merge commit)
 
 Hardening follow-up to the dashboard rebuild (PR #8). The `/admin` control-panel

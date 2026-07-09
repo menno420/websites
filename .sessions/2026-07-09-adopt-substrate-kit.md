@@ -2,6 +2,8 @@
 
 > **Status:** `complete` — shipped as PR #1 (`claude/adopt-substrate-kit`, squash-merged).
 
+- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+
 **What this session is about to do:** adopt substrate-kit into this repo —
 fresh-from-kit, never a copy of superbot — per the kickoff brief
 (`menno420/superbot` `docs/planning/websites-project-kickoff-2026-07-09.md`,

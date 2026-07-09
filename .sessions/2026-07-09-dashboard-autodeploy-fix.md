@@ -2,6 +2,8 @@
 
 > **Status:** `complete` — root cause found + fixed non-destructively via Railway API; this PR is the live end-to-end proof that the dashboard now auto-deploys on merge to `main`.
 
+- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+
 **What this session was about:** The dashboard Railway service's auto-deploy-on-merge
 was flaky — it missed merges twice and needed a manual pinned-SHA redeploy — while
 control-plane and botsite (same repo `menno420/websites`, same project
