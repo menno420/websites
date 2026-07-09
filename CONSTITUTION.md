@@ -23,6 +23,12 @@
   a separate blocking question. Two payoffs, not one: it catches a misread
   before work happens, and the filled-in picture is itself new material the
   owner reasons against and redirects.
+- **Capabilities are discovered, never assumed.** `docs/CAPABILITIES.md` is
+  the verified ledger of what sessions here can and cannot do — read it at
+  session start. Before declaring a wall or a missing credential: check that
+  file → check the environment (`printenv`, tool lists) → attempt once and
+  capture the exact error → append the finding same session. An imagined
+  wall stalls the session; an unrecorded real one taxes every later session.
 - When a doc and a source file disagree: Source code and merged PRs win over any doc. When a doc and a source file disagree, treat the doc as stale, follow the source, and fix the doc in the same session — drift you can see (a wrong ledger entry, a stale pointer) is fixed on sight, not deferred.
 
 ## Autonomy rails — act vs. ask
@@ -33,6 +39,13 @@
   large / cross-cutting (architectural), or when the goal itself is
   genuinely ambiguous. No live owner to ask? Record the question in
   `docs/question-router.md` instead of skipping it or guessing.
+- **Owner attention is the scarcest resource.** Before routing anything to
+  the owner: attempt it yourself, or cite the exact wall (the
+  `docs/CAPABILITIES.md` discipline) — assumption-based asks are banned.
+  Every ask carries the OWNER-ACTION fields — WHAT / WHERE / HOW /
+  WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED (format:
+  `control/README.md`) — phrased so a non-technical owner can act on it
+  directly. Expire stale asks; fewer, clearer asks beat complete lists.
 
 ## Changing the rules — propose, don't apply
 

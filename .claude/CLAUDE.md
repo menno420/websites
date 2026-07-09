@@ -14,7 +14,11 @@ websites is built in Python 3.12 (FastAPI + Jinja2 + httpx, server-rendered; pin
 
 1. This file — the working agreement.
 2. `docs/current-state.md` — what is true right now.
-3. `docs/AGENT_ORIENTATION.md` — the task-specific reading router.
+3. `docs/CAPABILITIES.md` — what sessions here CAN and CANNOT do (verified).
+   Never declare a wall or a missing credential without its discovery rule:
+   check the file → check the env → attempt once + capture the exact error →
+   append the finding same session.
+4. `docs/AGENT_ORIENTATION.md` — the task-specific reading router.
 
 ## Architecture — layers & import rules
 

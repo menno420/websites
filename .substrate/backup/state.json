@@ -7,10 +7,14 @@
     "soft_target_sessions": 50
   },
   "graduation_proposed": false,
+  "kit_version": "1.2.0",
   "last_compaction_session": 0,
   "mode": "guided",
   "mode_history": [],
   "open_questions": [],
+  "planted_doc_hashes": {
+    ".claude/CLAUDE.md": "b2b1edc4dae0ef22efadc16098f2492622d1739f09bc066ad2b19c204f42cc72"
+  },
   "project_id": "4b6a55b0bafb",
   "promotion_rights": "propose",
   "quiet_sessions": 0,
@@ -28,13 +32,18 @@
     },
     "doc_roots": {
       "question_id": "Q-007",
-      "source": "derived",
+      "source": "user",
       "value": "docs"
     },
     "drift_resolution": {
       "question_id": "Q-011",
       "source": "user",
       "value": "Source code and merged PRs win over any doc. When a doc and a source file disagree, treat the doc as stale, follow the source, and fix the doc in the same session \u2014 drift you can see (a wrong ledger entry, a stale pointer) is fixed on sight, not deferred."
+    },
+    "integration_mode": {
+      "question_id": "Q-001",
+      "source": "user",
+      "value": "guided"
     },
     "mutation_seam": {
       "question_id": "Q-009",
@@ -84,8 +93,9 @@
   },
   "slots": {
     "architecture_layers": "filled",
-    "doc_roots": "provisional",
+    "doc_roots": "filled",
     "drift_resolution": "filled",
+    "integration_mode": "filled",
     "mutation_seam": "filled",
     "new_area_ownership": "filled",
     "owner_profile": "filled",
