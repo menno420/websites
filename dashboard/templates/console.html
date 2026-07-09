@@ -21,10 +21,22 @@
   </div>
   {% else %}
 
+  {% if console_schema_warning %}
+  <div class="sb-error" role="alert">
+    {{ icon("alert", 16) }}
+    <div><strong>Console feed schema drift.</strong>
+      <span class="sb-mono">{{ console_schema_warning }}</span> —
+      see the pinned contract (<code>dashboard/console_data_contract.json</code>) vs superbot's canonical
+      <a href="https://github.com/menno420/superbot/blob/main/botsite/data/console_data_contract.json" target="_blank" rel="noopener"><code>console_data_contract.json</code></a>.
+      Nothing below is faked; parts may render empty or wrong.</div>
+  </div>
+  {% endif %}
+
+  {# ideas/bugs are contracted counter DICTS ({total, by_status, open_count, open}), not lists #}
   <div class="sb-statrow sb-statrow-4" style="margin-bottom:var(--sb-s-6)">
     <div class="sb-stat"><span class="v">{{ sessions|length }}</span><span class="l">Recent sessions</span></div>
-    <div class="sb-stat"><span class="v">{{ console_ideas|length }}</span><span class="l">Ideas</span></div>
-    <div class="sb-stat"><span class="v">{{ console_bugs|length }}</span><span class="l">Bugs</span></div>
+    <div class="sb-stat"><span class="v">{{ console_ideas.total or 0 }}</span><span class="l">Ideas</span></div>
+    <div class="sb-stat"><span class="v">{{ console_bugs.open_count or 0 }}</span><span class="l">Open bugs <span class="sb-mono">/ {{ console_bugs.total or 0 }}</span></span></div>
     <div class="sb-stat"><span class="v">{{ console_changelog|length }}</span><span class="l">Changelog entries</span></div>
   </div>
 
@@ -36,6 +48,19 @@
       <span class="cmd-count">{{ e.date }}</span>
       <span class="desc"><strong>{{ e.title }}</strong> — {{ e.summary }}</span>
       <span class="cmd-meta"><span class="sb-badge sb-badge-info">{{ e.kind or 'update' }}</span></span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if console_bugs.open %}
+  <div class="group-head" style="margin-top:var(--sb-s-7)"><h2>Open bugs</h2><a class="n" href="/bugs">all →</a></div>
+  <div class="sb-cmdlist">
+    {% for b in console_bugs.open %}
+    <div class="sb-cmdrow" style="cursor:default">
+      <span class="cmd-count">{{ b.id }}</span>
+      <span class="desc">{{ b.title }}</span>
+      <span class="cmd-meta"><span class="sb-badge sb-badge-info">{{ b.status or 'open' }}</span></span>
     </div>
     {% endfor %}
   </div>

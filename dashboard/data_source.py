@@ -24,8 +24,10 @@ without a code change.
 
 from __future__ import annotations
 
+import json
 import os
 import time
+from pathlib import Path
 from typing import Any, Optional
 
 import httpx
@@ -129,6 +131,56 @@ async def fetch_dashboard(refresh: bool = False) -> dict[str, Any]:
 
 async def fetch_console(refresh: bool = False) -> dict[str, Any]:
     return await _fetch(CONSOLE_JSON_URL, refresh=refresh)
+
+
+# ---------------------------------------------------------------------------
+# console.json shape contract (cross-repo pin).
+#
+# The console feed's shape is a CONTRACT between two repos: superbot produces the
+# committed botsite/data/console.json and pins its shape in a committed, versioned
+# botsite/data/console_data_contract.json (superbot PR #1884; producer parity +
+# fail-closed checks run in superbot's CI). This service is the second consumer, so
+# it pins the version it was built against (dashboard/console_data_contract.json —
+# a copy of contract v1) and verifies the fetched feed at render time: version
+# match + every contracted top-level family present. A mismatch renders an honest
+# schema-drift banner on /console (never-fake-data posture) instead of a silently
+# wrong/blank page — a producer-side rename becomes visible the moment it lands.
+# ---------------------------------------------------------------------------
+CONSOLE_CONTRACT_FILE = Path(__file__).resolve().parent / "console_data_contract.json"
+
+
+def load_console_contract() -> dict[str, Any]:
+    """The pinned copy of the console.json shape contract this consumer expects."""
+    return json.loads(CONSOLE_CONTRACT_FILE.read_text(encoding="utf-8"))
+
+
+def console_contract_issue(data: dict[str, Any]) -> str:
+    """Human-readable schema-drift message for a fetched console feed ('' = ok).
+
+    Checks the two cheap, load-bearing promises: ``meta.schema_version`` equals
+    the pinned contract ``version``, and every contracted top-level family is
+    present. Field-level enforcement lives producer-side in superbot's CI; this
+    render-time check exists to make a cross-repo drift *visible* on the page.
+    """
+    try:
+        contract = load_console_contract()
+    except (OSError, json.JSONDecodeError) as exc:  # pragma: no cover - repo file
+        return f"pinned console contract unreadable ({exc})"
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    version = meta.get("schema_version")
+    pinned = contract.get("version")
+    if version != pinned:
+        return (
+            f"feed schema_version={version!r} but this dashboard was built against "
+            f"contract v{pinned} — the shape may have changed upstream"
+        )
+    missing = [k for k in contract.get("top_level", []) if k not in data]
+    if missing:
+        return (
+            f"feed is missing contracted famil{'y' if len(missing) == 1 else 'ies'} "
+            f"{', '.join(missing)} — parts of this page may render empty"
+        )
+    return ""
 
 
 def prime_cache(url: str, data: dict[str, Any]) -> None:

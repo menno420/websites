@@ -245,18 +245,30 @@ async def updates_page(request: Request):
 
 @app.get("/console", response_class=HTMLResponse)
 async def console_page(request: Request):
-    """Owner one-glance console — fed by superbot's committed ``console.json``."""
+    """Owner one-glance console — fed by superbot's committed ``console.json``.
+
+    The feed's shape is pinned by the cross-repo contract
+    (``dashboard/console_data_contract.json``, a copy of the canonical contract in
+    superbot); a drifted feed renders an honest schema banner rather than a
+    silently wrong page. ``ideas``/``bugs`` are contracted as counter DICTS
+    (``{total, by_status, …}``), not lists.
+    """
     ctx = await _base_ctx(request, "console")
     cres = await ds.fetch_console(refresh=_refresh(request))
     cdata = cres.get("data", {}) or {}
+    ideas = cdata.get("ideas")
+    bugs = cdata.get("bugs")
     ctx.update(
         {
             "console_ok": cres.get("ok", False),
             "console_error": cres.get("error", ""),
+            "console_schema_warning": (
+                ds.console_contract_issue(cdata) if cres.get("ok") else ""
+            ),
             "console_meta": cdata.get("meta", {}) or {},
             "sessions": cdata.get("sessions", []) or [],
-            "console_ideas": cdata.get("ideas", []) or [],
-            "console_bugs": cdata.get("bugs", []) or [],
+            "console_ideas": ideas if isinstance(ideas, dict) else {},
+            "console_bugs": bugs if isinstance(bugs, dict) else {},
             "console_changelog": cdata.get("bot_changelog", []) or [],
         }
     )

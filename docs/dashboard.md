@@ -85,6 +85,18 @@ temporarily unavailable" banner and only what the feed provides. `?refresh=1` on
 busts the cache. The only mutation toward superbot is **none**: websites stays read-only and
 forward-only (plan Q7, resolved: consume the artifact, don't rebuild the export tooling).
 
+**The console feed's shape is a pinned cross-repo contract** (decision stamped in
+`docs/current-state.md` / `docs/decisions.md`, 2026-07-09). Superbot commits the
+canonical, versioned contract (`botsite/data/console_data_contract.json`, superbot PR #1884)
+and stamps `meta.schema_version` into every emitted `console.json`; producer-side parity +
+fail-closed shape checks run in superbot's CI. This service pins the copy it was built
+against (`dashboard/console_data_contract.json`, v1) and verifies at render time
+(`data_source.console_contract_issue`): a version mismatch or missing contracted family
+renders an honest **schema-drift banner** on `/console` instead of a silently wrong page.
+Upgrading = sync the pinned copy, adapt `console.html`/route, update the test fixture, in
+one commit. `ideas`/`bugs` in the feed are counter **dicts** (`{total, by_status,
+open_count, open}`), not lists.
+
 ## Railway service
 
 | Thing | Value |
