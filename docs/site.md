@@ -106,6 +106,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/journal/search.json?q=…` | public | same search as JSON (plain snippets) |
 | `/journal/{repo}` | public | per-repo sessions / ledgers / PRs / commits |
 | `/journal/{repo}/file?path=…&ref=main` | public | render a repo file (markdown → HTML) |
+| `/static/*` | public | static assets (the live-monitoring auto-refresh JS) — [D-0023] |
 | `/healthz` | public | Railway healthcheck |
 | `/version` | public | deployed commit SHA (`{service, sha, short}`) — powers the deploy-state cell ([D-0018]) |
 | `/owner` | **gated** | full-detail board — un-masked Actions **secret names** + broken-check/oldest-PR detail |
@@ -114,6 +115,23 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/owner/actions/rerun-ci` (POST) | **gated** | re-run the latest FAILED Actions run on a selected repo |
 
 `?refresh=1` on any page bypasses the cache for that load.
+
+## Live-monitoring auto-refresh ([D-0023])
+
+The two **live-monitoring** surfaces — the board `/` and `/fleet` — auto-refresh
+client-side so the owner's control glance stays current without a manual reload.
+`app/static/autorefresh.js` (a small vanilla-JS module, no dependency) re-fetches
+the **current page** over HTTP every `AUTOREFRESH_SECONDS` (default 45s) and swaps
+only the server-rendered `#live-content` region into the DOM — no full-page reload
+flash, no scroll jump, and **no duplicated render logic** (the server stays the one
+renderer, so a soft refresh always matches a hard reload). The fetch omits
+`?refresh=1`, so it rides the TTL cache and never hammers the GitHub API. A visible
+`auto-refreshing every Ns · last updated <time>` indicator carries a **pause/resume**
+toggle (persisted in `localStorage`); polling also pauses while the tab is hidden or
+a fetch is already in flight, and the pulse dot honors `prefers-reduced-motion`.
+**Only these two monitoring screens auto-refresh** — content/journal pages
+(`/journal*`, `/activity`, `/ideas`) stay static. The static dir is served by a
+`StaticFiles` mount at `/static` (public, credential-free like the rest of the site).
 
 ## Deploy-state drift + `/version` ([D-0018])
 
@@ -185,6 +203,7 @@ account-token action and any **live production-bot** control API. No
 | `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; the Actions **secrets count** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)`. Secret *names* are exposed only through the gated `/owner` area; `actions:write` is needed for the `/owner` re-run-CI action. |
 | `PORT` | Railway sets it | bind port (default 8000) |
 | `CACHE_TTL_SECONDS` | no | server-side GitHub cache TTL, default `180` |
+| `AUTOREFRESH_SECONDS` | no | client poll interval for the board `/` + `/fleet` live-monitoring auto-refresh, default `45` ([D-0023]) |
 | `GITHUB_API_BASE` | no | REST base override (testing behind restricted egress) |
 | `GITHUB_RAW_BASE` | no | raw-content base override |
 
