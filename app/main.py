@@ -13,7 +13,6 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import markdown as md
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -75,6 +74,28 @@ async def journal_index(request: Request):
     )
 
 
+@app.get("/journal/search", response_class=HTMLResponse)
+async def journal_search(request: Request, q: str = ""):
+    # Registered BEFORE /journal/{repo} so "search" is not captured as a repo.
+    data = await journal.search_journal(q, refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request, "journal_search.html", {"s": data, "active": "journal"}
+    )
+
+
+@app.get("/journal/search.json")
+async def journal_search_json(request: Request, q: str = ""):
+    data = await journal.search_journal(q, refresh=_refresh(request))
+    # Drop the HTML snippet from the JSON payload — callers get the plain text
+    # snippet plus the deep-link; the highlighted variant is HTML-view only.
+    payload = dict(data)
+    payload["results"] = [
+        {k: v for k, v in r.items() if k != "snippet_html"}
+        for r in data["results"]
+    ]
+    return JSONResponse(payload)
+
+
 @app.get("/journal/{repo}", response_class=HTMLResponse)
 async def journal_repo(request: Request, repo: str):
     if repo not in config.REPOS:
@@ -95,9 +116,7 @@ async def journal_file(request: Request, repo: str, path: str, ref: str = "main"
     body_html = ""
     if res["ok"] and isinstance(res["data"], str):
         if path.endswith((".md", ".markdown")):
-            body_html = md.markdown(
-                res["data"], extensions=["fenced_code", "tables"]
-            )
+            body_html = journal.render_markdown(res["data"])
         else:
             import html as _html
 

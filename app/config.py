@@ -99,7 +99,12 @@ REPOS: dict = {
         },
     },
     "websites": {
-        "expected_required_checks": [],  # repo brand-new; none configured yet
+        # The kit `quality` gate is now a REQUIRED check on main (owner set the
+        # ruleset, 2026-07-09; verified live via PR #18 mergeable_state=blocked
+        # while `quality` pended). The board derives the *configured* required
+        # checks live from the ruleset/branch-protection; this `expected` list is
+        # the ledger side, kept in sync so the row stops reading "none required".
+        "expected_required_checks": ["quality"],
         "advisory_checks": [],
         "red_by_design": {},
         "automerge_enabler_expected": False,

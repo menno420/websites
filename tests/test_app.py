@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, github, readiness  # noqa: E402
+from app import config, github, journal, readiness  # noqa: E402
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -322,6 +322,107 @@ def test_rerun_latest_failed_no_failed_run(monkeypatch):
         assert res["ok"] is False and "no failed run" in res["message"]
 
     asyncio.run(run())
+
+
+def test_render_markdown_produces_html_elements():
+    """Session-log markdown → real HTML (headings, code, tables), not raw fences."""
+    src = (
+        "# Title\n\n"
+        "## Section\n\n"
+        "Some **bold** text and a [link](https://example.com).\n\n"
+        "```python\nprint('hi')\n```\n\n"
+        "| a | b |\n|---|---|\n| 1 | 2 |\n"
+    )
+    html = journal.render_markdown(src)
+    assert "<h1" in html and "<h2" in html
+    assert "<code>" in html or "<pre>" in html
+    assert "<table>" in html and "<td>" in html
+    assert 'href="https://example.com"' in html
+    # the raw fence markers must be gone (rendered, not shown literally)
+    assert "```" not in html
+
+
+def test_render_markdown_sanitizes_script():
+    """bleach strips a <script> even though the source is trusted (defense-in-depth)."""
+    html = journal.render_markdown("ok text\n\n<script>alert(1)</script>\n")
+    # The executable <script> tag must be gone; inert leftover text is harmless.
+    assert "<script>" not in html
+    assert "</script>" not in html
+
+
+def test_search_journal_cross_repo(monkeypatch):
+    """search_journal greps the corpus, ranks by match count, deep-links out."""
+
+    async def fake_corpus(repo, refresh):
+        return [{"path": ".sessions/x.md", "blob": f"https://github.com/menno420/{repo}/blob/main/.sessions/x.md", "kind": "session"}]
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        bodies = {
+            "superbot": "line one\nRailway deploy Railway again\nend",
+            "superbot-next": "no hit here",
+            "substrate-kit": "one Railway mention",
+            "websites": "nothing relevant",
+        }
+        return {"ok": True, "status": 200, "data": bodies[repo],
+                "error": "", "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(journal, "_corpus", fake_corpus)
+        monkeypatch.setattr(github, "fetch_file", fake_fetch)
+        out = await journal.search_journal("railway")  # case-insensitive
+        repos = [r["repo"] for r in out["results"]]
+        assert repos == ["superbot", "substrate-kit"]  # 2 matches ranked first
+        top = out["results"][0]
+        assert top["matches"] == 2 and top["line"] == 2
+        assert top["github_url"].endswith("#L2")
+        assert "<mark>Railway</mark>" in top["snippet_html"]
+        assert out["scanned"] == 4 and out["errors"] == []
+
+    asyncio.run(run())
+
+
+def test_search_journal_reports_fetch_errors(monkeypatch):
+    """A failed corpus fetch lands in errors (honest banner), not silently dropped."""
+
+    async def fake_corpus(repo, refresh):
+        return [{"path": "docs/x.md", "blob": "b", "kind": "doc"}]
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        if repo == "superbot":
+            return {"ok": True, "status": 200, "data": "has term here",
+                    "error": "", "fetched_at": "", "cached": False, "url": ""}
+        return {"ok": False, "status": 429, "data": None, "error": "rate limited",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(journal, "_corpus", fake_corpus)
+        monkeypatch.setattr(github, "fetch_file", fake_fetch)
+        out = await journal.search_journal("term")
+        assert len(out["results"]) == 1 and out["results"][0]["repo"] == "superbot"
+        assert len(out["errors"]) == 3
+        assert all(e["status"] == 429 for e in out["errors"])
+
+    asyncio.run(run())
+
+
+def test_search_empty_query():
+    out = asyncio.run(journal.search_journal("   "))
+    assert out["empty"] is True and out["results"] == []
+
+
+def test_search_route_registered_before_repo(client):
+    """/journal/search is NOT captured as a repo path (route order)."""
+    r = client.get("/journal/search?q=anything")
+    assert r.status_code == 200
+    assert "search the journal" in r.text
+    rj = client.get("/journal/search.json?q=anything")
+    assert rj.status_code == 200 and "results" in rj.json()
+
+
+def test_websites_row_expects_quality_required_check():
+    """The board's websites row now expects `quality` as a required check
+    (owner set the ruleset, 2026-07-09) — no longer 'none required'."""
+    assert config.REPOS["websites"]["expected_required_checks"] == ["quality"]
 
 
 def test_cache_skips_transient_errors(monkeypatch):
