@@ -34,6 +34,7 @@
   },
   "interpreter": "/usr/local/bin/python3",
   "interpreter_for_checks": null,
+  "kit_version": "1.0.0",
   "namespace": {
     "reserved": {},
     "roots": []
