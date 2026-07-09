@@ -192,17 +192,19 @@ def test_admin_is_a_labeled_stub(client):
 
 
 def test_no_control_api_token_or_url_anywhere():
-    """Hard guarantee: this service references no production bot control-API URL/token."""
+    """Hard guarantee: this service references no production bot control-API URL/token —
+    not in Python source and not in any served template. The literal env-var identifiers
+    a live-write control panel would need never appear anywhere in this service."""
     import pathlib
 
     root = pathlib.Path(app_module.__file__).resolve().parent
     forbidden = ["CONTROL_API_TOKEN", "CONTROL_API_URL", "worker.railway.internal", "DISCORD_OAUTH_CLIENT_SECRET"]
-    for py in root.rglob("*.py"):
-        if "tests" in py.parts:
+    for f in list(root.rglob("*.py")) + list(root.rglob("*.html")):
+        if "tests" in f.parts:
             continue
-        text = py.read_text(encoding="utf-8")
+        text = f.read_text(encoding="utf-8")
         for needle in forbidden:
-            assert needle not in text, f"{needle} must not appear in {py}"
+            assert needle not in text, f"{needle} must not appear in {f}"
 
 
 # --- honest degradation --------------------------------------------------
