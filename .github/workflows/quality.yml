@@ -1,0 +1,42 @@
+name: quality
+
+# Substrate-kit quality gate for the websites repo.
+# Runs the kit doc/session-log hygiene checker plus every service's pytest
+# suite. Gates every PR into main and every push to main (merge = deploy, so
+# main must always be green).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install app dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install \
+            -r requirements.txt \
+            -r botsite/requirements.txt \
+            -r dashboard/requirements.txt \
+            pytest
+
+      # Kit gate: docs hygiene (badges / links / reachability), session-log
+      # markers, namespace shadowing, seam authority, orientation budget, and
+      # the decision ledger. --require-session-log fails (not just advises)
+      # when a PR adds a session card that is not yet complete.
+      - name: substrate check (strict)
+        run: python3 bootstrap.py check --strict --require-session-log
+
+      # Every service's test suite. FastAPI apps in app/, botsite/, dashboard/.
+      - name: pytest (all services)
+        run: python3 -m pytest tests/ botsite/tests dashboard/tests -q
