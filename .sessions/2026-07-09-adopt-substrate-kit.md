@@ -1,6 +1,6 @@
 # 2026-07-09 — Adopt substrate-kit
 
-> **Status:** `in-progress`
+> **Status:** `complete` — shipped as PR #1 (`claude/adopt-substrate-kit`, squash-merged).
 
 **What this session is about to do:** adopt substrate-kit into this repo —
 fresh-from-kit, never a copy of superbot — per the kickoff brief
