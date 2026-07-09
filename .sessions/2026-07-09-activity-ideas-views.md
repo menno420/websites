@@ -61,12 +61,25 @@ Note: PR #32's commit title reads "ORDER 002 — build /fleet page" but its diff
 
 ## Live evidence (post-deploy)
 
-<!-- filled after merge + Railway deploy SUCCESS -->
-- deploy: <pending>
-- `/activity` 200 — real PRs: <pending real PR numbers>
-- `/ideas` 200 — real titles: <pending>
-- `/healthz` 200; `scripts/healthcheck.py` all 200: <pending>
-- board deploy-state: control-plane in sync at new head: <pending>
+PR #33 squash-merged (`da35e21f`); control-plane auto-deployed from `main`;
+`/version` polled to `da35e21f` (deploy SUCCESS). Verified on the live deployment
+(https://control-plane-production-abb0.up.railway.app):
+
+- `/activity` 200 — 60 items, **0 fetch errors**, real cross-repo PRs: websites
+  **#33** (merged), superbot-next **#78** (open) / **#77** (merged), superbot
+  **#1897** (open), substrate-kit **#41** (open) — all four repos represented,
+  each deep-linked to GitHub.
+- `/ideas` 200 — real per-repo counts + titles: superbot **221**, substrate-kit
+  **15**, websites **1** (the `/activity.xml` idea added this session),
+  superbot-next **0** (honest absence — only a README, no error).
+- `/healthz` 200; `scripts/healthcheck.py` → **all 6 checks PASS (200)**.
+- board deploy-state (`/api/readiness.json`): control-plane / botsite / dashboard
+  all **`in_sync`**, deployed `da35e21f` == head `da35e21f` — control-plane in
+  sync at the new head after this deploy.
+- Gates: `quality` green on #33; `bootstrap check --strict` green; Railway-ID
+  guard green; `pytest tests/ botsite/tests dashboard/tests` → 103 passed.
+
+(Recorded in the `control/status.md` heartbeat follow-up alongside this fill-in.)
 
 ## 💡 Session idea
 
