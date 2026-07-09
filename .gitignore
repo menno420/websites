@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .env
+
+# substrate-kit local guard-fire telemetry (per-run, not source)
+.substrate/guard-fires.jsonl
