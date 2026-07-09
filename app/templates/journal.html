@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}journal browser{% endblock %}
+{% block headright %}<a href="/journal?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+{% for j in repos %}
+<div class="card">
+  <h2><a href="/journal/{{ j.repo }}">{{ j.repo }}</a>
+      <span class="dim small">· <a href="{{ j.github_url }}">github</a></span></h2>
+  <p class="dim small">{{ j.note }}</p>
+  <table>
+    <tr>
+      <td style="width:33%">
+        <h3>latest sessions</h3>
+        {% for s in j.sessions[:5] %}
+          <a href="/journal/{{ j.repo }}/file?path={{ s.path }}">{{ s.name }}</a><br>
+        {% else %}<span class="dim small">{% if j.has_sessions %}none yet{% else %}n/a{% endif %}</span>{% endfor %}
+      </td>
+      <td style="width:33%">
+        <h3>recent PRs</h3>
+        {% for p in j.pulls[:5] %}
+          <span class="b {{ 'ok' if p.state == 'merged' else ('warn' if p.state == 'open' else 'unknown') }}">{{ p.state }}</span>
+          <a href="{{ p.url }}">#{{ p.number }} {{ p.title[:60] }}</a><br>
+        {% else %}<span class="dim small">none</span>{% endfor %}
+      </td>
+      <td>
+        <h3>ledgers</h3>
+        {% for d in j.docs %}
+          <a href="/journal/{{ j.repo }}/file?path={{ d.path }}">{{ d.label }}</a><br>
+        {% else %}<span class="dim small">none</span>{% endfor %}
+      </td>
+    </tr>
+  </table>
+</div>
+{% endfor %}
+{% endblock %}

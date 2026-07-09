@@ -24,3 +24,17 @@
 - verdict: Adopted fresh-from-kit: menno420/substrate-kit main @ 08a291f96599d5b7ec1b6a46a381d4e3f88839c0, dist/bootstrap.py blob 7d2b85c740b952aa8c52d013fdcfa182f395b509 (643694 bytes, stdlib-only), command: python3 bootstrap.py adopt.
 - why: Pin exactly which kit build planted this repo so later upgrades diff against a known source; mirrors superbot-next's D-0002. Never a copy of superbot.
 - provenance: superbot docs/planning/websites-project-kickoff-2026-07-09.md (PR #1876), sequence step 1
+
+## [D-0003] Control-plane site stack: FastAPI + Jinja2 + httpx, server-rendered, no build step
+- status: decided
+- date: 2026-07-09
+- verdict: The control-plane site is a single server-rendered FastAPI app (Python 3.12, Jinja2 templates, httpx client, Markdown renderer), pinned deps, simple Dockerfile binding 0.0.0.0:$PORT.
+- why: Boring and Railway-friendly; matches the inherited taste from superbot's dashboard/ (small FastAPI apps, minimal deps, honest data); no frontend build step to break. Async httpx lets one page fan out ~30 GitHub calls concurrently.
+- provenance: websites PR #2 (control-plane-site session, 2026-07-09); kickoff brief 'stack: builder's free choice — decide and flag'
+
+## [D-0004] Control-plane data/auth/cache model
+- status: decided
+- date: 2026-07-09
+- verdict: All GitHub data fetched live server-side: REST API for listings/state (GITHUB_TOKEN), raw.githubusercontent.com WITHOUT auth for public file bodies; per-URL in-memory TTL cache 180s caching successes and stable negatives (404/403/401) but never transient errors; ?refresh=1 busts. Auth = HTTP Basic, any username, password compared constant-time to SITE_PASSWORD (fail closed if unset); /healthz unauthenticated. Every fetch degrades per-cell — the board renders 'unknown (reason)' instead of faking or 500ing (e.g. secrets without admin scope, rulesets without scope).
+- why: 3-min TTL keeps a board load ~30 API calls well under PAT rate limits while staying near-live; raw host needs no token for public repos but 404s if sent a bad bearer (found live); shared-secret Basic auth is exactly the 'something simple' the kickoff asked for.
+- provenance: websites PR #2 (control-plane-site session, 2026-07-09)

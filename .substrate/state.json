@@ -26,15 +26,27 @@
       "source": "derived",
       "value": "docs"
     },
+    "primary_language": {
+      "question_id": "Q-003",
+      "source": "user",
+      "value": "Python 3.12 (FastAPI + Jinja2 + httpx, server-rendered; pinned in requirements.txt; deployed via Dockerfile on Railway)"
+    },
     "project_name": {
       "question_id": "Q-002",
       "source": "user",
       "value": "websites"
+    },
+    "verify_command": {
+      "question_id": "Q-005",
+      "source": "user",
+      "value": "python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)"
     }
   },
   "slots": {
     "doc_roots": "provisional",
-    "project_name": "filled"
+    "primary_language": "filled",
+    "project_name": "filled",
+    "verify_command": "filled"
   },
   "stage": "integration",
   "stance": "analysis",
