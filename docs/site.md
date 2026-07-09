@@ -27,34 +27,63 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 
 | Route | Auth | What |
 |---|---|---|
-| `/` | public | readiness board |
-| `/api/readiness.json` | public | board data as JSON |
+| `/` | public | readiness board (secrets masked to a count) |
+| `/api/readiness.json` | public | board data as JSON (no secret names) |
 | `/journal` | public | journal overview, all repos |
 | `/journal/{repo}` | public | per-repo sessions / ledgers / PRs / commits |
 | `/journal/{repo}/file?path=…&ref=main` | public | render a repo file (markdown → HTML) |
 | `/healthz` | public | Railway healthcheck |
+| `/owner` | **gated** | full-detail board — un-masked Actions **secret names** + broken-check/oldest-PR detail |
+| `/owner/api/readiness.json` | **gated** | authed JSON, including secret names |
+| `/owner/actions/refresh` (POST) | **gated** | clear the in-memory TTL cache (in-process) |
+| `/owner/actions/rerun-ci` (POST) | **gated** | re-run the latest FAILED Actions run on a selected repo |
 
 `?refresh=1` on any page bypasses the cache for that load.
 
-## Auth — none (public site)
+## Public site + gated `/owner` area
 
-The site is **public**: every route serves without credentials (owner decision 2026-07-09, "Yes drop the auth"). The former HTTP Basic gate — and its fail-closed
-503-when-unset behaviour — was removed. `SITE_PASSWORD` is no longer read.
+The **public site** (every route except `/owner*`) serves without credentials.
+It is derived almost entirely from **public** repo data. The one datum that is
+not public — the GitHub Actions **secret names** (obtainable only with an
+admin-scope token) — is **masked to a count** (`N secret(s)`) on the public
+board: the individual names are never rendered in the public board HTML nor
+serialized into `/api/readiness.json`. Everything else (rulesets, required
+checks, CODEOWNERS presence, auto-merge, open PRs, journal contents) is public
+and shown as-is. This masking is enforced by tests and must never regress.
 
-The board is derived almost entirely from **public** repo data. The one datum
-that is not public — the GitHub Actions **secret names** (obtainable only with an
-admin-scope token) — is **masked to a count** (`N secret(s)`): the individual
-names are never rendered in the board HTML nor serialized into
-`/api/readiness.json`. Everything else on the board (rulesets, required checks,
-CODEOWNERS presence, auto-merge, open PRs, journal contents) is public and shown
-as-is.
+The **`/owner` area** is the single gated corner of the site (`app/owner.py`),
+added so the owner can see the full detail the public board hides and take real
+action, while the main site stays browsable:
+
+- **Gate:** HTTP Basic (any username), password compared **constant-time**
+  (`secrets.compare_digest`) to `SITE_PASSWORD`. No credentials → **401**; a
+  correct password → 200. If `SITE_PASSWORD` is **unset**, `/owner*` **fails
+  closed with 503** while the public site keeps working. The gate lives only on
+  the `/owner` router — it never touches the public routes.
+- **`GET /owner`** renders the readiness board **un-masked**: the actual secret
+  NAMES per repo (fetched internally with the same `GITHUB_TOKEN`, exposed only
+  on this authed path via `readiness.board(reveal_secrets=True)`), plus a
+  broken-check list and oldest-PR links.
+- **`GET /owner/api/readiness.json`** is the authed JSON with names included.
+- **Privileged actions** (POST, same gate, all reversible, using creds already
+  on the service):
+  - **force cache refresh** — clears the in-memory TTL cache; the next load
+    re-fetches live. In-process, no external creds.
+  - **re-run CI** — looks up the latest **failed** Actions run on a selected
+    repo's default branch and POSTs `rerun-failed-jobs` via `GITHUB_TOKEN`.
+    Honest banners for the 403 (token lacks `actions:write`) and no-failed-run
+    cases; never 500s.
+
+**Deliberately NOT wired** (separate owner approval): any Railway
+account-token action and any **live production-bot** control API. No
+`RAILWAY_API_KEY` is present in the service env.
 
 ## Env vars
 
 | Var | Required | Meaning |
 |---|---|---|
-| `SITE_PASSWORD` | no (unused) | Formerly the Basic-auth secret; the gate was removed (2026-07-09 auth-drop decision) and the app no longer reads it. |
-| `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; the Actions **secrets count** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)`. Secret *names* are never exposed regardless of scope. |
+| `SITE_PASSWORD` | for `/owner` | Gates ONLY the `/owner` area (HTTP Basic, any username). The public site never reads it. Unset → `/owner*` fails closed 503; the public site still works. |
+| `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; the Actions **secrets count** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)`. Secret *names* are exposed only through the gated `/owner` area; `actions:write` is needed for the `/owner` re-run-CI action. |
 | `PORT` | Railway sets it | bind port (default 8000) |
 | `CACHE_TTL_SECONDS` | no | server-side GitHub cache TTL, default `180` |
 | `GITHUB_API_BASE` | no | REST base override (testing behind restricted egress) |
@@ -78,8 +107,9 @@ GITHUB_TOKEN=… uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 Railway: build the `Dockerfile` at repo root (binds `0.0.0.0:$PORT`),
-healthcheck `/healthz`, set `GITHUB_TOKEN` as a service variable
-(`SITE_PASSWORD` is no longer used — the site is public).
+healthcheck `/healthz`, set `GITHUB_TOKEN` and `SITE_PASSWORD` as service
+variables (`SITE_PASSWORD` gates only the `/owner` area; the rest of the site is
+public).
 
 ## Dev without api.github.com egress
 

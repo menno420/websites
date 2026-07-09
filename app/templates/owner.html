@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}owner area{% endblock %}
+{% block headright %}🔒 owner · cache {{ cache_entries }} entr{{ 'y' if cache_entries == 1 else 'ies' }} · <a href="/owner?refresh=1">refresh now</a>{% endblock %}
+
+{% macro badge(state, text) -%}
+<span class="b {{ state }}">{{ text }}</span>
+{%- endmacro %}
+
+{% macro yn(val, yes_text='yes', no_text='no', unknown_text='unknown') -%}
+  {%- if val is true -%}{{ badge('ok', yes_text) }}
+  {%- elif val is false -%}{{ badge('bad', no_text) }}
+  {%- else -%}{{ badge('unknown', unknown_text) }}{%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+
+<div class="card" style="border-color:var(--purple);">
+  <h2>🔒 owner area <span class="dim small">— gated; the public board masks what you see here</span></h2>
+  <p class="small dim">This page un-masks the GitHub Actions <strong>secret names</strong> (the one
+  datum the public <a href="/">readiness board</a> hides behind a count) and exposes privileged
+  actions using the service's own credentials. Everything here is reversible.</p>
+
+  {% if banner %}
+  <p class="b {{ 'ok' if banner.ok else 'bad' }}" style="display:block;padding:.5rem .8rem;">
+    {{ '✓' if banner.ok else '✗' }} {{ banner.text }}
+    {% if banner.url %}· <a href="{{ banner.url }}">view run</a>{% endif %}
+  </p>
+  {% endif %}
+
+  <h3>privileged actions</h3>
+  <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-end;">
+    <form method="post" action="/owner/actions/refresh">
+      <button type="submit">force cache refresh</button>
+      <div class="dim small">clears the in-memory TTL cache; next load re-fetches live</div>
+    </form>
+    <form method="post" action="/owner/actions/rerun-ci">
+      <label class="small dim">re-run latest failed CI on
+        <select name="repo">
+          {% for repo in repos %}<option value="{{ repo }}">{{ repo }}</option>{% endfor %}
+        </select>
+      </label>
+      <button type="submit">re-run failed jobs</button>
+      <div class="dim small">POSTs rerun-failed-jobs for the newest failed run on main</div>
+    </form>
+  </div>
+</div>
+
+{% for r in rows %}
+<div class="card">
+  <h2><a href="{{ r.github_url }}">{{ r.repo }}</a>
+    <span class="dim small">
+      {{ r.visibility or '?' }} · {{ r.default_branch }}
+      {% if r.head_sha %}· head <a href="{{ r.github_url }}/commit/{{ r.head_sha }}">{{ r.head_sha[:8] }}</a>{% endif %}
+    </span>
+    <span class="refresh">
+      {% if r.broken_runs %}{{ badge('bad', r.broken_runs|length ~ ' broken check(s)') }}
+      {% elif r.live_runs %}{{ badge('ok', 'CI healthy') }}
+      {% else %}{{ badge('unknown', 'no check runs') }}{% endif %}
+    </span>
+  </h2>
+
+  <table>
+    <tr><th>signal</th><th>configured?</th><th>working now?</th><th>detail</th></tr>
+
+    <tr>
+      <td>ruleset / branch protection</td>
+      <td>
+        {% if r.rulesets.unknown %}{{ badge('unknown', 'unknown') }}
+        {% else %}{{ yn(r.rulesets.names|length > 0, 'active', 'none') }}{% endif %}
+      </td>
+      <td>
+        {% if r.rulesets.unknown %}{{ badge('unknown', 'unknown') }}
+        {% elif r.rulesets.names %}{{ badge('ok', 'enforced') }}
+        {% else %}{{ badge('warn', 'branch unprotected') }}{% endif %}
+      </td>
+      <td class="small">{{ r.rulesets.names|join(' · ') or '—' }}
+        · <a href="{{ r.github_url }}/settings/rules">rules</a></td>
+    </tr>
+
+    <tr>
+      <td>required checks</td>
+      <td>
+        {% if r.rulesets.unknown %}{{ badge('unknown', 'unknown') }}
+        {% else %}{{ yn(r.required_checks.configured|length > 0,
+                        r.required_checks.configured|length ~ ' required', 'none required') }}{% endif %}
+      </td>
+      <td>
+        {% set ns = namespace(green=0, red=0) %}
+        {% for row in r.required_checks.rows %}
+          {% if row.state == 'success' %}{% set ns.green = ns.green + 1 %}
+          {% elif not row.note %}{% set ns.red = ns.red + 1 %}{% endif %}
+        {% endfor %}
+        {% if r.required_checks.rows %}
+          {% if ns.red == 0 %}{{ badge('ok', ns.green ~ '/' ~ r.required_checks.rows|length ~ ' green') }}
+          {% else %}{{ badge('bad', ns.red ~ ' not green') }}{% endif %}
+        {% else %}{{ badge('unknown', '—') }}{% endif %}
+      </td>
+      <td class="small">
+        {% for row in r.required_checks.rows %}
+          <a href="{{ row.url }}">{{ row.context }}</a>
+          {% if row.note %}{{ badge('design', row.state) }} <span class="note">{{ row.note }}</span>
+          {% elif row.state == 'success' %}{{ badge('ok', 'green') }}
+          {% elif row.state == 'missing' %}{{ badge('warn', 'no run on head') }}
+          {% else %}{{ badge('bad', row.state) }}{% endif %}<br>
+        {% else %}<span class="dim">expected per ledger: {{ r.required_checks.expected|join(', ') or 'none yet' }}</span>{% endfor %}
+      </td>
+    </tr>
+
+    <tr>
+      <td>CODEOWNERS</td>
+      <td>{{ yn(r.codeowners.present, 'present', 'absent') }}</td>
+      <td>{{ yn(r.codeowners.enforced, 'review enforced', 'not enforced (CI-only-gate model)', 'unknown') }}</td>
+      <td class="small">{% if r.codeowners.path %}<a href="{{ r.github_url }}/blob/{{ r.default_branch }}/{{ r.codeowners.path }}">{{ r.codeowners.path }}</a>{% else %}—{% endif %}</td>
+    </tr>
+
+    <tr>
+      <td>actions secrets <span class="note">🔒 names</span></td>
+      <td>
+        {% if r.secrets.known %}{{ yn(r.secrets.count > 0, r.secrets.count ~ ' secret(s)', 'none') }}
+        {% else %}{{ badge('unknown', 'unknown') }}{% endif %}
+      </td>
+      <td>{{ badge('unknown', 'n/a') }}</td>
+      <td class="small">
+        {% if r.secrets.known and r.secrets.names %}
+          {% for name in r.secrets.names %}<span class="b design">{{ name }}</span> {% endfor %}
+        {% elif r.secrets.known %}none
+        {% else %}{{ r.secrets.detail }}{% endif %}
+        · <a href="{{ r.github_url }}/settings/secrets/actions">manage</a></td>
+    </tr>
+
+    <tr>
+      <td>auto-merge</td>
+      <td>{{ yn(r.auto_merge.allowed, 'allowed', 'off', 'unknown (needs push-scope token)') }}</td>
+      <td>
+        {% if r.auto_merge.enabler_expected %}
+          {{ yn(r.auto_merge.enabler_files|length > 0, 'enabler workflow present', 'enabler MISSING') }}
+        {% elif r.auto_merge.enabler_files %}{{ badge('ok', 'enabler present') }}
+        {% else %}{{ badge('unknown', 'no enabler (merge via API)') }}{% endif %}
+      </td>
+      <td class="small">{{ r.auto_merge.enabler_files|join(', ') or '—' }}</td>
+    </tr>
+
+    <tr>
+      <td>open PRs</td>
+      <td>{{ yn(true, r.prs.open_count ~ (' (capped)' if r.prs.capped else '') ~ ' open', '', '') if r.prs.result.ok else badge('unknown', 'unknown') }}</td>
+      <td>
+        {% if not r.prs.result.ok %}{{ badge('unknown', 'unknown') }}
+        {% elif r.prs.open_count == 0 %}{{ badge('ok', 'no orphans') }}
+        {% else %}{{ badge('warn', 'oldest ' ~ (r.prs.oldest.created_at or '')[:10]) }}{% endif %}
+      </td>
+      <td class="small">
+        {% if r.prs.oldest %}<a href="{{ r.prs.oldest.url }}">#{{ r.prs.oldest.number }} {{ r.prs.oldest.title }}</a>{% else %}—{% endif %}
+        · <a href="{{ r.github_url }}/pulls">all PRs</a>
+      </td>
+    </tr>
+  </table>
+
+  {% if r.broken_runs %}
+  <h3>broken check runs on {{ r.default_branch }} head</h3>
+  <table>
+    <tr><th>check</th><th>state</th><th>app</th></tr>
+    {% for run in r.broken_runs %}
+    <tr>
+      <td><a href="{{ run.url }}">{{ run.name }}</a></td>
+      <td>{{ badge('bad', run.state) }}</td>
+      <td class="dim small">{{ run.app }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endfor %}
+<p class="dim small">🔒 owner area — gated by <code>SITE_PASSWORD</code>. The public
+<a href="/">board</a> and <a href="/api/readiness.json">JSON</a> never render the secret names above.</p>
+{% endblock %}

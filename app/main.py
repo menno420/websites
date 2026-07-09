@@ -1,9 +1,11 @@
 """Control-plane site: readiness board + journal browser.
 
-Public: every route serves without credentials (owner decision [D-0011] —
-the Basic-auth gate was dropped). The board's one non-public datum, the
-GitHub Actions secret *names*, is masked to a count (see readiness.py).
-/healthz is the Railway healthcheck.
+Public: every route defined here serves without credentials. The board's one
+non-public datum, the GitHub Actions secret *names*, is masked to a count (see
+readiness.py). The single gated corner is the `/owner` area (app/owner.py,
+HTTP Basic on `SITE_PASSWORD`) which un-masks that detail and exposes privileged
+actions; it never affects the public routes below. /healthz is the Railway
+healthcheck.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from . import config, github, journal, readiness
+from . import config, github, journal, owner, readiness
 
 
 @asynccontextmanager
@@ -31,6 +33,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+# The one gated area — /owner and /owner/*. Every route in THIS module stays
+# public; the gate lives entirely on the included router.
+app.include_router(owner.router)
 
 
 def _refresh(request: Request) -> bool:
