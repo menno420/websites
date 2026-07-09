@@ -19,26 +19,30 @@ Railway project** — deliberately separate from the production bot project
 | Build | Root `Dockerfile`, auto-detected (python:3.12-slim; first build succeeded 2026-07-09) |
 | Deployed at | main @ `73cc501` (PR #2 squash-merge) |
 
-Login: any username + the `SITE_PASSWORD` value (HTTP Basic). The password
-is a Railway service variable and is **committed nowhere in this repo** —
-the owner holds it.
+**Public — no login.** The site serves every route without credentials (owner
+decision 2026-07-09, "Yes drop the auth"). The one non-public datum, the GitHub
+Actions secret *names*, is masked to a **count** on the board (see below), so
+the public site exposes no secret. There is no auth challenge on any route.
 
 ## Environment variables (names only — values never in the repo)
 
 | Var | Set? | Notes |
 |---|---|---|
-| `SITE_PASSWORD` | ✅ set (secret) | Site login. Fail-closed: app 503s if unset. |
-| `GITHUB_TOKEN` | ✅ set (secret) | Durable owner PAT. Lifts the board onto the authenticated GitHub rate limit and unlocks the auth-gated cells (secret names, auto-merge, CODEOWNERS presence). Value held by the owner, committed nowhere. |
+| `SITE_PASSWORD` | left set but **unused** | The Basic-auth gate was removed (2026-07-09 auth-drop decision); the app no longer reads this. Left set in Railway is harmless and reversible (removing it is also fine). |
+| `GITHUB_TOKEN` | ✅ set (secret) | Durable owner PAT. Lifts the board onto the authenticated GitHub rate limit and unlocks the admin-scope cells (secret **count**, auto-merge, CODEOWNERS presence). Value held by the owner, committed nowhere. |
 | `PORT` | injected by Railway | Do not set manually. |
 | `CACHE_TTL_SECONDS` | not set (default 180) | Optional. |
 
 ## GitHub token — set, board fully live
 
-A durable owner PAT is now set as the `control-plane` service token. The
-board runs on the authenticated GitHub rate limit, and the previously
-degraded, auth-gated cells render live data:
+A durable owner PAT is set as the `control-plane` service token. The board runs
+on the authenticated GitHub rate limit, and the admin-scope cells render live
+data:
 
-- **actions secrets** → live (real secret **names** per repo).
+- **actions secrets** → live **count only** (`N secret(s)`). The individual
+  secret **names** are never rendered or serialized — they are the one
+  admin-scope-only datum on this now-public board (auth-drop decision); the raw secrets
+  API response is not carried into `/api/readiness.json` either.
 - **auto-merge allowed** → live (`allowed` + enabler-workflow state).
 - **CODEOWNERS** → live (presence per repo; enforcement resolves for repos
   that have a CODEOWNERS file — a repo with no file legitimately shows
@@ -59,7 +63,12 @@ token's scope or GitHub egress cannot reach — the site never fakes a value.
 - **Manual nudge (rare):** Railway dashboard → `superbot-websites` →
   `control-plane` → Deployments → Redeploy; or GraphQL
   `serviceInstanceRedeploy` with the service + environment IDs above.
-- Healthcheck: `GET /healthz` (unauthenticated, `{"ok":true,...}`).
+- Healthcheck: `GET /healthz` (`{"ok":true,...}`).
+
+> **Both websites services (`control-plane` and `dashboard`) are PUBLIC** since the
+> 2026-07-09 auth-drop — the Basic-auth gate was dropped from both. `botsite` was already
+> public. The redeploy path is identical for all three: merge to `main`
+> auto-builds and auto-deploys; if a service lags, nudge it (below).
 
 ## Guardrails (binding for agents)
 
@@ -91,12 +100,37 @@ to SUCCESS):
 - `GET /healthz` → `200`.
 - `GET /?refresh=1` with Basic auth → `200`; the auth-gated cells now render
   live GitHub data instead of `unknown`:
-  - **actions secrets** — superbot shows `5 secret(s)` with real names
-    (`ANTHROPIC_API_KEY, DATABASE_PUBLIC_URL, DATABASE_URL, OPENAI_API_KEY,
-    ROUTINE_PAT`); the other repos return live empty lists (`none`).
+  - **actions secrets** — superbot showed `5 secret(s)`; the other repos
+    returned live empty lists (`none`). (Historically this cell listed the
+    secret names; since the 2026-07-09 auth-drop the board masks them to a
+    count — the names are never rendered or serialized.)
   - **auto-merge** — superbot `allowed` + `enabler workflow present`;
     other repos `allowed` + `no enabler (merge via API)`.
   - **CODEOWNERS** — live presence per repo (superbot `absent`, superbot-next
     `present` → `not enforced (CI-only-gate model)`). superbot's enforcement
     cell stays `unknown` only because it has no CODEOWNERS file — a real
     state, not a token gap.
+
+## Verification evidence (2026-07-09, auth dropped — both sites public)
+
+Local (both apps run **without** `SITE_PASSWORD` set):
+
+- control-plane `GET /healthz` → `200`; `GET /` → `200` with **no**
+  `www-authenticate` header; served board HTML contained no secret names.
+- dashboard `GET /healthz` → `200`; `GET /` and `GET /commands` → `200` with no
+  auth; `GET /admin` still renders the "requires owner wiring" stub.
+- `tests/test_app.py` (8) + `dashboard/tests/test_dashboard.py` (29) green,
+  including the new assertion that a secret name (`ANTHROPIC_API_KEY`) is absent
+  from the served board HTML and `/api/readiness.json`.
+
+Live production (after PR #12 merged and both `superbot-websites` services
+redeployed the merged `main`):
+
+- **control-plane** — `GET /healthz` `200`; `GET /` `200` with **no** auth and
+  **no** `www-authenticate`; `grep -c ANTHROPIC_API_KEY` on the served `/` HTML
+  = `0`; the board shows the secrets **count** and real public data
+  (`superbot-next`, real check names).
+- **dashboard** — `GET /healthz` `200`; `GET /` `200` with no auth; a read-only
+  page (`/commands`) renders real data; `/admin` still shows the stub.
+
+(Filled from the live redeploy; see the drop-auth session log.)

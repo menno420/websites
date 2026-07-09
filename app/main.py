@@ -1,19 +1,19 @@
 """Control-plane site: readiness board + journal browser.
 
-Auth: HTTP Basic on every route (any username, password = SITE_PASSWORD).
-/healthz is the single unauthenticated route (Railway healthcheck).
+Public: every route serves without credentials (owner decision [D-0011] —
+the Basic-auth gate was dropped). The board's one non-public datum, the
+GitHub Actions secret *names*, is masked to a count (see readiness.py).
+/healthz is the Railway healthcheck.
 """
 
 from __future__ import annotations
 
-import base64
-import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import markdown as md
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import config, github, journal, readiness
@@ -31,39 +31,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
-
-
-def _authorized(request: Request) -> bool:
-    if not config.SITE_PASSWORD:
-        return False  # fail closed: unset password never means open door
-    header = request.headers.get("authorization", "")
-    if not header.lower().startswith("basic "):
-        return False
-    try:
-        decoded = base64.b64decode(header.split(" ", 1)[1]).decode("utf-8")
-        _user, _, password = decoded.partition(":")
-    except Exception:
-        return False
-    return secrets.compare_digest(password, config.SITE_PASSWORD)
-
-
-@app.middleware("http")
-async def auth_gate(request: Request, call_next):
-    if request.url.path == "/healthz":
-        return await call_next(request)
-    if not _authorized(request):
-        detail = (
-            "SITE_PASSWORD is not configured on the server."
-            if not config.SITE_PASSWORD
-            else "Authentication required."
-        )
-        return Response(
-            content=detail,
-            status_code=503 if not config.SITE_PASSWORD else 401,
-            headers={"WWW-Authenticate": 'Basic realm="control-plane"'},
-            media_type="text/plain",
-        )
-    return await call_next(request)
 
 
 def _refresh(request: Request) -> bool:

@@ -6,10 +6,10 @@ substrate — FastAPI + Jinja2, server-rendered, no build step — from superbot
 ``dashboard/``: same read-only ideas and functionality, fresh implementation on the
 shared ``ds/`` design system.
 
-**Auth.** The whole surface is internal oversight data, so it is gated behind HTTP Basic
-(any username, password compared constant-time to ``SITE_PASSWORD``), identical to the
-control-plane app. Fail-closed: an unset ``SITE_PASSWORD`` 503s rather than opening the
-door. ``/healthz`` is the single unauthenticated route (Railway probe).
+**Public.** Every route serves without credentials (owner decision [D-0011] — the
+Basic-auth gate was dropped). The surface is read-only oversight of public data
+(superbot's committed ``dashboard.json`` / ``console.json``); it holds no secret and no
+bot control credential, so there is nothing to gate. ``/healthz`` is the Railway probe.
 
 **Data.** The read-only oversight pages consume superbot's committed ``dashboard.json`` /
 ``console.json`` live over raw.githubusercontent.com (``data_source``). This app **never
@@ -29,18 +29,15 @@ own Dockerfile, binds ``0.0.0.0:$PORT``.
 
 from __future__ import annotations
 
-import base64
-import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import config
 from . import data_source as ds
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -73,42 +70,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="SuperBot Dashboard", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
-
-# ---------------------------------------------------------------------------
-# Auth — HTTP Basic on every route except /healthz (mirrors app/main.py).
-# ---------------------------------------------------------------------------
-def _authorized(request: Request) -> bool:
-    if not config.SITE_PASSWORD:
-        return False  # fail closed: an unset password never means an open door
-    header = request.headers.get("authorization", "")
-    if not header.lower().startswith("basic "):
-        return False
-    try:
-        decoded = base64.b64decode(header.split(" ", 1)[1]).decode("utf-8")
-        _user, _, password = decoded.partition(":")
-    except Exception:
-        return False
-    return secrets.compare_digest(password, config.SITE_PASSWORD)
-
-
-@app.middleware("http")
-async def auth_gate(request: Request, call_next):
-    if request.url.path == "/healthz":
-        return await call_next(request)
-    if not _authorized(request):
-        detail = (
-            "SITE_PASSWORD is not configured on the server."
-            if not config.SITE_PASSWORD
-            else "Authentication required."
-        )
-        return Response(
-            content=detail,
-            status_code=503 if not config.SITE_PASSWORD else 401,
-            headers={"WWW-Authenticate": 'Basic realm="dashboard"'},
-            media_type="text/plain",
-        )
-    return await call_next(request)
 
 
 def _refresh(request: Request) -> bool:

@@ -215,15 +215,15 @@ async def repo_readiness(repo: str, refresh: bool = False) -> dict[str, Any]:
     # --- CODEOWNERS enforced? ---
     co_required = _codeowner_review_required(rs_details, protection)
 
-    # --- secrets (names only; degrade on 403) ---
+    # --- secrets (COUNT only; the names are the one non-public datum on this
+    # now-public board, so they are never rendered or serialized — [D-0011]).
+    # Degrade on 403 (token lacks admin scope) like every other cell. ---
     if secrets_res["ok"] and isinstance(secrets_res["data"], dict):
-        secret_names = [
-            s.get("name") for s in secrets_res["data"].get("secrets", []) or []
-        ]
+        secret_count = len(secrets_res["data"].get("secrets", []) or [])
         secrets_cell = {
             "known": True,
-            "names": secret_names,
-            "detail": ", ".join(secret_names) if secret_names else "none",
+            "count": secret_count,
+            "detail": f"{secret_count} secret(s)" if secret_count else "none",
         }
     else:
         reason = (
@@ -231,7 +231,7 @@ async def repo_readiness(repo: str, refresh: bool = False) -> dict[str, Any]:
             if secrets_res["status"] in (403, 401)
             else f"HTTP {secrets_res['status']} {secrets_res['error']}".strip()
         )
-        secrets_cell = {"known": False, "names": [], "detail": f"unknown ({reason})"}
+        secrets_cell = {"known": False, "count": 0, "detail": f"unknown ({reason})"}
 
     # --- auto-merge ---
     allow_am = None
@@ -283,7 +283,10 @@ async def repo_readiness(repo: str, refresh: bool = False) -> dict[str, Any]:
             "path": co["path"],
             "enforced": co_required,
         },
-        "secrets": {"result": secrets_res, **secrets_cell},
+        # NOTE: the raw secrets_res is deliberately NOT included — it carries the
+        # secret names under data.secrets[].name, which must never reach the public
+        # board HTML or /api/readiness.json ([D-0011]). Only the count survives.
+        "secrets": {"status": secrets_res["status"], **secrets_cell},
         "auto_merge": {
             "allowed": allow_am,
             "enabler_files": enabler_files,

@@ -1,8 +1,12 @@
-"""Offline unit tests for the control-plane site (no network)."""
+"""Offline unit tests for the control-plane site (no network).
+
+The site is PUBLIC ([D-0011]): every route serves without credentials. The one
+non-public datum — the GitHub Actions secret *names* — is masked to a count and
+must never appear in the served board HTML or /api/readiness.json.
+"""
 
 import asyncio
 import importlib
-import os
 import sys
 from pathlib import Path
 
@@ -10,11 +14,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-os.environ["SITE_PASSWORD"] = "test-secret"
-
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, github, readiness  # noqa: E402
+from app import github, readiness  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -33,32 +35,88 @@ def client(monkeypatch):
         yield c
 
 
-def test_healthz_unauthenticated(client):
+def test_healthz(client):
     r = client.get("/healthz")
     assert r.status_code == 200 and r.json()["ok"] is True
 
 
-def test_routes_reject_missing_and_wrong_auth(client):
+def test_routes_public_no_auth(client):
+    # No credentials: every route serves 200 (the auth gate is gone).
     for path in ["/", "/journal", "/journal/superbot", "/api/readiness.json"]:
-        assert client.get(path).status_code == 401
-        assert client.get(path, auth=("x", "wrong")).status_code == 401
+        assert client.get(path).status_code == 200
 
 
-def test_board_renders_degraded_with_correct_auth(client):
-    r = client.get("/", auth=("owner", "test-secret"))
+def test_board_renders_degraded_no_auth(client):
+    r = client.get("/")
     assert r.status_code == 200
     assert "superbot-next" in r.text
     assert "unknown" in r.text  # degraded cells, never fabricated values
 
 
-def test_fail_closed_when_password_unset(monkeypatch, client):
-    monkeypatch.setattr(config, "SITE_PASSWORD", "")
-    assert client.get("/", auth=("x", "")).status_code == 503
-
-
 def test_unknown_repo_404(client):
-    r = client.get("/journal/not-a-repo", auth=("owner", "test-secret"))
+    r = client.get("/journal/not-a-repo")
     assert r.status_code == 404
+
+
+def test_secret_names_never_reach_served_html(monkeypatch):
+    """The public board masks secrets to a COUNT: the real GitHub secret NAMES
+    (admin-scope-only data) must be absent from the served HTML, and the count
+    must be shown instead."""
+
+    real_names = ["ANTHROPIC_API_KEY", "DATABASE_URL", "ROUTINE_PAT"]
+
+    async def fake_get(url, refresh=False, raw=False):
+        if url.endswith("/actions/secrets"):
+            return {
+                "ok": True, "status": 200,
+                "data": {"secrets": [{"name": n} for n in real_names]},
+                "error": "", "fetched_at": "", "cached": False, "url": url,
+            }
+        return {
+            "ok": False, "status": 0, "data": None,
+            "error": "offline test", "fetched_at": "", "cached": False, "url": url,
+        }
+
+    monkeypatch.setattr(github, "_get", fake_get)
+    with TestClient(app) as c:
+        html = c.get("/").text
+        js = c.get("/api/readiness.json").text
+    for name in real_names:
+        assert name not in html, f"{name} leaked into served board HTML"
+        assert name not in js, f"{name} leaked into /api/readiness.json"
+    # the count is what the public board shows instead
+    assert "3 secret(s)" in html
+
+
+def test_secrets_cell_carries_count_not_names():
+    """readiness.repo_readiness builds a secrets cell with a count and no names."""
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        if subpath == "/actions/secrets":
+            return {
+                "ok": True, "status": 200, "error": "", "cached": False,
+                "fetched_at": "", "url": "",
+                "data": {"secrets": [{"name": "ANTHROPIC_API_KEY"},
+                                     {"name": "DATABASE_URL"}]},
+            }
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        orig = github.repo_api
+        github.repo_api = fake_repo_api
+        try:
+            row = await readiness.repo_readiness("superbot")
+        finally:
+            github.repo_api = orig
+        secrets_cell = row["secrets"]
+        assert secrets_cell["count"] == 2
+        assert secrets_cell["detail"] == "2 secret(s)"
+        assert "names" not in secrets_cell  # names never carried
+        # the whole cell, serialized, contains no secret name
+        assert "ANTHROPIC_API_KEY" not in repr(row["secrets"])
+
+    asyncio.run(run())
 
 
 def test_red_by_design_annotation():
