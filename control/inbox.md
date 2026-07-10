@@ -37,3 +37,37 @@ priority: P0
 do: LATENCY PING — the moment you read this order, acknowledge BEFORE any other work: add one line to your control status file (or, if faster, a new file docs/retro/ping-ack.md): "PING-ACK ORDER 006 · discovered <UTC timestamp, seconds precision> · via <how you came to read this inbox: session-start ritual / routine wake / owner prompt / mid-session inbox check>". Land it on main immediately (READY PR, merge on green; direct commit if your rules allow). Then resume whatever you were doing.
 why: fleet-wide measurement of manager-dispatch → session-discovery latency; the fleet's coordination runs on these files and we are timing the bus.
 done-when: the ack line is on main; the manager computes the latency.
+
+## ORDER 007 · 2026-07-10T02:04:55Z · status: new
+priority: P1
+(the founding text calls this ORDER 001)
+do: gen-2 boot, skeleton, and ORDER 005 —
+1. Boot per docs/succession/next-boot-2026-07-09.md (exact read order).
+   Reconcile docs/planning/queue-state-2026-07-09-winddown.md and
+   control/status.md against live GitHub at HEAD — handoff truth decays;
+   git wins. Carry gen-1's done= line forward into your first status
+   overwrite: acked=001-006 done=001,002,003,004,006.
+2. Walking skeleton, once: one trivial control-only or docs change
+   through the full gen-2 landing path (born-red card → READY PR →
+   quality green → squash-merge on green; record which landing path
+   fired). Then python3 scripts/healthcheck.py — all three services
+   /version == main HEAD.
+3. Claim and build ORDER 005 (/queue + /environments control-plane
+   pages). Constraint declared at dispatch: /queue aggregates
+   menno420/fleet-manager docs/owner-queue.md, which NO lane session can
+   read — only the deployed control-plane at runtime via GITHUB_TOKEN
+   (currently UNSET). Build both pages with honest degradation (clear
+   banner + graceful empty state when the token is unset or the fetch
+   fails), server-rendered, cached like the other GitHub reads. Re-file
+   the GITHUB_TOKEN ⚑ OWNER-ACTION (six fields) — do not block on it.
+4. Commit scripts/env-setup.sh as a wrapper invoking the tested
+   scripts/setup-env.sh (the pinned-research archetype prefers that
+   exact path — retires a silent env gap).
+5. Flip 005 into your status done= line; update current-state.md and
+   the queue-state ledger.
+done-when (all checkable in your own PRs): skeleton PR merged via the
+landing path; /queue and /environments return 200 at main HEAD on the
+live control-plane with honest degradation banners; env-setup.sh
+landed; status.md shows done=001,...,005,006 + gen-2 ORDER 001 (= this
+ORDER 007); GITHUB_TOKEN ask filed in OWNER-ACTIONS.md.
+Standing default thereafter: queue-state NEXT list top-to-bottom.
