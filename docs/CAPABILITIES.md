@@ -71,6 +71,27 @@ Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 (Hand-filled by sessions, per the discovery rule. Seed walls/capabilities
 above came from the fleet's lived 2026-07 findings; local ones go here.)
 
+- 2026-07-10 · wall · **The 16:01Z routine-fired session's `git push` never
+  landed, despite its session card recording the branch as pushed** — at
+  ~19:15Z the remote had no `claude/order008-manifest-smoke-2026-07-10`
+  (`list_branches`: only harden-verify / rework-dashboard /
+  wire-github-token-docs / main / manager/control-plant), and the session's
+  own chat reported no push credential plus a stop hook demanding SSH-signed
+  commits · evidence: rescue PR #59 (a fleet-manager worker re-landed the
+  work via `git am` from the session's format-patch); the same session's
+  verbatim API error `403 {"message":"GitHub access to this repository is
+  not enabled for this session. Use add_repo to request access."}` shows the
+  proxy had not granted this repo to that fired session — consistent with
+  push failing at the same per-session gate; a CCR-provisioned sibling env's
+  `/root/.gitconfig` confirms the signing default (`commit.gpgsign=true`,
+  `gpg.format=ssh`, `gpg.ssh.program=/tmp/code-sign` → env-runner signer,
+  zero-byte `user.signingkey`), so an unprovisioned signer is the second
+  candidate wall · workaround: NEVER record "pushed" without proof
+  (`git push` exit 0 AND `git ls-remote origin <branch>` shows the commit);
+  probe at provision (`docs/project/setup-script.sh`) and follow the
+  routine-fired landing protocol (`docs/project/project-instructions.md`) —
+  patch-to-owner is the last resort, only after a probe proves push dead
+  this session.
 - 2026-07-10 · capability · **The self-armed ORDER 008 wake routine's first
   fire is CONFIRMED working** — `trig_017H9Qb9oxtLgUy6sw2gnSHg` shows
   `last_fired_at: 2026-07-10T16:01:32Z` via `list_triggers`, and the
