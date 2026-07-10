@@ -1,6 +1,6 @@
 # 2026-07-10 — Gen-2 close-out: docs sweep + ORDER 008 wake routine armed
 
-> **Status:** `in-progress`
+> **Status:** `complete` — shipped as PR #57 (`claude/gen2-closeout-docs`, squash on `quality` green; claim PR #56 preceded it; final heartbeat PR follows).
 
 - **📊 Model:** withheld per session policy
 - **Start (UTC):** 2026-07-10T13:50:28Z
