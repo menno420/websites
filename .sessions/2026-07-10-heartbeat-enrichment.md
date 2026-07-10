@@ -1,6 +1,6 @@
 # 2026-07-10 — Heartbeat enrichment: machine-readable fields + /fleet support (queue-state NEXT item 4)
 
-> **Status:** `complete` — PR #66 (`claude/heartbeat-enrichment`),
+> **Status:** `complete` — PR #67 (`claude/heartbeat-enrichment`),
 > squash-merge on `quality` green.
 
 - **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 2)

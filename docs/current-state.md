@@ -109,7 +109,7 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 ## Recently shipped (newest first)
 
 - **20:00Z continuous-mode wake: card template (#64) + heartbeat enrichment
-  (#66; decision stamped in `docs/site.md` § 3a + the decision
+  (#67; decision stamped in `docs/site.md` § 3a + the decision
   ledger)** (2026-07-10; manager switched the lane to continuous mode
   mid-session — loop the work ladder, one full-ceremony slice at a time).
   Slice 1 (queue-state NEXT item 3): the `.sessions/` **card template + ender
