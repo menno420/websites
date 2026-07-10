@@ -1,0 +1,45 @@
+name: healthcheck
+
+# Standing liveness verification (docs/ideas/scheduled-healthcheck-workflow-2026-07-10.md,
+# retro F3): every 6 hours, run the repo's own post-deploy healthcheck against
+# the three LIVE Railway services (/healthz + / must be 200) and the /fleet
+# manifest live-parse smoke check (a manifest reformat must alert, not degrade
+# silently to the fallback lane list). Turns liveness from a thing a session
+# remembers to probe into a thing the repo verifies on its own clock — the
+# gen-1 retro handed over with "liveness unverified at handover"; this closes
+# that class.
+#
+# READ-ONLY by design: probes public endpoints and a public raw file; no
+# secret, no Railway credential, no write anywhere. NOT a required check —
+# it gates nothing; a failed run notifies via the failed-workflow email the
+# owner already receives (and shows red on the Actions tab / any future
+# board cell). Actions cron is the one scheduler agents can arm themselves
+# (retro F3); minute 17 offsets the top-of-hour cron congestion GitHub
+# documents (a busy top-of-hour can delay or drop scheduled runs).
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  healthcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # healthcheck.py imports app.fleet (the SAME parser /fleet uses — that
+      # sameness is the point of the manifest smoke check), so the app deps
+      # are needed.
+      - name: Install app dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+
+      - name: Probe live services + manifest parse
+        run: python3 scripts/healthcheck.py

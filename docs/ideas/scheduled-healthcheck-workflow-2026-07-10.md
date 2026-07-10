@@ -1,5 +1,5 @@
 ---
-state: captured
+state: built
 origin: consumer:menno420/superbot
 shipped_pr: null
 shipped_repo: null
@@ -11,7 +11,8 @@ outcome: open
 
 > **Status:** `ideas`
 >
-> **State:** captured (gen-2 night-prep seed by the grand-review session).
+> **State:** built — shipped 2026-07-10 as `.github/workflows/healthcheck.yml`
+> (continuous-mode wake slice 3; decision stamped in the decision ledger).
 
 **One line:** a cron GitHub Actions workflow (e.g. every 6 h) that runs the repo's own
 `scripts/healthcheck.py` against the three live services and fails loudly on any non-200
