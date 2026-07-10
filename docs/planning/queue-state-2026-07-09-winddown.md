@@ -52,12 +52,17 @@ tree at wind-down matched `origin/main` exactly.
    copy-to-clipboard), both with honest not-configured/unavailable
    degradation while `GITHUB_TOKEN` stays unset in production. ORDER 007
    step 4 (`scripts/env-setup.sh` wrapper) landed in the same PR.
-2. **`/fleet` manifest-parse smoke check** (retro A3): assert the live
-   manifest parse yields a non-empty lane set so a manifest reformat surfaces
-   as an alert instead of a silent fallback.
-3. **`.sessions/` card template** carrying the `📊 Model: <model> · <effort> ·
-   <task>` line + ender checklist, so no future grandfather backfill (the
-   ORDER 004 class) is ever needed.
+2. ~~**`/fleet` manifest-parse smoke check**~~ — **DONE 2026-07-10** (PR #59;
+   built by the 16:01Z routine-fired session, landed by the next tooled one):
+   `scripts/healthcheck.py` asserts the live manifest parse yields a
+   non-empty lane set so a manifest reformat surfaces as an alert instead of
+   a silent fallback.
+3. ~~**`.sessions/` card template**~~ — **DONE 2026-07-10** (20:00Z
+   routine-fired wake): copy-paste card template + ender checklist embedded
+   in `.sessions/README.md` (embedded, not a standalone file — the session
+   gate treats any other `.sessions/*.md` as a card), carrying the
+   `📊 Model: <family> · <effort> · <task>` line, so no future grandfather
+   backfill (the ORDER 004 class) is ever needed.
 4. **Heartbeat enrichment** (retro G3): machine-readable outstanding-orders
    field, deployed-sha / last-verified-live per lane in `control/status.md`,
    so `/fleet` computes "what's left" without diffing inbox vs status vs git.
@@ -72,21 +77,27 @@ tree at wind-down matched `origin/main` exactly.
 Written by the gen-2 close-out session (PRs #56/#57 + the final heartbeat PR)
 so the next wake starts from facts, not rediscovery.
 
-**Update 2026-07-10T16:0xZ (routine-fired session, unmerged branch
-`claude/order008-manifest-smoke-2026-07-10`):** the first routine fire landed
-(see below) and NEXT item 2 was built — `python3 scripts/healthcheck.py` now
-asserts the live `/fleet` manifest parse is non-empty (details:
-`.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`). **Not yet
-merged**: this session's toolset carries no PR-creation tool (see
-`docs/CAPABILITIES.md` append log 2026-07-10) — the branch is pushed; the
-next session with that tooling should open + land the PR before resuming
-NEXT item 3.
+**Update 2026-07-10T16:0xZ (routine-fired session):** the first routine fire
+landed (see below) and NEXT item 2 was built — `python3
+scripts/healthcheck.py` now asserts the live `/fleet` manifest parse is
+non-empty (details:
+`.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`). That
+session's work was rescued and **merged as PR #59** (this passage said "not
+yet merged / branch pushed" until the 20:00Z wake corrected it — the push
+had in fact never landed and the work needed rescue; see the CAPABILITIES
+append log 2026-07-10).
 
-**Resume point: NEXT item 3** — `.sessions/` card template with the
-`📊 Model:` line + ender checklist (once the item-2 PR above is landed), then
-item 4 (heartbeat enrichment — machine-readable outstanding-orders /
-deployed-sha fields). Standing default unchanged: this NEXT list top-to-bottom;
-always re-read `control/inbox.md` at HEAD first (orders keep coming).
+**Update 2026-07-10T20:xxZ (routine-fired wake):** NEXT item 3 built — the
+`.sessions/` card template + ender checklist now lives in
+`.sessions/README.md` (embedded, not a standalone file — the session gate
+treats any other `.sessions/*.md` as a card).
+
+**Resume point: NEXT item 4** — heartbeat enrichment (machine-readable
+outstanding-orders / deployed-sha fields in `control/status.md`, plus the
+`routine:` and `landing:` sibling captures — see the `planned` bullet in
+`docs/ideas/backlog.md`), then item 5 / the backlog. Standing default
+unchanged: this NEXT list top-to-bottom; always re-read `control/inbox.md`
+at HEAD first (orders keep coming).
 
 **Non-derivable facts (verify against live state; git wins):**
 
