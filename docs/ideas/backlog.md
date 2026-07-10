@@ -66,6 +66,13 @@
   whether a lane is living off orders or self-generated work, and backlog
   dryness becomes a trend, not a one-off line. Source:
   `.sessions/2026-07-10-never-idle-work-ladder.md` 💡 (this session).
+- **Backlog fact-check pass before promoting a bullet** · `captured` — one
+  grep/route-check against the codebase for what a bullet asks for BEFORE
+  branching on it; a stale `captured` bullet costs a whole duplicate slice in
+  continuous mode (the /fleet manifest-badge bullet outlived its own build —
+  shipped as the PR #36 lane_source notice — by 12+ hours and nearly got
+  rebuilt in slice 7). The dedup rule covers new ideas, not decayed old ones.
+  Source: `.sessions/2026-07-10-own-heartbeat-selfcheck.md` 💡.
 - **Open-PR awareness at wake (sibling-session collision check)** · `captured`
   — one wake-ritual step listing open PRs + PR-less unmerged `claude/*`
   branches before picking a work rung, so concurrent sessions stop duplicating
