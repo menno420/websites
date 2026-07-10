@@ -42,6 +42,15 @@
   timeout; turns the manual "merge = deploy" verification loop into a
   deterministic PASS/FAIL. Source:
   `.sessions/2026-07-10-gen2-walking-skeleton.md` 💡.
+- **Review-queue row auto-check for this repo's own PRs** · `captured` — a
+  script / advisory quality step computing a merged PR's runtime changed-line
+  count against the fleet review-queue's BINDING 50-line rule and printing
+  "this PR needs a review-queue row" when it qualifies; the rule's
+  enforcement is currently memory (116 merged PRs / zero rows was the
+  documented failure state; this repo's #67 and #72 both qualified unflagged
+  — row-appending is a fleet-manager write this lane can't do, but knowing a
+  row is owed can be mechanical). Source:
+  `.sessions/2026-07-10-order-009-reviews.md` 💡.
 - **Per-repo inbox ORDER visibility on the site** · `captured` — ORDER 009's
   audit names per-repo `control/inbox.md` ORDER texts as browsable nowhere;
   a `/fleet` card section or `/orders` view rendering each lane's inbox
