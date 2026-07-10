@@ -32,6 +32,9 @@
     {% if f.summary.broken %}<span class="b bad">{{ f.summary.broken }} broken</span>{% endif %}
     {% if f.summary.errored %}<span class="b bad">{{ f.summary.errored }} unreachable</span>{% endif %}
     {% if f.summary.no_file %}<span class="b unknown">{{ f.summary.no_file }} no status file</span>{% endif %}
+    {% if f.summary.stranded %}<span class="b warn">{{ f.summary.stranded }} stranded landing{{ 's' if f.summary.stranded != 1 }}</span>{% endif %}
+    {% if f.summary.silent_routines %}<span class="b warn">{{ f.summary.silent_routines }} silent routine{{ 's' if f.summary.silent_routines != 1 }}</span>{% endif %}
+    {% if f.summary.outstanding_orders %}<span class="b warn">{{ f.summary.outstanding_orders }} outstanding order{{ 's' if f.summary.outstanding_orders != 1 }}</span>{% endif %}
   </p>
 </div>
 
@@ -61,7 +64,23 @@
     <tr><th>phase</th><td>{{ l.fields.phase or '—' }}</td></tr>
     <tr><th>last-shipped</th><td>{{ l.fields['last-shipped'] or '—' }}</td></tr>
     <tr><th>blockers</th><td>{{ l.fields.blockers or '—' }}</td></tr>
-    <tr><th>orders</th><td>{{ l.fields.orders or '—' }}</td></tr>
+    <tr><th>orders</th><td>{{ l.fields.orders or '—' }}
+      {% if l.orders_info.ok %}
+        {% if l.orders_info.outstanding %}<span class="b warn">outstanding: {{ l.orders_info.outstanding | join(', ') }}</span>
+        {% else %}<span class="b ok">all acked done</span>{% endif %}
+      {% endif %}</td></tr>
+    {% if l.fields.routine %}
+    <tr><th>routine</th><td>{{ l.fields.routine }}
+      {% if l.routine_info.silent %}<span class="b warn">armed but no fire in {{ l.routine_info.fired_age_human }}</span>
+      {% elif l.routine_info.no_fire_recorded %}<span class="b unknown">no fire recorded yet</span>{% endif %}</td></tr>
+    {% endif %}
+    {% if l.fields.landing %}
+    <tr><th>landing</th><td>{{ l.fields.landing }}
+      {% if l.landing_info.kind == 'local' %}<span class="b bad">LOCAL-ONLY — stranded work</span>
+      {% elif l.landing_info.kind == 'pushed' %}<span class="b warn">pushed, unmerged — rescue candidate</span>
+      {% elif l.landing_info.kind == 'clean' %}<span class="b ok">all merged</span>{% endif %}</td></tr>
+    {% endif %}
+    {% if l.fields.deployed %}<tr><th>deployed</th><td>{{ l.fields.deployed }}</td></tr>{% endif %}
     {% if l.fields.kit %}<tr><th>kit</th><td>{{ l.fields.kit }}</td></tr>{% endif %}
     <tr><th>⚑ needs-owner</th><td>
       {% if l.fields['needs-owner'] %}<span class="note">{{ l.fields['needs-owner'] }}</span>

@@ -87,6 +87,23 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    manifest lane whose repo the token can't read renders an honest `unreadable`
    state rather than being dropped. No new dependency, no new secret, no Railway
    op; the websites row dogfoods its own status.
+   **Enriched machine-readable heartbeat fields** ([D-0028], retro G3): the
+   `orders:` line is parsed (`acked=`/`done=` ids, ranges like `001-008`
+   expanded; **outstanding = acked minus done**, computable from the heartbeat
+   alone; a `claimed-by:` annotation captured verbatim), and three OPTIONAL
+   lines — `routine:` (wake-clock state; **armed with a last fire older than
+   the stale threshold flags "armed but silently dead"**, an armed routine
+   with no recorded fire shows an honest "no fire recorded yet"), `landing:`
+   (`all-merged` / `pushed-unmerged <branch>` / `LOCAL-ONLY <branch>` — the
+   mechanical stranded-work catch; pushed/local badge as rescue candidates
+   and **sort attention-first** with the stale rank), `deployed:` (last
+   live-verified sha, rendered as written). Summary header gains stranded /
+   silent-routine / outstanding-orders roll-up badges; `/fleet.json` carries
+   the parsed `orders_info` / `routine_info` / `landing_info` structures so
+   the manager machine-reads "what's left" per lane without diffing inbox vs
+   status vs git. A lane writing none of the optional lines renders exactly
+   as before; free-text `orders:` parses honestly to `ok=False`, never
+   invented ids.
 3b. **Owner queue** (`/queue`) — every ⚑ owner ask on ONE deduplicated,
    newest-first surface ([D-0027], ORDER 005): the owner's single to-do list.
    Two halves: (1) every fleet lane's `⚑ needs-owner` field, reusing the exact

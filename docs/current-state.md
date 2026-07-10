@@ -108,7 +108,23 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
-- **Gen-2 close-out: ORDER 008 wake routine self-armed + docs sweep**
+- **20:00Z continuous-mode wake: card template (#64) + heartbeat enrichment
+  (#67; decision stamped in `docs/site.md` § 3a + the decision
+  ledger)** (2026-07-10; manager switched the lane to continuous mode
+  mid-session — loop the work ladder, one full-ceremony slice at a time).
+  Slice 1 (queue-state NEXT item 3): the `.sessions/` **card template + ender
+  checklist** now lives embedded in `.sessions/README.md` — embedded on
+  purpose, because the session gate treats any other `.sessions/*.md` as a
+  card, so a standalone TEMPLATE.md would itself go born-red; the 💡 section
+  carries a REQUIRED one-line "worth having because". Slice 2 (NEXT item 4,
+  retro G3): `/fleet` **machine-reads heartbeats** — `orders:` parsed
+  (outstanding = acked minus done, ranges expanded, `claimed-by:` verbatim)
+  plus new OPTIONAL `routine:` / `landing:` / `deployed:` lines (format in
+  `control/README.md`); armed-but-silently-dead routines and stranded
+  (LOCAL-ONLY / pushed-unmerged) landings badge + sort attention-first;
+  `/fleet.json` carries the parsed structures. Tests 143 → 157. Sibling
+  session the same hour: PR #63 (docs/project/routine-prompt.md). Heartbeat
+  overwrites landed as control-fast-lane PRs (#65, …).
   (claim PR #56; docs PR #57; final status-overwrite heartbeat PR follows).
   ORDER 008 (inbox, PR #55) executed: the lane's 4-hourly wake routine is
   **self-armed** from a worker session via the scheduler primitive

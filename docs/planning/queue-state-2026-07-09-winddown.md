@@ -63,9 +63,13 @@ tree at wind-down matched `origin/main` exactly.
    gate treats any other `.sessions/*.md` as a card), carrying the
    `📊 Model: <family> · <effort> · <task>` line, so no future grandfather
    backfill (the ORDER 004 class) is ever needed.
-4. **Heartbeat enrichment** (retro G3): machine-readable outstanding-orders
-   field, deployed-sha / last-verified-live per lane in `control/status.md`,
-   so `/fleet` computes "what's left" without diffing inbox vs status vs git.
+4. ~~**Heartbeat enrichment**~~ — **DONE 2026-07-10** (decision stamped in
+   `docs/site.md` § 3a + the decision ledger; 20:00Z
+   continuous-mode wake, slice 2): `/fleet` parses `orders:`
+   (outstanding = acked minus done) + the new OPTIONAL `routine:` /
+   `landing:` / `deployed:` heartbeat lines (format documented in
+   `control/README.md`); silent routines + stranded landings badge and sort
+   attention-first; `/fleet.json` carries the parsed structures.
 5. **Idea backlog** (`docs/ideas/`): `/activity` per-repo filter
    (`activity-per-repo-filter-2026-07-09.md`); kit-version rollup badge on
    `/fleet` (idea recorded in `.sessions/2026-07-09-kit-upgrade-v1.6.0.md`);
@@ -92,12 +96,13 @@ append log 2026-07-10).
 `.sessions/README.md` (embedded, not a standalone file — the session gate
 treats any other `.sessions/*.md` as a card).
 
-**Resume point: NEXT item 4** — heartbeat enrichment (machine-readable
-outstanding-orders / deployed-sha fields in `control/status.md`, plus the
-`routine:` and `landing:` sibling captures — see the `planned` bullet in
-`docs/ideas/backlog.md`), then item 5 / the backlog. Standing default
-unchanged: this NEXT list top-to-bottom; always re-read `control/inbox.md`
-at HEAD first (orders keep coming).
+**Resume point: NEXT item 5 / the ideas backlog** — items 1–4 of this list
+are DONE (item 4, heartbeat enrichment, landed 2026-07-10 in the same
+continuous-mode wake as
+item 3); item 5 IS the backlog, whose single home is now
+`docs/ideas/backlog.md` — pick the highest-value buildable bullet there
+(work-ladder rung 3). Standing default unchanged: re-read `control/inbox.md`
+at HEAD first (orders keep coming), then the ladder.
 
 **Non-derivable facts (verify against live state; git wins):**
 
