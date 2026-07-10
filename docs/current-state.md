@@ -52,11 +52,13 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   `scripts/check_no_ambient_railway_ids.py` guard, plus every service's pytest
   suite. **`quality` is now a REQUIRED status check on `main`** (owner set the
   ruleset 2026-07-09; verified live on PR #18) — PRs are blocked until it is
-  green. The session-gate step is **PR-diff-aware** (kit v1.0.0, [D-0017]):
+  green. The session-gate step is **PR-diff-aware** (since kit v1.0.0, [D-0017]):
   it derives the session card from the PR/push diff and passes it via
   `check --session-log <card>`, so a stale `complete` card can't mask THIS
   PR's `in-progress` one (`fetch-depth: 0` on checkout feeds the diff). The
-  vendored `bootstrap.py` is kit **v1.0.0** whose checker fails a born-red
+  vendored `bootstrap.py` is kit **v1.6.0** (upgraded PR #45, [D-0026]; this
+  passage said v1.0.0 until 2026-07-10 — verified against the `bootstrap.py`
+  header) whose checker fails a born-red
   (`in-progress`/`wip`/`hold`/`drafted`) card under `--strict` — the leak that
   let PR #19 auto-merge on a born-red card alone is closed.
 - **Railway safety:** the three ambient `RAILWAY_*_ID` env vars point at the
