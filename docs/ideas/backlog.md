@@ -9,14 +9,12 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
-- **`/fleet.json` shape contract test** · `captured` — one test asserting
-  the exact key set of a `/fleet.json` lane + summary (orders_info /
-  routine_info / landing_info / kit_versions and their inner keys); three
-  sessions in one day extended that payload and the manager + /queue +
-  /orders all consume it — a key rename today breaks machine consumers
-  silently, a shape test makes it a named red (the console.json
-  pinned-contract lesson applied to our own JSON). Source:
-  `.sessions/2026-07-10-fleet-polish-batch.md` 💡.
+- **Same-shape contract tests for /orders.json, /queue.json,
+  /projects.json, /reviews.json** · `captured` — only /fleet.json has a
+  pinned shape (Built below); the other four machine endpoints carry the
+  same silent-rename risk and the pattern file now exists to copy — one
+  parametrized test file covers all four at near-zero marginal cost. Source:
+  `.sessions/2026-07-10-fleet-json-contract.md` 💡.
 - **Re-check closed-unmerged PR #9 branch `claude/rework-dashboard` for lost
   hardening work** · `captured` — #9 was closed superseded in the
   parallel-checkout churn (`docs/retro/self-review-2026-07-09.md` A4) but the
@@ -75,6 +73,14 @@
   [open-pr-awareness-at-wake-2026-07-10.md](open-pr-awareness-at-wake-2026-07-10.md).
 
 ## Built
+
+- **`/fleet.json` shape-contract test** — shipped 2026-07-10 (continuous-mode
+  slice 9): `tests/test_fleet_json_contract.py` pins the exact key sets of
+  the /fleet.json payload (top level, summary incl. kit_versions, every lane
+  incl. orders_info/routine_info/landing_info, and the degraded-lane
+  same-shape guarantee) — any key add/remove/rename goes red BY NAME; update
+  the pinned sets in the same PR that changes the payload. Source:
+  `.sessions/2026-07-10-fleet-polish-batch.md` 💡.
 
 - **Fleet polish batch: stalled-claim aging on `/orders` + `/queue.json` +
   kit-version rollup on `/fleet`** — shipped 2026-07-10 (continuous-mode
