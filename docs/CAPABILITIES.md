@@ -53,6 +53,10 @@ credential is missing:
 - **`api.github.com` direct HTTP**: blocked → GitHub access is MCP-tools-only.
 - **Environment / routine / Project creation**: owner-click actions in the
   console — queue them under `⚑ needs-owner`, never wait silently.
+  **Partially superseded 2026-07-10 for ROUTINES**: a worker session on this
+  surface self-armed a scheduled routine (see the append log) — environment /
+  Project creation remain owner-click; the boundary differs by session kind,
+  so re-verify per surface before filing an owner ask.
 - **Self-merge classifier**: sessions can be refused merging owner-gated PRs
   while their other capabilities work — and the boundary differs by session
   kind (a child session was refused where a coordinator was not). Record
@@ -67,7 +71,33 @@ Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 (Hand-filled by sessions, per the discovery rule. Seed walls/capabilities
 above came from the fleet's lived 2026-07 findings; local ones go here.)
 
-- 2026-07-09 · capability · GitHub **release-asset downloads work over plain
+- 2026-07-10 · capability · **Scheduled routines CAN be self-armed from a
+  worker session on this surface** — the session toolset exposed a scheduler
+  primitive (`mcp__claude-code-remote__create_trigger`) and it worked first
+  try · evidence: ORDER 008 execution — trigger
+  `trig_017H9Qb9oxtLgUy6sw2gnSHg` created 2026-07-10T13:49:36Z, cron
+  `0 */4 * * *`, enabled, fresh-session-per-fire in this environment,
+  `next_run_at 2026-07-10T16:00:31Z`; first fire NOT yet observed at
+  recording time (the woken session's own status overwrite is the
+  confirmation) · caveat: the boundary differs by session kind — the fleet
+  **coordinator's** toolset exposed NO send_later/scheduling tool at all
+  (its cross-session probe error, verbatim: "target session could not be
+  verified; retry send_message shortly"), so this capability is verified for
+  this worker surface only; environment/Project creation stay owner-click.
+- 2026-07-10 · capability · **`menno420/fleet-manager` is ANONYMOUSLY
+  READABLE over HTTP** — corrects the earlier "private / runtime-token-only"
+  note, which was an unverified inference, not a tested wall · evidence:
+  during the ORDER 005 build session (PR #53), the control-plane's own
+  runtime fetch path — raw.githubusercontent.com AND the unauthenticated
+  GitHub contents API — returned real fleet-manager content
+  (`docs/owner-queue.md`, `environments/` listing) with NO token; live
+  `/queue` and `/environments` render real data with the service's
+  `GITHUB_TOKEN` still unset · caveat: the SESSION-side wall stands —
+  git/MCP access to fleet-manager is still allowlist-denied (`Access denied:
+  repository "menno420/fleet-manager" is not configured for this session`);
+  that wall is about session tooling scope and says nothing about repo
+  visibility · consequence: the GITHUB_TOKEN ⚑ is now justified by rate
+  headroom + resilience-if-visibility-changes, not by access.
   HTTPS** (`github.com/<owner>/<repo>/releases/download/...`) through the
   environment proxy — the seed "api.github.com blocked" wall does NOT extend
   to the releases host · evidence: all three substrate-kit v1.6.0 assets

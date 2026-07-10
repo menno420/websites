@@ -67,6 +67,46 @@ tree at wind-down matched `origin/main` exactly.
    "unseen orders?" badge on `/fleet` (inbox last-commit newer than status
    `updated:` — recorded in the same card's ⟲ review).
 
+## Gen-2 close-out addendum — next-session brief (2026-07-10)
+
+Written by the gen-2 close-out session (PRs #56/#57 + the final heartbeat PR)
+so the next wake starts from facts, not rediscovery.
+
+**Resume point: NEXT item 2** — the `/fleet` manifest-parse smoke check
+(retro A3). Then item 3 (`.sessions/` card template with the `📊 Model:` line
++ ender checklist), then item 4 (heartbeat enrichment — machine-readable
+outstanding-orders / deployed-sha fields). Standing default unchanged: this
+NEXT list top-to-bottom; always re-read `control/inbox.md` at HEAD first
+(ORDER 008 arrived mid-close-out — orders keep coming).
+
+**Non-derivable facts (verify against live state; git wins):**
+
+- **Wake routine ARMED, first fire unconfirmed** (ORDER 008, claim PR #56):
+  self-armed via the worker-session scheduler primitive
+  `mcp__claude-code-remote__create_trigger` — trigger
+  `trig_017H9Qb9oxtLgUy6sw2gnSHg`, cron `0 */4 * * *`, fresh session per
+  fire, armed 2026-07-10T13:49:36Z, first fire due 16:00Z (after this
+  session ends). **If you are reading this from a routine-fired session, the
+  routine works** — say so in your status overwrite and let the conditional
+  fallback ⚑ in `docs/owner/OWNER-ACTIONS.md` expire. Before ORDER 008 the
+  fleet believed no scheduler existed agent-side: the coordinator's toolset
+  exposes no send_later/scheduling tool at all (its probe error, verbatim:
+  "target session could not be verified; retry send_message shortly") — that
+  coordinator-side wall still stands; the worker surface is the one that can
+  self-arm.
+- **fleet-manager is anonymously readable** — `/queue` + `/environments` run
+  LIVE tokenless today (verified via the app's own runtime fetch path during
+  the ORDER 005 build; `docs/CAPABILITIES.md` append log 2026-07-10). The
+  session-side allowlist wall (git/MCP denied) says nothing about repo
+  visibility.
+- **GITHUB_TOKEN ⚑ stands, re-justified**: rate headroom (anonymous 60 req/h
+  ceiling), admin-scope board cells, and resilience if fleet-manager
+  visibility ever changes — no longer "the only path to fleet-manager".
+- **Independent verification by the coordinator** (attributed to the
+  coordinator, not this lane's sessions): at ~02:50Z 2026-07-10 it verified
+  all three services at main HEAD `330f9b4b` — HTTP 200 on `/version` ×3
+  plus `/queue` and `/environments`.
+
 ## NEXT — owner-gated (decisions/actions, not agent work)
 
 Canonical list: `docs/owner/OWNER-ACTIONS.md` (6 open forks: /admin control
