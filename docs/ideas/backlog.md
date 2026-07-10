@@ -9,11 +9,6 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
-- **`/fleet` badge: "manifest live parse: last verified \<age\>"** · `captured`
-  — `resolve_lanes()` already returns `lane_source`; surface manifest-sourced
-  vs fallback on the page itself so the owner sees it without knowing
-  `scripts/healthcheck.py` exists. Likely a template tweak. Source:
-  `.sessions/2026-07-10-order008-first-fire-manifest-smoke.md` 💡.
 - **Re-check closed-unmerged PR #9 branch `claude/rework-dashboard` for lost
   hardening work** · `captured` — #9 was closed superseded in the
   parallel-checkout churn (`docs/retro/self-review-2026-07-09.md` A4) but the
@@ -66,21 +61,18 @@
   zero-packages cost makes the badge exact forever (routing half: flagged to
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
-- **Own-heartbeat parse self-check in `quality`** · `captured` — a small test
-  that runs this repo's own `control/status.md` through the `/fleet` parsers
-  (`parse_status` → `parse_orders` / `classify_routine` / `classify_landing`)
-  and asserts the machine-readable lines actually parse (orders `ok=True`,
-  known keys don't leak into `blockers:` as continuations), so a malformed
-  heartbeat is caught at PR time instead of rendering wrong on the live fleet
-  page (before the enrichment decision the `routine:` line leaked into
-  `blockers:` for hours — exactly this class). Dogfood pair to the heartbeat
-  enrichment shipped below. Source:
-  `.sessions/2026-07-10-heartbeat-enrichment.md` 💡.
 - **Ladder-rung telemetry in the heartbeat** · `captured` — one `rung:` token
   per wake (which work-ladder rung fired) so the manager sees at a glance
   whether a lane is living off orders or self-generated work, and backlog
   dryness becomes a trend, not a one-off line. Source:
   `.sessions/2026-07-10-never-idle-work-ladder.md` 💡 (this session).
+- **Backlog fact-check pass before promoting a bullet** · `captured` — one
+  grep/route-check against the codebase for what a bullet asks for BEFORE
+  branching on it; a stale `captured` bullet costs a whole duplicate slice in
+  continuous mode (the /fleet manifest-badge bullet outlived its own build —
+  shipped as the PR #36 lane_source notice — by 12+ hours and nearly got
+  rebuilt in slice 7). The dedup rule covers new ideas, not decayed old ones.
+  Source: `.sessions/2026-07-10-own-heartbeat-selfcheck.md` 💡.
 - **Open-PR awareness at wake (sibling-session collision check)** · `captured`
   — one wake-ritual step listing open PRs + PR-less unmerged `claude/*`
   branches before picking a work rung, so concurrent sessions stop duplicating
@@ -90,6 +82,17 @@
   [open-pr-awareness-at-wake-2026-07-10.md](open-pr-awareness-at-wake-2026-07-10.md).
 
 ## Built
+
+- **Own-heartbeat parse self-check in `quality`** — shipped 2026-07-10
+  (continuous-mode slice 7): `tests/test_own_heartbeat.py` runs the REAL
+  committed `control/status.md` through the `/fleet` parsers every suite run
+  — required fields present, `updated:` parses, `health:` classifies,
+  `orders:` machine-readable, optional `routine:`/`landing:` lines classify,
+  and no enriched key leaks into `blockers:` as a continuation (the
+  pre-enrichment failure class). Honest scope: heartbeat-only PRs ride the
+  control fast lane and skip pytest, so a bad heartbeat reds the NEXT
+  non-control PR — a standing floor, not same-PR enforcement. Source:
+  `.sessions/2026-07-10-heartbeat-enrichment.md` 💡.
 
 - **Per-repo inbox ORDER visibility on the site** — shipped 2026-07-10
   (continuous-mode slice 6; decision stamped in `docs/site.md` § 3f + the
@@ -141,4 +144,9 @@
 
 ## Retired
 
-(None yet — retire with one line of why, never delete silently.)
+- **`/fleet` badge: "manifest live parse: last verified \<age\>"** — retired
+  2026-07-10 (slice 7 fact-check): already shipped — `fleet.html` has
+  rendered `lane_source` on the page since the PR #36 manifest work ("lane
+  set: live from manifest — N lanes parsed" vs the fallback banner), which is
+  exactly the surfacing this capture asked for; verified in the template +
+  covered by `test_fleet_overview_is_manifest_sourced`. Nothing to build.
