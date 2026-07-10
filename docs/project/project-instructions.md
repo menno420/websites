@@ -2,9 +2,8 @@
 
 > **Status:** `reference`
 
-Paste everything below this line into: claude.ai console → websites Project →
-Custom Instructions. Source of truth is THIS file in the repo — re-paste after
-editing it here.
+Paste everything below the line into claude.ai console → websites Project →
+Custom Instructions. Source of truth is THIS file — re-paste after editing.
 
 ---
 
@@ -40,10 +39,9 @@ You may be a fresh session fired by the 4-hourly wake routine. Then:
 1. `git pull`; re-read `control/inbox.md` at HEAD; claim before building
    (`control/README.md`); execute ONE bounded slice, not a marathon.
 2. **Probe your landing tools before writing "done".** Routine-fired toolsets
-   have been observed WITHOUT GitHub PR tooling, with `api.github.com` 403'd by
-   the session proxy ("not enabled for this session. Use add_repo"), and with
-   `git push` failing (2026-07-10 append log). The setup script prints a probe
-   summary at provision — trust it.
+   have been observed WITHOUT GitHub PR tooling, with `api.github.com` 403'd
+   ("not enabled for this session. Use add_repo"), and with `git push` failing
+   (2026-07-10 append log). The setup script prints a probe summary — trust it.
 3. If PR tooling is absent: commit to a `claude/<slug>` branch; push **if the
    probe proved push works**; record the branch name + exact state (pushed or
    local-only, verified how) in the session card AND the `control/status.md`
@@ -55,6 +53,34 @@ You may be a fresh session fired by the 4-hourly wake routine. Then:
    dead THIS session — and then say which probe proved it (verbatim error).
    A patch is the last resort, not the default.
 6. `add_repo` is not yours to invoke autonomously (its own tool description).
+
+## Never idle — the work ladder
+Idle is a bug: while useful work exists, every wake ships something. Pick the
+FIRST rung with work; ship ONE increment:
+1. An open ORDER in `control/inbox.md` at HEAD (diff against your own
+   status `done=` line — orders stay `status: new` forever).
+2. The queue-state NEXT list (`docs/planning/queue-state-*.md`, newest file),
+   top to bottom.
+3. The ideas backlog (`docs/ideas/backlog.md`): pick the highest-value
+   buildable idea and promote it — idea → small plan → build the FIRST
+   increment THIS wake, not just paperwork.
+4. Self-generated improvement: something contained + reversible you genuinely
+   believe improves the product or the workflow (UX polish, a missing test,
+   perf, observability, docs drift). Flag it `⚑ Self-initiated:` in the
+   session card.
+5. Only if 1–4 are truly empty: doctrine/docs/test upkeep — and say honestly
+   in the heartbeat that the backlog is dry (that line is a signal to the
+   manager to route work).
+
+Two mandatory enders, any wake, any rung:
+- Contribute ONE new genuine idea per session to `docs/ideas/` (dedup against
+  `backlog.md` first; forced filler is worse than none — if genuinely
+  nothing, say so and why in the card).
+- One-line previous-session review in the card: what the last wake did
+  well / missed.
+
+Never end a wake with nothing shipped unless blocked — then the heartbeat
+names the blocker.
 
 ## CAPABILITIES discovery rule
 Before declaring anything impossible: check `docs/CAPABILITIES.md`, check the
@@ -90,6 +116,9 @@ Grounding (repo sources for every rule above):
   api.github.com 403 verbatim, push-claim-without-proof lesson);
   .sessions/2026-07-10-order008-first-fire-manifest-smoke.md § Landing;
   docs/project/setup-script.sh (capability probe).
+- Work ladder: docs/ideas/README.md (lifecycle + dedup) + docs/ideas/backlog.md;
+  queue-state NEXT: docs/planning/queue-state-2026-07-09-winddown.md; enders:
+  .sessions/README.md markers (💡 idea + ⟲ review).
 - Discovery rule: docs/CAPABILITIES.md § THE DISCOVERY RULE.
 - Heartbeat-last / one-writer: control/README.md (§ The one rule, § Per-session
   ritual, § status.md format).
