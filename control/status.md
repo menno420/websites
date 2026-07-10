@@ -5,7 +5,7 @@ health: green (quality green on #52/#53; suites 140 passed; healthcheck 6/6 PASS
 kit: v1.6.0 · check: green · engaged: yes
 last-shipped: #53 — ORDER 005: /queue owner to-do surface + /environments registry view (+ env-setup.sh wrapper; decision stamped in docs/site.md + the decision ledger)
 blockers: none
-orders: acked=001,002,003,004,005,006,007 done=001,002,003,004,005,006,007
+orders: acked=001,002,003,004,005,006,007,008 done=001,002,003,004,005,006,007 claimed-by: 008 gen2-closeout 2026-07-10T13:48Z
 ⚑ needs-owner: three actionable asks — canonical list lives in docs/owner/OWNER-ACTIONS.md; six-field blocks below (PAT ask updated with a live finding: fleet-manager is anonymously readable today, so /queue + /environments run LIVE tokenless — the token ask stands for rate headroom, admin-scope cells, and resilience, no longer as the only path to fleet-manager).
   ⚑ OWNER-ACTION
   WHAT: Arm an external 4-hourly wake trigger for the fleet coordinator — it cannot schedule its own wakes.
