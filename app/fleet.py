@@ -198,13 +198,64 @@ def parse_orders(value: str) -> dict[str, Any]:
     done = ids_of("done")
     done_set = set(done)
     outstanding = [i for i in acked if i not in done_set]
+
+    # The claim's own timestamp (`claimed-by: <ids> <lane> <ISO8601>`) — the
+    # claim ritual expires a claim with no visible activity after ~24h, so
+    # consumers (/orders claim-aging, /fleet.json) need the WHEN, not just
+    # the text. ISO-8601 UTC or None; never guessed.
+    claimed_at = None
+    if claimed:
+        dt = _parse_iso(claimed)
+        if dt is not None:
+            claimed_at = dt.isoformat()
+
     return {
         "ok": bool(acked or done),
         "acked": acked,
         "done": done,
         "outstanding": outstanding,
         "claimed": claimed,
+        "claimed_at": claimed_at,
     }
+
+
+_KIT_VERSION_RE = re.compile(r"\bv\d+(?:\.\d+)*\b")
+
+
+def kit_version(value: str) -> str:
+    """The version token out of a ``kit:`` heartbeat line.
+
+    ``v1.7.1 · check: green · engaged: yes`` → ``v1.7.1``; no token → ``""``
+    (an honest absence — never guessed from prose).
+    """
+    m = _KIT_VERSION_RE.search(value or "")
+    return m.group(0) if m else ""
+
+
+def kit_rollup(lanes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Version → lane-count rollup over parsed ``kit:`` lines.
+
+    Counts only lanes with a READABLE heartbeat (missing/errored lanes say
+    nothing about kit adoption); a readable heartbeat without a parseable
+    kit version lands in the ``none`` bucket. Returns
+    ``[{version, count}, …]`` sorted most-common-first, ``none`` always last.
+    """
+    counts: dict[str, int] = {}
+    for lane in lanes:
+        if lane.get("missing") or lane.get("fetch_error"):
+            continue
+        if not lane.get("fields"):
+            continue
+        v = kit_version(lane["fields"].get("kit", "")) or "none"
+        counts[v] = counts.get(v, 0) + 1
+    versions = sorted(
+        (k for k in counts if k != "none"),
+        key=lambda k: (-counts[k], k),
+    )
+    out = [{"version": v, "count": counts[v]} for v in versions]
+    if "none" in counts:
+        out.append({"version": "none", "count": counts["none"]})
+    return out
 
 
 _CRON_RE = re.compile(r"cron[:\s]+([\d*/,\- ]+?)(?:\s*[·;|]|$)")
@@ -772,6 +823,11 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
         "outstanding_orders": sum(
             len(lane["orders_info"]["outstanding"]) for lane in lanes
         ),
+        # kit-version rollup (idea: kit rollup on /fleet) — pure presentation
+        # over the already-parsed `kit:` lines: version → lane count, plus a
+        # `none` bucket for readable lanes whose heartbeat carries no kit
+        # line. Sorted most-common-first for the header badge.
+        "kit_versions": kit_rollup(lanes),
     }
     return {
         "lanes": lanes,

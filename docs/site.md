@@ -103,7 +103,11 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    the manager machine-reads "what's left" per lane without diffing inbox vs
    status vs git. A lane writing none of the optional lines renders exactly
    as before; free-text `orders:` parses honestly to `ok=False`, never
-   invented ids.
+   invented ids. Polish batch ([D-0033]): `parse_orders` also extracts the
+   claim's ISO timestamp (`claimed_at` — feeds /orders claim aging), and the
+   summary carries a **kit-version rollup** (`kit_versions`, most-common
+   first + a `none` bucket over readable heartbeats only) rendered as a
+   "kit adoption: 2×v1.7.1 · 1×none" header line.
 3b. **Owner queue** (`/queue`) — every ⚑ owner ask on ONE deduplicated,
    newest-first surface ([D-0027], ORDER 005): the owner's single to-do list.
    Two halves: (1) every fleet lane's `⚑ needs-owner` field, reusing the exact
@@ -189,6 +193,12 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    texts truncate with the full order body in a `<details>` fold (rendered
    sanitized). No-inbox repos are honest absences; fetch failures are
    banners; always 200; `/orders.json` drops the rendered body HTML.
+   **Claim aging** (polish batch): a claimed order carries its claim's age
+   (from the `claimed-by:` ISO stamp `parse_orders` now extracts) and
+   badges `claim stale? (<age>)` past `CLAIM_STALE_HOURS` (24h default —
+   the claim ritual's own expiry rule, so a dead lane can't silently
+   deadlock an order); a claim with no parseable stamp ages honestly as
+   unknown, never flagged on a guess. Summary rolls up `stale_claims`.
 4. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
@@ -214,6 +224,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/fleet` | public | fleet heartbeat — every lane's `control/status*.md` (HTML) — [D-0021] |
 | `/fleet.json` | public | same fleet heartbeat as JSON (rendered body stripped) |
 | `/queue` | public | owner queue — every ⚑ needs-owner ask + the fleet-manager owner-queue, deduplicated (HTML) — [D-0027] |
+| `/queue.json` | public | same owner queue as JSON — the manager's file-an-ask → poll → confirm round-trip (rendered doc HTML stripped) |
 | `/environments` | public | fleet-manager `environments/` registry, copy-to-clipboard (HTML) — [D-0027] |
 | `/projects` | public | fleet-manager `projects/` Project-package registry (HTML) — [D-0030] |
 | `/projects.json` | public | same registry as JSON (rendered meta HTML stripped) |

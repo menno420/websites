@@ -24,6 +24,7 @@
     {% if o.summary.claimed %}<span class="b design">{{ o.summary.claimed }} claimed</span>{% endif %}
     <span class="b ok">{{ o.summary.done }} done</span>
     {% if o.summary.unknown %}<span class="b unknown">{{ o.summary.unknown }} state unknown</span>{% endif %}
+    {% if o.summary.stale_claims %}<span class="b warn">{{ o.summary.stale_claims }} stale claim{{ 's' if o.summary.stale_claims != 1 }}</span>{% endif %}
     {% if o.summary.errored %}<span class="b bad">{{ o.summary.errored }} unreachable</span>{% endif %}
   </p>
 </div>
@@ -53,7 +54,7 @@
     <tr>
       <th>ORDER {{ ord.id }}
         {% if ord.state == 'open' %}<span class="b warn">open</span>
-        {% elif ord.state == 'claimed' %}<span class="b design">claimed</span>
+        {% elif ord.state == 'claimed' %}<span class="b design">claimed</span>{% if ord.claim_stale %} <span class="b warn">claim stale? ({{ ord.claim_age_human }})</span>{% endif %}
         {% elif ord.state == 'done' %}<span class="b ok">done</span>
         {% else %}<span class="b unknown">unknown</span>{% endif %}</th>
       <td>
