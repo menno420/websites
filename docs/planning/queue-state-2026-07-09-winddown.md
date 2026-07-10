@@ -72,28 +72,38 @@ tree at wind-down matched `origin/main` exactly.
 Written by the gen-2 close-out session (PRs #56/#57 + the final heartbeat PR)
 so the next wake starts from facts, not rediscovery.
 
-**Resume point: NEXT item 2** — the `/fleet` manifest-parse smoke check
-(retro A3). Then item 3 (`.sessions/` card template with the `📊 Model:` line
-+ ender checklist), then item 4 (heartbeat enrichment — machine-readable
-outstanding-orders / deployed-sha fields). Standing default unchanged: this
-NEXT list top-to-bottom; always re-read `control/inbox.md` at HEAD first
-(ORDER 008 arrived mid-close-out — orders keep coming).
+**Update 2026-07-10T16:0xZ (routine-fired session, unmerged branch
+`claude/order008-manifest-smoke-2026-07-10`):** the first routine fire landed
+(see below) and NEXT item 2 was built — `python3 scripts/healthcheck.py` now
+asserts the live `/fleet` manifest parse is non-empty (details:
+`.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`). **Not yet
+merged**: this session's toolset carries no PR-creation tool (see
+`docs/CAPABILITIES.md` append log 2026-07-10) — the branch is pushed; the
+next session with that tooling should open + land the PR before resuming
+NEXT item 3.
+
+**Resume point: NEXT item 3** — `.sessions/` card template with the
+`📊 Model:` line + ender checklist (once the item-2 PR above is landed), then
+item 4 (heartbeat enrichment — machine-readable outstanding-orders /
+deployed-sha fields). Standing default unchanged: this NEXT list top-to-bottom;
+always re-read `control/inbox.md` at HEAD first (orders keep coming).
 
 **Non-derivable facts (verify against live state; git wins):**
 
-- **Wake routine ARMED, first fire unconfirmed** (ORDER 008, claim PR #56):
+- **Wake routine ARMED and first fire CONFIRMED** (ORDER 008, claim PR #56):
   self-armed via the worker-session scheduler primitive
   `mcp__claude-code-remote__create_trigger` — trigger
   `trig_017H9Qb9oxtLgUy6sw2gnSHg`, cron `0 */4 * * *`, fresh session per
-  fire, armed 2026-07-10T13:49:36Z, first fire due 16:00Z (after this
-  session ends). **If you are reading this from a routine-fired session, the
-  routine works** — say so in your status overwrite and let the conditional
-  fallback ⚑ in `docs/owner/OWNER-ACTIONS.md` expire. Before ORDER 008 the
-  fleet believed no scheduler existed agent-side: the coordinator's toolset
-  exposes no send_later/scheduling tool at all (its probe error, verbatim:
-  "target session could not be verified; retry send_message shortly") — that
-  coordinator-side wall still stands; the worker surface is the one that can
-  self-arm.
+  fire, armed 2026-07-10T13:49:36Z. `list_triggers` shows
+  `last_fired_at: 2026-07-10T16:01:32Z` — the routine-fired session that
+  read this brief on 2026-07-10 confirmed it (see
+  `.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`); the
+  conditional fallback ⚑ in `docs/owner/OWNER-ACTIONS.md` has been
+  withdrawn. Before ORDER 008 the fleet believed no scheduler existed
+  agent-side: the coordinator's toolset exposes no send_later/scheduling
+  tool at all (its probe error, verbatim: "target session could not be
+  verified; retry send_message shortly") — that coordinator-side wall still
+  stands; the worker surface is the one that can self-arm.
 - **fleet-manager is anonymously readable** — `/queue` + `/environments` run
   LIVE tokenless today (verified via the app's own runtime fetch path during
   the ORDER 005 build; `docs/CAPABILITIES.md` append log 2026-07-10). The
