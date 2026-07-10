@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2 walking skeleton (boot + landing-path proof)
 
-> **Status:** `in-progress`
+> **Status:** `complete` — shipped as PR #51 (`claude/gen2-walking-skeleton`, squash-merged on `quality` green).
 
 - **📊 Model:** withheld per session policy
 - **Start (UTC):** 2026-07-10T02:14:29Z
