@@ -9,6 +9,14 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **`/fleet.json` shape contract test** · `captured` — one test asserting
+  the exact key set of a `/fleet.json` lane + summary (orders_info /
+  routine_info / landing_info / kit_versions and their inner keys); three
+  sessions in one day extended that payload and the manager + /queue +
+  /orders all consume it — a key rename today breaks machine consumers
+  silently, a shape test makes it a named red (the console.json
+  pinned-contract lesson applied to our own JSON). Source:
+  `.sessions/2026-07-10-fleet-polish-batch.md` 💡.
 - **Re-check closed-unmerged PR #9 branch `claude/rework-dashboard` for lost
   hardening work** · `captured` — #9 was closed superseded in the
   parallel-checkout churn (`docs/retro/self-review-2026-07-09.md` A4) but the
