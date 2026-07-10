@@ -1,12 +1,12 @@
 # websites · status
-updated: 2026-07-10T02:20:00Z
-phase: gen-2 booted (first operator session) — walking skeleton through the landing path (born-red card → READY PR → quality green → squash-merge → /version check); ORDER 005 dossier gathered for the follow-up session, which claims + builds /queue + /environments. ORDER 005 deliberately NOT claimed yet — claim lands immediately before build, per control/README.md.
-health: green (all checks green; three services verified post-merge this session)
+updated: 2026-07-10T02:44:17Z
+phase: ORDER 005 shipped + live-verified (claim PR #52 → build PR #53 → all three services at main HEAD 74d6c97 within ~2 min of merge; live /queue + /environments both 200). ORDER 007 complete (boot #51, skeleton #51, ORDER 005 #52/#53, env-setup.sh wrapper #53, ledgers flipped #53). Standing default next: queue-state NEXT list top-to-bottom (item 2: /fleet manifest-parse smoke check).
+health: green (quality green on #52/#53; suites 140 passed; healthcheck 6/6 PASS; /version == main HEAD on all three services)
 kit: v1.6.0 · check: green · engaged: yes
-last-shipped: #51 — gen-2 walking skeleton: landing-path proof + coordinator scheduler-gap OWNER-ACTION (docs-only)
+last-shipped: #53 — ORDER 005: /queue owner to-do surface + /environments registry view (+ env-setup.sh wrapper; decision stamped in docs/site.md + the decision ledger)
 blockers: none
-orders: acked=001,002,003,004,005,006,007 done=001,002,003,004,006 claimed-by: 005 gen2-order-005 2026-07-10T02:24Z
-⚑ needs-owner: three actionable asks — canonical list (now incl. the new coordinator wake-trigger ask, six fields) lives in docs/owner/OWNER-ACTIONS.md; the two standing six-field asks below are unchanged from gen-1 and still active.
+orders: acked=001,002,003,004,005,006,007 done=001,002,003,004,005,006,007
+⚑ needs-owner: three actionable asks — canonical list lives in docs/owner/OWNER-ACTIONS.md; six-field blocks below (PAT ask updated with a live finding: fleet-manager is anonymously readable today, so /queue + /environments run LIVE tokenless — the token ask stands for rate headroom, admin-scope cells, and resilience, no longer as the only path to fleet-manager).
   ⚑ OWNER-ACTION
   WHAT: Arm an external 4-hourly wake trigger for the fleet coordinator — it cannot schedule its own wakes.
   WHERE: claude.ai console → coordinator Project → routines/scheduling UI (agents cannot create routines).
@@ -25,7 +25,7 @@ orders: acked=001,002,003,004,005,006,007 done=001,002,003,004,006 claimed-by: 0
   WHAT: Mint a durable fine-grained GitHub PAT and set it on the control-plane service.
   WHERE: github.com → Settings → Developer settings → Fine-grained tokens; then railway.app → superbot-websites → control-plane → Variables.
   HOW: token scoped to menno420 repos, read for contents/actions + actions:write for the CI re-run button; set as GITHUB_TOKEN (exact steps: docs/deployment.md § owner TODO).
-  WHY-IT-MATTERS: several board cells run degraded without it, the /owner "re-run CI" button can't act, and ORDER 005's /queue page cannot read menno420/fleet-manager docs/owner-queue.md at runtime (it will ship with an honest-degradation banner until set).
-  UNBLOCKS: actions-secrets + auto-merge-allowed cells go live; /queue's fleet-manager half; higher API rate headroom for /fleet + /activity.
-  VERIFIED-NEEDED: live board shows "unknown (token lacks admin scope)" / "unknown (needs push-scope token)" cells — the token is an owner-held Railway service variable agents cannot read or set (no such credential in the session env; printenv checked by gen-1).
-notes: Gen-2 lane is live. Boot followed docs/succession/next-boot-2026-07-09.md; queue-state + gen-1 status reconciled against live GitHub at HEAD (5f49e3a at boot — zero open PRs before this session's #51; gen-1 done= line carried forward verbatim). ORDER 007 in progress: steps 1–2 (boot + skeleton) this session; steps 3–5 (ORDER 005 build, env-setup.sh wrapper, ledger flips) next session, which starts by CLAIMING 005 on this status line via a control-only fast-lane PR. Rails held: forward-only git, no ambient RAILWAY_* IDs, inbox.md never edited, no destructive ops.
+  WHY-IT-MATTERS: several board cells run degraded without it, the /owner "re-run CI" button can't act, and every GitHub read rides the anonymous 60-req/h rate limit; /queue + /environments happen to run live tokenless today ONLY because fleet-manager is publicly readable — the token keeps them alive if that changes and lifts the rate ceiling.
+  UNBLOCKS: actions-secrets + auto-merge-allowed cells go live; /owner re-run CI; 5000 req/h headroom for /fleet + /activity + /queue + /environments.
+  VERIFIED-NEEDED: live board shows "unknown (token lacks admin scope)" / "unknown (needs push-scope token)" cells — the token is an owner-held Railway service variable agents cannot read or set (no such credential in the session env; printenv checked by gen-1). Live finding 2026-07-10: /queue + /environments verified 200 with REAL fleet-manager content while the service token is unset (anonymous raw + contents API on a public repo).
+notes: ORDER 005 done-when met and exceeded: /queue and /environments live at main HEAD 74d6c97 and verified against the running deploy — both 200; expected honest-degradation state did NOT occur because menno420/fleet-manager is anonymously readable (a corrected assumption — the "private, runtime-token-only" claim in the handoff dossier was an inference, not a verified wall; both pages still carry tested not-configured/unavailable degradation for the failure cases). ORDER 007 fully complete (all five steps + done-when). Claim dropped from the orders line per protocol. Rails held: forward-only git, no ambient RAILWAY_* IDs, inbox.md never edited, no destructive ops, one writer per file. Next session default: docs/planning/queue-state-2026-07-09-winddown.md NEXT list item 2 onward.
