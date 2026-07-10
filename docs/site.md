@@ -135,6 +135,23 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    level deep (bounded `MAX_FILES=40`) over the TTL-cached contents API.
    Honest degradation mirrors `/queue`: **not configured** (token unset) /
    **unavailable** (reason surfaced) / per-file + per-subdir error banners.
+3d. **Projects** (`/projects`, `.json` variant) — read-only render of the
+   fleet's Project-package registry `menno420/fleet-manager projects/`
+   ([D-0030], ORDER 009 increment 1): one card per `projects/<repo>/`
+   package showing its role-classified files (meta / Custom Instructions /
+   coordinator prompt / setup script / failsafe / wake-routine prompt —
+   tolerant basename heuristics, unrecognized files listed honestly as
+   "other"), each deep-linked to GitHub, plus `meta.md` rendered inline
+   (sanitized markdown) with a best-effort `deployed:`/`state:` line
+   surfaced as a badge (no such line → an honest "state unknown", never
+   invented). Bounded walk (`MAX_PACKAGES=30`, `MAX_FILES_PER_PACKAGE=20`)
+   over the same TTL-cached contents API as `/environments`. Honest
+   degradation extends the `/queue` model with an **empty** state: a 404 on
+   `projects/` (the registry was still landing upstream at ship time)
+   renders a friendly "registry not landed yet" card — never a 500;
+   not-configured / unavailable / per-package + per-meta error banners
+   otherwise. `/projects.json` drops the rendered meta HTML (mirrors
+   `/fleet.json`).
 4. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
@@ -161,6 +178,8 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/fleet.json` | public | same fleet heartbeat as JSON (rendered body stripped) |
 | `/queue` | public | owner queue — every ⚑ needs-owner ask + the fleet-manager owner-queue, deduplicated (HTML) — [D-0027] |
 | `/environments` | public | fleet-manager `environments/` registry, copy-to-clipboard (HTML) — [D-0027] |
+| `/projects` | public | fleet-manager `projects/` Project-package registry (HTML) — [D-0030] |
+| `/projects.json` | public | same registry as JSON (rendered meta HTML stripped) |
 | `/activity` | public | cross-repo PR activity timeline (HTML) — [D-0020] |
 | `/activity.json` | public | same timeline as JSON |
 | `/activity.xml` | public | same timeline as a subscribable Atom 1.0 feed (`application/atom+xml`) — [D-0025] |
