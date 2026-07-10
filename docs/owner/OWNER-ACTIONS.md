@@ -17,6 +17,19 @@
 | 4 | **Custom domains** for the three sites (control-plane / botsite / dashboard). | Friendly URLs instead of `*.up.railway.app`. | Deferred to cutover. Rework-plan **Q6**. |
 | 5 | **Preserve v1 visual design vs. the shipped restyle** (rework Q2). | Whether the ds/-based restyle stands or the original superbot visual design is carried over. | Rework-plan **Q2** (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`). |
 | 6 | **OLD-site cutover / retirement in superbot** — go / no-go? | Retiring the `dashboard/` + `botsite/` still living in `menno420/superbot` once these replace them. | Gated: needs your go. Verify the live websites URLs first (`python3 scripts/healthcheck.py`). |
+| 7 | **Arm an external wake trigger for the coordinator** (no scheduler primitive exists agent-side). | The 4-hourly Class B fleet wake routine — until armed, the fleet operates self-terminal (each session ends dark; nothing wakes the next). | Six-field ⚑ block below (2026-07-10). |
+
+### ⚑ Active six-field asks
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Arm an external 4-hourly wake trigger (routine/schedule) for the fleet coordinator — the coordinator cannot schedule its own wakes.
+WHERE: claude.ai console → the coordinator Project → routines/scheduling UI (owner-click surface; agents cannot create routines — see docs/CAPABILITIES.md "Environment / routine / Project creation").
+HOW: create a recurring 4-hourly routine that opens/resumes the coordinator session with its standing wake prompt (click-only; no paste values needed beyond the Project choice).
+WHY-IT-MATTERS: without it no Class B wake ever fires — the fleet only moves when you manually start a session.
+UNBLOCKS: the 4-hourly Class B wake routine; unattended fleet operation resumes the moment the trigger exists. Fleet operates self-terminal until then.
+VERIFIED-NEEDED: Coordinator has NO scheduler primitive (no send_later tool exposed; probe error: "target session could not be verified; retry send_message shortly") — the wake routine cannot be self-armed; only an owner-armed external trigger can do it.
+```
 
 ## 🟢 Decided / resolved
 
