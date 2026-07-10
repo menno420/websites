@@ -20,6 +20,13 @@
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- **Scheduled healthcheck workflow (standing liveness verification)** —
+  [scheduled-healthcheck-workflow-2026-07-10.md](scheduled-healthcheck-workflow-2026-07-10.md) ·
+  state: `captured` · next: quick-win (small/decided) — Actions cron runs the repo's own
+  `scripts/healthcheck.py` every 6 h and fails loudly on non-200; closes the
+  "liveness unverified at handover" class the gen-1 retro flagged (grand review closed it
+  by hand 2026-07-10; this makes it standing). Actions cron is the one scheduler agents
+  can arm themselves (retro F3).
 - **Per-repo `?repo=` filter on the activity views** —
   [activity-per-repo-filter-2026-07-09.md](activity-per-repo-filter-2026-07-09.md) ·
   state: `captured` · next: quick-win (small/decided) — let `/activity`,
