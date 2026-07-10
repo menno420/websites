@@ -17,19 +17,13 @@
 | 4 | **Custom domains** for the three sites (control-plane / botsite / dashboard). | Friendly URLs instead of `*.up.railway.app`. | Deferred to cutover. Rework-plan **Q6**. |
 | 5 | **Preserve v1 visual design vs. the shipped restyle** (rework Q2). | Whether the ds/-based restyle stands or the original superbot visual design is carried over. | Rework-plan **Q2** (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`). |
 | 6 | **OLD-site cutover / retirement in superbot** — go / no-go? | Retiring the `dashboard/` + `botsite/` still living in `menno420/superbot` once these replace them. | Gated: needs your go. Verify the live websites URLs first (`python3 scripts/healthcheck.py`). |
-| 7 | **Wake trigger — this lane SELF-ARMED it 2026-07-10 (ORDER 008)**; only a conditional fallback remains. | Unattended lane wakes (4-hourly). | Moved to **Decided** row E. Conditional fallback ask below (only if the first fire never lands). |
 
 ### ⚑ Active six-field asks
 
-```markdown
-⚑ OWNER-ACTION (CONDITIONAL — act only if the self-armed routine proves dead)
-WHAT: Arm an external 4-hourly wake trigger for this lane — ONLY IF no fresh websites heartbeat (control/status.md `updated:`) appears by 2026-07-11 (the self-armed ORDER 008 routine's first fires will have been due).
-WHERE: claude.ai console → the websites Project → routines/scheduling UI.
-HOW: recurring 4-hourly routine that opens a session with the standing wake prompt "Read control/inbox.md at HEAD and run the standing ritual from your instructions." (click-only).
-WHY-IT-MATTERS: if the self-armed trigger silently fails, no session wakes to re-file this ask — the lane goes dark with no one watching.
-UNBLOCKS: nothing today — the lane self-armed its routine (trigger trig_017H9Qb9oxtLgUy6sw2gnSHg, cron 0 */4 * * *, next fire 2026-07-10T16:00Z); this ask self-expires the moment a routine-woken heartbeat lands.
-VERIFIED-NEEDED: first fire not yet observed at close-out (armed 13:49Z, first fire 16:00Z — after this session ends); armed-but-unconfirmed is not the same fact as working.
-```
+None open this session — the one conditional ask (external wake-trigger
+fallback) self-expired 2026-07-10T16:01:32Z: the self-armed routine's first
+fire landed (this session IS that fire; see row E and
+`.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`).
 
 **Historical record (kept verbatim per the capability ledger):** before ORDER
 008, the fleet **coordinator's** toolset exposed **no send_later/scheduling
@@ -47,7 +41,7 @@ scheduler primitive (`docs/CAPABILITIES.md` append log, 2026-07-10).
 | B | **Basic-auth gate on control-plane + dashboard** | **Dropped** — both sites are fully public; the readiness board masks Actions-secret names to a count. | Owner verbatim "Yes drop the auth"; decision stamped in `docs/decisions.md`. |
 | C | **superbot kickoff doc (was PR #1876) → README link** | **Resolved** — the doc is merged on superbot `main`; the README link now returns HTTP 200 (verified 2026-07-09). Was a 404 while the PR was unmerged. | `README.md` → `superbot/docs/planning/websites-project-kickoff-2026-07-09.md`. |
 | D | **Leaky born-red session gate** (PR #19 auto-merged empty on an `in-progress` card) | **Resolved — no owner action** — adopted upstream kit **v1.0.0** `bootstrap.py` (fails born-red cards under `--strict`) + folded diff-aware `--session-log` into the `quality` gate. Both directions proven + regression-tested. Upstream substrate-kit repo fix handled by a **separate** session. | Decision stamped in `docs/decisions.md` (born-red-gate entry); `.github/workflows/quality.yml`; `tests/test_born_red_session_gate.py`. |
-| E | **Lane wake routine** (was Open row 7 — external owner-armed trigger) | **Self-armed — no owner click needed unless the fallback triggers.** Fleet ORDER 008 (2026-07-10) verified sessions can create routines; this lane armed trigger `trig_017H9Qb9oxtLgUy6sw2gnSHg` (cron `0 */4 * * *`, fresh-session-per-fire, prompt = the standing inbox ritual). First fire pending at close-out; the conditional fallback ask above self-expires when a routine-woken heartbeat lands. | `control/inbox.md` ORDER 008; claim PR #56; `docs/CAPABILITIES.md` append log 2026-07-10; `control/status.md` (routine state + mechanism). |
+| E | **Lane wake routine** (was Open row 7 — external owner-armed trigger) | **Self-armed and CONFIRMED working — no owner click needed.** Fleet ORDER 008 (2026-07-10) verified sessions can create routines; this lane armed trigger `trig_017H9Qb9oxtLgUy6sw2gnSHg` (cron `0 */4 * * *`, fresh-session-per-fire, prompt = the standing inbox ritual). First fire confirmed 2026-07-10T16:01:32Z (`list_triggers` `last_fired_at`; this session is that fire) — the conditional fallback ask has been withdrawn. | `control/inbox.md` ORDER 008; claim PR #56; `docs/CAPABILITIES.md` append log 2026-07-10; `.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`; `control/status.md`. |
 
 ## How to use this doc
 

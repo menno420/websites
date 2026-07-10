@@ -71,6 +71,30 @@ Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 (Hand-filled by sessions, per the discovery rule. Seed walls/capabilities
 above came from the fleet's lived 2026-07 findings; local ones go here.)
 
+- 2026-07-10 · capability · **The self-armed ORDER 008 wake routine's first
+  fire is CONFIRMED working** — `trig_017H9Qb9oxtLgUy6sw2gnSHg` shows
+  `last_fired_at: 2026-07-10T16:01:32Z` via `list_triggers`, and the
+  routine-fired session that observed this fact IS that fire · evidence:
+  `.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`;
+  `docs/owner/OWNER-ACTIONS.md` row E updated, conditional fallback ask
+  withdrawn.
+- 2026-07-10 · wall · **A routine-fired (background) session's toolset does
+  NOT include GitHub PR-creation tooling** (`create_pull_request` /
+  `merge_pull_request`-equivalent) — only session/repo-management tools
+  (`list_repos`, `add_repo`, `register_repo_root`, etc.) are present ·
+  evidence: `ToolSearch` for pr-creation tools found nothing this session; a
+  direct `curl https://api.github.com/...` with the session's own
+  `GITHUB_TOKEN` returned `403
+  {"message":"GitHub access to this repository is not enabled for this
+  session. Use add_repo to request access."}` (the CCR proxy's own gate, not
+  a GitHub-side error) · workaround: plain `git push` to a branch still works
+  (git-proxy access is separate from the API gate) — push the branch and
+  leave PR-open + merge to a session with that tooling (an interactive
+  session, per the existing "Branch push + MCP PR create..." capability
+  entry below, which was NOT recorded against a routine-fired session) ·
+  caveat: this may be specific to this trigger's `session_context` config
+  rather than a hard rule for all background sessions — re-verify per
+  trigger/session-kind before assuming it always holds.
 - 2026-07-10 · capability · **Scheduled routines CAN be self-armed from a
   worker session on this surface** — the session toolset exposed a scheduler
   primitive (`mcp__claude-code-remote__create_trigger`) and it worked first
