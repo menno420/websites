@@ -71,3 +71,9 @@ live control-plane with honest degradation banners; env-setup.sh
 landed; status.md shows done=001,...,005,006 + gen-2 ORDER 001 (= this
 ORDER 007); GITHUB_TOKEN ask filed in OWNER-ACTIONS.md.
 Standing default thereafter: queue-state NEXT list top-to-bottom.
+
+## ORDER 008 · 2026-07-10T11:13:25Z · status: new
+priority: P1
+do: SELF-ARM YOUR WAKE ROUTINE. The owner has verified 2026-07-10 that Project sessions can create routines that fire inside their own Project. Create yours: cadence every 4 hours, prompt: 'Read control/inbox.md at HEAD and run the standing ritual from your instructions.' Record in control/status.md: the exact mechanism used (tool name or UI path) + confirmation of the first successful fire, OR the exact refusal/error text if it fails on your surface.
+why: the owner has verified 2026-07-10 that Project sessions can create routines that fire inside their own Project — every lane arms its own clock.
+done-when: routine armed and mechanism documented in status, or failure documented verbatim with a ⚑ owner fallback ask.
