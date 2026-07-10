@@ -30,6 +30,7 @@ from . import (
     owner_queue,
     projects,
     readiness,
+    reviews,
 )
 
 
@@ -194,6 +195,27 @@ async def projects_json(request: Request):
         {k: v for k, v in pkg.items() if k != "meta_html"}
         for pkg in data["packages"]
     ]
+    return JSONResponse(payload)
+
+
+@app.get("/reviews", response_class=HTMLResponse)
+async def reviews_page(request: Request):
+    """ORDER 009 increment (3): the fleet's post-merge review queue
+    (fleet-manager docs/review-queue.md) — open rows as cards with the
+    repo#N token deep-linked, findings/records links extracted from the
+    ledger itself, full doc rendered below. Honest degradation; always 200."""
+    data = await reviews.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request, "reviews.html", {"r": data, "active": "reviews"}
+    )
+
+
+@app.get("/reviews.json")
+async def reviews_json(request: Request):
+    """JSON variant of /reviews — parsed rows + findings links, minus the
+    rendered doc HTML (an HTML-view concern; the /fleet.json precedent)."""
+    data = await reviews.overview(refresh=_refresh(request))
+    payload = {k: v for k, v in data.items() if k != "body_html"}
     return JSONResponse(payload)
 
 

@@ -152,6 +152,22 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    not-configured / unavailable / per-package + per-meta error banners
    otherwise. `/projects.json` drops the rendered meta HTML (mirrors
    `/fleet.json`).
+3e. **Review queue** (`/reviews`, `.json` variant) — read-only render of the
+   fleet's post-merge second-review ledger `menno420/fleet-manager
+   docs/review-queue.md` ([D-0031], ORDER 009 increment 3). The gen-2
+   merge-authority policy is "no PR waits for review before landing" — a PR
+   that deserves second eyes merges anyway and gets a ROW in the ledger;
+   this page makes those rows browsable: one card per OPEN row (the table
+   parsed by HEADER NAME — the manifest parser's lesson), the `repo#N`
+   token deep-linked to the real PR, struck (`~~…~~`) rows classified
+   reviewed and listed separately, open/reviewed roll-up badges, and the
+   FULL doc rendered below so nothing is hidden by the parse. The
+   launch-readiness / economics **findings links are extracted from the
+   ledger itself** (any markdown link into the manager's `findings/` /
+   `planning/` trees, resolved relative to `docs/`, deduplicated) — no
+   hardcoded dated filenames to go stale on an upstream rename. Honest
+   degradation ladder as `/projects` (empty on 404 / not-configured /
+   unavailable); route always 200; `/reviews.json` drops the rendered HTML.
 4. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
@@ -180,6 +196,8 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/environments` | public | fleet-manager `environments/` registry, copy-to-clipboard (HTML) — [D-0027] |
 | `/projects` | public | fleet-manager `projects/` Project-package registry (HTML) — [D-0030] |
 | `/projects.json` | public | same registry as JSON (rendered meta HTML stripped) |
+| `/reviews` | public | fleet post-merge review-queue ledger + findings links (HTML) — [D-0031] |
+| `/reviews.json` | public | same ledger as JSON (rendered HTML stripped) |
 | `/activity` | public | cross-repo PR activity timeline (HTML) — [D-0020] |
 | `/activity.json` | public | same timeline as JSON |
 | `/activity.xml` | public | same timeline as a subscribable Atom 1.0 feed (`application/atom+xml`) — [D-0025] |
