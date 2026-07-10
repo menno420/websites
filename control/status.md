@@ -5,7 +5,7 @@ health: green (all checks green; three services verified post-merge this session
 kit: v1.6.0 · check: green · engaged: yes
 last-shipped: #51 — gen-2 walking skeleton: landing-path proof + coordinator scheduler-gap OWNER-ACTION (docs-only)
 blockers: none
-orders: acked=001,002,003,004,005,006,007 done=001,002,003,004,006
+orders: acked=001,002,003,004,005,006,007 done=001,002,003,004,006 claimed-by: 005 gen2-order-005 2026-07-10T02:24Z
 ⚑ needs-owner: three actionable asks — canonical list (now incl. the new coordinator wake-trigger ask, six fields) lives in docs/owner/OWNER-ACTIONS.md; the two standing six-field asks below are unchanged from gen-1 and still active.
   ⚑ OWNER-ACTION
   WHAT: Arm an external 4-hourly wake trigger for the fleet coordinator — it cannot schedule its own wakes.
