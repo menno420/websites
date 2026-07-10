@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}review queue{% endblock %}
+{% block headright %}<a href="/reviews?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>review queue — the fleet's post-merge second-eyes ledger</h2>
+  <p class="dim small">Read-only render of
+    <a href="{{ r.doc_url }}">fleet-manager <code>docs/review-queue.md</code> ↗</a> —
+    the gen-2 merge-authority policy says <strong>no PR waits for review before
+    landing</strong>: a PR that deserves second eyes merges anyway and gets a row here
+    (post-merge review; veto = revert, forward-only git). The manager's repo stores;
+    this site renders.</p>
+
+  {% if r.state == 'empty' %}
+  <div class="banner">◌ <strong>ledger not landed yet</strong> — {{ r.reason }}
+    · <a href="{{ r.doc_url }}">watch on GitHub ↗</a></div>
+  {% elif r.state == 'not-configured' %}
+  <div class="banner">⚠ <strong>not configured</strong> — {{ r.reason }}. This page renders
+    the ledger the moment the token is set (the ask is filed in
+    <code>docs/owner/OWNER-ACTIONS.md</code>).</div>
+  {% elif r.state == 'unavailable' %}
+  <div class="banner">⚠ <strong>unavailable</strong> — could not fetch the ledger
+    ({{ r.reason }}) · <a href="{{ r.doc_url }}">view on GitHub ↗</a></div>
+  {% else %}
+  <p class="small">
+    <span class="b {{ 'warn' if r.open_count else 'ok' }}">{{ r.open_count }} open</span>
+    {% if r.reviewed_count %}<span class="b ok">{{ r.reviewed_count }} reviewed</span>{% endif %}
+  </p>
+  {% endif %}
+
+  {% if r.findings_links %}
+  <p class="small"><strong>findings &amp; records cited by the ledger:</strong>
+    {% for l in r.findings_links %}
+    <a href="{{ l.url }}">{{ l.label }} ↗</a>{{ " · " if not loop.last }}
+    {% endfor %}
+  </p>
+  {% endif %}
+</div>
+
+{% if r.state == 'ok' and not r.rows %}
+<div class="card"><p class="dim">The ledger is reachable but carries no table rows yet —
+  either nothing needs second eyes, or rows are pending their sessions' appends.</p></div>
+{% endif %}
+
+{% for row in r.rows if not row.reviewed %}
+<div class="card">
+  <h2>{% if row.pr_url %}<a href="{{ row.pr_url }}">{{ row.pr_label }} ↗</a>
+      {% else %}{{ row.pr_label }}{% endif %}
+    <span class="b warn">open</span></h2>
+  <table>
+    <tr><th>re-check</th><td>{{ row.what or '—' }}</td></tr>
+    <tr><th>why risky</th><td>{{ row.why or '—' }}</td></tr>
+    <tr><th>drain path · status</th><td>{{ row.status or '—' }}</td></tr>
+  </table>
+</div>
+{% endfor %}
+
+{% if r.reviewed_count %}
+<div class="card">
+  <h2>reviewed <span class="dim small">· struck rows</span></h2>
+  <table>
+    {% for row in r.rows if row.reviewed %}
+    <tr><th>{% if row.pr_url %}<a href="{{ row.pr_url }}">{{ row.pr_label }} ↗</a>{% else %}{{ row.pr_label }}{% endif %}</th>
+        <td class="dim">{{ row.what or '—' }} — {{ row.status or 'reviewed' }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if r.body_html %}
+<div class="card">
+  <h2>the full ledger <span class="dim small">· as committed — nothing hidden by the parse</span></h2>
+  <div class="md">{{ r.body_html | safe }}</div>
+</div>
+{% endif %}
+{% endblock %}

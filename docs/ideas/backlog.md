@@ -42,15 +42,6 @@
   timeout; turns the manual "merge = deploy" verification loop into a
   deterministic PASS/FAIL. Source:
   `.sessions/2026-07-10-gen2-walking-skeleton.md` 💡.
-- **ORDER 009 increment (3): review-queue rows + findings links** · `planned`
-  — surface `fleet-manager docs/review-queue.md` rows and link the
-  launch-readiness / economics findings docs where missing (a section or
-  links on `/fleet`, `/queue`, or a small docs panel — implementer's call).
-  Ledgered per ORDER 009's done-when ("closed or honestly ledgered as backlog
-  items"); increment (1) `/projects` shipped 2026-07-10, increment (2)
-  verified already-covered (per-lane `updated:` age + stale badges +
-  attention sort on `/fleet` apply to EVERY lane by construction — no
-  increment needed). Source: `control/inbox.md` ORDER 009.
 - **Per-repo inbox ORDER visibility on the site** · `captured` — ORDER 009's
   audit names per-repo `control/inbox.md` ORDER texts as browsable nowhere;
   a `/fleet` card section or `/orders` view rendering each lane's inbox
@@ -90,6 +81,16 @@
   [open-pr-awareness-at-wake-2026-07-10.md](open-pr-awareness-at-wake-2026-07-10.md).
 
 ## Built
+
+- **ORDER 009 increment (3): review-queue rows + findings links** — shipped
+  2026-07-10 (continuous-mode slice 5; decision stamped in `docs/site.md`
+  § 3e + the decision ledger): `/reviews` (+ `.json`) renders the
+  fleet-manager post-merge review-queue ledger — open rows as cards with
+  `repo#N` deep-linked, struck rows classified reviewed, findings/records
+  links extracted from the doc itself (never hardcoded), full ledger
+  rendered below; empty/not-configured/unavailable degradation. Increment
+  (1) `/projects` shipped earlier the same day; increment (2) verified
+  already-covered on `/fleet`. Source: `control/inbox.md` ORDER 009.
 
 - **Scheduled healthcheck workflow (standing liveness verification)** —
   shipped 2026-07-10 (backlog promotion, 20:00Z continuous-mode wake slice 3;
