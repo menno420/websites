@@ -9,6 +9,12 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Same-shape contract tests for /orders.json, /queue.json,
+  /projects.json, /reviews.json** · `captured` — only /fleet.json has a
+  pinned shape (Built below); the other four machine endpoints carry the
+  same silent-rename risk and the pattern file now exists to copy — one
+  parametrized test file covers all four at near-zero marginal cost. Source:
+  `.sessions/2026-07-10-fleet-json-contract.md` 💡.
 - **Re-check closed-unmerged PR #9 branch `claude/rework-dashboard` for lost
   hardening work** · `captured` — #9 was closed superseded in the
   parallel-checkout churn (`docs/retro/self-review-2026-07-09.md` A4) but the
