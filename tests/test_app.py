@@ -1309,3 +1309,382 @@ def test_cache_skips_transient_errors(monkeypatch):
         assert fake.calls == 2
 
     asyncio.run(run())
+
+
+# --------------------------------------------------------------------------- #
+# Owner queue (/queue) + environments registry (/environments) — ORDER 005
+# --------------------------------------------------------------------------- #
+
+from app import environments, owner_queue  # noqa: E402
+
+# A needs-owner value as fleet.parse_status actually delivers it: continuation
+# lines flattened onto one line, two six-field OWNER-ACTION blocks after a
+# preamble sentence (the real websites heartbeat shape).
+_NEEDS_OWNER_FLAT = (
+    "two asks — canonical list lives in docs/owner/OWNER-ACTIONS.md. "
+    "⚑ OWNER-ACTION WHAT: Mint a durable GitHub PAT and set it on the "
+    "control-plane service. WHERE: github.com → Settings → Developer settings. "
+    "HOW: token scoped to menno420 repos, set as GITHUB_TOKEN. "
+    "WHY-IT-MATTERS: several board cells run degraded without it. "
+    "UNBLOCKS: /queue's fleet-manager half. "
+    "VERIFIED-NEEDED: live board shows unknown cells; printenv checked. "
+    "⚑ OWNER-ACTION WHAT: Create a small Postgres for the botsite intake. "
+    "WHERE: railway.app → superbot-websites → New → Database. "
+    "HOW: add variable DATABASE_URL. "
+    "WHY-IT-MATTERS: the submission form is a stub until a store exists. "
+    "UNBLOCKS: the moderated submissions queue. "
+    "VERIFIED-NEEDED: policy wall D-0005; no DATABASE_URL on the service today."
+)
+
+
+def test_parse_owner_actions_flattened_blocks():
+    """The flattened lane shape parses into a preamble + two structured blocks
+    with all six fields keyed."""
+    preamble, blocks = owner_queue.parse_owner_actions(_NEEDS_OWNER_FLAT)
+    assert preamble.startswith("two asks — canonical list")
+    assert len(blocks) == 2
+    b = blocks[0]
+    assert b["what"].startswith("Mint a durable GitHub PAT")
+    assert b["where"].startswith("github.com")
+    assert b["how"].startswith("token scoped")
+    assert b["why"].startswith("several board cells")
+    assert b["unblocks"] == "/queue's fleet-manager half."
+    assert b["verified"].startswith("live board shows unknown")
+    assert blocks[1]["what"].startswith("Create a small Postgres")
+
+
+def test_parse_owner_actions_multiline_markdown():
+    """The raw multiline markdown form (owner-queue.md style, with emphasis
+    around labels) parses the same way."""
+    src = (
+        "# Owner queue\n\nCurated asks, newest first.\n\n"
+        "⚑ OWNER-ACTION\n"
+        "**WHAT:** Approve the fleet budget.\n"
+        "WHERE: claude.ai console\n"
+        "HOW: click only\n"
+        "WHY-IT-MATTERS: nothing runs without it.\n"
+        "UNBLOCKS: everything.\n"
+        "VERIFIED-NEEDED: agents cannot approve budgets (403 captured).\n"
+    )
+    preamble, blocks = owner_queue.parse_owner_actions(src)
+    assert "Curated asks" in preamble
+    assert len(blocks) == 1
+    assert blocks[0]["what"] == "Approve the fleet budget."
+    assert blocks[0]["how"] == "click only"
+
+
+def test_parse_owner_actions_none_and_free_text():
+    """'none' (and variants) yield nothing; a plain ask with no block markers
+    comes back as the preamble (one honest free-text item for the caller)."""
+    assert owner_queue.parse_owner_actions("none") == ("", [])
+    assert owner_queue.parse_owner_actions("  ") == ("", [])
+    assert owner_queue.parse_owner_actions("`none`") == ("", [])
+    text, blocks = owner_queue.parse_owner_actions(
+        "Q4 dashboard /admin live-bot control; Q5 botsite /submit Postgres"
+    )
+    assert text.startswith("Q4 dashboard") and blocks == []
+
+
+_QUEUE_STATUS_FRESH = (
+    "# websites · status\n"
+    "updated: 2026-07-10T02:00Z\n"
+    "health: green (ok)\n"
+    "⚑ needs-owner: preamble pointer sentence.\n"
+    "  ⚑ OWNER-ACTION\n"
+    "  WHAT: Mint the control-plane PAT.\n"
+    "  WHERE: github.com settings\n"
+    "  HOW: set GITHUB_TOKEN\n"
+    "  WHY-IT-MATTERS: cells degraded.\n"
+    "  UNBLOCKS: /queue fleet-manager half.\n"
+    "  VERIFIED-NEEDED: printenv checked by gen-1.\n"
+    "notes: n\n"
+)
+
+_QUEUE_STATUS_OLDER = (
+    "# substrate-kit · status\n"
+    "updated: 2026-07-09T01:00Z\n"
+    "health: green (ok)\n"
+    "⚑ needs-owner:\n"
+    "  ⚑ OWNER-ACTION\n"
+    "  WHAT: Mint the control-plane PAT.\n"
+    "  WHERE: github.com settings\n"
+    "  HOW: set GITHUB_TOKEN\n"
+    "  WHY-IT-MATTERS: cells degraded.\n"
+    "  UNBLOCKS: /queue fleet-manager half.\n"
+    "  VERIFIED-NEEDED: printenv checked by gen-1.\n"
+    "notes: n\n"
+)
+
+_QUEUE_STATUS_FREETEXT = (
+    "# superbot-next · status\n"
+    "updated: 2026-07-09T12:00Z\n"
+    "health: green (ok)\n"
+    "⚑ needs-owner: decide the plugin cutover window\n"
+    "notes: n\n"
+)
+
+_OWNER_QUEUE_MD = (
+    "# Owner queue\n\n"
+    "⚑ OWNER-ACTION\n"
+    "WHAT: Arm the coordinator wake trigger.\n"
+    "WHERE: claude.ai console\n"
+    "HOW: click only\n"
+    "WHY-IT-MATTERS: fleet is self-terminal without it.\n"
+    "UNBLOCKS: unattended operation.\n"
+    "VERIFIED-NEEDED: no scheduler primitive (probe error captured).\n"
+)
+
+
+def _queue_fakes(monkeypatch, fm_result=None):
+    """Wire fetch_file/repo_api fakes: 3 lanes with asks (one duplicated WHAT),
+    manifest 404 (fallback lane set), fleet-manager per fm_result."""
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        if repo == owner_queue.FLEET_MANAGER_REPO:
+            if fm_result is not None:
+                return fm_result
+            return {"ok": False, "status": 404, "data": None, "error": "Not Found",
+                    "fetched_at": "", "cached": False, "url": ""}
+        bodies = {
+            "websites": _QUEUE_STATUS_FRESH,
+            "substrate-kit": _QUEUE_STATUS_OLDER,
+            "superbot-next": _QUEUE_STATUS_FREETEXT,
+        }
+        if repo in bodies and path == "control/status.md":
+            return {"ok": True, "status": 200, "data": bodies[repo], "error": "",
+                    "fetched_at": "", "cached": False, "url": ""}
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    monkeypatch.setattr(github, "fetch_file", fake_fetch)
+    monkeypatch.setattr(github, "repo_api", fake_repo_api)
+
+
+def test_queue_overview_dedups_sorts_and_reads_fleet_manager(monkeypatch):
+    """overview() merges the duplicated WHAT across two lanes into ONE item
+    keeping both sources, sorts newest heartbeat first, includes the free-text
+    ask, and parses the fleet-manager doc when it is readable."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
+    _queue_fakes(monkeypatch, fm_result={
+        "ok": True, "status": 200, "data": _OWNER_QUEUE_MD, "error": "",
+        "fetched_at": "", "cached": False, "url": ""})
+
+    out = asyncio.run(owner_queue.overview())
+    assert out["fleet_manager"]["state"] == "ok"
+    whats = [i["what"] or i["text"] for i in out["items"]]
+    # 4 raw asks (2 duplicate PAT + free-text + fleet-manager) -> 3 items
+    assert len(out["items"]) == 3
+    assert out["summary"]["deduped"] == 1
+    pat = next(i for i in out["items"] if i["what"].startswith("Mint"))
+    assert len(pat["sources"]) == 2  # both lanes kept on the merged item
+    labels = {s["label"] for s in pat["sources"]}
+    assert "websites" in labels and "substrate-kit" in labels
+    # newest-first: the fresh websites heartbeat leads; the undated
+    # fleet-manager item sorts last (never given an invented time).
+    assert whats[0].startswith("Mint")
+    assert whats[-1].startswith("Arm the coordinator")
+    # the preamble pointer is a lane note, not an ask
+    assert any(n["text"].startswith("preamble pointer") for n in out["lane_notes"])
+
+
+def test_queue_fleet_manager_not_configured_when_token_unset(monkeypatch):
+    """Token unset + fetch failed -> honest 'not-configured' state; lane items
+    still present (the readable half keeps working)."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "")
+    _queue_fakes(monkeypatch)
+    out = asyncio.run(owner_queue.overview())
+    fm = out["fleet_manager"]
+    assert fm["state"] == "not-configured"
+    assert "GITHUB_TOKEN is not set" in fm["reason"]
+    assert len(out["items"]) == 2  # deduped PAT ask + free-text ask
+    assert out["summary"]["deduped"] == 1
+
+
+def test_queue_fleet_manager_unavailable_when_token_set(monkeypatch):
+    """Token present but fetch failed -> 'unavailable' with the reason, never
+    a fabricated queue."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
+    _queue_fakes(monkeypatch)
+    out = asyncio.run(owner_queue.overview())
+    assert out["fleet_manager"]["state"] == "unavailable"
+    assert out["fleet_manager"]["reason"]
+
+
+def test_queue_route_degrades_honestly_offline(client, monkeypatch):
+    """/queue serves 200 with the honest not-configured banner when GitHub is
+    unreachable and the token is unset (the live production state today)."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "")
+    r = client.get("/queue")
+    assert r.status_code == 200
+    assert "owner queue" in r.text
+    assert "not configured" in r.text
+    assert "GITHUB_TOKEN is not set" in r.text
+    # every lane unreadable -> the honest asks-may-be-missing banner
+    assert "may be missing" in r.text
+
+
+def test_queue_route_renders_structured_items(monkeypatch):
+    """/queue happy path (mocked upstream): structured fields render in the
+    table, source lane badges present, fleet-manager doc rendered."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
+    _queue_fakes(monkeypatch, fm_result={
+        "ok": True, "status": 200, "data": _OWNER_QUEUE_MD, "error": "",
+        "fetched_at": "", "cached": False, "url": ""})
+    with TestClient(app) as c:
+        r = c.get("/queue")
+    assert r.status_code == 200
+    assert "Mint the control-plane PAT." in r.text
+    assert "WHY-IT-MATTERS" in r.text and "VERIFIED-NEEDED" in r.text
+    assert "decide the plugin cutover window" in r.text
+    assert "Arm the coordinator wake trigger." in r.text
+    assert "duplicate merged" in r.text
+
+
+# ---- /environments ---------------------------------------------------------
+
+_ENV_LISTING_ROOT = [
+    {"type": "file", "name": "README.md", "path": "environments/README.md"},
+    {"type": "file", "name": "multi-repo.md", "path": "environments/multi-repo.md"},
+    {"type": "file", "name": "SPEC-TEMPLATE.md", "path": "environments/SPEC-TEMPLATE.md"},
+    {"type": "dir", "name": "templates", "path": "environments/templates"},
+]
+_ENV_LISTING_TEMPLATES = [
+    {"type": "file", "name": "setup-universal.sh",
+     "path": "environments/templates/setup-universal.sh"},
+    {"type": "file", "name": "env-vars.md",
+     "path": "environments/templates/env-vars.md"},
+]
+_ENV_BODIES = {
+    "environments/README.md": "# Environments registry\n\nHow to use this.\n",
+    "environments/multi-repo.md": "# Multi-repo\n\nSpanning notes.\n",
+    "environments/SPEC-TEMPLATE.md": "# Spec template\n\nFill me in.\n",
+    "environments/templates/setup-universal.sh":
+        "#!/usr/bin/env bash\npip install -r requirements.txt\n",
+    "environments/templates/env-vars.md":
+        "# Env vars\n\n```\nGITHUB_TOKEN=<placeholder>\n```\n",
+}
+
+
+def _env_fakes(monkeypatch):
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        assert repo == environments.REPO
+        if subpath == "/contents/environments":
+            return {"ok": True, "status": 200, "data": _ENV_LISTING_ROOT,
+                    "error": "", "fetched_at": "", "cached": False, "url": ""}
+        if subpath == "/contents/environments/templates":
+            return {"ok": True, "status": 200, "data": _ENV_LISTING_TEMPLATES,
+                    "error": "", "fetched_at": "", "cached": False, "url": ""}
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        if path in _ENV_BODIES:
+            return {"ok": True, "status": 200, "data": _ENV_BODIES[path],
+                    "error": "", "fetched_at": "", "cached": False, "url": ""}
+        return {"ok": False, "status": 404, "data": None, "error": "nf",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    monkeypatch.setattr(github, "repo_api", fake_repo_api)
+    monkeypatch.setattr(github, "fetch_file", fake_fetch)
+
+
+def test_environments_overview_renders_registry(monkeypatch):
+    """overview() lists root + templates/, README first, markdown rendered to
+    HTML, the setup script kept as raw text for the copyable code block."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
+    _env_fakes(monkeypatch)
+    out = asyncio.run(environments.overview())
+    assert out["state"] == "ok" and out["listing_errors"] == []
+    paths = [f["path"] for f in out["files"]]
+    assert paths[0] == "environments/README.md"
+    assert set(paths) == set(_ENV_BODIES)
+    readme = out["files"][0]
+    assert readme["kind"] == "markdown" and "<h1" in readme["body_html"]
+    sh = next(f for f in out["files"] if f["path"].endswith(".sh"))
+    assert sh["kind"] == "code" and "pip install" in sh["text"]
+    assert sh["github_url"].endswith("/fleet-manager/blob/main/" + sh["path"])
+
+
+def test_environments_not_configured_when_token_unset(monkeypatch):
+    """Listing failed + token unset -> honest 'not-configured' (the live
+    production state today), never a 500 or invented files."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "")
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        return {"ok": False, "status": 404, "data": None, "error": "Not Found",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    monkeypatch.setattr(github, "repo_api", fake_repo_api)
+    out = asyncio.run(environments.overview())
+    assert out["state"] == "not-configured" and out["files"] == []
+    assert "GITHUB_TOKEN is not set" in out["reason"]
+
+
+def test_environments_unavailable_when_token_set(monkeypatch):
+    """Listing failed with a token present -> 'unavailable' + the reason."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        return {"ok": False, "status": 403, "data": None, "error": "rate limited",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    monkeypatch.setattr(github, "repo_api", fake_repo_api)
+    out = asyncio.run(environments.overview())
+    assert out["state"] == "unavailable" and "rate limited" in out["reason"]
+
+
+def test_environments_route_degrades_honestly_offline(client, monkeypatch):
+    """/environments serves 200 with the honest not-configured banner when the
+    upstream is unreachable and the token is unset."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "")
+    r = client.get("/environments")
+    assert r.status_code == 200
+    assert "environments" in r.text
+    assert "not configured" in r.text
+    assert "GITHUB_TOKEN is not set" in r.text
+
+
+def test_environments_route_renders_files_with_copy_blocks(monkeypatch):
+    """/environments happy path: README HTML, script inside <pre>, and the
+    copy-to-clipboard JS wired in."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
+    _env_fakes(monkeypatch)
+    with TestClient(app) as c:
+        r = c.get("/environments")
+        js = c.get("/static/copycode.js")
+    assert r.status_code == 200
+    assert "Environments registry" in r.text
+    assert "pip install -r requirements.txt" in r.text
+    assert "/static/copycode.js" in r.text
+    assert js.status_code == 200 and "clipboard" in js.text
+
+
+def test_queue_and_environments_do_not_autorefresh(client, monkeypatch):
+    """The two ORDER 005 pages are content surfaces — no auto-refresh markup
+    (D-0023 scoped auto-refresh to `/` + `/fleet` only)."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "")
+    for path in ["/queue", "/environments"]:
+        html = client.get(path).text
+        assert "/static/autorefresh.js" not in html, path
+        assert 'class="autorefresh"' not in html, path
+
+
+def test_queue_fleet_manager_doc_without_blocks_is_not_flattened(monkeypatch):
+    """An owner-queue.md with NO ⚑ OWNER-ACTION blocks yields ZERO list items
+    (a whole document is not an 'ask') — the full rendered document is the
+    honest surface instead."""
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "")
+    _queue_fakes(monkeypatch, fm_result={
+        "ok": True, "status": 200,
+        "data": "# Owner queue\n\nA curated narrative list, no blocks yet.\n",
+        "error": "", "fetched_at": "", "cached": False, "url": ""})
+    out = asyncio.run(owner_queue.overview())
+    fm = out["fleet_manager"]
+    assert fm["state"] == "ok" and fm["items"] == []
+    assert "<h1" in fm["body_html"]
+    # only the lane asks remain in the list
+    assert all(s["kind"] == "lane" for i in out["items"] for s in i["sources"])

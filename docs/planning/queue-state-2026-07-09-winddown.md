@@ -44,15 +44,14 @@ tree at wind-down matched `origin/main` exactly.
 
 ## NEXT — agent-executable queue (in priority order)
 
-1. **ORDER 005 (P1, acked, UNEXECUTED, unclaimed)** — the only outstanding
-   inbox order. Build on control-plane: **`/queue`** (aggregate every lane's
-   `⚑ needs-owner` from `/fleet.json` + `menno420/fleet-manager
-   docs/owner-queue.md` into one deduplicated owner to-do surface) and
-   **`/environments`** (render `fleet-manager environments/` templates with
-   copy-to-clipboard). Full spec: `control/inbox.md` ORDER 005. Twice verified
-   unexecuted (`/queue` 404 on the live deploy; PR #42 was the manager's inbox
-   append, not an execution). **Claim it first** per `control/README.md` before
-   building.
+1. ~~**ORDER 005**~~ — **DONE 2026-07-10** (claimed via PR #52
+   `claimed-by: 005 gen2-order-005 2026-07-10T02:24Z`; built + shipped as
+   PR #53; decision stamped in `docs/site.md` + the decision ledger): `/queue` (deduplicated owner to-do surface over every
+   lane's `⚑ needs-owner` + the fleet-manager owner-queue) and
+   `/environments` (fleet-manager `environments/` registry render with
+   copy-to-clipboard), both with honest not-configured/unavailable
+   degradation while `GITHUB_TOKEN` stays unset in production. ORDER 007
+   step 4 (`scripts/env-setup.sh` wrapper) landed in the same PR.
 2. **`/fleet` manifest-parse smoke check** (retro A3): assert the live
    manifest parse yields a non-empty lane set so a manifest reformat surfaces
    as an alert instead of a silent fallback.

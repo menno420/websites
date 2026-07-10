@@ -18,7 +18,18 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import activity, config, fleet, github, ideas, journal, owner, readiness
+from . import (
+    activity,
+    config,
+    environments,
+    fleet,
+    github,
+    ideas,
+    journal,
+    owner,
+    owner_queue,
+    readiness,
+)
 
 
 @asynccontextmanager
@@ -135,6 +146,28 @@ async def fleet_heartbeat_json(request: Request):
         {k: v for k, v in lane.items() if k != "body_html"} for lane in data["lanes"]
     ]
     return JSONResponse(payload)
+
+
+@app.get("/queue", response_class=HTMLResponse)
+async def owner_queue_page(request: Request):
+    """ORDER 005: the owner's single to-do surface — every lane's ⚑ needs-owner
+    plus the fleet-manager owner-queue, deduplicated, newest first. Degrades
+    honestly when GITHUB_TOKEN is unset or the private upstream is unreachable."""
+    data = await owner_queue.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request, "queue.html", {"q": data, "active": "queue"}
+    )
+
+
+@app.get("/environments", response_class=HTMLResponse)
+async def environments_page(request: Request):
+    """ORDER 005: read-only render of the fleet-manager environments/ registry
+    (setup scripts + env-var schemas, copy-to-clipboard). Degrades honestly
+    when GITHUB_TOKEN is unset or the private upstream is unreachable."""
+    data = await environments.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request, "environments.html", {"e": data, "active": "environments"}
+    )
 
 
 @app.get("/ideas", response_class=HTMLResponse)

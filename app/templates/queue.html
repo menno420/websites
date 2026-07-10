@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}owner queue{% endblock %}
+{% block headright %}<a href="/queue?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>owner queue — everything waiting on you, one list</h2>
+  <p class="dim small">Every fleet lane's <code>⚑ needs-owner</code> asks (parsed from the same
+    heartbeat files as <a href="/fleet">/fleet</a>) plus the manager's curated
+    <a href="{{ q.fleet_manager.url }}">fleet-manager owner-queue ↗</a>, deduplicated into one
+    newest-first list. Items in the fleet's six-field OWNER-ACTION format show their
+    WHAT/WHERE/HOW/WHY/UNBLOCKS fields; anything else renders as an honest free-text ask.</p>
+  <p class="small">
+    <span class="b repo">{{ q.summary.total }} ask{{ 's' if q.summary.total != 1 }}</span>
+    <span class="b unknown">{{ q.summary.lanes_with_asks }}/{{ q.summary.lanes_total }} lanes asking</span>
+    {% if q.summary.deduped %}<span class="b ok">{{ q.summary.deduped }} duplicate{{ 's' if q.summary.deduped != 1 }} merged</span>{% endif %}
+  </p>
+
+  {% if q.fleet_manager.state == 'not-configured' %}
+  <div class="banner">⚠ fleet-manager owner-queue: <strong>not configured</strong> —
+    {{ q.fleet_manager.reason }}. Lane asks below are live; the manager's curated queue will
+    appear here the moment the owner sets the token
+    (the ask is filed in <code>docs/owner/OWNER-ACTIONS.md</code>).</div>
+  {% elif q.fleet_manager.state == 'unavailable' %}
+  <div class="banner">⚠ fleet-manager owner-queue: <strong>unavailable</strong> — could not fetch
+    <code>{{ q.fleet_manager.url.split('/blob/main/')[-1] }}</code> ({{ q.fleet_manager.reason }})
+    · <a href="{{ q.fleet_manager.url }}">view on GitHub ↗</a></div>
+  {% endif %}
+  {% if q.unreadable_lanes %}
+  <div class="banner">⚠ {{ q.unreadable_lanes | length }} lane heartbeat(s) could not be read
+    ({{ q.unreadable_lanes | join(', ') }}) — their asks may be missing from this list.</div>
+  {% endif %}
+</div>
+
+{% if not q['items'] %}
+<div class="card">
+  <p class="dim">No owner asks found in the readable sources — either the fleet genuinely needs
+    nothing from you right now, or the unavailable sources above are hiding theirs.</p>
+</div>
+{% endif %}
+
+{% for it in q['items'] %}
+<div class="card">
+  <h2>{% if it.what %}{{ it.what }}{% else %}{{ it.text }}{% endif %}</h2>
+  <p class="small">
+    {% for s in it.sources %}
+    <span class="b repo">{{ s.label }}</span>
+    <span class="dim small">{% if s.kind == 'lane' %}heartbeat {{ s.age_human }}{% else %}{{ s.age_human }}{% endif %}
+      · <a href="{{ s.url }}">source ↗</a></span>
+    {% endfor %}
+  </p>
+  {% if it.fields %}
+  <table>
+    {% for key, label in q.field_order %}
+    {% if it.fields[key] %}<tr><th>{{ label }}</th><td>{{ it.fields[key] }}</td></tr>{% endif %}
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% if q.lane_notes %}
+<div class="card">
+  <h3>lane notes</h3>
+  {% for n in q.lane_notes %}
+  <p class="dim small"><span class="b repo">{{ n.lane }}</span> {{ n.text }}</p>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if q.fleet_manager.state == 'ok' and q.fleet_manager.body_html %}
+<div class="card">
+  <h3>fleet-manager owner-queue.md (full document)</h3>
+  {% if q.fleet_manager.preamble %}<p class="dim small">{{ q.fleet_manager.preamble }}</p>{% endif %}
+  {% if not q.fleet_manager['items'] %}
+  <p class="dim small">No structured ⚑ OWNER-ACTION blocks found in the document —
+    it renders in full below rather than being flattened into list items.</p>
+  {% endif %}
+  <div class="md">{{ q.fleet_manager.body_html | safe }}</div>
+</div>
+{% endif %}
+{% endblock %}
