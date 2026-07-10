@@ -55,8 +55,17 @@
   audit names per-repo `control/inbox.md` ORDER texts as browsable nowhere;
   a `/fleet` card section or `/orders` view rendering each lane's inbox
   orders (and, paired with the parsed heartbeat `done=` line, which are
-  outstanding) would close it — pairs naturally with the D-0028 outstanding
-  computation. Source: `control/inbox.md` ORDER 009.
+  outstanding) would close it — pairs naturally with the heartbeat
+  enrichment's outstanding-orders computation (decision home:
+  `docs/site.md` § 3a). Source: `control/inbox.md` ORDER 009.
+- **`meta.md` state-line convention in the fleet-manager projects/ registry**
+  · `captured` — ask the manager to standardize ONE `deployed:` line format
+  in `projects/*/meta.md` (e.g. `deployed: <where> · <ISO date>`) while the
+  registry is still forming; `/projects` extracts the state badge with
+  tolerant heuristics against an unborn format, and one line agreed at
+  zero-packages cost makes the badge exact forever (routing half: flagged to
+  the manager in the heartbeat notes). Source:
+  `.sessions/2026-07-10-order-009-projects.md` 💡.
 - **Own-heartbeat parse self-check in `quality`** · `captured` — a small test
   that runs this repo's own `control/status.md` through the `/fleet` parsers
   (`parse_status` → `parse_orders` / `classify_routine` / `classify_landing`)
