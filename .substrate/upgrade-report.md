@@ -1,8 +1,8 @@
-# substrate-kit upgrade report — v1.6.0 → v1.7.0
+# substrate-kit upgrade report — v1.7.0 → v1.7.1
 
 > Generated 2026-07-10 by `bootstrap.py upgrade`. Rollback: `python3 bootstrap.py upgrade --rollback`.
 
-**Docs:** consumer-edited: 15 · diverged: 1 · unchanged: 4
+**Docs:** consumer-edited: 16 · unchanged: 4
 
 | planted doc | class | note |
 |---|---|---|
@@ -22,28 +22,7 @@
 | docs/CAPABILITIES.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | docs/ideas/README.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | .session-journal.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
-| control/README.md | diverged | both the template and the doc moved — manual merge |
+| control/README.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | control/inbox.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | control/status.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | .claude/CLAUDE.md | unchanged | template identical across versions |
-
-## Template deltas for diverged docs
-
-### control/README.md
-
-```diff
---- control/README.md (template@old, current slots)
-+++ control/README.md (template@new, current slots)
-@@ -37,6 +37,10 @@
-   Stop hook's overwrite reminder clears when any lane's heartbeat is fresh (it cannot know which
-   lane a session belongs to). An empty list falls back to the default — misconfiguration never
-   silently disables the gate.
-+- **One command, not hand-edits** — a Project joining a SHARED repo runs
-+  `bootstrap adopt --lane <name>`: it plants `control/status-<name>.md` (skip-if-exists),
-+  declares it in `heartbeat_files`, and leaves `inbox.md`/`README.md` single — a second lane
-+  never re-plants the first Project's files (the double-adoption fix).
- 
- ## Per-session ritual (every session, and every routine wake)
- 
-```
-
