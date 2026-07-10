@@ -1,10 +1,10 @@
 ---
 state: built
 origin: consumer:menno420/superbot
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 69
+shipped_repo: menno420/websites
+merged_date: 2026-07-10
+outcome: shipped
 ---
 
 # Scheduled healthcheck workflow — standing liveness verification (2026-07-10)
