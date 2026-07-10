@@ -9,12 +9,6 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
-- **`.sessions/` card template with `📊 Model:` line + ender checklist** ·
-  `planned` — no future grandfather backfill (the ORDER 004 class) is ever
-  needed; ship the 💡-idea section with a required one-line "why it's worth
-  having" prompt so the honest form is the easy form. Sources:
-  `docs/planning/queue-state-2026-07-09-winddown.md` NEXT item 3;
-  `.sessions/2026-07-10-gen2-walking-skeleton.md` ⟲ review.
 - **Heartbeat enrichment: machine-readable fields in `control/status.md`** ·
   `planned` — outstanding-orders + deployed-sha/last-verified-live per lane so
   `/fleet` computes "what's left" without diffing inbox vs status vs git.
@@ -68,9 +62,24 @@
   whether a lane is living off orders or self-generated work, and backlog
   dryness becomes a trend, not a one-off line. Source:
   `.sessions/2026-07-10-never-idle-work-ladder.md` 💡 (this session).
+- **Open-PR awareness at wake (sibling-session collision check)** · `captured`
+  — one wake-ritual step listing open PRs + PR-less unmerged `claude/*`
+  branches before picking a work rung, so concurrent sessions stop duplicating
+  builds / conflicting on shared files / raising false rescue alarms (the
+  order-claim fix, applied to branches). Distinct from heartbeat enrichment's
+  `landing:` line, which covers a session's OWN branch only. File:
+  [open-pr-awareness-at-wake-2026-07-10.md](open-pr-awareness-at-wake-2026-07-10.md).
 
 ## Built
 
+- **`.sessions/` card template with `📊 Model:` line + ender checklist** —
+  shipped 2026-07-10 (queue-state NEXT item 3): copy-paste template + ender
+  checklist embedded in `.sessions/README.md` (embedded there on purpose — the
+  session gate treats any other `.sessions/*.md` as a card, so a standalone
+  TEMPLATE.md would itself go born-red). The 💡 section carries the required
+  one-line "worth having because" prompt. Sources at capture:
+  `docs/planning/queue-state-2026-07-09-winddown.md` NEXT item 3;
+  `.sessions/2026-07-10-gen2-walking-skeleton.md` ⟲ review.
 - **`/activity.xml` Atom feed** — shipped; see the decision ledger +
   `docs/site.md`. File:
   [activity-atom-feed-2026-07-09.md](activity-atom-feed-2026-07-09.md).
