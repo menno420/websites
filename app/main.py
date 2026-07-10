@@ -162,6 +162,20 @@ async def owner_queue_page(request: Request):
     )
 
 
+@app.get("/queue.json")
+async def owner_queue_json(request: Request):
+    """JSON variant of /queue — the manager's machine round-trip: file an ask
+    in a lane heartbeat, poll this, confirm it actually surfaces. Same
+    overview dict, minus the fleet-manager doc's rendered HTML (an HTML-view
+    concern; the /fleet.json precedent)."""
+    data = await owner_queue.overview(refresh=_refresh(request))
+    payload = dict(data)
+    payload["fleet_manager"] = {
+        k: v for k, v in data["fleet_manager"].items() if k != "body_html"
+    }
+    return JSONResponse(payload)
+
+
 @app.get("/environments", response_class=HTMLResponse)
 async def environments_page(request: Request):
     """ORDER 005: read-only render of the fleet-manager environments/ registry

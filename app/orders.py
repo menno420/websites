@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from . import config, fleet, github, journal
@@ -105,20 +106,31 @@ def parse_inbox(text: str) -> list[dict[str, Any]]:
 
 
 def classify_order(
-    order_id: str, statuses: list[dict[str, Any]]
+    order_id: str,
+    statuses: list[dict[str, Any]],
+    now: Optional[datetime] = None,
 ) -> dict[str, Any]:
     """One order id against every lane status of its repo → execution state.
 
     ``statuses`` items are ``{lane, orders_info}`` (the D-0028 parse). done
     beats claimed beats open; a repo with zero readable statuses → unknown.
+    A claimed order additionally carries **claim aging**: ``claim_stale`` is
+    True past ``config.CLAIM_STALE_HOURS`` (~24h — the claim ritual's own
+    expiry rule: a claim with no visible activity may be treated as abandoned
+    and re-claimed; a dead lane must never deadlock an order), with
+    ``claim_age_human`` for display. A claim whose timestamp did not parse
+    ages honestly as unknown (never flagged stale on a guess).
     """
+    base = {"claim_stale": False, "claim_age_human": ""}
     if not statuses:
-        return {"state": "unknown", "by": ""}
+        return {"state": "unknown", "by": "", **base}
+    now = now or datetime.now(timezone.utc)
     claimed_by = ""
+    claimed_at: Optional[str] = None
     for s in statuses:
         info = s["orders_info"]
         if order_id in info["done"]:
-            return {"state": "done", "by": s["lane"]}
+            return {"state": "done", "by": s["lane"], **base}
         claim = info.get("claimed") or ""
         # A claim reads `claimed-by: <ids> <lane> <ISO>` — the id spec is the
         # FIRST token (`009`, `007+008`, `007,008`). Compare numerically so
@@ -130,18 +142,30 @@ def classify_order(
             ids = {t for t in re.split(r"[+,/]", spec) if t.isdigit()}
             try:
                 if any(int(t) == int(order_id) for t in ids):
-                    claimed_by = claimed_by or f"{s['lane']}: {claim}"
+                    if not claimed_by:
+                        claimed_by = f"{s['lane']}: {claim}"
+                        claimed_at = info.get("claimed_at")
             except ValueError:
                 pass
     if claimed_by:
-        return {"state": "claimed", "by": claimed_by}
-    return {"state": "open", "by": ""}
+        out = {"state": "claimed", "by": claimed_by, **base}
+        dt = fleet._parse_iso(claimed_at or "")
+        if dt is not None:
+            age_hours = (now - dt).total_seconds() / 3600
+            out["claim_age_human"] = fleet._human_age(age_hours)
+            out["claim_stale"] = age_hours >= config.CLAIM_STALE_HOURS
+        return out
+    return {"state": "open", "by": "", **base}
 
 
 async def _repo_orders(
-    repo: str, lanes: list[dict[str, Any]], refresh: bool = False
+    repo: str,
+    lanes: list[dict[str, Any]],
+    refresh: bool = False,
+    now: Optional[datetime] = None,
 ) -> dict[str, Any]:
     """One repo's inbox card: parsed orders + per-lane status cross-reference."""
+    now = now or datetime.now(timezone.utc)
     status_paths = [(l["lane"], l["status_path"]) for l in lanes]
     fetches = await asyncio.gather(
         github.fetch_file(repo, INBOX_PATH, refresh=refresh),
@@ -190,9 +214,11 @@ async def _repo_orders(
         return out
 
     for order in parse_inbox(inbox_res["data"]):
-        cls = classify_order(order["id"], statuses)
+        cls = classify_order(order["id"], statuses, now=now)
         order["state"] = cls["state"]
         order["state_by"] = cls["by"]
+        order["claim_stale"] = cls["claim_stale"]
+        order["claim_age_human"] = cls["claim_age_human"]
         order["body_html"] = journal.render_markdown(order["body"])
         out["orders"].append(order)
         out[f"{cls['state']}_count"] += 1
@@ -222,6 +248,7 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
     repo, every cohabiting lane's status counts) plus honest ``lane_source``
     passthrough. Never raises for upstream failures; the route stays 200.
     """
+    now = datetime.now(timezone.utc)
     lane_defs, lane_source = await fleet.resolve_lanes(refresh=refresh)
     by_repo: dict[str, list[dict[str, Any]]] = {}
     for lane in lane_defs:
@@ -230,7 +257,7 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
     cards = list(
         await asyncio.gather(
             *[
-                _repo_orders(repo, lanes, refresh=refresh)
+                _repo_orders(repo, lanes, refresh=refresh, now=now)
                 for repo, lanes in sorted(by_repo.items())
             ]
         )
@@ -245,5 +272,9 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
         "done": sum(c["done_count"] for c in cards),
         "unknown": sum(c["unknown_count"] for c in cards),
         "errored": sum(1 for c in cards if c["fetch_error"]),
+        # Claim aging (the ritual's ~24h expiry): stale claims fleet-wide.
+        "stale_claims": sum(
+            1 for c in cards for o in c["orders"] if o.get("claim_stale")
+        ),
     }
     return {"cards": cards, "summary": summary, "lane_source": lane_source}

@@ -20,18 +20,10 @@
   `/activity`, `/activity.json`, `/activity.xml` to one repo so a reader
   subscribes to a single lane's feed; reuses the cached timeline. File:
   [activity-per-repo-filter-2026-07-09.md](activity-per-repo-filter-2026-07-09.md).
-- **kit-version rollup on `/fleet`** · `captured` — summary header
-  (`kit: 4×v1.6.0, 2×v1.2.0, 3×none`) + per-card badge over the
-  already-parsed `kit:` line; pure presentation, zero new fetch. Sources:
-  `.sessions/2026-07-09-kit-upgrade-v1.6.0.md` 💡; queue-state NEXT item 5.
 - **"Unseen orders?" badge on `/fleet`** · `captured` — flag a lane whose
   `inbox.md` last-commit is newer than its status `updated:` stamp. Sources:
   `.sessions/2026-07-09-kit-upgrade-v1.6.0.md` ⟲ review; queue-state NEXT
   item 5.
-- **`/queue.json` + manager round-trip check** · `captured` — JSON variant of
-  the owner queue so the manager can machine-verify a filed ask actually
-  surfaces (write → poll → confirm); ~10 lines over the existing `overview()`
-  dict. Source: `.sessions/2026-07-10-order-005-queue-environments.md` 💡.
 - **`scripts/wait-deploy.py` post-merge sha-convergence poller** · `captured` —
   poll all three `/version` endpoints until `sha` == a given commit or
   timeout; turns the manual "merge = deploy" verification loop into a
@@ -46,13 +38,6 @@
   — row-appending is a fleet-manager write this lane can't do, but knowing a
   row is owed can be mechanical). Source:
   `.sessions/2026-07-10-order-009-reviews.md` 💡.
-- **"Stalled claim" aging on `/orders`** · `captured` — badge a claimed
-  order whose `claimed-by:` ISO stamp is older than ~24h with `claim stale?`
-  (the claim ritual's own expiry rule — a dead lane must never deadlock an
-  order); `/orders` makes claims visible but not their age, and the claim
-  line already carries the timestamp, so this is pure presentation (needs
-  `parse_orders` to also extract the claim timestamp). Source:
-  `.sessions/2026-07-10-orders-visibility.md` 💡.
 - **`meta.md` state-line convention in the fleet-manager projects/ registry**
   · `captured` — ask the manager to standardize ONE `deployed:` line format
   in `projects/*/meta.md` (e.g. `deployed: <where> · <ISO date>`) while the
@@ -82,6 +67,15 @@
   [open-pr-awareness-at-wake-2026-07-10.md](open-pr-awareness-at-wake-2026-07-10.md).
 
 ## Built
+
+- **Fleet polish batch: stalled-claim aging on `/orders` + `/queue.json` +
+  kit-version rollup on `/fleet`** — shipped 2026-07-10 (continuous-mode
+  slice 8; decision stamped in the decision ledger; details in
+  `docs/site.md` §§ 3a/3f/Routes). Three captures closed in one batch, zero
+  new fetches: `parse_orders` extracts `claimed_at` and claimed orders badge
+  `claim stale?` past 24h (the ritual's expiry rule); `/queue.json` gives
+  the manager the file-an-ask → poll → confirm round-trip; `/fleet` header
+  shows "kit adoption: N×vX.Y.Z · M×none" over readable heartbeats.
 
 - **Own-heartbeat parse self-check in `quality`** — shipped 2026-07-10
   (continuous-mode slice 7): `tests/test_own_heartbeat.py` runs the REAL

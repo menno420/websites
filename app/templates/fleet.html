@@ -36,6 +36,11 @@
     {% if f.summary.silent_routines %}<span class="b warn">{{ f.summary.silent_routines }} silent routine{{ 's' if f.summary.silent_routines != 1 }}</span>{% endif %}
     {% if f.summary.outstanding_orders %}<span class="b warn">{{ f.summary.outstanding_orders }} outstanding order{{ 's' if f.summary.outstanding_orders != 1 }}</span>{% endif %}
   </p>
+  {% if f.summary.kit_versions %}
+  <p class="dim small">kit adoption:
+    {% for kv in f.summary.kit_versions %}{{ kv.count }}×{{ kv.version }}{{ " · " if not loop.last }}{% endfor %}
+    <span class="dim">— readable heartbeats only</span></p>
+  {% endif %}
 </div>
 
 {% for l in f.lanes %}

@@ -187,6 +187,12 @@ REPOS: dict = {
 # heartbeat as a dark Project).
 FLEET_STALE_HOURS = int(os.environ.get("FLEET_STALE_HOURS", "12"))
 
+# Order-claim staleness threshold for /orders: the claim ritual
+# (control/README.md) says a claim with no visible build activity after ~24h
+# may be treated as abandoned and re-claimed — a claimed order older than
+# this badges `claim stale?` so a dead lane can't silently deadlock an order.
+CLAIM_STALE_HOURS = int(os.environ.get("CLAIM_STALE_HOURS", "24"))
+
 FLEET_LANES: list = [
     {
         "lane": "superbot",
