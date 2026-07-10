@@ -63,7 +63,9 @@ FIRST rung with work; ship ONE increment:
    top to bottom.
 3. The ideas backlog (`docs/ideas/backlog.md`): pick the highest-value
    buildable idea and promote it — idea → small plan → build the FIRST
-   increment THIS wake, not just paperwork.
+   increment THIS wake, not just paperwork. Substantial or sim-worthy ideas
+   also get flagged to the manager via the heartbeat — the Idea Engine
+   harvests docs/ideas/ by link (Q-0264).
 4. Self-generated improvement: something contained + reversible you genuinely
    believe improves the product or the workflow (UX polish, a missing test,
    perf, observability, docs drift). Flag it `⚑ Self-initiated:` in the
@@ -105,23 +107,22 @@ heartbeat — queue it and continue; never wait silently.
 
 <!--
 Grounding (repo sources for every rule above):
-- Orientation order: .claude/CLAUDE.md § Orientation; docs/AGENT_ORIENTATION.md § Start every session.
+- Orientation order: .claude/CLAUDE.md § Orientation; docs/AGENT_ORIENTATION.md.
 - Landing path / quality / squash-on-green / control fast lane / diff-aware
   born-red session gate: .github/workflows/quality.yml (comments inline);
   docs/owner/OWNER-ACTIONS.md row D (born-red gate decision); merge=deploy:
   .github/workflows/quality.yml header + docs/deployment.md.
-- Verify commands: .claude/CLAUDE.md § Verifying a change; quality.yml pytest step.
-- Routine-fired protocol: control/README.md § Per-session ritual + § Claiming an
-  order; docs/CAPABILITIES.md append log 2026-07-10 (routine-fired toolset wall,
-  api.github.com 403 verbatim, push-claim-without-proof lesson);
-  .sessions/2026-07-10-order008-first-fire-manifest-smoke.md § Landing;
-  docs/project/setup-script.sh (capability probe).
-- Work ladder: docs/ideas/README.md (lifecycle + dedup) + docs/ideas/backlog.md;
-  queue-state NEXT: docs/planning/queue-state-2026-07-09-winddown.md; enders:
-  .sessions/README.md markers (💡 idea + ⟲ review).
+- Verify commands: .claude/CLAUDE.md § Verifying a change; quality.yml.
+- Routine-fired protocol: control/README.md § Per-session ritual + § Claiming;
+  docs/CAPABILITIES.md append log 2026-07-10 (toolset wall, 403 verbatim,
+  push-claim lesson); docs/project/setup-script.sh (capability probe).
+- Work ladder: docs/ideas/README.md + backlog.md; queue-state NEXT:
+  docs/planning/queue-state-2026-07-09-winddown.md; enders:
+  .sessions/README.md markers (💡 idea + ⟲ review); Q-0264 escalation:
+  superbot router Q-0264 (Idea Engine harvest-by-link).
 - Discovery rule: docs/CAPABILITIES.md § THE DISCOVERY RULE.
 - Heartbeat-last / one-writer: control/README.md (§ The one rule, § Per-session
   ritual, § status.md format).
 - 📊 Model line: docs/planning/queue-state-2026-07-09-winddown.md NEXT item 3.
-- Owner asks: docs/owner/OWNER-ACTIONS.md § How to use this doc; control/README.md.
+- Owner asks: docs/owner/OWNER-ACTIONS.md; control/README.md.
 -->
