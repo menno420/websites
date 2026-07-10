@@ -21,11 +21,6 @@
   2026-07-10 `list_branches`); the launch-readiness flag (coordinator dispatch,
   2026-07-10) asks whether hardening in it never landed via #10. Diff it
   against `main`, salvage or retire explicitly.
-- **Scheduled healthcheck workflow (standing liveness verification)** ·
-  `captured` — Actions cron runs `scripts/healthcheck.py` every 6 h, fails
-  loudly on non-200; closes the "liveness unverified at handover" class (retro
-  F3: Actions cron is the one scheduler agents can arm themselves). File:
-  [scheduled-healthcheck-workflow-2026-07-10.md](scheduled-healthcheck-workflow-2026-07-10.md).
 - **Per-repo `?repo=` filter on the activity views** · `captured` — narrow
   `/activity`, `/activity.json`, `/activity.xml` to one repo so a reader
   subscribes to a single lane's feed; reuses the cached timeline. File:
@@ -72,6 +67,14 @@
 
 ## Built
 
+- **Scheduled healthcheck workflow (standing liveness verification)** —
+  shipped 2026-07-10 (backlog promotion, 20:00Z continuous-mode wake slice 3;
+  retro F3): `.github/workflows/healthcheck.yml`, cron every 6 h (minute-17
+  offset) + `workflow_dispatch`, runs `scripts/healthcheck.py` (three live
+  services `/healthz` + `/` 200, plus the `/fleet` manifest live-parse smoke
+  check); read-only, no secret, NOT a required check — failure notifies via
+  the failed-workflow email. File:
+  [scheduled-healthcheck-workflow-2026-07-10.md](scheduled-healthcheck-workflow-2026-07-10.md).
 - **Heartbeat enrichment: machine-readable fields in `control/status.md`** —
   shipped 2026-07-10 (decision stamped in `docs/site.md` § 3a + the decision
   ledger; queue-state NEXT item 4, retro G3): `/fleet`
