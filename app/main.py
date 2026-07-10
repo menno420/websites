@@ -28,6 +28,7 @@ from . import (
     journal,
     owner,
     owner_queue,
+    projects,
     readiness,
 )
 
@@ -168,6 +169,32 @@ async def environments_page(request: Request):
     return templates.TemplateResponse(
         request, "environments.html", {"e": data, "active": "environments"}
     )
+
+
+@app.get("/projects", response_class=HTMLResponse)
+async def projects_page(request: Request):
+    """ORDER 009 increment (1): read-only render of the fleet-manager
+    projects/ registry — one card per Project package (instructions /
+    coordinator prompt / setup / failsafe / meta.md with deployed-state).
+    Degrades honestly: empty state while the registry is still landing
+    upstream, not-configured / unavailable on fetch failure — never a 500."""
+    data = await projects.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request, "projects.html", {"p": data, "active": "projects"}
+    )
+
+
+@app.get("/projects.json")
+async def projects_json(request: Request):
+    """JSON variant of /projects — the same overview dict, minus rendered
+    meta HTML (an HTML-view concern; mirrors /fleet.json's body_html drop)."""
+    data = await projects.overview(refresh=_refresh(request))
+    payload = dict(data)
+    payload["packages"] = [
+        {k: v for k, v in pkg.items() if k != "meta_html"}
+        for pkg in data["packages"]
+    ]
+    return JSONResponse(payload)
 
 
 @app.get("/ideas", response_class=HTMLResponse)

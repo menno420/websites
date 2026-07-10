@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}projects{% endblock %}
+{% block headright %}<a href="/projects?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>projects — the fleet's Project-package registry</h2>
+  <p class="dim small">Read-only render of
+    <a href="{{ p.repo_url }}">fleet-manager <code>projects/</code> ↗</a> — one package per
+    repo carrying what its Project runs on: Custom Instructions, coordinator prompt,
+    environment setup script, failsafe, and a <code>meta.md</code> with the package's
+    deployed state. The manager's repo stores; this site renders (read-only, secrets never
+    present by design).</p>
+
+  {% if p.state == 'empty' %}
+  <div class="banner">◌ <strong>registry not landed yet</strong> — {{ p.reason }}
+    · <a href="{{ p.repo_url }}">watch on GitHub ↗</a></div>
+  {% elif p.state == 'not-configured' %}
+  <div class="banner">⚠ <strong>not configured</strong> — {{ p.reason }}. This page renders
+    the registry the moment the token is set (the ask is filed in
+    <code>docs/owner/OWNER-ACTIONS.md</code>).</div>
+  {% elif p.state == 'unavailable' %}
+  <div class="banner">⚠ <strong>unavailable</strong> — could not list
+    <code>projects/</code> ({{ p.reason }}) · <a href="{{ p.repo_url }}">view on GitHub ↗</a></div>
+  {% endif %}
+</div>
+
+{% if p.state == 'ok' and p.root_files %}
+<div class="card">
+  <h2>registry files</h2>
+  <p class="small">
+    {% for f in p.root_files %}
+    <a href="{{ f.github_url }}"><code>{{ f.name }}</code> ↗</a>{{ " · " if not loop.last }}
+    {% endfor %}
+  </p>
+</div>
+{% endif %}
+
+{% for pkg in p.packages %}
+<div class="card">
+  <h2>{{ pkg.name }}
+    {% if pkg.state %}<span class="b ok">{{ pkg.state }}</span>
+    {% elif not pkg.error %}<span class="b unknown">state unknown</span>{% endif %}
+    <span class="dim small">· <a href="{{ pkg.github_url }}">package ↗</a></span></h2>
+
+  {% if pkg.error %}
+  <div class="banner">⚠ could not list <code>{{ pkg.path }}</code> — {{ pkg.error }}</div>
+  {% else %}
+  <table>
+    {% for f in pkg.files %}
+    <tr><th>{{ f.label }}</th>
+        <td><a href="{{ f.github_url }}"><code>{{ f.name }}</code> ↗</a></td></tr>
+    {% endfor %}
+    {% if not pkg.files %}
+    <tr><td class="dim">no files in this package yet</td></tr>
+    {% endif %}
+  </table>
+
+  {% if pkg.meta_error %}
+  <div class="banner">⚠ meta.md could not be fetched — {{ pkg.meta_error }}</div>
+  {% elif pkg.meta_html %}
+  <h3>meta.md</h3>
+  <div class="md">{{ pkg.meta_html | safe }}</div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

@@ -42,6 +42,21 @@
   timeout; turns the manual "merge = deploy" verification loop into a
   deterministic PASS/FAIL. Source:
   `.sessions/2026-07-10-gen2-walking-skeleton.md` 💡.
+- **ORDER 009 increment (3): review-queue rows + findings links** · `planned`
+  — surface `fleet-manager docs/review-queue.md` rows and link the
+  launch-readiness / economics findings docs where missing (a section or
+  links on `/fleet`, `/queue`, or a small docs panel — implementer's call).
+  Ledgered per ORDER 009's done-when ("closed or honestly ledgered as backlog
+  items"); increment (1) `/projects` shipped 2026-07-10, increment (2)
+  verified already-covered (per-lane `updated:` age + stale badges +
+  attention sort on `/fleet` apply to EVERY lane by construction — no
+  increment needed). Source: `control/inbox.md` ORDER 009.
+- **Per-repo inbox ORDER visibility on the site** · `captured` — ORDER 009's
+  audit names per-repo `control/inbox.md` ORDER texts as browsable nowhere;
+  a `/fleet` card section or `/orders` view rendering each lane's inbox
+  orders (and, paired with the parsed heartbeat `done=` line, which are
+  outstanding) would close it — pairs naturally with the D-0028 outstanding
+  computation. Source: `control/inbox.md` ORDER 009.
 - **Own-heartbeat parse self-check in `quality`** · `captured` — a small test
   that runs this repo's own `control/status.md` through the `/fleet` parsers
   (`parse_status` → `parse_orders` / `classify_routine` / `classify_landing`)
