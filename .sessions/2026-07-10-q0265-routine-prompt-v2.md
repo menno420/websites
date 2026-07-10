@@ -1,6 +1,6 @@
 # 2026-07-10 — routine-prompt v2 (Q-0265 continuous mode) + Q-0264 ladder escalation line
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 📊 Model: claude-fable-5
 
@@ -23,7 +23,7 @@ MANAGER-ONLY rider, superbot part-4 brief §2b). This PR:
 Landed as declared: routine-prompt.md restructured to Current text (v2,
 continuous mode) + v1 kept verbatim as history; project-instructions.md rung 3
 carries the Q-0264 escalation sentence (grounding comment trimmed to keep the
-paste-file under 7,000 chars — 6,999 after edit). Owner action unchanged from
+paste-file under 7,000 chars — 6,997 after edit). Owner action unchanged from
 the file's convention: re-paste both into the claude.ai console (routine prompt
 + Custom Instructions) — source of truth is the repo file.
 
