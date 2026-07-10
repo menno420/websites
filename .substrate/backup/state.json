@@ -7,13 +7,14 @@
     "soft_target_sessions": 50
   },
   "graduation_proposed": false,
-  "kit_version": "1.2.0",
+  "kit_version": "1.6.0",
   "last_compaction_session": 0,
   "mode": "guided",
   "mode_history": [],
   "open_questions": [],
   "planted_doc_hashes": {
-    ".claude/CLAUDE.md": "b2b1edc4dae0ef22efadc16098f2492622d1739f09bc066ad2b19c204f42cc72"
+    ".claude/CLAUDE.md": "b2b1edc4dae0ef22efadc16098f2492622d1739f09bc066ad2b19c204f42cc72",
+    "docs/CAPABILITIES.md": "b0b2b57311a27a1c04d76743e3ff3db1d9b50fd67b84c5ea57033645867fafdf"
   },
   "project_id": "4b6a55b0bafb",
   "promotion_rights": "propose",

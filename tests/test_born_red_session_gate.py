@@ -132,10 +132,11 @@ def test_config_names_kit_v1(tmp_path):
     """The vendored engine's version pin: config records the adopted release.
 
     Bumped 1.0.0 -> 1.2.0 by the D-0019 §4.3 upgrade (PR #31), then
-    1.2.0 -> 1.6.0 by the D-0026 §4.3 upgrade. Keep this an
+    1.2.0 -> 1.6.0 by the D-0026 §4.3 upgrade, then 1.6.0 -> 1.7.0 by the
+    2026-07-10 distribution-wave §4.3 upgrade. Keep this an
     EXACT pin on purpose: an upgrade must consciously move it, and a silent
     re-vendor without recording `kit_version` reddens here.
     """
     cfg = json.loads(CONFIG.read_text())
-    assert cfg.get("kit_version") == "1.6.0"
+    assert cfg.get("kit_version") == "1.7.0"
     assert "status_in_progress" in BOOTSTRAP.read_text()
