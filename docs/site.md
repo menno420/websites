@@ -87,6 +87,37 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    manifest lane whose repo the token can't read renders an honest `unreadable`
    state rather than being dropped. No new dependency, no new secret, no Railway
    op; the websites row dogfoods its own status.
+3b. **Owner queue** (`/queue`) — every ⚑ owner ask on ONE deduplicated,
+   newest-first surface ([D-0027], ORDER 005): the owner's single to-do list.
+   Two halves: (1) every fleet lane's `⚑ needs-owner` field, reusing the exact
+   `fleet.overview()` pipeline `/fleet` rides (same fetch, same parse, same TTL
+   cache — never a second fetch path); (2) the manager's curated
+   `menno420/fleet-manager docs/owner-queue.md`. `app/owner_queue.py` parses the
+   fleet's six-field OWNER-ACTION format (WHAT/WHERE/HOW/WHY-IT-MATTERS/
+   UNBLOCKS/VERIFIED-NEEDED — tolerant of the flattened one-line shape lane
+   parsing produces AND raw multiline markdown) into structured cards; a plain
+   ask with no blocks renders as an honest free-text item. Duplicates (same
+   normalized WHAT/text) merge into one item that keeps **every** source badge.
+   Ordering is newest-first by source-lane heartbeat; undated items (the
+   fleet-manager doc) sort last, labeled "date unknown" — never given an
+   invented time. Honest degradation: fleet-manager is private + read at
+   runtime only — `GITHUB_TOKEN` unset → a clear **not configured** banner;
+   token set but fetch failed → **unavailable** with the reason; unreadable
+   lane heartbeats are counted with an "asks may be missing" banner. A
+   fetched owner-queue.md with no structured blocks yields zero list items
+   (a whole document is not an "ask") and renders in full below, labeled.
+3c. **Environments** (`/environments`) — read-only render of the fleet's
+   claude.ai environment registry `menno420/fleet-manager environments/`
+   ([D-0027], ORDER 005): README, setup-script templates, env-var schemas,
+   specs — one card per file, README first, markdown via the sanitized
+   `journal.render_markdown`, scripts/schemas as escaped code blocks with a
+   **copy-to-clipboard** button (`app/static/copycode.js`, vanilla JS, degrades
+   silently without the Clipboard API). The manager's repo stores; this site
+   renders; secrets are never present by design (the registry stores
+   names/placeholders only). Listing walks `environments/` one subdirectory
+   level deep (bounded `MAX_FILES=40`) over the TTL-cached contents API.
+   Honest degradation mirrors `/queue`: **not configured** (token unset) /
+   **unavailable** (reason surfaced) / per-file + per-subdir error banners.
 4. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
@@ -111,6 +142,8 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/api/readiness.json` | public | board data as JSON (no secret names) |
 | `/fleet` | public | fleet heartbeat — every lane's `control/status*.md` (HTML) — [D-0021] |
 | `/fleet.json` | public | same fleet heartbeat as JSON (rendered body stripped) |
+| `/queue` | public | owner queue — every ⚑ needs-owner ask + the fleet-manager owner-queue, deduplicated (HTML) — [D-0027] |
+| `/environments` | public | fleet-manager `environments/` registry, copy-to-clipboard (HTML) — [D-0027] |
 | `/activity` | public | cross-repo PR activity timeline (HTML) — [D-0020] |
 | `/activity.json` | public | same timeline as JSON |
 | `/activity.xml` | public | same timeline as a subscribable Atom 1.0 feed (`application/atom+xml`) — [D-0025] |
@@ -215,7 +248,7 @@ account-token action and any **live production-bot** control API. No
 | Var | Required | Meaning |
 |---|---|---|
 | `SITE_PASSWORD` | for `/owner` | Gates ONLY the `/owner` area (HTTP Basic, any username). The public site never reads it. Unset → `/owner*` fails closed 503; the public site still works. |
-| `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; the Actions **secrets count** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)`. Secret *names* are exposed only through the gated `/owner` area; `actions:write` is needed for the `/owner` re-run-CI action. |
+| `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; the Actions **secrets count** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)`. Secret *names* are exposed only through the gated `/owner` area; `actions:write` is needed for the `/owner` re-run-CI action. Also the only credential that can read `menno420/fleet-manager` when its contents aren't anonymously reachable — unset, `/queue`'s fleet-manager half and `/environments` show an honest **not configured** banner ([D-0027]). |
 | `PORT` | Railway sets it | bind port (default 8000) |
 | `CACHE_TTL_SECONDS` | no | server-side GitHub cache TTL, default `180` |
 | `AUTOREFRESH_SECONDS` | no | client poll interval for the board `/` + `/fleet` live-monitoring auto-refresh, default `45` ([D-0023]) |

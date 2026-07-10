@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}environments{% endblock %}
+{% block headright %}<a href="/environments?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>environments — the fleet's claude.ai environment registry</h2>
+  <p class="dim small">Read-only render of
+    <a href="{{ e.repo_url }}">fleet-manager <code>environments/</code> ↗</a> — setup scripts,
+    env-var schemas, and specs to view and <strong>copy</strong> when creating or editing a
+    claude.ai environment. The manager's repo stores; this site renders. Secrets are never
+    present by design — the registry stores names/placeholders only.</p>
+
+  {% if e.state == 'not-configured' %}
+  <div class="banner">⚠ <strong>not configured</strong> — {{ e.reason }}. This page will render
+    the registry the moment the owner sets the token
+    (the ask is filed in <code>docs/owner/OWNER-ACTIONS.md</code>).</div>
+  {% elif e.state == 'unavailable' %}
+  <div class="banner">⚠ <strong>unavailable</strong> — could not list
+    <code>environments/</code> ({{ e.reason }}) · <a href="{{ e.repo_url }}">view on GitHub ↗</a></div>
+  {% endif %}
+  {% for err in e.listing_errors %}
+  <div class="banner">⚠ {{ err }}</div>
+  {% endfor %}
+</div>
+
+{% if e.state == 'ok' and not e.files %}
+<div class="card"><p class="dim">The <code>environments/</code> directory is reachable but
+  contains no files yet.</p></div>
+{% endif %}
+
+{% for f in e.files %}
+<div class="card">
+  <h2>{{ f.name }} <span class="dim small">· <a href="{{ f.github_url }}">view on GitHub ↗</a></span></h2>
+  {% if f.error %}
+  <div class="banner">⚠ could not fetch <code>{{ f.path }}</code> — {{ f.error }}</div>
+  {% elif f.kind == 'markdown' %}
+  <div class="md">{{ f.body_html | safe }}</div>
+  {% else %}
+  <pre>{{ f.text }}</pre>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}<script src="/static/copycode.js" defer></script>{% endblock %}
