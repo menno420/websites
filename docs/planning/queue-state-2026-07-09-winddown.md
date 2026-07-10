@@ -46,7 +46,7 @@ tree at wind-down matched `origin/main` exactly.
 
 1. ~~**ORDER 005**~~ — **DONE 2026-07-10** (claimed via PR #52
    `claimed-by: 005 gen2-order-005 2026-07-10T02:24Z`; built + shipped as
-   PR #53, [D-0027]): `/queue` (deduplicated owner to-do surface over every
+   PR #53; decision stamped in `docs/site.md` + the decision ledger): `/queue` (deduplicated owner to-do surface over every
    lane's `⚑ needs-owner` + the fleet-manager owner-queue) and
    `/environments` (fleet-manager `environments/` registry render with
    copy-to-clipboard), both with honest not-configured/unavailable

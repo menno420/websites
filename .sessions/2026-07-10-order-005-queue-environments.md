@@ -1,6 +1,6 @@
 # 2026-07-10 — ORDER 005: /queue + /environments (+ ORDER 007 steps 3–5)
 
-> **Status:** `in-progress`
+> **Status:** `complete` — shipped as PR #53 (`claude/order-005-queue-environments`, squash-merged on `quality` green; claim PR #52 preceded it).
 
 - **📊 Model:** withheld per session policy
 - **Start (UTC):** 2026-07-10T02:27:31Z
@@ -83,4 +83,4 @@ captured evidence) vs **INFERRED** — the same discovery-rule bar
 `docs/CAPABILITIES.md` already sets for walls; the degraded-state logic here
 deliberately keys off the *actual fetch result*, not the assumption.
 
-- **End (UTC):** [[fill-at-flip]]
+- **End (UTC):** 2026-07-10T02:40:30Z

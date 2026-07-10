@@ -108,7 +108,8 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
-- **ORDER 005: `/queue` + `/environments`** (PR #53, [D-0027]; claim PR #52).
+- **ORDER 005: `/queue` + `/environments`** (PR #53; claim PR #52; decision
+  stamped in `docs/site.md` + the decision ledger).
   Two new public control-plane pages. **`/queue`** — the owner's single to-do
   surface: every lane's `⚑ needs-owner` (reusing the `/fleet` pipeline, one
   fetch+parse path) + `menno420/fleet-manager docs/owner-queue.md`,
@@ -121,7 +122,7 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   always 200, never fabricated — the token ⚑ stays filed in
   `docs/owner/OWNER-ACTIONS.md`). Also ORDER 007 step 4:
   `scripts/env-setup.sh` wrapper around the tested `scripts/setup-env.sh`
-  (the pinned-research archetype's expected path). Tests 125 → 139.
+  (the pinned-research archetype's expected path). Tests 125 → 140.
 - **ORDER 005 claimed on main** (PR #52, control fast lane):
   `claimed-by: 005 gen2-order-005 2026-07-10T02:24Z` on the status orders
   line — claim FIRST, build second, per `control/README.md`.
@@ -403,7 +404,7 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 > **Gen-2 handover:** the prioritized queue (agent-executable + owner-gated)
 > is committed in `docs/planning/queue-state-2026-07-09-winddown.md` — start
-> there. **ORDER 005 is DONE** (PR #53, [D-0027], 2026-07-10) — the standing
+> there. **ORDER 005 is DONE** (PR #53, 2026-07-10) — the standing
 > default is now that doc's NEXT list top-to-bottom (item 2 onward: `/fleet`
 > manifest-parse smoke check, card template, heartbeat enrichment, idea
 > backlog).
