@@ -9,16 +9,6 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
-- **Heartbeat enrichment: machine-readable fields in `control/status.md`** ·
-  `planned` — outstanding-orders + deployed-sha/last-verified-live per lane so
-  `/fleet` computes "what's left" without diffing inbox vs status vs git.
-  Fold in two sibling captures: a `routine:` line (`armed · cron · last-fired`,
-  surfacing "armed but silently dead" wake clocks;
-  `.sessions/2026-07-10-gen2-closeout-docs.md` 💡) and a `landing:` line
-  (`all-merged | branch pushed-unmerged | LOCAL-ONLY`, the mechanical catch for
-  the 16:01Z stranded-work incident;
-  `.sessions/2026-07-10-rescue-landing-project-package.md` 💡). Sources:
-  queue-state NEXT item 4 (retro G3).
 - **`/fleet` badge: "manifest live parse: last verified \<age\>"** · `captured`
   — `resolve_lanes()` already returns `lane_source`; surface manifest-sourced
   vs fallback on the page itself so the owner sees it without knowing
@@ -57,6 +47,16 @@
   timeout; turns the manual "merge = deploy" verification loop into a
   deterministic PASS/FAIL. Source:
   `.sessions/2026-07-10-gen2-walking-skeleton.md` 💡.
+- **Own-heartbeat parse self-check in `quality`** · `captured` — a small test
+  that runs this repo's own `control/status.md` through the `/fleet` parsers
+  (`parse_status` → `parse_orders` / `classify_routine` / `classify_landing`)
+  and asserts the machine-readable lines actually parse (orders `ok=True`,
+  known keys don't leak into `blockers:` as continuations), so a malformed
+  heartbeat is caught at PR time instead of rendering wrong on the live fleet
+  page (before the enrichment decision the `routine:` line leaked into
+  `blockers:` for hours — exactly this class). Dogfood pair to the heartbeat
+  enrichment shipped below. Source:
+  `.sessions/2026-07-10-heartbeat-enrichment.md` 💡.
 - **Ladder-rung telemetry in the heartbeat** · `captured` — one `rung:` token
   per wake (which work-ladder rung fired) so the manager sees at a glance
   whether a lane is living off orders or self-generated work, and backlog
@@ -72,6 +72,16 @@
 
 ## Built
 
+- **Heartbeat enrichment: machine-readable fields in `control/status.md`** —
+  shipped 2026-07-10 (decision stamped in `docs/site.md` § 3a + the decision
+  ledger; queue-state NEXT item 4, retro G3): `/fleet`
+  parses `orders:` (outstanding = acked minus done, ranges expanded,
+  `claimed-by:` captured) + the new OPTIONAL `routine:` / `landing:` /
+  `deployed:` lines (documented in `control/README.md`); armed-but-silently-dead
+  routines and stranded (`LOCAL-ONLY` / pushed-unmerged) landings badge and
+  sort attention-first; `/fleet.json` carries the parsed structures. Folded in
+  both sibling captures (`routine:` — `.sessions/2026-07-10-gen2-closeout-docs.md`
+  💡; `landing:` — `.sessions/2026-07-10-rescue-landing-project-package.md` 💡).
 - **`.sessions/` card template with `📊 Model:` line + ender checklist** —
   shipped 2026-07-10 (queue-state NEXT item 3): copy-paste template + ender
   checklist embedded in `.sessions/README.md` (embedded there on purpose — the

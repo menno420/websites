@@ -54,6 +54,11 @@ KNOWN_KEYS = {
     "needs-owner",
     "notes",
     "kit",
+    # Enriched machine-readable heartbeat lines (D-0028, retro G3) — all
+    # OPTIONAL: a lane that doesn't write them renders exactly as before.
+    "routine",
+    "landing",
+    "deployed",
 }
 
 _ISO_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?")
@@ -120,6 +125,159 @@ def classify_health(health: str) -> dict[str, str]:
     if not h:
         return {"kind": "unknown", "badge": "unknown", "label": "unknown"}
     return {"kind": "unknown", "badge": "unknown", "label": h.split()[0]}
+
+
+# --------------------------------------------------------------------------- #
+# Enriched machine-readable heartbeat fields (D-0028, retro G3)
+# --------------------------------------------------------------------------- #
+# The `orders:` line has always been machine-ish (`acked=… done=…`); these
+# helpers actually parse it — plus the OPTIONAL `routine:` / `landing:` lines —
+# so `/fleet` (and `/fleet.json` consumers, e.g. the manager) can compute
+# "what's left" per lane without diffing inbox vs status vs git. Every parse is
+# tolerant and honest: unparseable input yields ok=False / kind "unknown",
+# never an invented value.
+
+_ID_RANGE_RE = re.compile(r"^(\d+)\s*[-–]\s*(\d+)$")
+_MAX_ID_RANGE = 500  # refuse to expand an absurd range (typo guard)
+
+
+def _expand_ids(spec: str) -> list[str]:
+    """Expand an order-id spec: ``001-004,006`` → ``['001','002','003','004','006']``.
+
+    Ranges keep the zero-padding width of their left edge; a malformed or
+    absurdly wide part is skipped (never guessed). Order is preserved,
+    duplicates dropped.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def add(token: str) -> None:
+        if token not in seen:
+            seen.add(token)
+            out.append(token)
+
+    for part in (spec or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        m = _ID_RANGE_RE.match(part)
+        if m:
+            lo_s, hi_s = m.group(1), m.group(2)
+            lo, hi = int(lo_s), int(hi_s)
+            if lo <= hi and hi - lo <= _MAX_ID_RANGE:
+                width = len(lo_s)
+                for i in range(lo, hi + 1):
+                    add(str(i).zfill(width))
+            continue
+        if part.isdigit():
+            add(part)
+    return out
+
+
+def parse_orders(value: str) -> dict[str, Any]:
+    """Parse an ``orders:`` heartbeat value into acked/done/outstanding ids.
+
+    ``acked=001-008 done=001-006`` → outstanding ``['007','008']`` — the ids a
+    lane has SEEN but not yet finished, computable from the heartbeat alone.
+    An optional ``claimed-by: …`` annotation (the order-claim ritual) is
+    captured verbatim. ``ok`` is False when no ``acked=``/``done=`` token
+    parsed (free-text orders line) — the caller renders the raw value only.
+    """
+    v = value or ""
+    claimed = None
+    m = re.search(r"claimed-by:\s*(.+)$", v)
+    if m:
+        claimed = m.group(1).strip()
+        v = v[: m.start()].strip()
+
+    def ids_of(key: str) -> list[str]:
+        mm = re.search(rf"{key}\s*=\s*([0-9,\s–-]+)", v)
+        return _expand_ids(mm.group(1).strip()) if mm else []
+
+    acked = ids_of("acked")
+    done = ids_of("done")
+    done_set = set(done)
+    outstanding = [i for i in acked if i not in done_set]
+    return {
+        "ok": bool(acked or done),
+        "acked": acked,
+        "done": done,
+        "outstanding": outstanding,
+        "claimed": claimed,
+    }
+
+
+_CRON_RE = re.compile(r"cron[:\s]+([\d*/,\- ]+?)(?:\s*[·;|]|$)")
+
+
+def classify_routine(value: str, now: Optional[datetime] = None) -> dict[str, Any]:
+    """Classify a ``routine:`` heartbeat value (the lane's wake clock).
+
+    ``armed`` when the value says so; ``last-fired`` is the last ISO timestamp
+    found after a "fired" mention (``last-fired 2026-07-10T16:01Z`` or prose
+    like ``last_fired_at 2026-07-10T16:01:32Z``). **silent** flags the failure
+    mode this field exists for: a routine that claims armed but whose last
+    fire is older than ``config.FLEET_STALE_HOURS`` — armed but silently dead.
+    An armed routine with NO parseable fire yet is ``no_fire_recorded`` (an
+    honest unknown, not silent — it may simply be freshly armed).
+    """
+    now = now or datetime.now(timezone.utc)
+    v = (value or "").strip()
+    low = v.lower()
+    if not v:
+        return {"present": False, "armed": False, "silent": False,
+                "no_fire_recorded": False, "cron": "", "fired_age_human": ""}
+    armed = "armed" in low and "not armed" not in low and "unarmed" not in low
+    cron_m = _CRON_RE.search(low)
+    cron = cron_m.group(1).strip() if cron_m else ""
+    fired_dt = None
+    fired_i = low.rfind("fired")
+    if fired_i != -1:
+        fired_dt = _parse_iso(v[fired_i:])
+    silent = False
+    fired_age_human = ""
+    if fired_dt is not None:
+        age_hours = (now - fired_dt).total_seconds() / 3600
+        fired_age_human = _human_age(age_hours)
+        silent = armed and age_hours >= config.FLEET_STALE_HOURS
+    return {
+        "present": True,
+        "armed": armed,
+        "silent": silent,
+        "no_fire_recorded": armed and fired_dt is None,
+        "cron": cron,
+        "fired_age_human": fired_age_human,
+    }
+
+
+def classify_landing(value: str) -> dict[str, Any]:
+    """Classify a ``landing:`` heartbeat value (where the session's work IS).
+
+    kinds: ``clean`` (all-merged), ``pushed`` (branch pushed but unmerged —
+    a PR-less rescue candidate), ``local`` (LOCAL-ONLY — stranded work, the
+    2026-07-10 16:01Z incident class), ``unknown`` (free text / absent).
+    ``attention`` is True for pushed/local — `/fleet` sorts those lanes up.
+    """
+    v = (value or "").strip()
+    low = v.lower()
+    if not v:
+        return {"present": False, "kind": "unknown", "attention": False, "branch": ""}
+    branch_m = re.search(r"`?([A-Za-z0-9._/-]*claude/[A-Za-z0-9._-]+)`?", v)
+    branch = branch_m.group(1) if branch_m else ""
+    if "local-only" in low or "local only" in low:
+        kind = "local"
+    elif "unmerged" in low or ("pushed" in low and "merged" not in low.replace("unmerged", "")):
+        kind = "pushed"
+    elif "all-merged" in low or "all merged" in low or low.startswith("clean"):
+        kind = "clean"
+    else:
+        kind = "unknown"
+    return {
+        "present": True,
+        "kind": kind,
+        "attention": kind in ("local", "pushed"),
+        "branch": branch,
+    }
 
 
 def _parse_iso(ts: str) -> Optional[datetime]:
@@ -511,6 +669,9 @@ async def lane_status(
         "fields": {},
         "health": classify_health(""),
         "freshness": freshness("", now=now),
+        "orders_info": parse_orders(""),
+        "routine_info": classify_routine("", now=now),
+        "landing_info": classify_landing(""),
         "body_html": "",
     }
 
@@ -521,6 +682,9 @@ async def lane_status(
         out["fields"] = fields
         out["health"] = classify_health(fields.get("health", ""))
         out["freshness"] = freshness(fields.get("updated", ""), now=now)
+        out["orders_info"] = parse_orders(fields.get("orders", ""))
+        out["routine_info"] = classify_routine(fields.get("routine", ""), now=now)
+        out["landing_info"] = classify_landing(fields.get("landing", ""))
         out["body_html"] = journal.render_markdown(fetch["data"])
     elif fetch["status"] == 404:
         # A 404 is a legitimate "this lane has no status file yet" — an absence,
@@ -545,15 +709,20 @@ async def lane_status(
 def _sort_key(lane: dict) -> tuple:
     """Attention-first ordering: lanes that need a look rise to the top.
 
-    rank 0 fetch error · 1 broken · 2 stale heartbeat · 3 unknown/absent ·
-    4 red-by-design · 5 healthy. Within a rank, freshest heartbeat first
-    (unknown age sorts last). Keeps problems glanceable at the top of the page.
+    rank 0 fetch error · 1 broken · 2 stale heartbeat / stranded landing /
+    silently-dead routine · 3 unknown/absent · 4 red-by-design · 5 healthy.
+    Within a rank, freshest heartbeat first (unknown age sorts last). Keeps
+    problems glanceable at the top of the page.
     """
     if lane["fetch_error"]:
         rank = 0
     elif lane["health"]["kind"] == "broken":
         rank = 1
-    elif lane["freshness"].get("stale"):
+    elif (
+        lane["freshness"].get("stale")
+        or lane["landing_info"]["attention"]
+        or lane["routine_info"]["silent"]
+    ):
         rank = 2
     elif lane["missing"] or lane["health"]["kind"] == "unknown":
         rank = 3
@@ -597,6 +766,12 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
         "broken": sum(1 for lane in lanes if lane["health"]["kind"] == "broken"),
         "errored": sum(1 for lane in lanes if lane["fetch_error"]),
         "no_file": sum(1 for lane in lanes if lane["missing"]),
+        # Enriched-field roll-ups (0 when no lane writes the optional lines).
+        "stranded": sum(1 for lane in lanes if lane["landing_info"]["attention"]),
+        "silent_routines": sum(1 for lane in lanes if lane["routine_info"]["silent"]),
+        "outstanding_orders": sum(
+            len(lane["orders_info"]["outstanding"]) for lane in lanes
+        ),
     }
     return {
         "lanes": lanes,

@@ -90,9 +90,24 @@ kit: v<X.Y.Z> · check: green|red · engaged: yes|no   # kit self-report — see
 last-shipped: #<PR> — <one line>
 blockers: <what's stopping me, or `none`>
 orders: acked=<ids> done=<ids> [claimed-by: <ids> <lane-or-session> <ISO8601>]
+routine: armed · cron <expr> · last-fired <ISO8601>   # OPTIONAL — wake-clock state
+landing: all-merged | pushed-unmerged <branch> | LOCAL-ONLY <branch>   # OPTIONAL — where this session's work physically is
+deployed: <short-sha> · verified <ISO8601>            # OPTIONAL — last live-verified deploy
 ⚑ needs-owner: <a decision/action only the owner can give, or `none`>
 notes: <anything the manager should know>
 ```
+
+**Machine-readable enrichment (optional lines, D-0028).** `/fleet` parses the
+`orders:` line (`outstanding` = ids in `acked=` but not in `done=` — ranges like
+`001-008` expand) and the three OPTIONAL lines above, so the manager reads
+"what's left" per lane without diffing inbox vs status vs git. `routine:` exists
+to surface the **armed-but-silently-dead** wake clock (armed with a last fire
+older than the stale threshold flags on `/fleet`); `landing:` is the mechanical
+catch for **stranded work** (the 2026-07-10 16:01Z incident — a session whose
+push never landed; `LOCAL-ONLY` / `pushed-unmerged` lanes sort attention-first);
+`deployed:` records the last sha you actually verified live (websites: the three
+`/version` endpoints). A lane that writes none of them renders exactly as
+before.
 
 The `kit:` line is the **substrate-coordinator visibility** channel (kit-lab reads it via the
 manager relay — zero write access to this repo): `v<X.Y.Z>` = the vendored kit version this
