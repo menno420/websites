@@ -7,14 +7,17 @@
     "soft_target_sessions": 50
   },
   "graduation_proposed": false,
-  "kit_version": "1.6.0",
+  "kit_version": "1.7.0",
   "last_compaction_session": 0,
   "mode": "guided",
   "mode_history": [],
   "open_questions": [],
   "planted_doc_hashes": {
-    ".claude/CLAUDE.md": "b2b1edc4dae0ef22efadc16098f2492622d1739f09bc066ad2b19c204f42cc72",
-    "docs/CAPABILITIES.md": "b0b2b57311a27a1c04d76743e3ff3db1d9b50fd67b84c5ea57033645867fafdf"
+    ".claude/CLAUDE.md": "0701d135dbe3c6ef8bfb2977927370d017cd6a7fe46b19fc59e9907053557f55",
+    "docs/CAPABILITIES.md": "b0b2b57311a27a1c04d76743e3ff3db1d9b50fd67b84c5ea57033645867fafdf",
+    "docs/ai-project-workflow.md": "bb2400128907f591860ac016b0d230185a7e5db815865e8701a87893df94c911",
+    "docs/helper-policy.md": "21b91ac9c09bca03e6dcf8350680513b639a47367e5373ca73ac909bc201b0c3",
+    "docs/owner-profile.md": "27c5748bb6d087a9a8384723fd499b91e9b4634d635aa5bf397bf69702c67b00"
   },
   "project_id": "4b6a55b0bafb",
   "promotion_rights": "propose",
