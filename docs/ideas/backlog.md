@@ -51,6 +51,13 @@
   — row-appending is a fleet-manager write this lane can't do, but knowing a
   row is owed can be mechanical). Source:
   `.sessions/2026-07-10-order-009-reviews.md` 💡.
+- **"Stalled claim" aging on `/orders`** · `captured` — badge a claimed
+  order whose `claimed-by:` ISO stamp is older than ~24h with `claim stale?`
+  (the claim ritual's own expiry rule — a dead lane must never deadlock an
+  order); `/orders` makes claims visible but not their age, and the claim
+  line already carries the timestamp, so this is pure presentation (needs
+  `parse_orders` to also extract the claim timestamp). Source:
+  `.sessions/2026-07-10-orders-visibility.md` 💡.
 - **`meta.md` state-line convention in the fleet-manager projects/ registry**
   · `captured` — ask the manager to standardize ONE `deployed:` line format
   in `projects/*/meta.md` (e.g. `deployed: <where> · <ISO date>`) while the
