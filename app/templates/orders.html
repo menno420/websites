@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}fleet orders{% endblock %}
+{% block headright %}<a href="/orders?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>fleet orders — every repo's inbox, cross-referenced with its heartbeat</h2>
+  <p class="dim small">The fleet protocol keeps every <code>control/inbox.md</code> order at
+    <code>status: new</code> forever — execution truth lives only in each lane's
+    <code>control/status*.md</code> <code>orders: acked=… done=…</code> line. This page does
+    that cross-reference: each order badges <span class="b warn">open</span> /
+    <span class="b design">claimed</span> / <span class="b ok">done</span> from the repo's own
+    heartbeat lines, or <span class="b unknown">unknown</span> when no status file is readable
+    (never guessed). Read-only; same live manifest lane set as
+    <a href="/fleet">/fleet</a>.</p>
+
+  {% if o.lane_source.source != 'manifest' %}
+  <div class="banner">⚠ lane set: <strong>cached fallback list</strong> —
+    ({{ o.lane_source.reason }}); repo SET may be stale until the manifest is reachable.</div>
+  {% endif %}
+
+  <p class="small">
+    <span class="b repo">{{ o.summary.repos }} repos</span>
+    <span class="b {{ 'warn' if o.summary.open else 'ok' }}">{{ o.summary.open }} open</span>
+    {% if o.summary.claimed %}<span class="b design">{{ o.summary.claimed }} claimed</span>{% endif %}
+    <span class="b ok">{{ o.summary.done }} done</span>
+    {% if o.summary.unknown %}<span class="b unknown">{{ o.summary.unknown }} state unknown</span>{% endif %}
+    {% if o.summary.errored %}<span class="b bad">{{ o.summary.errored }} unreachable</span>{% endif %}
+  </p>
+</div>
+
+{% for c in o.cards %}
+<div class="card">
+  <h2>{{ c.repo }}
+    {% if c.open_count %}<span class="b warn">{{ c.open_count }} open</span>{% endif %}
+    {% if c.claimed_count %}<span class="b design">{{ c.claimed_count }} claimed</span>{% endif %}
+    {% if c.orders and not c.open_count and not c.claimed_count and not c.unknown_count %}<span class="b ok">all done</span>{% endif %}
+    <span class="dim small">· <a href="{{ c.repo_url }}">{{ c.repo }}</a>
+      · <a href="{{ c.inbox_url }}">inbox ↗</a></span></h2>
+
+  {% if c.fetch_error %}
+  <div class="banner">⚠ could not fetch <code>control/inbox.md</code> — {{ c.fetch_error }}</div>
+  {% elif c.missing %}
+  <p class="dim small">no <code>control/inbox.md</code> in this repo — no orders bus here (an absence, not an error).</p>
+  {% elif not c.orders %}
+  <p class="dim small">inbox exists but carries no ORDER blocks yet.</p>
+  {% else %}
+  {% if not c.status_readable %}
+  <div class="banner">⚠ no readable <code>control/status*.md</code> — execution state of these
+    orders is <strong>unknown</strong>, not assumed.</div>
+  {% endif %}
+  <table>
+    {% for ord in c.orders %}
+    <tr>
+      <th>ORDER {{ ord.id }}
+        {% if ord.state == 'open' %}<span class="b warn">open</span>
+        {% elif ord.state == 'claimed' %}<span class="b design">claimed</span>
+        {% elif ord.state == 'done' %}<span class="b ok">done</span>
+        {% else %}<span class="b unknown">unknown</span>{% endif %}</th>
+      <td>
+        <span class="dim small">{{ ord.issued }}{% if ord.fields.priority %} · {{ ord.fields.priority }}{% endif %}
+          {% if ord.state == 'done' and ord.state_by %} · done by {{ ord.state_by }}{% endif %}
+          {% if ord.state == 'claimed' %} · {{ ord.state_by }}{% endif %}</span><br>
+        {{ (ord.fields.do or '')[:280] }}{% if (ord.fields.do or '')|length > 280 %}…{% endif %}
+        <details><summary class="dim small">full order text</summary>
+          <div class="md">{{ ord.body_html | safe }}</div></details>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

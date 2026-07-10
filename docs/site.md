@@ -168,6 +168,27 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    hardcoded dated filenames to go stale on an upstream rename. Honest
    degradation ladder as `/projects` (empty on 404 / not-configured /
    unavailable); route always 200; `/reviews.json` drops the rendered HTML.
+3f. **Fleet orders** (`/orders`, `.json` variant) — every fleet repo's
+   `control/inbox.md` ORDER blocks cross-referenced against that repo's own
+   heartbeat ([D-0032]). The protocol keeps inbox orders `status: new`
+   forever (the manager is the inbox's one writer) — execution truth lives
+   ONLY in each lane's `orders: acked=… done=…` status line, so a raw inbox
+   is unreadable at a glance; this page does the diff every reader
+   otherwise does by hand. `app/orders.py` parses ORDER blocks (id, issued,
+   priority/do/why/done-when fields, wrapped lines joined) and classifies
+   each against every cohabiting lane's parsed status line (the [D-0028]
+   `parse_orders`): **done** (id in a `done=` list, the lane named) /
+   **claimed** (named in a `claimed-by:` id spec — matched numerically
+   against the spec's FIRST token only, never regex-scanned across the free
+   text, where ids false-matched inside ISO timestamps) / **open** /
+   **unknown** (repo has orders but no readable status — never guessed).
+   Repo set = the live manifest lane set deduped per repo (a shared-repo
+   cohabitation has one inbox, every lane's `done=` counts). Cards sort
+   attention-first (errors → open-most → claimed → all-done → no-inbox);
+   summary badges roll up open/claimed/done/unknown fleet-wide; long `do:`
+   texts truncate with the full order body in a `<details>` fold (rendered
+   sanitized). No-inbox repos are honest absences; fetch failures are
+   banners; always 200; `/orders.json` drops the rendered body HTML.
 4. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
@@ -198,6 +219,8 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/projects.json` | public | same registry as JSON (rendered meta HTML stripped) |
 | `/reviews` | public | fleet post-merge review-queue ledger + findings links (HTML) — [D-0031] |
 | `/reviews.json` | public | same ledger as JSON (rendered HTML stripped) |
+| `/orders` | public | every repo's inbox ORDERs × heartbeat done= cross-reference (HTML) — [D-0032] |
+| `/orders.json` | public | same orders view as JSON (rendered body HTML stripped) |
 | `/activity` | public | cross-repo PR activity timeline (HTML) — [D-0020] |
 | `/activity.json` | public | same timeline as JSON |
 | `/activity.xml` | public | same timeline as a subscribable Atom 1.0 feed (`application/atom+xml`) — [D-0025] |

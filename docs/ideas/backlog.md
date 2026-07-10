@@ -51,13 +51,6 @@
   — row-appending is a fleet-manager write this lane can't do, but knowing a
   row is owed can be mechanical). Source:
   `.sessions/2026-07-10-order-009-reviews.md` 💡.
-- **Per-repo inbox ORDER visibility on the site** · `captured` — ORDER 009's
-  audit names per-repo `control/inbox.md` ORDER texts as browsable nowhere;
-  a `/fleet` card section or `/orders` view rendering each lane's inbox
-  orders (and, paired with the parsed heartbeat `done=` line, which are
-  outstanding) would close it — pairs naturally with the heartbeat
-  enrichment's outstanding-orders computation (decision home:
-  `docs/site.md` § 3a). Source: `control/inbox.md` ORDER 009.
 - **`meta.md` state-line convention in the fleet-manager projects/ registry**
   · `captured` — ask the manager to standardize ONE `deployed:` line format
   in `projects/*/meta.md` (e.g. `deployed: <where> · <ISO date>`) while the
@@ -91,6 +84,14 @@
 
 ## Built
 
+- **Per-repo inbox ORDER visibility on the site** — shipped 2026-07-10
+  (continuous-mode slice 6; decision stamped in `docs/site.md` § 3f + the
+  decision ledger): `/orders` (+ `.json`) parses every fleet repo's
+  `control/inbox.md` ORDER blocks and cross-references each id against the
+  repo's own heartbeat `done=`/`claimed-by:` lines (one parser — the
+  heartbeat enrichment's `parse_orders`) into done / claimed / open /
+  unknown badges, attention-sorted with fleet-wide roll-ups. Source at
+  capture: `control/inbox.md` ORDER 009 audit.
 - **ORDER 009 increment (3): review-queue rows + findings links** — shipped
   2026-07-10 (continuous-mode slice 5; decision stamped in `docs/site.md`
   § 3e + the decision ledger): `/reviews` (+ `.json`) renders the

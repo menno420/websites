@@ -26,6 +26,7 @@ from . import (
     github,
     ideas,
     journal,
+    orders,
     owner,
     owner_queue,
     projects,
@@ -216,6 +217,37 @@ async def reviews_json(request: Request):
     rendered doc HTML (an HTML-view concern; the /fleet.json precedent)."""
     data = await reviews.overview(refresh=_refresh(request))
     payload = {k: v for k, v in data.items() if k != "body_html"}
+    return JSONResponse(payload)
+
+
+@app.get("/orders", response_class=HTMLResponse)
+async def orders_page(request: Request):
+    """Fleet orders: every repo's control/inbox.md ORDER blocks
+    cross-referenced against its own heartbeat done=/claimed-by lines (the
+    protocol keeps inbox orders 'new' forever — execution truth lives in the
+    status files). Honest absences/banners/unknowns; always 200."""
+    data = await orders.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request, "orders.html", {"o": data, "active": "orders"}
+    )
+
+
+@app.get("/orders.json")
+async def orders_json(request: Request):
+    """JSON variant of /orders — parsed orders + states, minus rendered
+    order-body HTML (an HTML-view concern; the /fleet.json precedent)."""
+    data = await orders.overview(refresh=_refresh(request))
+    payload = dict(data)
+    payload["cards"] = [
+        {
+            **{k: v for k, v in card.items() if k != "orders"},
+            "orders": [
+                {k: v for k, v in o.items() if k != "body_html"}
+                for o in card["orders"]
+            ],
+        }
+        for card in data["cards"]
+    ]
     return JSONResponse(payload)
 
 
