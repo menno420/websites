@@ -8,11 +8,16 @@ import asyncio
 import sys
 from pathlib import Path
 
+from datetime import datetime, timezone
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app import github, orders  # noqa: E402
+
+# Frozen clock (time-discipline guard — tests/test_time_discipline.py).
+NOW = datetime(2026, 7, 11, 9, 0, 0, tzinfo=timezone.utc)
 from app.main import app  # noqa: E402
 
 
@@ -77,14 +82,14 @@ def test_classify_order_done_claimed_open_unknown():
             "acked=001-003 done=001 claimed-by: 002 my-lane 2026-07-10T21:00Z"
         ),
     }]
-    assert orders.classify_order("001", statuses)["state"] == "done"
-    c = orders.classify_order("002", statuses)
+    assert orders.classify_order("001", statuses, now=NOW)["state"] == "done"
+    c = orders.classify_order("002", statuses, now=NOW)
     assert c["state"] == "claimed" and "my-lane" in c["by"]
-    assert orders.classify_order("003", statuses)["state"] == "open"
+    assert orders.classify_order("003", statuses, now=NOW)["state"] == "open"
     # id "00" must not match inside "001" (boundary check)
-    assert orders.classify_order("00", statuses)["state"] == "open"
+    assert orders.classify_order("00", statuses, now=NOW)["state"] == "open"
     # no readable statuses -> unknown, never guessed
-    assert orders.classify_order("001", [])["state"] == "unknown"
+    assert orders.classify_order("001", [], now=NOW)["state"] == "unknown"
 
 
 def _fake_world(monkeypatch, inbox_by_repo, status_by_repo):
@@ -112,7 +117,7 @@ def test_overview_cross_references_and_sorts(monkeypatch):
         status_by_repo={"websites": _STATUS},
     )
 
-    out = asyncio.run(orders.overview())
+    out = asyncio.run(orders.overview(now=NOW))
     # websites has the only inbox -> it sorts first (open orders rise)
     top = out["cards"][0]
     assert top["repo"] == "websites"
@@ -131,7 +136,7 @@ def test_overview_orders_without_status_are_unknown(monkeypatch):
         inbox_by_repo={"websites": _INBOX},
         status_by_repo={},  # no readable status anywhere
     )
-    out = asyncio.run(orders.overview())
+    out = asyncio.run(orders.overview(now=NOW))
     top = next(c for c in out["cards"] if c["repo"] == "websites")
     assert top["status_readable"] is False
     assert all(o["state"] == "unknown" for o in top["orders"])

@@ -23,6 +23,8 @@ to catch.
 import sys
 from pathlib import Path
 
+from datetime import datetime, timezone
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import fleet  # noqa: E402
@@ -47,7 +49,11 @@ def test_documented_required_fields_present_and_parse():
     for key in ("updated", "phase", "health", "orders"):
         assert fields.get(key), f"heartbeat is missing the `{key}:` line"
 
-    fresh = fleet.freshness(fields["updated"])
+    # now= frozen per the time-discipline guard; only `ok` (parseability)
+    # is asserted, so any instant works.
+    fresh = fleet.freshness(
+        fields["updated"], now=datetime(2026, 7, 11, 9, 0, tzinfo=timezone.utc)
+    )
     assert fresh["ok"], (
         f"`updated:` does not parse as a timestamp: {fields['updated']!r} — "
         "the manager reads an unparseable heartbeat as a dark lane"
