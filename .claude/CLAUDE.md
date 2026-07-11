@@ -13,12 +13,19 @@ websites is built in Python 3.12 (FastAPI + Jinja2 + httpx, server-rendered; pin
 ## Orientation — read first, in order
 
 1. This file — the working agreement.
-2. `docs/current-state.md` — what is true right now.
-3. `docs/CAPABILITIES.md` — what sessions here CAN and CANNOT do (verified).
-   Never declare a wall or a missing credential without its discovery rule:
-   check the file → check the env → attempt once + capture the exact error →
-   append the finding same session.
-4. `docs/AGENT_ORIENTATION.md` — the task-specific reading router.
+2. `HANDOFF.md` at repo root (when present) — the previous session's trail:
+   newest session card + where to pick up. Regenerated at every session
+   boot, untracked by design — read it before re-deriving history from
+   `git log`/`git show`; never commit or edit it.
+3. `docs/current-state.md` — what is true right now.
+
+That is the whole boot set. Everything else is routed, **not front-loaded**
+(reading every planted doc up front buys ceremony, not context — measured):
+open `docs/AGENT_ORIENTATION.md` when a task needs its reading route, and
+`docs/CAPABILITIES.md` (the verified can/cannot ledger) **before declaring
+any wall or missing credential** — its discovery rule: check the file →
+check the env → attempt once + capture the exact error → append the finding
+same session.
 
 ## Kit machinery — search hygiene
 
