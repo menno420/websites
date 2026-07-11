@@ -9,17 +9,17 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
-- **Cron-slot helper (`next-slot`)** · `captured` — parse a workflow's cron
-  expression and print its next wall-clock fire slots so heartbeats stop
-  hand-computing them; this wake found five heartbeats carrying the same
-  wrong "~02:17Z" slot (`17 */6` anchors to hours 0/6/12/18) and a nudge
-  timed against the wrong number. Source:
-  `.sessions/2026-07-11-open-work-rung-cronfinding.md` 💡.
 - **Conveyor-health chips on the readiness board rows** · `captured` — the
   board (/) is the owner's habit path; one small per-repo chip ("ideas:
   3c/1b") reusing repo_ideas' cached lifecycle counts puts conveyor health
   where the owner already looks (zero new fetch on a warm cache). Source:
   `.sessions/2026-07-11-ideas-states-waitdeploy.md` 💡.
+- **Relay-PR merge protocol on the bus** · `captured` — one line in
+  `control/README.md`: a `control/inbox.md`-only relay PR from the manager
+  may be merged by ANY lane session that finds it green (the inbox has one
+  WRITER, not one MERGER); the ORDER 010 relay sat open with its author
+  session ended until this chain happened to wake. Source:
+  `.sessions/2026-07-11-order-010-and-tooling.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
@@ -30,15 +30,6 @@
   `inbox.md` last-commit is newer than its status `updated:` stamp. Sources:
   `.sessions/2026-07-09-kit-upgrade-v1.6.0.md` ⟲ review; queue-state NEXT
   item 5.
-- **Review-queue row auto-check for this repo's own PRs** · `captured` — a
-  script / advisory quality step computing a merged PR's runtime changed-line
-  count against the fleet review-queue's BINDING 50-line rule and printing
-  "this PR needs a review-queue row" when it qualifies; the rule's
-  enforcement is currently memory (116 merged PRs / zero rows was the
-  documented failure state; this repo's #67 and #72 both qualified unflagged
-  — row-appending is a fleet-manager write this lane can't do, but knowing a
-  row is owed can be mechanical). Source:
-  `.sessions/2026-07-10-order-009-reviews.md` 💡.
 - **`meta.md` state-line convention in the fleet-manager projects/ registry**
   · `captured` — ask the manager to standardize ONE `deployed:` line format
   in `projects/*/meta.md` (e.g. `deployed: <where> · <ISO date>`) while the
@@ -55,6 +46,19 @@
   rebuilt in slice 7). The dedup rule covers new ideas, not decayed old ones.
   Source: `.sessions/2026-07-10-own-heartbeat-selfcheck.md` 💡.
 ## Built
+
+- **Cron-slot helper** — shipped 2026-07-11 (continuous-mode slice 14) as
+  `scripts/cron_slots.py`: 5-field cron → next wall-clock UTC fire slots
+  (loud on malformed, never a guess); the incident case (`17 */6 * * *`
+  after 21:03Z → 00:17Z, not "+6h") is a pinned test. Source:
+  `.sessions/2026-07-11-open-work-rung-cronfinding.md` 💡.
+- **Review-queue row auto-check** — shipped 2026-07-11 (slice 14) as
+  `scripts/review_row_check.py`: sums runtime/product changed lines over a
+  git range with the ledger's exact exclusions (docs/, control/,
+  .sessions/, tests, markdown; binary counts 0) and prints ROW OWED past
+  the binding 50-line threshold; first live run confirmed #81's squash owes
+  a row. Row-appending stays a fleet-manager write — flag to the manager.
+  Source: `.sessions/2026-07-10-order-009-reviews.md` 💡.
 
 - **`/ideas` state filter (conveyor health)** — shipped 2026-07-11
   (continuous-mode slice 13): each idea's front-matter `state:` surfaces as
