@@ -45,12 +45,6 @@
   upkeep-dry (routing latency beats idle wakes); rung telemetry records
   which rung fired, not depth. Source:
   `.sessions/2026-07-11-fleet-chip-tooling-token.md` 💡.
-- **Nav overflow guard** · `captured` — the header nav now carries ten
-  links and each fleet-info slice added one; on a phone the wrap costs
-  multiple rows and usability decays one link at a time with nobody's slice
-  feeling responsible. A grouped/overflow ("more ▾") treatment or a CSS
-  audit at current width keeps the owner's phone glance usable. Source:
-  `.sessions/2026-07-10-activity-repo-filter.md` 💡.
 - **`meta.md` state-line convention in the fleet-manager projects/ registry**
   · `captured` — ask the manager to standardize ONE `deployed:` line format
   in `projects/*/meta.md` (e.g. `deployed: <where> · <ISO date>`) while the
@@ -60,6 +54,14 @@
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
 ## Built
+
+- **Nav overflow guard** — shipped 2026-07-11 (continuous-mode slice 19, the
+  last buildable captured bullet): secondary pages (environments, projects,
+  reviews, orders, ideas) grouped under a no-JS `<details>` "more ▾" nav
+  dropdown — top-level links 11 → 6; every page stays reachable; a grouped
+  page's active state opens the group and highlights the summary; pure
+  HTML/CSS, no dependency. Source:
+  `.sessions/2026-07-11-activity-repo-filter.md` 💡.
 
 - **Board-row fleet chip (heartbeat freshness on the habit path)** — shipped
   2026-07-11 (continuous-mode slice 18): each board repo row shows its
