@@ -7,13 +7,14 @@
     "soft_target_sessions": 50
   },
   "graduation_proposed": false,
-  "kit_version": "1.7.1",
+  "kit_version": "1.8.0",
   "last_compaction_session": 0,
   "mode": "guided",
   "mode_history": [],
   "open_questions": [],
   "planted_doc_hashes": {
     ".claude/CLAUDE.md": "0701d135dbe3c6ef8bfb2977927370d017cd6a7fe46b19fc59e9907053557f55",
+    "control/claims/README.md": "14cb7a6a66bc2b9ee6d97c0c72e8642356907ffec3ff706d27a732470b3a19ac",
     "docs/CAPABILITIES.md": "b0b2b57311a27a1c04d76743e3ff3db1d9b50fd67b84c5ea57033645867fafdf",
     "docs/ai-project-workflow.md": "bb2400128907f591860ac016b0d230185a7e5db815865e8701a87893df94c911",
     "docs/helper-policy.md": "21b91ac9c09bca03e6dcf8350680513b639a47367e5373ca73ac909bc201b0c3",
