@@ -241,14 +241,18 @@ def _sort_key(card: dict[str, Any]) -> tuple:
     return (5, 0)
 
 
-async def overview(refresh: bool = False) -> dict[str, Any]:
+async def overview(
+    refresh: bool = False, now: datetime | None = None
+) -> dict[str, Any]:
     """Every fleet repo's inbox orders, cross-referenced and attention-sorted.
 
     Repos derive from the live manifest lane set (deduped — one inbox per
     repo, every cohabiting lane's status counts) plus honest ``lane_source``
     passthrough. Never raises for upstream failures; the route stays 200.
+    ``now`` is injectable (module convention) so fixed-stamp test fixtures
+    stay deterministic.
     """
-    now = datetime.now(timezone.utc)
+    now = now or datetime.now(timezone.utc)
     lane_defs, lane_source = await fleet.resolve_lanes(refresh=refresh)
     by_repo: dict[str, list[dict[str, Any]]] = {}
     for lane in lane_defs:

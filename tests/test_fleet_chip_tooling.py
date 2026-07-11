@@ -11,8 +11,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from datetime import datetime, timezone  # noqa: E402
+
 from app import fleet, github  # noqa: E402
 from app.main import app  # noqa: E402
+
+# Frozen clock (time-discipline guard — tests/test_time_discipline.py).
+NOW = datetime(2026, 7, 11, 9, 0, 0, tzinfo=timezone.utc)
 
 
 def _res(ok=True, status=200, data=None, error=""):
@@ -41,13 +46,13 @@ def test_heartbeat_freshness_ok_and_honest_none(monkeypatch):
 
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
 
-    fresh = asyncio.run(fleet.heartbeat_freshness("fresh"))
+    fresh = asyncio.run(fleet.heartbeat_freshness("fresh", now=NOW))
     assert fresh is not None and fresh["ok"] is True and "age_hours" in fresh
 
     # no readable heartbeat -> None (no chip, never a guessed age)
-    assert asyncio.run(fleet.heartbeat_freshness("missing")) is None
+    assert asyncio.run(fleet.heartbeat_freshness("missing", now=NOW)) is None
     # heartbeat exists but updated: does not parse -> None (honest)
-    assert asyncio.run(fleet.heartbeat_freshness("unstamped")) is None
+    assert asyncio.run(fleet.heartbeat_freshness("unstamped", now=NOW)) is None
 
 
 def test_board_renders_heartbeat_chip(monkeypatch):

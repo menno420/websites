@@ -979,6 +979,14 @@ def test_freshness_stale_threshold():
     assert bad["ok"] is False and bad["stale"] is False
 
 
+from datetime import datetime as _dt, timezone as _tz  # noqa: E402
+
+# Frozen clock for every age-measuring fleet call (time-discipline guard:
+# fixed fixture stamps + real wall clock = a test that flips on its own —
+# see tests/test_time_discipline.py and the 2026-07-11T08:45Z incident).
+FLEET_NOW = _dt(2026, 7, 11, 9, 0, 0, tzinfo=_tz.utc)
+
+
 def _fleet_lane(repo="websites", lane="websites", path="control/status.md"):
     return {"lane": lane, "repo": repo, "status_path": path,
             "model": "unknown", "note": "n"}
@@ -1008,7 +1016,7 @@ def test_fleet_lane_renders_parsed_health_and_body(monkeypatch):
     async def run():
         monkeypatch.setattr(github, "fetch_file", fake_fetch)
         monkeypatch.setattr(github, "repo_api", fake_repo_api)
-        return await fleet.lane_status(_fleet_lane())
+        return await fleet.lane_status(_fleet_lane(), now=FLEET_NOW)
 
     out = asyncio.run(run())
     assert out["missing"] is False and out["fetch_error"] is None
@@ -1037,7 +1045,9 @@ def test_fleet_no_status_file_is_absence_not_error(monkeypatch):
     async def run():
         monkeypatch.setattr(github, "fetch_file", fake_fetch)
         monkeypatch.setattr(github, "repo_api", fake_repo_api)
-        return await fleet.lane_status(_fleet_lane(repo="superbot", lane="superbot"))
+        return await fleet.lane_status(
+            _fleet_lane(repo="superbot", lane="superbot"), now=FLEET_NOW
+        )
 
     out = asyncio.run(run())
     assert out["missing"] is True and out["fetch_error"] is None
@@ -1059,7 +1069,7 @@ def test_fleet_fetch_error_is_honest_banner(monkeypatch):
     async def run():
         monkeypatch.setattr(github, "fetch_file", fake_fetch)
         monkeypatch.setattr(github, "repo_api", fake_repo_api)
-        return await fleet.lane_status(_fleet_lane())
+        return await fleet.lane_status(_fleet_lane(), now=FLEET_NOW)
 
     out = asyncio.run(run())
     assert out["missing"] is False
@@ -1098,7 +1108,7 @@ def test_fleet_overview_sorts_attention_first_and_counts(monkeypatch):
     async def run():
         monkeypatch.setattr(github, "fetch_file", fake_fetch)
         monkeypatch.setattr(github, "repo_api", fake_repo_api)
-        return await fleet.overview()
+        return await fleet.overview(now=FLEET_NOW)
 
     out = asyncio.run(run())
     assert out["summary"]["total"] == len(config.FLEET_LANES)
@@ -1249,7 +1259,7 @@ def test_fleet_overview_is_registry_sourced(monkeypatch):
     async def run():
         monkeypatch.setattr(github, "fetch_file", fake_fetch)
         monkeypatch.setattr(github, "repo_api", fake_repo_api)
-        return await fleet.overview()
+        return await fleet.overview(now=FLEET_NOW)
 
     out = asyncio.run(run())
     assert out["lane_source"]["source"] == "registry"
@@ -1272,7 +1282,10 @@ def test_fleet_unreadable_repo_is_honest_not_dropped(monkeypatch):
     async def run():
         monkeypatch.setattr(github, "fetch_file", fake_fetch)
         monkeypatch.setattr(github, "repo_api", fake_repo_api)
-        return await fleet.lane_status(_fleet_lane(repo="private-lane", lane="private-lane"))
+        return await fleet.lane_status(
+            _fleet_lane(repo="private-lane", lane="private-lane"),
+            now=FLEET_NOW,
+        )
 
     out = asyncio.run(run())
     assert out["unreadable"] is True and out["missing"] is False

@@ -399,7 +399,7 @@ def freshness(updated: str, now: Optional[datetime] = None) -> dict[str, Any]:
 
 
 async def heartbeat_freshness(
-    repo: str, refresh: bool = False
+    repo: str, refresh: bool = False, now: Optional[datetime] = None
 ) -> Optional[dict[str, Any]]:
     """One repo's heartbeat freshness — the cheap chip for the board rows.
 
@@ -408,13 +408,15 @@ async def heartbeat_freshness(
     18 lanes × commits × pulls). Returns the ``freshness`` dict when the
     heartbeat exists and its ``updated:`` parses; ``None`` for a repo with
     no readable/parseable heartbeat — the board shows no chip rather than
-    a guessed age (/fleet stays the honest home for lane errors).
+    a guessed age (/fleet stays the honest home for lane errors). ``now``
+    is injectable (module convention) so fixed-stamp test fixtures stay
+    deterministic.
     """
     res = await github.fetch_file(repo, "control/status.md", refresh=refresh)
     if not (res["ok"] and isinstance(res["data"], str) and res["data"].strip()):
         return None
     fields = parse_status(res["data"], repo)["fields"]
-    fresh = freshness(fields.get("updated", ""))
+    fresh = freshness(fields.get("updated", ""), now=now)
     return fresh if fresh["ok"] else None
 
 
