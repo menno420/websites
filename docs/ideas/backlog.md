@@ -77,19 +77,27 @@
   Worth having because the guard's value is only as durable as its
   membership list — today drift is silent. Source:
   `.sessions/2026-07-11-nav-overflow-guard.md` 💡.
-- **Time-discipline guard for tests** · `captured` — a fleet-enrichment
-  sort test time-bombed at 2026-07-11T08:45Z (green for days, then failed
-  on wall-clock time alone: fixed fixture `updated:` stamps crossed
-  `FLEET_STALE_HOURS` inside `fleet.overview()`, which measured against
-  real now; defused in the truth-sweep PR by giving `overview()` the
-  module's standard injectable `now=`). The guard: a small suite-level
-  check that flags tests calling age-measuring entry points (`overview`,
-  `lane_status`, `freshness`, `heartbeat_freshness`, `classify_order`)
-  without a frozen `now=`. Worth having because the next fixed-stamp
-  fixture reproduces the bomb silently, and this class of failure
-  detonates in routine-fired sessions with nobody watching. Source:
-  `.sessions/2026-07-11-current-state-truth-sweep.md` 💡.
+- **Route-level clock freeze for TestClient tests** · `captured` — the
+  new time-discipline guard covers DIRECT calls to age-measuring
+  functions, but route-level tests (TestClient hitting /fleet, /orders,
+  the board) still exercise the real wall clock through the endpoints;
+  today they only assert time-monotonic-safe things, but nothing
+  enforces that. A test-only clock override (e.g. an app dependency or
+  config hook the suite pins) would close the remaining half. Worth
+  having because the 08:45Z class survives in route tests the static
+  guard cannot see. Source:
+  `.sessions/2026-07-11-test-time-discipline-guard.md` 💡.
 ## Built
+
+- **Time-discipline guard for tests** — shipped 2026-07-11
+  (continuous-mode slice 21): `tests/test_time_discipline.py` AST-scans
+  the suite and fails any call to an age-measuring entry point
+  (`fleet.overview`/`lane_status`/`freshness`/`heartbeat_freshness`,
+  `orders.overview`/`classify_order`) without a frozen `now=`; first run
+  caught 17 latent sites across 5 files, all threaded with frozen NOW
+  constants; `heartbeat_freshness` + `orders.overview` gained the
+  module-standard injectable `now=`. Source:
+  `.sessions/2026-07-11-current-state-truth-sweep.md` 💡.
 
 - **Nav overflow guard** — shipped 2026-07-11 (continuous-mode slice 19, the
   last buildable captured bullet): secondary pages (environments, projects,
