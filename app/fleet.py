@@ -689,7 +689,9 @@ def _sort_key(lane: dict) -> tuple:
     return (rank, age if age is not None else float("inf"))
 
 
-async def overview(refresh: bool = False) -> dict[str, Any]:
+async def overview(
+    refresh: bool = False, now: datetime | None = None
+) -> dict[str, Any]:
     """Every fleet lane's heartbeat, attention-sorted, with a fleet summary.
 
     The lane SET is resolved live from the fleet-manager registry (an added
@@ -698,8 +700,11 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
     lanes concurrently (cache-backed) against a single ``now`` so every age is
     measured from the same instant. Returns the lane list plus roll-up counts
     (total / live / stale / broken / errored / no-file) so the page can show one
-    glanceable header line."""
-    now = datetime.now(timezone.utc)
+    glanceable header line. ``now`` is injectable (defaults to wall clock,
+    same convention as every other age-measuring function here) so tests
+    with fixed heartbeat stamps stay deterministic instead of time-bombing
+    when the fixtures cross the stale threshold."""
+    now = now or datetime.now(timezone.utc)
     lane_defs, lane_source = await resolve_lanes(refresh=refresh)
     lanes = list(
         await asyncio.gather(
