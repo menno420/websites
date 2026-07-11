@@ -97,7 +97,8 @@
   PostgreSQL; then open service `botsite` → Variables → add
   `DATABASE_URL` = the connection string Railway shows. One paste. Until
   then the public /submit form stays a labeled stub. (Agent-side is
-  policy-walled: D-0005 forbids agent-initiated Railway mutations.)
+  policy-walled: the Railway-safety decision in the ledger forbids
+  agent-initiated Railway mutations.)
 - **⚑ GitHub token (rate headroom for all fleet pages):** on github.com go
   to Settings → Developer settings → Fine-grained tokens → create a token
   scoped to your repos (contents+actions read; actions write if you want
