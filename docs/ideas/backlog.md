@@ -39,6 +39,12 @@
   manifest→roster move broke this site once already, caught by the cron).
   Routing half: flagged to the manager in the heartbeat. Source:
   `.sessions/2026-07-11-lane-source-registry.md` 💡.
+- **Backlog low-water signal in the heartbeat** · `captured` — when the
+  captured+planned count drops below ~3, the heartbeat notes carry
+  `backlog: low (N left)` so the manager routes work BEFORE a lane hits
+  upkeep-dry (routing latency beats idle wakes); rung telemetry records
+  which rung fired, not depth. Source:
+  `.sessions/2026-07-11-fleet-chip-tooling-token.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
