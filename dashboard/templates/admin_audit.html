@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Dry-run audit log — control panel — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> control panel · dry-run · audit</span>
+    <div class="head-row"><h1>Dry-run <span class="sb-grad">audit log</span></h1></div>
+    <p class="sb-lead">Every confirmed dry-run action this process lifetime. <strong>In-memory
+      only</strong> — this log clears on restart/redeploy; it is a preview tool, not a store.</p>
+  </section>
+
+  {% if entries %}
+  <table class="audit-table">
+    <thead>
+      <tr><th>#</th><th>Time (UTC)</th><th>Actor</th><th>Action</th><th>Guild</th><th>Outcome</th><th>Request</th></tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td class="sb-mono">{{ e.id }}</td>
+        <td class="sb-mono">{{ e.time }}</td>
+        <td>{{ e.actor }}</td>
+        <td><code>{{ e.action }}</code></td>
+        <td class="sb-mono">{{ e.guild_id }}</td>
+        <td>{{ e.outcome }}</td>
+        <td>
+          <details>
+            <summary class="sb-mono" style="cursor:pointer">JSON</summary>
+            <pre class="snippet">{{ entries_json[e.id] }}</pre>
+          </details>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="sb-empty">
+    <span class="ico">{{ icon("activity", 20) }}</span>
+    <h4>No dry-run actions recorded this process lifetime</h4>
+    <p>Confirm a preview from the <a href="/admin">control panel</a> and it will appear here —
+      until the next restart/redeploy clears the in-memory log.</p>
+  </div>
+  {% endif %}
+
+  <p class="src-note">{{ icon("info", 14) }} <a href="/admin">← control panel</a> · outcome is
+    always <code>dry-run: recorded, not sent</code> — this service has no write path.</p>
+</div>
+{% endblock %}
