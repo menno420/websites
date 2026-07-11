@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Dry-run preview — control panel — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> control panel · dry-run · preview</span>
+    <div class="head-row"><h1>Dry-run <span class="sb-grad">preview</span></h1></div>
+    <p class="sb-lead">This is the exact contract-v1 request a wired client WOULD send for
+      <code>{{ action }}</code>. Nothing has been sent, and confirming will not send it either —
+      it records the action to the in-memory dry-run audit log.</p>
+  </section>
+
+  {% include "_admin_dryrun.html" %}
+
+  <div class="group-head"><h2>Request JSON (contract v1 — validated)</h2></div>
+  <pre class="snippet" id="request-json">{{ request_json }}</pre>
+
+  <form method="post" action="/admin/actions/confirm" class="admin-form">
+    {% for name, value in carry %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+    <button class="sb-btn sb-btn-primary sb-btn-sm" type="submit">{{ icon("check", 14) }} Confirm — record dry-run</button>
+    <a class="sb-btn sb-btn-soft sb-btn-sm" href="/admin">Cancel</a>
+  </form>
+
+  <p class="src-note">{{ icon("info", 14) }} Spec: <code>docs/specs/bot-control-api-v1.md</code> ·
+    pin: <code>dashboard/bot_control_contract.json</code>.</p>
+</div>
+{% endblock %}

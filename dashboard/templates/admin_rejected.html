@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Action rejected — control panel — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> control panel · dry-run · rejected</span>
+    <div class="head-row"><h1>Action <span class="sb-grad">rejected</span></h1></div>
+    <p class="sb-lead">The requested <code>{{ action or "action" }}</code> failed validation against
+      the live typed schema. Nothing was recorded.</p>
+  </section>
+
+  <div class="sb-error" role="alert">
+    {{ icon("alert", 16) }}
+    <div>
+      <strong>Rejected — nothing was recorded.</strong>
+      <span class="sb-mono">{{ reject_code }}</span>: {{ reject_message }}
+    </div>
+  </div>
+
+  <div class="kv-row" style="margin-top:var(--sb-s-4)">
+    <a class="sb-btn sb-btn-soft sb-btn-sm" href="/admin">{{ icon("back", 14) }} Control panel</a>
+  </div>
+
+  <p class="src-note">{{ icon("info", 14) }} Validation is typed by the live
+    <code>dashboard.json</code> schema (type / allowed values / known cogs &amp; entities), the same
+    checks the contract-v1 server side would apply.</p>
+</div>
+{% endblock %}

@@ -59,6 +59,18 @@
   letter-spacing: .06em; color: var(--sb-amber); border: 1px solid color-mix(in oklab, var(--sb-amber) 45%, var(--sb-line));
   border-radius: var(--sb-r-pill); padding: 2px 8px; white-space: nowrap; }
 
+/* /admin dry-run management forms + audit table */
+.admin-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.admin-form .sb-inp { max-width: 240px; }
+.admin-form-col { flex-direction: column; align-items: stretch; max-width: 520px; }
+.admin-lbl { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--sb-ink-3); }
+.admin-lbl .sb-inp { max-width: none; }
+.admin-check { flex-direction: row; align-items: center; gap: 8px; }
+.audit-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: var(--sb-s-5) 0; }
+.audit-table th, .audit-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--sb-line); vertical-align: top; }
+.audit-table th { font-family: var(--sb-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--sb-ink-4); }
+.audit-table pre.snippet { margin-top: 8px; max-width: 480px; }
+
 /* env-map usage sub-rows */
 .env-usages { display: flex; flex-direction: column; gap: 4px; }
 .env-usages a { font-family: var(--sb-font-mono); font-size: 12px; color: var(--sb-ink-3); }

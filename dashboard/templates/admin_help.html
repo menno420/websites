@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Help appearance — control panel (dry-run) — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> control panel · dry-run · help appearance</span>
+    <div class="head-row"><h1>Help <span class="sb-grad">appearance</span></h1></div>
+    <p class="sb-lead">Hide, rename, or re-describe a Help entity (a command or a subsystem) or the
+      Home message, per server. Entities are validated against the live feed.</p>
+  </section>
+
+  {% include "_admin_dryrun.html" %}
+
+  <div class="sb-panel">
+    <p class="sb-panel-title">Edit an entity's Help appearance</p>
+    <form class="admin-form admin-form-col" method="post" action="/admin/actions/preview">
+      <input type="hidden" name="action" value="help.appearance.set">
+      <label class="admin-lbl">Guild id (digits — the feeds carry no guild list)
+        <input class="sb-inp" type="text" name="guild_id" placeholder="guild id (digits)" required inputmode="numeric">
+      </label>
+      <label class="admin-lbl">Entity type
+        <select class="sb-inp" name="entity_type">
+          <option value="command">command</option>
+          <option value="subsystem">subsystem</option>
+          <option value="home_message">home message</option>
+        </select>
+      </label>
+      <label class="admin-lbl">Entity name (ignored for the home message)
+        <input class="sb-inp" type="text" name="entity" list="help-entities" placeholder="command or subsystem key">
+        <datalist id="help-entities">
+          {% for name in command_names %}<option value="{{ name }}"></option>{% endfor %}
+          {% for key in subsystem_keys %}<option value="{{ key }}"></option>{% endfor %}
+        </datalist>
+      </label>
+      <label class="admin-lbl">New display name (leave empty to keep)
+        <input class="sb-inp" type="text" name="display_name" placeholder="new display name">
+      </label>
+      <label class="admin-lbl">New description (leave empty to keep)
+        <input class="sb-inp" type="text" name="description" placeholder="new description">
+      </label>
+      <label class="admin-lbl admin-check">
+        <input type="checkbox" name="hidden" value="true"> Hide this entity from Help
+      </label>
+      <div><button class="sb-btn sb-btn-soft sb-btn-sm" type="submit">{{ icon("arrow", 14) }} Preview dry-run</button></div>
+    </form>
+    <p class="feat-desc" style="margin-top:10px">At least one change (hide / rename / re-describe)
+      is required.</p>
+  </div>
+
+  <p class="src-note">{{ icon("info", 14) }} <a href="/admin">← control panel</a> · dry-run only —
+    nothing is sent.</p>
+</div>
+{% endblock %}

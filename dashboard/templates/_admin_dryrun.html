@@ -1,0 +1,16 @@
+{#- The honest state banner shared by every /admin management page. -#}
+{% from "_icons.html" import icon %}
+<div class="stub-banner">
+  <span class="ico">{{ icon("alert", 22) }}</span>
+  <div>
+    <strong>DRY-RUN — this service holds no credentials and cannot affect the live bot.</strong>
+    <p>Every action below is validated against the bot's live typed schema (the committed
+    <code>dashboard.json</code>) and previewed as the exact contract-v1 request JSON a wired client
+    would send. Confirming records it to an <strong>in-memory dry-run audit log that clears on
+    restart/redeploy</strong> — nothing is sent anywhere. No bot control-endpoint URL, token, or
+    OAuth secret exists in this service, by design: owner decision Q-0004 (where live control
+    lives) is open, and doctrine places a wired control panel in a <strong>separate service</strong>.</p>
+    <p>The armed path is <em>specified</em>, not implemented: <code>docs/specs/bot-control-api-v1.md</code>
+    (+ the machine pin <code>dashboard/bot_control_contract.json</code>).</p>
+  </div>
+</div>
