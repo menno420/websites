@@ -9,6 +9,20 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Ask superbot for a sanitized guild list in `dashboard.json`** ·
+  `captured` — the /admin management flows (dry-run today, armed later) all
+  start with "which server?", but NO committed feed carries a guild list, so
+  the UI honestly falls back to a raw guild-id text input. One sanitized
+  `guilds[]` family (id, name, maybe member_count — no tokens, no channels)
+  in superbot's `export_dashboard_data.py` output turns every management
+  form's weakest field into a real picker, and the armed panel inherits it
+  for free. Routing half: a superbot-side export change — flag to the
+  manager/superbot lane. Worth having because every management action is
+  keyed by guild id and today's honest-but-hostile digit-pasting will be the
+  #1 papercut the moment the panel goes live. Deduped against this backlog +
+  the queue-state NEXT list: nothing touches guild data. Source:
+  `.sessions/2026-07-11-dashboard-bot-management.md` 💡.
+
 - **Snapshot-aging banner on the review site** · `captured` — the review
   service's numbers are baked into `review/data/snapshot.json` at commit
   time, so once deployed they silently fossilize as the repo moves on. The

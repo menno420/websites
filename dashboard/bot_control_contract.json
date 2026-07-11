@@ -1,0 +1,35 @@
+{
+  "_comment": "PINNED bot-control-API v1 contract — the request/response shape the dashboard's DRY-RUN previews are built against, mirroring the console_data_contract.json pin pattern. The human spec is docs/specs/bot-control-api-v1.md. IMPORTANT: this service is permanently credential-free (owner decision Q-0004 is OPEN; doctrine places a wired control panel in a SEPARATE service) — this file defines shapes only; no endpoint URL, token, or credential of any kind exists anywhere in this service. The server side is superbot's control-api seam (disbot/control_api.py), which does not serve v1 yet; when it does, superbot should commit the canonical copy and this pin syncs from it exactly like the console contract. Every action the /admin dry-run UI can preview is validated against this pin by dashboard/control_plane.py and by tests.",
+  "version": 1,
+  "request": ["schema_version", "action", "params", "dry_run", "actor", "idempotency_key", "requested_at"],
+  "actor": ["discord_user_id", "display"],
+  "response": ["schema_version", "ok", "action", "result", "audit_id", "applied_at", "error"],
+  "error": ["code", "message", "details"],
+  "error_codes": [
+    "invalid_action", "invalid_params", "unknown_guild", "unknown_setting",
+    "invalid_value", "unknown_cog", "not_a_cog", "unknown_entity", "no_changes",
+    "unauthorized", "forbidden", "idempotency_replay", "unavailable"
+  ],
+  "actions": {
+    "setting.write": {
+      "params": ["guild_id", "domain", "key", "value"],
+      "typing_source": "dashboard.json settings[].keys[] — constant/key/type/allowed_values/default"
+    },
+    "cog.set_enabled": {
+      "params": ["guild_id", "cog", "enabled"],
+      "inventory_source": "dashboard.json cogs[] (is_cog == true)"
+    },
+    "help.appearance.set": {
+      "params": ["guild_id", "entity_type", "entity", "changes"],
+      "entity_types": ["command", "subsystem", "home_message"],
+      "changes": ["hidden", "display_name", "description"]
+    },
+    "submission.moderate": {
+      "params": ["submission_id", "verdict", "reason"],
+      "verdicts": ["approve", "reject"],
+      "note": "Defined in the contract for completeness; NOT previewable from this dashboard — gated on rework-plan Q5 (submissions Postgres + issue-mirror PAT)."
+    }
+  },
+  "out_of_scope_v1": ["restart", "stop", "start", "uptime", "live_status"],
+  "out_of_scope_reason": "No restart/uptime/live-status semantics exist in any committed feed today; introducing them is a superbot-side open question recorded in docs/specs/bot-control-api-v1.md."
+}
