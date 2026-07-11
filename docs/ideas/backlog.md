@@ -9,25 +9,12 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
-- **Same-shape contract tests for /orders.json, /queue.json,
-  /projects.json, /reviews.json** · `captured` — only /fleet.json has a
-  pinned shape (Built below); the other four machine endpoints carry the
-  same silent-rename risk and the pattern file now exists to copy — one
-  parametrized test file covers all four at near-zero marginal cost. Source:
-  `.sessions/2026-07-10-fleet-json-contract.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
   feeling responsible. A grouped/overflow ("more ▾") treatment or a CSS
   audit at current width keeps the owner's phone glance usable. Source:
   `.sessions/2026-07-10-activity-repo-filter.md` 💡.
-- **Re-check closed-unmerged PR #9 branch `claude/rework-dashboard` for lost
-  hardening work** · `captured` — #9 was closed superseded in the
-  parallel-checkout churn (`docs/retro/self-review-2026-07-09.md` A4) but the
-  branch is still live on the remote (`docs/CAPABILITIES.md` append log
-  2026-07-10 `list_branches`); the launch-readiness flag (coordinator dispatch,
-  2026-07-10) asks whether hardening in it never landed via #10. Diff it
-  against `main`, salvage or retire explicitly.
 - **"Unseen orders?" badge on `/fleet`** · `captured` — flag a lane whose
   `inbox.md` last-commit is newer than its status `updated:` stamp. Sources:
   `.sessions/2026-07-09-kit-upgrade-v1.6.0.md` ⟲ review; queue-state NEXT
@@ -75,6 +62,14 @@
   [open-pr-awareness-at-wake-2026-07-10.md](open-pr-awareness-at-wake-2026-07-10.md).
 
 ## Built
+
+- **Same-shape contract tests for /orders.json, /queue.json, /projects.json,
+  /reviews.json** — shipped 2026-07-11 (continuous-mode slice 11):
+  `tests/test_json_contracts.py` pins every payload's key sets (cards/orders,
+  items/sources/fleet_manager, packages/files, rows/links) with named-key
+  drift messages and rendered-HTML-absence asserts; companion to the
+  /fleet.json pin. Update the pinned sets in the same PR that changes a
+  payload. Source: `.sessions/2026-07-10-fleet-json-contract.md` 💡.
 
 - **Per-repo `?repo=` filter on the activity views** — shipped 2026-07-11
   (continuous-mode slice 10; decision stamped in `docs/site.md` § 2 + the
@@ -161,6 +156,20 @@
   [activity-atom-feed-2026-07-09.md](activity-atom-feed-2026-07-09.md).
 
 ## Retired
+
+- **Re-check closed-unmerged PR #9 branch `claude/rework-dashboard` for lost
+  hardening work** — retired 2026-07-11 (slice 11 investigation, nothing to
+  salvage): the branch shares NO merge base with main (parallel-checkout
+  root); its only unique hardening commit `a0b459f` ("drop literal
+  control-API env-var name from served HTML; extend denylist test to
+  templates") is fully superseded on main by PR #10 — verified by diff:
+  main's `dashboard/tests/test_dashboard.py::test_no_control_api_token_or_url_anywhere`
+  scans `*.py` AND `*.html` with the same denylist, and a repo-wide grep
+  finds ZERO forbidden literals in shipped dashboard files. The branch's
+  other commits are the superseded parallel dashboard build PR #8 replaced.
+  Branch stays on the remote (branch deletion is a documented 403 wall,
+  `docs/CAPABILITIES.md`) — safe to prune whenever someone with delete
+  rights sweeps; nothing on it is needed.
 
 - **`/fleet` badge: "manifest live parse: last verified \<age\>"** — retired
   2026-07-10 (slice 7 fact-check): already shipped — `fleet.html` has
