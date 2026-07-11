@@ -67,3 +67,11 @@ The continuous-mode chain (slice 31, #139) landed clean and its heartbeat
 was accurate to the file; what it missed — nothing structural, though the
 review service it left behind still described itself as a one-shot snapshot
 site, which this session made untrue in the good direction.
+
+## Park record
+
+#141 green-clean at merge head 1f90d8b55316f13f09888444b27ff3424a5890c3
+(post-wave merge of origin/main; this park-record commit sits atop it as the
+branch tip — a commit cannot cite its own SHA), awaiting owner squash-merge
+(workflow file → owner-click-only); after merge: Railway service
+root=review, then one manual review-bake run.
