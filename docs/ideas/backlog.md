@@ -34,6 +34,17 @@
   normalize markdown emphasis (`*`/`_`) away before phrase matching. Source:
   `.sessions/2026-07-11-kit-upgrade-v1.10.0.md` 💡.
 
+- **Fold the v1.10.1 every-card session-gate loop into the live
+  `quality.yml` lane** · `captured` — the host-owned folded lane in
+  `.github/workflows/quality.yml` still derives the PR's card with
+  `… | tail -1` (single-card picker), the exact multi-card shadowing shape
+  kit v1.10.1 fixed in the staged `.substrate/ci/substrate-gate.yml`: a PR
+  adding a born-red card AND modifying a later-sorting sibling grades only
+  the sibling and ships the in-progress card green. Port the staged gate's
+  every-card loop (added → per-card HOLD lane, modified siblings advisory,
+  modified-only → locked door per card) into the folded step. Source:
+  `.sessions/2026-07-11-kit-upgrade-v1.10.1.md` 💡.
+
 - **Ask the manager for a generated `lanes.json`** · `captured` — /fleet
   now parses the LANES literal out of fleet-manager's gen_roster.py source
   (honest but coupled to a script's internals); one generated

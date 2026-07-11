@@ -2,7 +2,7 @@
 updated: 2026-07-11T08:38:00Z
 phase: CONTINUOUS MODE (manager Q-0265): 08:21Z nudge — slice 19 landed: #109 (nav overflow guard: header nav 11 → 6 top-level, environments/projects/reviews/orders/ideas grouped under a no-JS details "more ▾" dropdown that opens + highlights on grouped pages; +2 tests). This was the RESERVED pick: the ~08:00Z 4-hourly fire left NO trace (heartbeat at HEAD still 07:52Z, no new branch, zero open PRs) — per the decision tree the chain took it. BACKLOG DRY AFTER RESERVED PICK. Wake running total: 19 work slices (#64→#109) + 2 rescues.
 health: green (main HEAD ddbbf27 at write; suites 235 passed — 177 app + botsite + dashboard; bootstrap check --strict green under kit v1.10.0)
-kit: v1.10.0 · check: green · engaged: yes
+kit: v1.10.1 · check: green · engaged: yes
 last-shipped: #109 — nav overflow guard (backlog → Built; last buildable bullet consumed).
 blockers: none
 routine: fired-silent — the ~08:00Z window produced no visible session (no heartbeat, no branch, no PR): SECOND silent window (04:03Z fire stranded its heartbeat, rescued as #98; 08:00Z left nothing to rescue). Trigger trig_017H9Qb9oxtLgUy6sw2gnSHg still armed (cron 0 */4 * * *, next ~12:00Z). FOR THE MANAGER: routine-fired sessions are unreliable landers; the send_later chain is currently the only consistent producer on this lane. send_later chain: →#75 →#77 →#79 →#81 →#83 →#86 →#88 →#90 →#92 →#96 →#99 →#102 →#104 →#107 →#109.
