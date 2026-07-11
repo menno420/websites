@@ -1136,70 +1136,71 @@ def test_fleet_route_degrades_no_auth(client):
 # markdown table, one row per Project. Includes the `manager` control chair (no
 # concrete repo -> not a lane), a multi-repo Project (SuperBot coordinator), and
 # two shared-repo cohabitation lanes (superbot-games). Matches the real format.
-_SAMPLE_MANIFEST = """# Fleet manifest — Project registry
+_SAMPLE_REGISTRY = """
+# roster generator excerpt (the registry literal /fleet parses live)
+LANES = [
+    {"lane": "superbot (hub)", "repo": "superbot", "disposition": "hub",
+     "tokens": ["superbot"]},
+    {"lane": "websites", "repo": "websites", "disposition": "live",
+     "tokens": ["websites"]},
+    {"lane": "superbot-games \u00b7 Seat A", "repo": "superbot-games",
+     "disposition": "live", "tokens": ["superbot-games"]},
+    {"lane": "retro-games coordinator (no repo)", "repo": None,
+     "disposition": "registry-only", "tokens": ["retro"]},
+    {"lane": "codetool-lab-fable5", "repo": "codetool-lab-fable5",
+     "disposition": "archived", "tokens": ["codetool"]},
+]
 
-> Status: living-ledger — maintained by the manager Project.
-
-| Project | Repo(s) | Model | Routine cadence | Last-seen | Notes |
-|---|---|---|---|---|---|
-| **manager** | all program repos (control chair; builds nothing) | — | daily | 2026-07-09T12:07Z | sole writer of every inbox |
-| **SuperBot coordinator** | menno420/superbot · menno420/superbot-next | unknown | not yet armed | 2026-07-09 | rebuild complete |
-| **kit-lab** | menno420/substrate-kit | unknown | not yet armed | 2026-07-09 | v1.0.0 released |
-| **websites** | menno420/websites | unknown | not yet armed | 2026-07-09 | 3 services live |
-| **trading-lab** | menno420/trading-strategy | default (Opus 4.8) | not yet armed | 2026-07-09 | research-only |
-| **game-mining** | menno420/superbot-games (shared, lanes) | default | not yet armed | 2026-07-09 | cohabitation experiment |
-| **game-exploration** | menno420/superbot-games (shared, lanes) | default | not yet armed | 2026-07-09 | cohabitation experiment |
-| codetool-lab-fable5 | menno420/codetool-lab-fable5 | Fable 5 | planned | 2026-07-09 | coding arm |
-| codetool-lab-opus48 | menno420/codetool-lab-opus4.8 | Opus 4.8 | planned | 2026-07-09 | coding arm |
-| codetool-lab-sonnet5 | menno420/codetool-lab-sonnet5 | Sonnet 5 | planned | 2026-07-09 | coding arm |
-
-Deferred fleet menu: game-lab · bot-lab · research-lab.
+GITHUB_BASE = "https://github.com/menno420/"
 """
 
 
-def test_parse_manifest_yields_expected_lanes():
-    """parse_manifest + manifest_to_lanes turn the manifest table into the exact
-    lane set: the `manager` row (no concrete repo) is skipped, the multi-repo
-    SuperBot coordinator expands to a `superbot` + `superbot-next` lane, and the
-    two superbot-games rows become status-<slug>.md cohabitation lanes."""
-    lanes = fleet.manifest_to_lanes(fleet.parse_manifest(_SAMPLE_MANIFEST))
+def test_parse_registry_yields_expected_lanes():
+    """parse_registry + registry_to_lanes turn the gen_roster LANES literal
+    into the lane set: registry-only seats (repo None) are skipped; hub and
+    archived dispositions are kept with honest notes."""
+    lanes = fleet.registry_to_lanes(fleet.parse_registry(_SAMPLE_REGISTRY))
     got = {(la["repo"], la["status_path"]) for la in lanes}
-    expected = {
+    assert got == {
         ("superbot", "control/status.md"),
-        ("superbot-next", "control/status.md"),
-        ("substrate-kit", "control/status.md"),
         ("websites", "control/status.md"),
-        ("trading-strategy", "control/status.md"),
-        ("superbot-games", "control/status-mining.md"),
-        ("superbot-games", "control/status-exploration.md"),
+        ("superbot-games", "control/status.md"),
         ("codetool-lab-fable5", "control/status.md"),
-        ("codetool-lab-opus4.8", "control/status.md"),
-        ("codetool-lab-sonnet5", "control/status.md"),
     }
-    assert got == expected
-    assert len(lanes) == 10  # 'manager' skipped; coordinator + games expanded
-    # The live-parsed set matches the hand-kept fallback (drift-free by design).
-    assert got == {(la["repo"], la["status_path"]) for la in config.FLEET_LANES}
+    notes = {la["repo"]: la["note"] for la in lanes}
+    assert "hub seat" in notes["superbot"]
+    assert "archived" in notes["codetool-lab-fable5"]
 
 
-def test_manifest_added_lane_auto_appears():
-    """A lane ADDED to the manifest appears in the derived set with no code
-    change — the whole point of parsing the manifest live (drift removed)."""
-    added = _SAMPLE_MANIFEST.rstrip().rsplit("\n", 1)[0] + (
-        "\n| new-lab | menno420/new-lab | Opus 4.8 | planned | 2026-07-09 | brand new lane |\n"
+def test_registry_added_lane_auto_appears():
+    """A lane ADDED to the registry appears in the derived set with no code
+    change — the point of parsing the registry live (drift removed)."""
+    added = _SAMPLE_REGISTRY.replace(
+        'LANES = [',
+        'LANES = [\n    {"lane": "new-lab", "repo": "new-lab", '
+        '"disposition": "live", "tokens": ["new-lab"]},',
     )
-    lanes = fleet.manifest_to_lanes(fleet.parse_manifest(added))
-    repos = {la["repo"] for la in lanes}
-    assert "new-lab" in repos
-    assert len(lanes) == 11
+    lanes = fleet.registry_to_lanes(fleet.parse_registry(added))
+    assert "new-lab" in {la["repo"] for la in lanes}
+    assert len(lanes) == 5
 
 
-def test_resolve_lanes_uses_manifest_when_available(monkeypatch):
-    """resolve_lanes fetches + parses the manifest as the PRIMARY source."""
+def test_parse_registry_honest_on_missing_or_malformed():
+    """No LANES literal -> [] (never guessed); a malformed literal raises to
+    the caller's fallback path."""
+    assert fleet.parse_registry("print('no registry here')") == []
+    assert fleet.parse_registry("") == []
+    import pytest as _pytest
+    with _pytest.raises(Exception):
+        fleet.parse_registry("LANES = [\n    {unquoted: nope},\n]")
+
+
+def test_resolve_lanes_uses_registry_when_available(monkeypatch):
+    """resolve_lanes fetches + parses the registry as the PRIMARY source."""
 
     async def fake_fetch(repo, path, ref="main", refresh=False):
-        assert repo == fleet.MANIFEST_REPO and path == fleet.MANIFEST_PATH
-        return {"ok": True, "status": 200, "data": _SAMPLE_MANIFEST, "error": "",
+        assert repo == fleet.REGISTRY_REPO and path == fleet.REGISTRY_PATH
+        return {"ok": True, "status": 200, "data": _SAMPLE_REGISTRY, "error": "",
                 "fetched_at": "", "cached": False, "url": ""}
 
     async def run():
@@ -1207,8 +1208,8 @@ def test_resolve_lanes_uses_manifest_when_available(monkeypatch):
         return await fleet.resolve_lanes()
 
     lanes, source = asyncio.run(run())
-    assert source["source"] == "manifest" and source["ok"] is True
-    assert source["count"] == 10 and len(lanes) == 10
+    assert source["source"] == "registry" and source["ok"] is True
+    assert source["count"] == 4 and len(lanes) == 4
 
 
 def test_resolve_lanes_falls_back_on_fetch_failure(monkeypatch):
@@ -1229,13 +1230,13 @@ def test_resolve_lanes_falls_back_on_fetch_failure(monkeypatch):
     assert lanes == list(config.FLEET_LANES)
 
 
-def test_fleet_overview_is_manifest_sourced(monkeypatch):
-    """overview() reports the lane set as manifest-sourced when the manifest is
-    reachable, and renders the manifest-derived lanes (not the fallback)."""
+def test_fleet_overview_is_registry_sourced(monkeypatch):
+    """overview() reports the lane set as registry-sourced when the registry is
+    reachable, and renders the registry-derived lanes (not the fallback)."""
 
     async def fake_fetch(repo, path, ref="main", refresh=False):
-        if path == fleet.MANIFEST_PATH:
-            return {"ok": True, "status": 200, "data": _SAMPLE_MANIFEST, "error": "",
+        if path == fleet.REGISTRY_PATH:
+            return {"ok": True, "status": 200, "data": _SAMPLE_REGISTRY, "error": "",
                     "fetched_at": "", "cached": False, "url": ""}
         # No lane has a status file in this test -> honest absences.
         return {"ok": False, "status": 404, "data": None, "error": "nf",
@@ -1251,13 +1252,13 @@ def test_fleet_overview_is_manifest_sourced(monkeypatch):
         return await fleet.overview()
 
     out = asyncio.run(run())
-    assert out["lane_source"]["source"] == "manifest"
-    assert out["summary"]["total"] == 10
+    assert out["lane_source"]["source"] == "registry"
+    assert out["summary"]["total"] == 4
     assert {lane["repo"] for lane in out["lanes"]} >= {"superbot-games", "websites"}
 
 
 def test_fleet_unreadable_repo_is_honest_not_dropped(monkeypatch):
-    """A manifest lane whose repo the token can't read (401/403) renders as an
+    """A registry lane whose repo the token can't read (401/403) renders as an
     honest `unreadable` state — never dropped, never faked."""
 
     async def fake_fetch(repo, path, ref="main", refresh=False):

@@ -29,15 +29,17 @@ from . import config, github, journal
 OWNER = config.OWNER
 
 # The manager's canonical lane registry — the single source of truth for WHICH
-# lanes exist (one row per Project). `/fleet` parses this live so a lane added to
-# the manifest auto-appears on the page (no hand-kept copy to drift). superbot is
-# READ-ONLY here: the file is fetched at request time via the shared TTL-cached
-# github layer; nothing in superbot is written.
-MANIFEST_REPO = "superbot"
-MANIFEST_PATH = "docs/eap/fleet-manifest.md"
-
-# Extract every `menno420/<repo>` reference from a manifest Repo(s) cell.
-_MANIFEST_REPO_RE = re.compile(rf"{re.escape(OWNER)}/([A-Za-z0-9._-]+)")
+# lanes exist. Since 2026-07-11 (fleet-manager PR #59) that is the ``LANES``
+# list inside fleet-manager's roster generator: the old hand-kept superbot
+# fleet-manifest went `historical` (its table removed — healthcheck run 2
+# caught the break live), and the generated roster (docs/roster.md) is a
+# STATUS snapshot whose table carries no repo column, so the generator's own
+# registry literal is the one machine-readable lane→repo mapping. `/fleet`
+# parses it live so a lane added there auto-appears. fleet-manager is
+# READ-ONLY here: fetched at request time via the shared TTL-cached github
+# layer; nothing upstream is written.
+REGISTRY_REPO = "fleet-manager"
+REGISTRY_PATH = "scripts/gen_roster.py"
 
 # Documented status.md field keys (control/README.md format block). A line is
 # only treated as a NEW field when its leading token (before the first colon) is
@@ -435,225 +437,95 @@ def _gh_blob(repo: str, path: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# Live lane set from the manager's fleet-manifest
+# Live lane set from the fleet-manager registry
 # --------------------------------------------------------------------------- #
-# The manifest (menno420/superbot -> docs/eap/fleet-manifest.md) is a markdown
-# table, one row per Project:
-#     | Project | Repo(s) | Model | Routine cadence | Last-seen | Notes |
-# We parse the table (mapping columns by HEADER NAME so a reorder can't shift a
-# cell), then turn rows into the same lane dicts `config.FLEET_LANES` holds:
-#   {lane, repo, status_path, model, note}.
-# Two shapes need expanding beyond a plain single-repo row:
-#   * a row naming MORE THAN ONE repo (the SuperBot coordinator spans
-#     superbot + superbot-next; its heartbeat is written to superbot-next, so the
-#     bare superbot lane 404s as an honest absence) -> one lane per repo;
-#   * a repo SHARED by >1 row (the superbot-games cohabitation lanes) -> the
-#     lane reads `control/status-<slug>.md`, slug derived from the Project name.
-# The `manager` row (which builds nothing / owns no concrete repo) is skipped.
+# The registry is the ``LANES = [...]`` literal inside
+# fleet-manager/scripts/gen_roster.py — the roster generator's ONE
+# hand-maintained input (its own header says "Add a lane here when a seat is
+# born"). Each entry: {lane, repo (None for registry-only seats),
+# disposition ("live" | "hub" | "archived" | "registry-only"), tokens}.
+# We extract the literal with ast.literal_eval (pure data, never executed)
+# and map entries to the same lane dicts ``config.FLEET_LANES`` holds:
+# {lane, repo, status_path, model, note}. Registry-only seats (no repo) are
+# skipped — nothing to fetch; archived/hub dispositions are kept and noted
+# (an archived lane's stale heartbeat is honest history, not an error).
+
+_REGISTRY_LANES_RE = re.compile(r"^LANES\s*=\s*(\[.*?\n\])", re.DOTALL | re.MULTILINE)
 
 
-def _strip_md(cell: str) -> str:
-    """Strip markdown emphasis + a trailing link target from a table cell."""
-    return cell.replace("**", "").replace("*", "").strip()
+def parse_registry(text: str) -> list[dict[str, Any]]:
+    """Extract the registry's ``LANES`` literal from gen_roster.py source.
 
-
-def _lane_slug(project: str) -> str:
-    """Distinguishing slug for a shared-repo lane, from its Project name.
-
-    ``game-mining`` -> ``mining``; ``game-exploration`` -> ``exploration`` (the
-    segment after the first hyphen). A hyphen-less name slugifies whole. Drives
-    the ``control/status-<slug>.md`` path shared-repo cohabitation lanes use.
+    ``ast.literal_eval`` on the captured list — pure data, never executed
+    code. Returns [] (never a guess) when the literal is absent or not a
+    list of dicts; a malformed literal raises to the caller's honest
+    fallback path.
     """
-    p = project.strip().lower()
-    tail = p.split("-", 1)[1] if "-" in p else p
-    return re.sub(r"[^a-z0-9]+", "-", tail).strip("-") or "lane"
+    import ast
+
+    m = _REGISTRY_LANES_RE.search(text or "")
+    if not m:
+        return []
+    data = ast.literal_eval(m.group(1))
+    if not isinstance(data, list):
+        return []
+    return [e for e in data if isinstance(e, dict)]
 
 
-def _clean_model(model: str) -> str:
-    """Normalize a manifest Model cell to a display value.
+def registry_to_lanes(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Registry entries → `/fleet` lane dicts (FLEET_LANES shape).
 
-    ``—`` / empty -> ``unknown`` (the template hides an ``unknown`` model). Any
-    other value (``Fable 5``, ``default (Opus 4.8)``) is passed through trimmed.
+    Registry-only seats (``repo: None``) are skipped — there is no heartbeat
+    file to fetch. Every lane reads ``control/status.md`` (the fleet's
+    current convention; a lane without one renders as an honest absence).
+    The disposition travels in the note so archived/hub lanes read honestly.
     """
-    m = _strip_md(model).strip()
-    if not m or m in {"—", "-", "–"}:
-        return "unknown"
-    return m
-
-
-def parse_manifest(text: str) -> list[dict[str, Any]]:
-    """Parse the fleet-manifest markdown table into raw Project rows.
-
-    Returns one dict per data row: ``{project, repos, model, cadence, last_seen,
-    notes}`` where ``repos`` is the list of ``menno420/<repo>`` names in the
-    Repo(s) cell (empty for the ``manager`` row, which names no concrete repo).
-    Columns are located by HEADER NAME, so a column reorder in the manifest does
-    not silently shift a value into the wrong field.
-    """
-    rows: list[list[str]] = []
-    for line in text.splitlines():
-        s = line.strip()
-        if s.startswith("|") and s.endswith("|"):
-            # Split on unescaped pipes; drop the empty edges from the outer bars.
-            cells = [c.strip() for c in s.strip("|").split("|")]
-            rows.append(cells)
-    if not rows:
-        return []
-
-    # Locate the header row (has both a Project and a Repo column).
-    header_i = None
-    header: list[str] = []
-    for i, cells in enumerate(rows):
-        low = [c.lower() for c in cells]
-        if any("project" in c for c in low) and any(c.startswith("repo") for c in low):
-            header_i, header = i, low
-            break
-    if header_i is None:
-        return []
-
-    def col(*needles: str) -> Optional[int]:
-        for idx, name in enumerate(header):
-            if any(n in name for n in needles):
-                return idx
-        return None
-
-    ci = {
-        "project": col("project"),
-        "repos": col("repo"),
-        "model": col("model"),
-        "cadence": col("cadence"),
-        "last_seen": col("last-seen", "last seen"),
-        "notes": col("note"),
-    }
-    if ci["project"] is None or ci["repos"] is None:
-        return []
-
-    def get(cells: list[str], key: str) -> str:
-        idx = ci[key]
-        if idx is None or idx >= len(cells):
-            return ""
-        return cells[idx]
-
-    out: list[dict[str, Any]] = []
-    for cells in rows[header_i + 1 :]:
-        # Skip the header separator row (all cells are dashes) and short rows.
-        joined = "".join(cells).replace("|", "")
-        if joined and set(joined) <= set("-: "):
+    lanes: list[dict[str, Any]] = []
+    for e in entries:
+        repo = e.get("repo")
+        if not repo:
             continue
-        project = _strip_md(get(cells, "project"))
-        if not project:
+        disposition = (e.get("disposition") or "").strip()
+        note = ""
+        if disposition == "hub":
+            note = "hub seat — no control/status.md by design (honest absence)."
+        elif disposition == "archived":
+            note = "archived seat (stale-by-design)."
+        elif disposition == "registry-only":  # defensive: repo-less already skipped
             continue
-        repos_cell = get(cells, "repos")
-        repos = _MANIFEST_REPO_RE.findall(repos_cell)
-        out.append(
+        lanes.append(
             {
-                "project": project,
-                "repos": repos,
-                "repos_cell": repos_cell,
-                "model": get(cells, "model"),
-                "cadence": get(cells, "cadence"),
-                "last_seen": get(cells, "last_seen"),
-                "notes": _strip_md(get(cells, "notes")),
+                "lane": str(e.get("lane") or repo),
+                "repo": str(repo),
+                "status_path": "control/status.md",
+                "model": "unknown",
+                "note": note,
             }
         )
-    return out
-
-
-def manifest_to_lanes(manifest_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Turn parsed manifest rows into `/fleet` lane dicts (FLEET_LANES shape).
-
-    Rows naming no concrete repo (the ``manager`` control chair) are skipped.
-    A multi-repo row expands to one lane per repo; a repo shared by >1 row reads
-    ``control/status-<slug>.md``. Everything else is a single ``control/status.md``
-    lane named for its repo — matching the hand-kept `config.FLEET_LANES` set.
-    """
-    # A repo shared across rows (or flagged "shared" in its cell) needs per-lane
-    # status files, so count repo occurrences across the whole manifest first.
-    repo_rows: dict[str, int] = {}
-    for row in manifest_rows:
-        for repo in row["repos"]:
-            repo_rows[repo] = repo_rows.get(repo, 0) + 1
-
-    lanes: list[dict[str, Any]] = []
-    for row in manifest_rows:
-        repos = row["repos"]
-        if not repos:
-            continue  # manager / no concrete repo -> not a lane
-        model = _clean_model(row["model"])
-        notes = row["notes"]
-        project = row["project"]
-        shared = "shared" in row["repos_cell"].lower()
-
-        if len(repos) > 1:
-            # Multi-repo Project (SuperBot coordinator): one lane per repo. Each
-            # reads its OWN control/status.md and degrades honestly — the repo
-            # that doesn't hold the heartbeat 404s as an absence, never a fake.
-            siblings = ", ".join(repos)
-            for repo in repos:
-                others = [r for r in repos if r != repo]
-                note = (
-                    f"{project} Project (spans {siblings})."
-                    + (f" Heartbeat may live in {', '.join(others)}." if others else "")
-                    + (f" {notes}" if notes else "")
-                ).strip()
-                lanes.append(
-                    {
-                        "lane": repo,
-                        "repo": repo,
-                        "status_path": "control/status.md",
-                        "model": model,
-                        "note": note,
-                    }
-                )
-            continue
-
-        repo = repos[0]
-        if shared or repo_rows.get(repo, 0) > 1:
-            # Shared-repo cohabitation lane (superbot-games): the Project name
-            # distinguishes which status-<slug>.md file it writes.
-            slug = _lane_slug(project)
-            lanes.append(
-                {
-                    "lane": f"{repo} · {slug}",
-                    "repo": repo,
-                    "status_path": f"control/status-{slug}.md",
-                    "model": model,
-                    "note": notes or f"{project} lane ({repo} shared-repo cohabitation).",
-                }
-            )
-        else:
-            lanes.append(
-                {
-                    "lane": repo,
-                    "repo": repo,
-                    "status_path": "control/status.md",
-                    "model": model,
-                    "note": notes,
-                }
-            )
     return lanes
 
 
 async def resolve_lanes(
     refresh: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """The lane set for `/fleet`, live from the manifest with an honest fallback.
+    """The lane set for `/fleet`, live from the registry with an honest fallback.
 
-    PRIMARY: fetch + parse the manager's fleet-manifest so a lane added there
-    auto-appears. FALLBACK: on any fetch/parse failure (or a parse that yields
-    zero lanes) return the hand-kept ``config.FLEET_LANES`` and a ``source`` dict
-    the page renders as a visible "using the cached fallback list" notice — it
-    never silently pretends the manifest was live.
+    PRIMARY: fetch + parse the fleet-manager registry (the ``LANES`` literal
+    in gen_roster.py) so a lane added there auto-appears. FALLBACK: on any
+    fetch/parse failure (or a parse that yields zero lanes) return the
+    hand-kept ``config.FLEET_LANES`` and a ``source`` dict the page renders
+    as a visible "using the cached fallback list" notice — it never silently
+    pretends the registry was live.
     """
-    manifest_url = _gh_blob(MANIFEST_REPO, MANIFEST_PATH)
+    registry_url = _gh_blob(REGISTRY_REPO, REGISTRY_PATH)
     try:
-        fetch = await github.fetch_file(MANIFEST_REPO, MANIFEST_PATH, refresh=refresh)
+        fetch = await github.fetch_file(REGISTRY_REPO, REGISTRY_PATH, refresh=refresh)
     except Exception as exc:  # pragma: no cover - defensive
         return list(config.FLEET_LANES), {
             "source": "fallback",
             "ok": False,
-            "reason": f"manifest fetch raised: {type(exc).__name__}",
-            "manifest_url": manifest_url,
+            "reason": f"registry fetch raised: {type(exc).__name__}",
+            "registry_url": registry_url,
         }
 
     if not (fetch["ok"] and isinstance(fetch["data"], str) and fetch["data"].strip()):
@@ -661,34 +533,34 @@ async def resolve_lanes(
         return list(config.FLEET_LANES), {
             "source": "fallback",
             "ok": False,
-            "reason": f"manifest unavailable ({reason})",
-            "manifest_url": manifest_url,
+            "reason": f"registry unavailable ({reason})",
+            "registry_url": registry_url,
         }
 
     try:
-        lanes = manifest_to_lanes(parse_manifest(fetch["data"]))
-    except Exception as exc:  # pragma: no cover - defensive
+        lanes = registry_to_lanes(parse_registry(fetch["data"]))
+    except Exception as exc:
         return list(config.FLEET_LANES), {
             "source": "fallback",
             "ok": False,
-            "reason": f"manifest parse failed: {type(exc).__name__}",
-            "manifest_url": manifest_url,
+            "reason": f"registry parse failed: {type(exc).__name__}",
+            "registry_url": registry_url,
         }
 
     if not lanes:
         return list(config.FLEET_LANES), {
             "source": "fallback",
             "ok": False,
-            "reason": "manifest parsed to zero lanes",
-            "manifest_url": manifest_url,
+            "reason": "registry parsed to zero lanes",
+            "registry_url": registry_url,
         }
 
     return lanes, {
-        "source": "manifest",
+        "source": "registry",
         "ok": True,
         "reason": "",
         "count": len(lanes),
-        "manifest_url": manifest_url,
+        "registry_url": registry_url,
     }
 
 
@@ -748,7 +620,7 @@ async def lane_status(
         # never an error banner. (The bare `superbot` lane is expected here.)
         out["missing"] = True
     elif fetch["status"] in (401, 403):
-        # The manifest may name a lane whose repo the app's token cannot read
+        # The registry may name a lane whose repo the app's token cannot read
         # (private / not granted / rate limited). Render it honestly as
         # "unreadable" — never drop it — so the owner sees the lane exists but
         # its state is hidden. The underlying reason is preserved in the banner.
@@ -794,9 +666,9 @@ def _sort_key(lane: dict) -> tuple:
 async def overview(refresh: bool = False) -> dict[str, Any]:
     """Every fleet lane's heartbeat, attention-sorted, with a fleet summary.
 
-    The lane SET is resolved live from the manager's fleet-manifest (an added
+    The lane SET is resolved live from the fleet-manager registry (an added
     lane auto-appears), falling back to ``config.FLEET_LANES`` with an honest
-    ``lane_source`` notice when the manifest can't be fetched/parsed. Fetches all
+    ``lane_source`` notice when the registry can't be fetched/parsed. Fetches all
     lanes concurrently (cache-backed) against a single ``now`` so every age is
     measured from the same instant. Returns the lane list plus roll-up counts
     (total / live / stale / broken / errored / no-file) so the page can show one
@@ -840,6 +712,6 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
         "summary": summary,
         "stale_hours": config.FLEET_STALE_HOURS,
         "lane_source": lane_source,
-        "manifest_url": lane_source.get("manifest_url")
-        or _gh_blob(MANIFEST_REPO, MANIFEST_PATH),
+        "registry_url": lane_source.get("registry_url")
+        or _gh_blob(REGISTRY_REPO, REGISTRY_PATH),
     }
