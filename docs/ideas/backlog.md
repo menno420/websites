@@ -81,16 +81,15 @@
   zero-packages cost makes the badge exact forever (routing half: flagged to
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
-- **Order-ack latency line in the heartbeat** · `captured` — ORDER 011
-  sat 17 minutes between filing (09:59Z) and claim (10:16Z) purely
-  because a send_later nudge happened to fire; an
-  `orders-latency: <id> filed→claimed <mins>` heartbeat line (or /orders
-  surfacing per-repo filed→claimed deltas from the two files it already
-  parses) would let the manager MEASURE each lane's order-pickup latency
-  instead of inferring it across control/inbox.md and control/status.md
-  timestamps. Worth having because pickup latency is the fleet's real
-  routing SLO and today it is invisible. Source:
-  `.sessions/2026-07-11-order-011-self-review.md` 💡.
+- **Hand-kept-list audit sweep** · `captured` — the nav guard's own
+  hand-kept list is the SECOND self-referential drift this chain found
+  (the first: the overflow guard's markup/tuple duplication #122); a
+  one-off rung-5 sweep grepping tests/ and scripts/ for hard-coded
+  module/file lists that shadow a globbable truth (e.g. any
+  `= [REPO_ROOT /` or literal path-list patterns) would either clear
+  the class or find the third instance. Worth having because this
+  failure shape keeps recurring in guards specifically — the places
+  drift hurts most. Source: `.sessions/2026-07-11-nav-scan-glob.md` 💡.
 - **Inbox relay-order provenance check** · `captured` — the inbox
   grammar gate now enforces SHAPE (append-only + well-formed ORDER
   blocks) but not SOURCE: any green-lane PR author can append a
@@ -111,15 +110,18 @@
   pattern instead of re-learning the 08:45Z lesson. Worth having
   because the failure class is service-agnostic and the fix is one
   small module. Source: `.sessions/2026-07-11-route-clock-freeze.md` 💡.
-- **Nav membership scan should glob `app/*.py`, not a hand list** ·
-  `captured` — `tests/test_nav_manifest.py` scans a hand-kept
-  `ROUTE_SOURCES = [app/main.py, app/owner.py]` for `active` keys: the
-  guard against hand-kept nav lists itself contains a hand-kept module
-  list, so splitting routes into a new module silently exits the scan.
-  Glob `app/*.py` (cheap, source-text scan) or enumerate `app.routes`.
-  Worth having because self-maintaining guards should not have the
-  exact failure mode they guard against. Source:
-  `.sessions/2026-07-11-nav-manifest.md` 💡.
+- **Persist pickup latencies before claims clear** · `captured` — the
+  rollup can only see CURRENTLY-standing claims (done orders drop
+  their claimed-by annotation per doctrine, taking the latency datum
+  with them — live-verified on ORDER 011 post-#133); the honest fix is
+  at the protocol layer, not scraping: ask the manager to consider a
+  one-line convention where the executor's done= move appends the
+  pickup figure to the heartbeat notes (e.g. `pickup: 011 19m`), which
+  /orders could then parse into a durable per-lane history. Routing
+  half: flag to the manager in the heartbeat. Worth having because the
+  SLO's history vanishes exactly when an order completes — the moment
+  it becomes most meaningful. Source:
+  `.sessions/2026-07-11-pickup-latency-rollup.md` 💡.
 - **Control-gate suite tests** — shipped 2026-07-11 (continuous-mode
   slice 26): tests/test_control_gates.py drives the real
   `check --strict --status-only [--inbox-base]` CLI against a synthetic

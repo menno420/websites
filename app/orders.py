@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import statistics
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -121,7 +122,7 @@ def classify_order(
     ``claim_age_human`` for display. A claim whose timestamp did not parse
     ages honestly as unknown (never flagged stale on a guess).
     """
-    base = {"claim_stale": False, "claim_age_human": ""}
+    base = {"claim_stale": False, "claim_age_human": "", "claimed_at": None}
     if not statuses:
         return {"state": "unknown", "by": "", **base}
     now = now or clock.now()
@@ -149,6 +150,7 @@ def classify_order(
                 pass
     if claimed_by:
         out = {"state": "claimed", "by": claimed_by, **base}
+        out["claimed_at"] = claimed_at
         dt = fleet._parse_iso(claimed_at or "")
         if dt is not None:
             age_hours = (now - dt).total_seconds() / 3600
@@ -198,6 +200,8 @@ async def _repo_orders(
         "claimed_count": 0,
         "done_count": 0,
         "unknown_count": 0,
+        "pickup_median_mins": None,
+        "pickup_median_human": "",
     }
 
     if not (
@@ -219,10 +223,71 @@ async def _repo_orders(
         order["state_by"] = cls["by"]
         order["claim_stale"] = cls["claim_stale"]
         order["claim_age_human"] = cls["claim_age_human"]
+        lat = pickup_latency(order.get("issued", ""), cls.get("claimed_at"))
+        order["pickup_latency_mins"] = lat["mins"]
+        order["pickup_latency_human"] = lat["human"]
         order["body_html"] = journal.render_markdown(order["body"])
         out["orders"].append(order)
         out[f"{cls['state']}_count"] += 1
+
+    lats = [
+        o["pickup_latency_mins"]
+        for o in out["orders"]
+        if o["pickup_latency_mins"] is not None
+    ]
+    if lats:
+        med = statistics.median(lats)
+        out["pickup_median_mins"] = round(med, 1)
+        out["pickup_median_human"] = fleet._human_age(med / 60)
+    else:
+        # honest absence — a repo with no measurable pickups gets no number
+        out["pickup_median_mins"] = None
+        out["pickup_median_human"] = ""
     return out
+
+
+def _pickup_rollup(cards: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    """Median/max over every measurable pickup latency across the fleet.
+
+    ``None`` when no order anywhere carries a latency (claims drop on
+    completion, so quiet fleets legitimately have nothing to aggregate) —
+    the page then shows no chip instead of a fabricated zero.
+    """
+    lats = [
+        o["pickup_latency_mins"]
+        for c in cards
+        for o in c["orders"]
+        if o.get("pickup_latency_mins") is not None
+    ]
+    if not lats:
+        return None
+    med, worst = statistics.median(lats), max(lats)
+    return {
+        "count": len(lats),
+        "median_mins": round(med, 1),
+        "median_human": fleet._human_age(med / 60),
+        "max_mins": round(worst, 1),
+        "max_human": fleet._human_age(worst / 60),
+    }
+
+
+def pickup_latency(issued: str, claimed_at: Optional[str]) -> dict[str, Any]:
+    """filed→claimed latency — the fleet's order-routing SLO, finally visible.
+
+    Both timestamps already live in the data /orders parses (the ORDER
+    header's issued stamp; the lane claim's ISO token); this subtracts
+    them. Honest on any miss: an unparseable/absent stamp or a negative
+    delta (clock skew between two hand-written timestamps) yields
+    ``{"mins": None, "human": ""}`` — latency is never guessed.
+    """
+    filed = fleet._parse_iso(issued or "")
+    claimed = fleet._parse_iso(claimed_at or "")
+    if filed is None or claimed is None:
+        return {"mins": None, "human": ""}
+    mins = (claimed - filed).total_seconds() / 60
+    if mins < 0:
+        return {"mins": None, "human": ""}
+    return {"mins": round(mins, 1), "human": fleet._human_age(mins / 60)}
 
 
 def _sort_key(card: dict[str, Any]) -> tuple:
@@ -280,5 +345,10 @@ async def overview(
         "stale_claims": sum(
             1 for c in cards for o in c["orders"] if o.get("claim_stale")
         ),
+        # Fleet-wide pickup-latency rollup (filed→claimed, the routing SLO):
+        # median resists the one-weird-hand-written-timestamp outlier, max
+        # names the worst pickup. None (not zero) when NO order carries a
+        # measurable latency — stats are never invented.
+        "pickup": _pickup_rollup(cards),
     }
     return {"cards": cards, "summary": summary, "lane_source": lane_source}
