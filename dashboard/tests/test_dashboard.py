@@ -4,10 +4,15 @@ every route serves without credentials, so the pages are exercised with no auth 
 
 from __future__ import annotations
 
+import html
+import json
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
 from dashboard import app as app_module  # noqa: E402
+from dashboard import control_plane as cp  # noqa: E402
 from dashboard import data_source as ds  # noqa: E402
 
 DASHBOARD_FIXTURE = {
@@ -95,18 +100,22 @@ CONSOLE_FIXTURE = {
 READ_ONLY_PATHS = [
     "/", "/functions", "/commands", "/aliases", "/settings", "/access",
     "/env", "/ideas", "/bugs", "/updates", "/status", "/console", "/admin",
+    "/admin/settings/economy", "/admin/cogs", "/admin/help", "/admin/audit",
+    "/admin/login",
 ]
 
 
 @pytest.fixture()
 def client():
     ds.clear_cache()
+    cp.controller.clear()  # the dry-run audit log is per-process; isolate tests
     ds.prime_cache(ds.DASHBOARD_JSON_URL, DASHBOARD_FIXTURE)
     ds.prime_cache(ds.CONSOLE_JSON_URL, CONSOLE_FIXTURE)
     ds.set_client(ds.make_client())  # never actually hit (cache is warm)
     with TestClient(app_module.app) as c:
         yield c
     ds.clear_cache()
+    cp.controller.clear()
 
 
 # --- public access (no auth) ---------------------------------------------
@@ -193,13 +202,18 @@ def test_aliases_taken_map_embedded(client):
     assert "taken-map" in r.text  # collision map embedded for the client checker
 
 
-# --- the deliberate control-panel stub -----------------------------------
-def test_admin_is_a_labeled_stub(client):
+# --- the control panel: DRY-RUN management UX (consciously updated from the
+# --- four-inert-cards stub — the honest labels are pinned here) ------------
+def test_admin_is_honestly_labeled_dry_run(client):
     r = client.get("/admin")
     assert r.status_code == 200
+    assert "DRY-RUN" in r.text
+    assert "cannot affect the live bot" in r.text.lower()
+    assert "holds no credentials" in r.text.lower()
+    assert "clears on restart" in r.text.lower()  # audit-log honesty label
+    # The submission-moderation card stays inert, gated on Q5, with its honest tag.
     assert "requires owner wiring" in r.text.lower()
-    assert "not connected to the live bot" in r.text.lower()
-    assert "stub-action" in r.text  # disabled placeholder styling present
+    assert "stub-action" in r.text
 
 
 def test_no_control_api_token_or_url_anywhere():
@@ -216,6 +230,137 @@ def test_no_control_api_token_or_url_anywhere():
         text = f.read_text(encoding="utf-8")
         for needle in forbidden:
             assert needle not in text, f"{needle} must not appear in {f}"
+
+
+# --- dry-run controller seam + the pinned bot-control contract -------------
+GUILD = "123456789012345678"
+
+
+def _extract_request_json(page_text: str) -> dict:
+    m = re.search(r'<pre class="snippet" id="request-json">(.*?)</pre>', page_text, re.S)
+    assert m, "the page must embed the exact request JSON"
+    return json.loads(html.unescape(m.group(1)))
+
+
+def test_control_contract_parses_and_is_v1():
+    contract = cp.load_control_contract()
+    assert contract["version"] == 1
+    # Every UI-previewable action is defined in the pin; requests carry schema_version.
+    for action in cp.UI_ACTIONS:
+        assert action in contract["actions"]
+    assert "schema_version" in contract["request"]
+    assert "dry_run" in contract["request"]
+
+
+def test_every_ui_previewable_action_validates_against_contract(client):
+    """Each action the /admin UI can build must produce a contract-valid request."""
+    data = DASHBOARD_FIXTURE
+    forms = {
+        "setting.write": {"guild_id": GUILD, "domain": "economy", "key": "daily_amount", "value": "250"},
+        "cog.set_enabled": {"guild_id": GUILD, "cog": "EconomyCog", "enabled": "true"},
+        "help.appearance.set": {"guild_id": GUILD, "entity_type": "command", "entity": "daily",
+                                "display_name": "Daily reward"},
+    }
+    assert set(forms) == set(cp.UI_ACTIONS)
+    for action, form in forms.items():
+        req = cp.controller.build_request(action, form, data)
+        assert cp.contract_issue(req) == ""
+        assert req["dry_run"] is True
+        assert req["actor"]["display"] == "anonymous (OAuth not configured)"
+
+
+def test_preview_shows_exact_typed_contract_request(client):
+    r = client.post("/admin/actions/preview", data={
+        "action": "setting.write", "guild_id": GUILD,
+        "domain": "economy", "key": "daily_amount", "value": "250",
+    })
+    assert r.status_code == 200
+    req = _extract_request_json(r.text)
+    assert cp.contract_issue(req) == ""
+    assert req["params"]["value"] == 250  # typed by the schema: int, not "250"
+    assert req["dry_run"] is True
+    assert "Confirm" in r.text and "record dry-run" in r.text
+    assert cp.controller.entries() == []  # previewing records nothing
+
+
+def test_preview_invalid_setting_value_rejected(client):
+    r = client.post("/admin/actions/preview", data={
+        "action": "setting.write", "guild_id": GUILD,
+        "domain": "economy", "key": "shop_enabled", "value": "banana",
+    })
+    assert r.status_code == 400
+    assert "nothing was recorded" in r.text.lower()
+    assert "invalid_value" in r.text
+    assert cp.controller.entries() == []
+
+
+def test_preview_unknown_cog_rejected(client):
+    r = client.post("/admin/actions/preview", data={
+        "action": "cog.set_enabled", "guild_id": GUILD, "cog": "NopeCog", "enabled": "true",
+    })
+    assert r.status_code == 400
+    assert "unknown_cog" in r.text
+
+
+def test_preview_bad_guild_id_rejected(client):
+    r = client.post("/admin/actions/preview", data={
+        "action": "setting.write", "guild_id": "not-a-guild",
+        "domain": "economy", "key": "daily_amount", "value": "5",
+    })
+    assert r.status_code == 400
+    assert "digits" in r.text
+
+
+def test_help_appearance_requires_a_change(client):
+    r = client.post("/admin/actions/preview", data={
+        "action": "help.appearance.set", "guild_id": GUILD,
+        "entity_type": "command", "entity": "daily",
+        "display_name": "", "description": "",
+    })
+    assert r.status_code == 400
+    assert "no_changes" in r.text
+
+
+def test_confirm_records_audit_entry_and_is_honest(client):
+    r = client.post("/admin/actions/confirm", data={
+        "action": "setting.write", "guild_id": GUILD,
+        "domain": "economy", "key": "shop_enabled", "value": "false",
+        "idempotency_key": "k-test-123", "requested_at": "2026-07-11T00:00:00Z",
+    })
+    assert r.status_code == 200
+    assert "recorded, not sent" in r.text.lower()
+    entries = cp.controller.entries()
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry["action"] == "setting.write"
+    assert entry["outcome"] == "dry-run: recorded, not sent"
+    # The confirmed request preserves the previewed envelope fields verbatim.
+    assert entry["request"]["idempotency_key"] == "k-test-123"
+    assert entry["request"]["requested_at"] == "2026-07-11T00:00:00Z"
+    assert entry["request"]["params"]["value"] is False
+    assert cp.contract_issue(entry["request"]) == ""
+
+
+def test_audit_page_renders_recorded_entries(client):
+    client.post("/admin/actions/confirm", data={
+        "action": "cog.set_enabled", "guild_id": GUILD, "cog": "EconomyCog", "enabled": "false",
+    })
+    r = client.get("/admin/audit")
+    assert r.status_code == 200
+    assert "cog.set_enabled" in r.text
+    assert "anonymous (OAuth not configured)" in r.text
+    assert "clears on restart" in r.text.lower()  # honest lifetime label
+
+
+def test_admin_login_page_is_honest(client):
+    r = client.get("/admin/login")
+    assert r.status_code == 200
+    assert "not configured" in r.text.lower()
+    assert "separate service" in r.text.lower()
+
+
+def test_unknown_settings_domain_404(client):
+    assert client.get("/admin/settings/not-a-domain").status_code == 404
 
 
 # --- honest degradation --------------------------------------------------

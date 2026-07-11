@@ -1,64 +1,93 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% block title %}Control panel (stub) — SuperBot dashboard{% endblock %}
+{% block title %}Control panel (dry-run) — SuperBot dashboard{% endblock %}
 
 {% block content %}
 <div class="wrap">
   <section class="sb-page-hero">
-    <span class="sb-ey"><span class="dot">·</span> control panel · not connected</span>
-    <div class="head-row"><h1>Control panel <span class="sb-grad">(stub)</span></h1></div>
-    <p class="sb-lead">In superbot, this is a Discord-OAuth control panel that writes the <strong>live production
-      bot</strong>'s control API — sign in, pick a server you administer, and edit its settings, help appearance,
-      and cog enable/disable, applied live. That live-write path is deliberately <strong>not connected</strong>
-      here.</p>
+    <span class="sb-ey"><span class="dot">·</span> control panel · dry-run · not connected</span>
+    <div class="head-row"><h1>Control panel <span class="sb-grad">(dry-run)</span></h1></div>
+    <p class="sb-lead">The complete management UX for the live bot — settings, cog routing, help
+      appearance — driven by the bot's own committed inventory. Every flow ends in a
+      <strong>recorded dry-run</strong>, never a live write: this service is deliberately
+      credential-free while owner decision Q-0004 (where live control lives) stays open.</p>
   </section>
 
-  <div class="stub-banner">
-    <span class="ico">{{ icon("alert", 22) }}</span>
-    <div>
-      <strong>Requires owner wiring — not connected to the live bot.</strong>
-      <p>This service is the <em>read-only</em> oversight surface. The control panel writes the running production
-      bot across a repo boundary, which is an owner decision (rework-plan open question Q4). To keep production safe,
-      this build ships the panel as a <strong>labeled stub</strong>: the UI below shows the shape, but every mutating
-      action is a disabled placeholder.</p>
-      <p><strong>No production bot control-API URL or token exists anywhere in this service.</strong> There is no
-      Discord OAuth client, no bot control-API token, and no write path — by design, until the owner decides where
-      bot control should live (here, in superbot, or in superbot-next).</p>
-    </div>
-  </div>
+  {% include "_admin_dryrun.html" %}
 
-  {# The UI shape, rendered so the intent is visible — but inert. #}
   <div class="group-head"><h2>Sign in</h2></div>
   <div class="sb-panel">
     <p class="sb-panel-title">Discord OAuth</p>
     <div class="kv-row" style="align-items:center; gap:14px">
-      <span class="stub-action sb-btn sb-btn-primary sb-btn-sm" aria-disabled="true">{{ icon("shield", 14) }} Sign in with Discord</span>
-      <span class="stub-tag">disabled — not connected</span>
+      <a class="sb-btn sb-btn-primary sb-btn-sm" href="/admin/login">{{ icon("shield", 14) }} Sign in with Discord</a>
+      <span class="stub-tag">not configured on this deployment</span>
     </div>
+    <p class="feat-desc" style="margin-top:10px">Actions below are attributed to
+      <code>anonymous (OAuth not configured)</code> in the dry-run audit log.</p>
   </div>
 
-  <div class="group-head"><h2>Per-server editors</h2></div>
-  <div class="card-grid two">
-    {% for title, desc in [
-      ('Settings', 'Edit any per-guild setting through the bot\'s audited seam.'),
-      ('Help appearance', 'Hide / rename / re-describe Help entities and the Home message.'),
-      ('Cog routing', 'Enable or disable a cog per server, applied live.'),
-      ('Submission moderation', 'Owner-gated review of public /submit suggestions → GitHub-issue mirror.')
-    ] %}
-    <div class="sb-card" style="cursor:default">
-      <div style="font-weight:700; margin-bottom:6px">{{ title }}</div>
-      <p class="feat-desc" style="-webkit-line-clamp:3">{{ desc }}</p>
-      <div class="feat-tags" style="align-items:center">
-        <span class="stub-action sb-btn sb-btn-soft sb-btn-sm" aria-disabled="true">{{ icon("clock", 14) }} Manage</span>
-        <span class="stub-tag">requires owner wiring</span>
-      </div>
-    </div>
+  <div class="group-head"><h2>Per-server management</h2>
+    <span class="n">{{ setting_key_total }} setting keys · {{ cog_total }} cogs · {{ command_total }} commands — live from <code>dashboard.json</code></span>
+  </div>
+
+  <div class="group-head" style="margin-top:var(--sb-s-5)"><h2 style="font-size:var(--sb-text-lg)">Settings</h2>
+    <span class="n">{{ settings|length }} domains</span></div>
+  <p class="feat-desc" style="-webkit-line-clamp:2; margin-bottom:var(--sb-s-4)">Edit any per-guild
+    setting through the bot's audited seam — typed by the live schema (type, allowed values, default).
+    Pick a domain to open its typed write forms.</p>
+  <div class="card-grid">
+    {% for dom in settings %}
+    <a class="sb-card feat-link" href="/admin/settings/{{ dom.domain }}">
+      <div style="font-weight:700">{{ dom.domain }}</div>
+      <p class="feat-desc">{{ dom.purpose }}</p>
+      <div class="feat-tags"><span class="sb-badge sb-badge-neutral">{{ (dom['keys'] or [])|length }} keys</span></div>
+    </a>
     {% endfor %}
   </div>
 
-  <p class="src-note">{{ icon("info", 14) }} The read-only oversight pages
-    (<a href="/functions">functions</a>, <a href="/commands">commands</a>, <a href="/settings">settings</a>,
-    <a href="/access">access</a>, <a href="/env">env map</a>) are fully live. Only this live-bot-write control
-    panel is stubbed. Rationale: <code>docs/dashboard.md</code> · rework-plan Q4.</p>
+  <div class="card-grid two" style="margin-top:var(--sb-s-5)">
+    <div class="sb-card" style="cursor:default">
+      <div style="font-weight:700; margin-bottom:6px">Cog routing</div>
+      <p class="feat-desc" style="-webkit-line-clamp:3">Enable or disable a cog per server. The live
+        inventory ({{ cog_total }} loadable cogs) comes from the feed.</p>
+      <div class="feat-tags" style="align-items:center">
+        <a class="sb-btn sb-btn-soft sb-btn-sm" href="/admin/cogs">{{ icon("layers", 14) }} Manage</a>
+        <span class="stub-tag">dry-run</span>
+      </div>
+    </div>
+    <div class="sb-card" style="cursor:default">
+      <div style="font-weight:700; margin-bottom:6px">Help appearance</div>
+      <p class="feat-desc" style="-webkit-line-clamp:3">Hide / rename / re-describe Help entities
+        (commands, subsystems) and the Home message.</p>
+      <div class="feat-tags" style="align-items:center">
+        <a class="sb-btn sb-btn-soft sb-btn-sm" href="/admin/help">{{ icon("comment", 14) }} Manage</a>
+        <span class="stub-tag">dry-run</span>
+      </div>
+    </div>
+    <div class="sb-card" style="cursor:default">
+      <div style="font-weight:700; margin-bottom:6px">Submission moderation</div>
+      <p class="feat-desc" style="-webkit-line-clamp:3">Owner-gated review of public /submit
+        suggestions → GitHub-issue mirror. There is no submissions store yet (rework-plan Q5:
+        Postgres + mirror PAT), so there is nothing to moderate — not even in dry-run.</p>
+      <div class="feat-tags" style="align-items:center">
+        <span class="stub-action sb-btn sb-btn-soft sb-btn-sm" aria-disabled="true">{{ icon("clock", 14) }} Manage</span>
+        <span class="stub-tag">requires owner wiring (Q5)</span>
+      </div>
+    </div>
+    <div class="sb-card" style="cursor:default">
+      <div style="font-weight:700; margin-bottom:6px">Dry-run audit log</div>
+      <p class="feat-desc" style="-webkit-line-clamp:3">Every confirmed dry-run action this process
+        lifetime — time, actor, action, exact request JSON. In-memory: clears on restart/redeploy.</p>
+      <div class="feat-tags" style="align-items:center">
+        <a class="sb-btn sb-btn-soft sb-btn-sm" href="/admin/audit">{{ icon("activity", 14) }} View</a>
+        <span class="stub-tag">{{ audit_count }} recorded</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="src-note">{{ icon("info", 14) }} Controller mode: <code>{{ controller_mode }}</code> —
+    the only implementation in this service. Readiness matrix:
+    <code>docs/planning/dashboard-bot-management-readiness.md</code> · armed-path spec:
+    <code>docs/specs/bot-control-api-v1.md</code> · owner gate: rework-plan Q4 (Q-0004).</p>
 </div>
 {% endblock %}

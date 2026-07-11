@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Cog routing — control panel (dry-run) — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> control panel · dry-run · cog routing</span>
+    <div class="head-row"><h1>Cog <span class="sb-grad">routing</span></h1></div>
+    <p class="sb-lead">Enable or disable a cog per server. Inventory is live from
+      <code>dashboard.json</code>; the target server is a raw guild-id input (the feeds carry no
+      guild list).</p>
+  </section>
+
+  {% include "_admin_dryrun.html" %}
+
+  <div class="keylist">
+    {% for c in cog_rows %}
+    <div class="keyrow">
+      <div class="top">
+        <code>{{ c.cog }}</code>
+        {% if c.subsystem %}<span class="sb-badge sb-badge-neutral">{{ c.subsystem }}</span>{% endif %}
+        <span class="cmd-count">{{ c.command_count }} command{{ '' if c.command_count == 1 else 's' }}</span>
+        {% if c.file %}<span class="cmd-count sb-muted">{{ c.file }}</span>{% endif %}
+      </div>
+      {% if c.is_cog %}
+      <form class="admin-form" method="post" action="/admin/actions/preview">
+        <input type="hidden" name="action" value="cog.set_enabled">
+        <input type="hidden" name="cog" value="{{ c.cog }}">
+        <input class="sb-inp" type="text" name="guild_id" placeholder="guild id (digits)" required
+               inputmode="numeric" aria-label="Guild id for {{ c.cog }}">
+        <select class="sb-inp" name="enabled" aria-label="Enable or disable {{ c.cog }}">
+          <option value="true">enable</option><option value="false">disable</option>
+        </select>
+        <button class="sb-btn sb-btn-soft sb-btn-sm" type="submit">{{ icon("arrow", 14) }} Preview dry-run</button>
+      </form>
+      {% else %}
+      <div class="hint">module — not a loadable cog, no routing action</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <p class="src-note">{{ icon("info", 14) }} <a href="/admin">← control panel</a> · dry-run only —
+    nothing is sent.</p>
+</div>
+{% endblock %}

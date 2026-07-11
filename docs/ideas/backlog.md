@@ -9,6 +9,20 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Ask superbot for a sanitized guild list in `dashboard.json`** ·
+  `captured` — the /admin management flows (dry-run today, armed later) all
+  start with "which server?", but NO committed feed carries a guild list, so
+  the UI honestly falls back to a raw guild-id text input. One sanitized
+  `guilds[]` family (id, name, maybe member_count — no tokens, no channels)
+  in superbot's `export_dashboard_data.py` output turns every management
+  form's weakest field into a real picker, and the armed panel inherits it
+  for free. Routing half: a superbot-side export change — flag to the
+  manager/superbot lane. Worth having because every management action is
+  keyed by guild id and today's honest-but-hostile digit-pasting will be the
+  #1 papercut the moment the panel goes live. Deduped against this backlog +
+  the queue-state NEXT list: nothing touches guild data. Source:
+  `.sessions/2026-07-11-dashboard-bot-management.md` 💡.
+
 - **Snapshot-aging banner on the review site** · `captured` — the review
   service's numbers are baked into `review/data/snapshot.json` at commit
   time, so once deployed they silently fossilize as the repo moves on. The
@@ -104,16 +118,14 @@
   our own sweep twice today — recurring drift wants a recurring owner,
   not a rediscovery. Source:
   `.sessions/2026-07-11-chain-entry-refresh.md` 💡.
-- **Consume the pickup-persistence convention ahead of adoption** ·
-  `captured` — the manager-side latency-persistence ask has a buildable
-  LOCAL half: /orders could already parse `pickup: <id> <mins>` tokens
-  out of heartbeat notes into a durable per-lane latency history
-  (honest-empty until any lane writes them), so the convention works
-  the moment the first lane adopts it instead of waiting a full
-  build-cycle after. Worth having because consumer-first shipping is
-  how the tooling:/landing: tokens rolled out successfully (parser
-  #67, first foreign writer 12:05Z same-day). Source:
-  `.sessions/2026-07-11-open-work-content-diff.md` 💡.
+- **Dogfood the pickup convention in this lane's own heartbeat** ·
+  `captured` — the consumer (#148) is honest-empty until SOMEONE
+  writes `pickup:` tokens; this lane can be writer #1: when the next
+  order's done= move happens, append `pickup: <id> <mins>m` to the
+  heartbeat notes (ORDER 011's known 19m figure can seed it). Worth
+  having because a convention with zero writers is a spec, not a
+  protocol — and the first write live-verifies the whole parser path
+  end-to-end. Source: `.sessions/2026-07-11-pickup-history-consumer.md` 💡.
 - **Provenance-token list to the kit lane (gate half)** · `captured` —
   the /orders advisory and the future staged-gate provenance warning
   should share ONE token convention (cse_/session_/coordinator/

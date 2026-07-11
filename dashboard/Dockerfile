@@ -1,7 +1,8 @@
 # Developer dashboard service (private, server-rendered oversight site).
 # Railway service: Root Directory = dashboard (build context is this folder), so this
 # Dockerfile sees dashboard/'s contents at its build root. It binds 0.0.0.0:$PORT; env
-# vars are documented in docs/dashboard.md. SITE_PASSWORD is REQUIRED (fail-closed).
+# vars are documented in docs/dashboard.md. The service is PUBLIC ([D-0011]) and reads
+# no secret of any kind.
 FROM python:3.12-slim
 
 WORKDIR /srv

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ domain.domain }} settings — control panel (dry-run) — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> control panel · dry-run · settings / {{ domain.domain }}</span>
+    <div class="head-row"><h1>{{ domain.domain }} <span class="sb-grad">settings</span></h1></div>
+    <p class="sb-lead">{{ domain.purpose }}</p>
+  </section>
+
+  {% include "_admin_dryrun.html" %}
+
+  <p class="feat-desc" style="margin-bottom:var(--sb-s-4)">{{ icon("info", 14) }} The feeds carry
+    <strong>no guild list</strong>, so the target server is a raw <em>guild id</em> input — paste
+    the numeric Discord server id. Honest by design: this service has no live guild data to offer
+    a picker from.</p>
+
+  <div class="keylist">
+    {% for k in domain['keys'] or [] %}
+    <div class="keyrow">
+      <div class="top">
+        <code>{{ k.key }}</code>
+        <span class="sb-badge sb-badge-neutral">{{ k.type or 'str' }}</span>
+        {% if k.default is not none %}<span class="cmd-count">default: {{ k.default }}</span>{% endif %}
+        {% if k.constant %}<span class="cmd-count sb-muted">{{ k.constant }}</span>{% endif %}
+      </div>
+      {% if k.hint %}<div class="hint">{{ k.hint }}</div>{% endif %}
+      <form class="admin-form" method="post" action="/admin/actions/preview">
+        <input type="hidden" name="action" value="setting.write">
+        <input type="hidden" name="domain" value="{{ domain.domain }}">
+        <input type="hidden" name="key" value="{{ k.key }}">
+        <input class="sb-inp" type="text" name="guild_id" placeholder="guild id (digits)" required
+               inputmode="numeric" aria-label="Guild id for {{ k.key }}">
+        {% if k.allowed_values %}
+        <select class="sb-inp" name="value" aria-label="Value for {{ k.key }}">
+          {% for v in k.allowed_values %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+        </select>
+        {% elif (k.type or 'str') == 'bool' %}
+        <select class="sb-inp" name="value" aria-label="Value for {{ k.key }}">
+          <option value="true">true</option><option value="false">false</option>
+        </select>
+        {% else %}
+        <input class="sb-inp" type="text" name="value" placeholder="{{ k.type or 'str' }} value" required
+               aria-label="Value for {{ k.key }}">
+        {% endif %}
+        <button class="sb-btn sb-btn-soft sb-btn-sm" type="submit">{{ icon("arrow", 14) }} Preview dry-run</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+
+  <p class="src-note">{{ icon("info", 14) }} <a href="/admin">← control panel</a> · typed by the live
+    <code>dashboard.json</code> settings schema · dry-run only — nothing is sent.</p>
+</div>
+{% endblock %}
