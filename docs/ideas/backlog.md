@@ -9,6 +9,19 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Snapshot-aging banner on the review site** · `captured` — the review
+  service's numbers are baked into `review/data/snapshot.json` at commit
+  time, so once deployed they silently fossilize as the repo moves on. The
+  service already knows its own deployed sha (`/version`) and the snapshot
+  records `git_head`: when they differ, render an honest "numbers as of
+  commit X — the repo has moved since" banner, and add a regen habit (a
+  session ender or a CI advisory) so `gen_snapshot.py` reruns when the drift
+  grows. Worth having because a review surface whose numbers silently age
+  misleads exactly the outside audience it was built for — and honest
+  staleness is this estate's house style. Deduped against this backlog +
+  the queue-state NEXT list: nothing existing covers the review service.
+  Source: `.sessions/2026-07-11-anthropic-review-site.md` 💡.
+
 - **Flag to kit lane: `upgrade --apply-docs` rewrites `.substrate/upgrade-report.md`
   without the Carve-out scan section** · `retired` (fixed upstream in kit #176;
   verified live on this repo's v1.10.0 upgrade, PR #105 — `--apply-docs` rode
