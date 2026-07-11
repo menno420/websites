@@ -34,6 +34,18 @@
   normalize markdown emphasis (`*`/`_`) away before phrase matching. Source:
   `.sessions/2026-07-11-kit-upgrade-v1.10.0.md` 💡.
 
+- **Apply the HANDOFF read-first line to the live `.claude/CLAUDE.md` via
+  `upgrade --apply-docs`** · `captured` — the v1.11.0 upgrade report (PR
+  #129) classes the live working agreement as "consumer-untouched + template
+  improved — safe to apply with `upgrade --apply-docs`": one flag-run adopts
+  the staged orientation change (read boot-generated `HANDOFF.md` before
+  re-deriving history from `git log`) into the file agents actually boot
+  from. The v1.11.0 HANDOFF composer only pays off once sessions are told to
+  read it — the live orientation list still routes agents straight to
+  `current-state.md`. Out of the distribution lane's scope (live CLAUDE.md is
+  host-owned); a websites session should run it deliberately and diff-review.
+  Source: `.sessions/2026-07-11-kit-upgrade-v1.11.0.md` 💡.
+
 - **Ask the manager for a generated `lanes.json`** · `captured` — /fleet
   now parses the LANES literal out of fleet-manager's gen_roster.py source
   (honest but coupled to a script's internals); one generated
