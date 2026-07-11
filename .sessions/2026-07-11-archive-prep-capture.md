@@ -1,6 +1,7 @@
 # 2026-07-11 — Archive-prep capture: landing the chat-only load-bearing context before the project chat archives
 
-> **Status:** `in-progress`
+> **Status:** `complete` — branch `claude/archive-prep-capture` (claim rode
+> fast-lane PR #149).
 
 - **📊 Model:** claude-5 · worker · owner-directed archive-prep close-out (the
   project chat is being archived; this session makes the repo self-sufficient).
