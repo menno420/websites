@@ -16,12 +16,17 @@ bot control credential, so there is nothing to gate. ``/healthz`` is the Railway
 imports bot code** and holds **no bot control credential**. A failed feed renders an
 honest banner — never faked data.
 
-**The control-panel stub (the deliberate boundary).** superbot's dashboard also has a
-Discord-OAuth control panel that WRITES the *live production bot's* control API
-(start/stop/config the running bot) and an owner-gated submissions-moderation ring. That
-live-write path is **NOT wired here** (plan Q4): ``/admin`` renders a clearly-labeled
-stub whose mutating actions are disabled placeholders, and **no** production bot
-control-API URL or token is referenced anywhere in this service. See ``docs/dashboard.md``.
+**The control panel (the deliberate boundary — DRY-RUN).** superbot's dashboard also has
+a Discord-OAuth control panel that WRITES the *live production bot's* control API
+(settings / help / cog-routing, applied live), plus an owner-gated submissions-moderation
+ring. That live-write path is **NOT wired here** (plan Q4 / Q-0004 is an open owner
+decision, and doctrine places a wired panel in a **separate** service): ``/admin`` is a
+complete management UX running against an explicit **dry-run controller seam**
+(``dashboard/control_plane.py``). Every action is validated against the live typed
+schema, previewed as the exact contract-v1 request JSON (spec
+``docs/specs/bot-control-api-v1.md``), and on confirm recorded to an in-memory audit log
+that clears on restart — nothing is ever sent, and **no** production bot control-API URL
+or token is referenced anywhere in this service. See ``docs/dashboard.md``.
 
 Deploy: a new Railway service in ``superbot-websites`` (Root Directory = ``dashboard``),
 own Dockerfile, binds ``0.0.0.0:$PORT``.
@@ -29,21 +34,24 @@ own Dockerfile, binds ``0.0.0.0:$PORT``.
 
 from __future__ import annotations
 
+import json
 import os
+import urllib.parse
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from . import control_plane as cp
 from . import data_source as ds
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# Primary read-only oversight nav. The control panel is a labelled stub, linked apart.
+# Primary read-only oversight nav. The control panel (dry-run) is linked apart.
 NAV = [
     ("functions", "Functions", "/functions"),
     ("commands", "Commands", "/commands"),
@@ -328,26 +336,154 @@ async def palette(request: Request):
 
 
 # ===========================================================================
-# Control panel — DELIBERATE, CLEARLY-LABELED STUB (plan Q4).
+# Control panel — DRY-RUN management UX (plan Q4 / Q-0004 stays an open owner
+# decision).
 #
 # superbot's dashboard control panel signs in with Discord OAuth and WRITES the
 # LIVE PRODUCTION BOT's control API (settings / help / cog-routing, applied live),
 # plus an owner-gated submissions-moderation ring. That live-write path couples
-# websites to the running production bot across the repo boundary and is an owner
-# decision (plan Q4) — so it is NOT wired here. This route renders the UI so the
-# shape is visible, but every mutating action is a disabled placeholder and NO
+# websites to the running production bot across the repo boundary; doctrine also
+# places a wired control panel in a SEPARATE service, never on this read-only
+# surface. So the complete management UX here runs against the DRY-RUN controller
+# seam (dashboard/control_plane.py): actions are validated against the live typed
+# schema from dashboard.json, previewed as the exact contract-v1 request JSON
+# (docs/specs/bot-control-api-v1.md), and on confirm recorded to an in-memory
+# audit log that clears on restart. Nothing is ever sent anywhere, and NO
 # production bot control-API URL or token exists anywhere in this service.
 # ===========================================================================
+async def _form_fields(request: Request) -> dict[str, str]:
+    """Parse a urlencoded POST body with the stdlib (no form-parsing dependency)."""
+    body = (await request.body()).decode("utf-8", "replace")
+    return dict(urllib.parse.parse_qsl(body, keep_blank_values=True))
+
+
+def _cog_rows(data: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = []
+    for cog in ds.cogs(data):
+        rows.append(
+            {
+                "cog": cog.get("cog") or "",
+                "file": cog.get("file") or "",
+                "subsystem": cog.get("subsystem") or "",
+                "is_cog": bool(cog.get("is_cog")),
+                "command_count": len(cog.get("commands") or []),
+            }
+        )
+    return rows
+
+
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_stub(request: Request):
+async def admin_overview(request: Request):
     ctx = await _base_ctx(request, "admin")
+    data = ctx["data"]
+    settings = ds.settings(data)
+    cogs = _cog_rows(data)
+    ctx.update(
+        {
+            "settings": settings,
+            "setting_key_total": sum(len(d.get("keys") or []) for d in settings),
+            "cog_total": sum(1 for c in cogs if c["is_cog"]),
+            "command_total": len(ds.all_commands(data)),
+            "audit_count": len(cp.controller.entries()),
+            "controller_mode": cp.controller.mode,
+        }
+    )
     return templates.TemplateResponse(request, "admin.html", ctx)
+
+
+@app.get("/admin/settings/{domain}", response_class=HTMLResponse)
+async def admin_settings_domain(request: Request, domain: str):
+    ctx = await _base_ctx(request, "admin")
+    dom = next((d for d in ds.settings(ctx["data"]) if d.get("domain") == domain), None)
+    if dom is None:
+        raise HTTPException(status_code=404)
+    ctx.update({"domain": dom})
+    return templates.TemplateResponse(request, "admin_settings_domain.html", ctx)
+
+
+@app.get("/admin/cogs", response_class=HTMLResponse)
+async def admin_cogs(request: Request):
+    ctx = await _base_ctx(request, "admin")
+    ctx.update({"cog_rows": _cog_rows(ctx["data"])})
+    return templates.TemplateResponse(request, "admin_cogs.html", ctx)
+
+
+@app.get("/admin/help", response_class=HTMLResponse)
+async def admin_help(request: Request):
+    ctx = await _base_ctx(request, "admin")
+    data = ctx["data"]
+    ctx.update(
+        {
+            "command_names": ds.command_names(data),
+            "subsystem_keys": sorted(c.get("key") for c in ds.catalogue(data) if c.get("key")),
+        }
+    )
+    return templates.TemplateResponse(request, "admin_help.html", ctx)
+
+
+@app.get("/admin/login", response_class=HTMLResponse)
+async def admin_login(request: Request):
+    """Honest OAuth scaffold: sign-in is NOT configured on this deployment — and
+    per doctrine it never will be on this service (the armed panel is a separate
+    service; the future env-var names live in docs/specs, not in this code)."""
+    ctx = await _base_ctx(request, "admin")
+    return templates.TemplateResponse(request, "admin_login.html", ctx)
+
+
+@app.get("/admin/audit", response_class=HTMLResponse)
+async def admin_audit(request: Request):
+    ctx = await _base_ctx(request, "admin")
+    ctx.update({"entries": list(reversed(cp.controller.entries()))})
+    return templates.TemplateResponse(request, "admin_audit.html", ctx)
+
+
+def _rejected(request: Request, ctx: dict[str, Any], action: str, exc: cp.ActionRejected):
+    """Honest 400 for an action that failed typed validation — nothing recorded."""
+    ctx.update({"reject_code": exc.code, "reject_message": str(exc), "action": action})
+    return templates.TemplateResponse(request, "admin_rejected.html", ctx, status_code=400)
+
+
+@app.post("/admin/actions/preview", response_class=HTMLResponse)
+async def admin_action_preview(request: Request):
+    """Step 1 of the dry-run flow: validate + show the exact request JSON."""
+    form = await _form_fields(request)
+    ctx = await _base_ctx(request, "admin")
+    action = form.get("action", "")
+    try:
+        req = cp.controller.build_request(action, form, ctx["data"])
+    except cp.ActionRejected as exc:
+        return _rejected(request, ctx, action, exc)
+    carry = [(k, v) for k, v in form.items() if k not in ("idempotency_key", "requested_at")]
+    carry += [("idempotency_key", req["idempotency_key"]), ("requested_at", req["requested_at"])]
+    ctx.update({"action": action, "request_json": json.dumps(req, indent=2), "carry": carry})
+    return templates.TemplateResponse(request, "admin_preview.html", ctx)
+
+
+@app.post("/admin/actions/confirm", response_class=HTMLResponse)
+async def admin_action_confirm(request: Request):
+    """Step 2: re-validate the carried fields, record the dry-run audit entry."""
+    form = await _form_fields(request)
+    ctx = await _base_ctx(request, "admin")
+    action = form.get("action", "")
+    try:
+        req = cp.controller.build_request(
+            action,
+            form,
+            ctx["data"],
+            idempotency_key=form.get("idempotency_key") or None,
+            requested_at=form.get("requested_at") or None,
+        )
+    except cp.ActionRejected as exc:
+        return _rejected(request, ctx, action, exc)
+    entry = cp.controller.record(req)
+    ctx.update({"entry": entry, "request_json": json.dumps(req, indent=2)})
+    return templates.TemplateResponse(request, "admin_result.html", ctx)
 
 
 @app.exception_handler(404)
 async def not_found(request: Request, exc: Any):
-    # The 404 handler runs OUTSIDE the auth middleware short-circuit for unknown
-    # paths that passed the gate; render a simple in-system 404.
+    # No middleware runs in this service (public by [D-0011]); just render a
+    # simple in-system 404 page.
     try:
         ctx = await _base_ctx(request, "")
     except Exception:  # pragma: no cover - never fail the error page on data

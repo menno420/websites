@@ -11,7 +11,7 @@
 
 | # | Decision | What it unblocks | Notes / where it lives |
 |---|---|---|---|
-| 1 | **Dashboard `/admin` live-bot control** — build + wire a production control path, or keep it a labeled stub? | The Discord-OAuth panel that writes the live bot's control API (settings / help / cog routing / submission moderation). | Needs your direct word. Stub today: `dashboard/templates/admin.html`, zero control-API credentials present. Wiring = a **separate** service (OAuth app + control-API token) + deciding *where bot control lives* (websites / superbot / superbot-next). Rework-plan **Q4** (`docs/question-router.md`). |
+| 1 | **Dashboard `/admin` live-bot control** — arm a production control path, or keep it dry-run? | The Discord-OAuth panel that writes the live bot's control API (settings / help / cog routing / submission moderation). | Needs your direct word. As of 2026-07-11 `/admin` is a complete **dry-run** management UX (typed previews + in-memory audit; zero control-API credentials present — `docs/planning/dashboard-bot-management-readiness.md`). Arming = a **separate** service (OAuth app + control-API token, spec `docs/specs/bot-control-api-v1.md`) + deciding *where bot control lives* (websites / superbot / superbot-next). Rework-plan **Q4** / **Q-0004** (`docs/question-router.md`); three ⚑ asks below. |
 | 2 | **Botsite `/submit`** — provision a submissions Postgres + moderation mirror, or keep the stub? | The public feature/bug intake pipeline (moderated queue → GitHub-issue mirror). | Stub today: `botsite/templates/submit.html` (now shows a "Stub — not wired" badge). Needs a Postgres + mirror PAT. Rework-plan **Q5**. |
 | 3 | **Redeploy-from-browser scoped deploy hook** — yes / no? | A gated `/owner` button that triggers a Railway redeploy of a websites service from the site itself. | Would require a Railway deploy hook (scoped to `superbot-websites` only — never the ambient production IDs, see `docs/RAILWAY-SAFETY.md`). Currently deploy = merge to `main` (auto). |
 | 4 | **Custom domains** for the three sites (control-plane / botsite / dashboard). | Friendly URLs instead of `*.up.railway.app`. | Deferred to cutover. Rework-plan **Q6**. |
@@ -39,6 +39,36 @@ fleet cards honestly say "no data mirrored yet"; a PAT with read access to
 the private repos, set as a repo Actions secret passed to the bake, would
 fill those gaps. Same token errand, one more payoff.
 
+```markdown
+⚑ OWNER-ACTION
+WHAT: Answer Q-0004 — decide WHERE live bot control lives (websites / superbot / superbot-next), or explicitly keep the dashboard's control panel dry-run-only.
+WHERE: docs/question-router.md (Q-0004, open + blocking) — reply in chat or edit the "Maintainer answer" slot; the dry-run panel to judge from is live at the dashboard's /admin.
+HOW: one sentence is enough ("carry it into websites as a new service" / "leave it in superbot" / "superbot-next" / "stay dry-run"). Everything downstream (OAuth app, token, armed service) hangs off this answer.
+WHY-IT-MATTERS: this is THE gate — it decides whether a bot control-API credential ever enters a websites service. The 2026-07-11 bot-management build took /admin as far as it can go without it: the complete management UX now runs as an honest dry-run (docs/planning/dashboard-bot-management-readiness.md).
+UNBLOCKS: the two asks below, plus the superbot-side v1 implementation of docs/specs/bot-control-api-v1.md.
+VERIFIED-NEEDED: a product/topology decision only you can make (docs/question-router.md marks it product-intent · blocking · open; ORDER 001 explicitly parked it as non-agent-executable) — no agent attempt applies.
+```
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Create the Discord OAuth application for the future ARMED control panel and decide its redirect URI.
+WHERE: discord.com/developers/applications → New Application → OAuth2 (do this only after Q-0004 above names where the armed service lives).
+HOW: register the app; add redirect URI https://<armed-service-url>/auth/callback (the armed service's real URL once it exists); note the client id + client secret — they go ONLY into the armed service's Railway env (spec §9 names: the OAuth client id/secret + redirect + session-secret vars), NEVER into the dashboard service (a test forbids the literals there).
+WHY-IT-MATTERS: actor identity is the safety spine of the control API — every write carries the operator's Discord user id and the bot re-checks their permission per guild; without the OAuth app there is no actor, so no live write path should exist.
+UNBLOCKS: real sign-in on the armed panel; until then the dashboard's /admin/login honestly says "not configured" and dry-run actions are attributed to anonymous.
+VERIFIED-NEEDED: creating a Discord application requires your Discord developer account — no agent credential exists for it (same class as the Railway-mutation wall; deliberately not attempted).
+```
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Provision the scoped bot control-API token and the SEPARATE armed Railway service that will hold it.
+WHERE: railway.app → project superbot-websites → New → Service (a NEW service, per the standing "never mounted on a read-only surface" rule) + the token minted on the bot side (superbot's control-api seam).
+HOW: after Q-0004 and the OAuth app: create the service, set its env per docs/specs/bot-control-api-v1.md §9 (OAuth client id/secret/redirect, session secret, control URL + scoped token). Never reuse the ambient production RAILWAY_*_ID vars (docs/RAILWAY-SAFETY.md); the dashboard service gets NOTHING.
+WHY-IT-MATTERS: the credential boundary is the whole design — the public read-only dashboard stays permanently credential-free, so a compromise of it can never reach the live bot; the power lives in one small gated service you provision knowingly.
+UNBLOCKS: flipping the specified armed path from spec to service; the dashboard's dry-run flows are the exact UX + request contract it will reuse.
+VERIFIED-NEEDED: Railway service creation + secret provisioning are owner account mutations — the Railway-safety policy (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger) forbids agent-initiated Railway mutations without your explicit go (the same policy wall as the review-service ask above; not attempted).
+```
+
 (Previous state: none open — the one conditional ask (external wake-trigger
 fallback) self-expired 2026-07-10T16:01:32Z: the self-armed routine's first
 fire landed; see row E and
@@ -51,6 +81,48 @@ probe failed with the exact error: "target session could not be verified;
 retry send_message shortly". That coordinator-side wall still stands; ORDER
 008's finding is that a **worker session on this surface** does carry a
 scheduler primitive (`docs/CAPABILITIES.md` append log, 2026-07-10).
+
+### ⚑ Asks consolidated at project-chat archive (2026-07-11 — see `docs/retro/archive-ready-2026-07-11.md`)
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Squash-merge PR #141 (the review-site expansion) — the one open PR agents cannot merge for you.
+WHERE: github.com/menno420/websites/pull/141.
+HOW: click only — if GitHub says the branch is out of date, click "Update branch", wait for the `quality` check to go green (an agent drift-watchdog also keeps re-greening it), then "Squash and merge".
+WHY-IT-MATTERS: the review site's whole expansion — fleet coverage, the daily stats bake, continuous review editions + Atom feed, the questionnaire, interaction hooks — is finished and green but invisible until this click.
+UNBLOCKS: the full review-site content on main; the review-bake workflow; the ask below.
+VERIFIED-NEEDED: agent merge attempts on this PR are platform-denied because its diff adds a workflow file (`.github/workflows/review-bake.yml`) — recorded on the 2026-07-11 heartbeat; you ruled in chat that you personally merge workflow-file PRs (durable record: `docs/retro/archive-ready-2026-07-11.md` §2c).
+```
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Run the review-bake workflow once, manually, right after merging PR #141.
+WHERE: github.com/menno420/websites → Actions → "review-bake" → "Run workflow" (branch: main).
+HOW: click only.
+WHY-IT-MATTERS: `review/data/stats.json` is deliberately absent until the first successful CI bake — one manual run seeds the live fleet stats immediately instead of waiting for the daily cron, and proves the Action end-to-end while attention is on it.
+UNBLOCKS: real fleet/stats data on the review site's pages from day one.
+VERIFIED-NEEDED: not an agent wall (agents can trigger workflow_dispatch — `docs/CAPABILITIES.md`) but a sequencing ask: the workflow only exists on main after YOUR merge above, and with the project chat archived no agent session is guaranteed to be running at that moment. Any future session may do this instead — then strike this ask.
+```
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Create the botsite submissions PostgreSQL database and give the botsite service its connection string.
+WHERE: railway.app → project superbot-websites → New → Database → PostgreSQL; then service botsite → Variables.
+HOW: add variable DATABASE_URL = the connection string Railway shows for the new Postgres. One paste.
+WHY-IT-MATTERS: the public /submit intake (feature/bug submissions with a moderated queue) stays a labeled stub until the database exists.
+UNBLOCKS: the submissions pipeline (rework Q5 — Open row 2 above); the moderation → GitHub-issue mirror is the follow-up build once data can persist.
+VERIFIED-NEEDED: Railway mutations are policy-walled for agents (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger — deliberately not attempted; same wall as the review-service ask). Click steps first recorded in `docs/retro/self-review-2026-07-11.md` §2.
+```
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Mint a durable fine-grained GitHub token and set it on the control-plane service as GITHUB_TOKEN.
+WHERE: github.com → Settings → Developer settings → Fine-grained tokens; then railway.app → superbot-websites → control-plane → Variables.
+HOW: scope the token to your repos with Contents + Actions read (Actions write only if you want the CI re-run button); paste it as GITHUB_TOKEN. Exact steps: `docs/deployment.md` § owner TODO.
+WHY-IT-MATTERS: every fleet page (/fleet /orders /queue /projects /reviews) runs on the anonymous 60-requests/hour GitHub ceiling today.
+UNBLOCKS: reliable live fleet surfaces on the control-plane; per the PAT side-note above, the SAME token errand (added as a repo Actions secret) also unlocks live + private-repo stats for the review site's daily bake.
+VERIFIED-NEEDED: wall recorded in `docs/CAPABILITIES.md` (2026-07-09: `GITHUB_TOKEN` unset/limited on the live service; anonymous rate-limit 403 captured) — the token is owner-held; no agent path exists.
+```
 
 ## 🟢 Decided / resolved
 

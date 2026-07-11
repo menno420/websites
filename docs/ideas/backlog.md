@@ -9,6 +9,20 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Ask superbot for a sanitized guild list in `dashboard.json`** ·
+  `captured` — the /admin management flows (dry-run today, armed later) all
+  start with "which server?", but NO committed feed carries a guild list, so
+  the UI honestly falls back to a raw guild-id text input. One sanitized
+  `guilds[]` family (id, name, maybe member_count — no tokens, no channels)
+  in superbot's `export_dashboard_data.py` output turns every management
+  form's weakest field into a real picker, and the armed panel inherits it
+  for free. Routing half: a superbot-side export change — flag to the
+  manager/superbot lane. Worth having because every management action is
+  keyed by guild id and today's honest-but-hostile digit-pasting will be the
+  #1 papercut the moment the panel goes live. Deduped against this backlog +
+  the queue-state NEXT list: nothing touches guild data. Source:
+  `.sessions/2026-07-11-dashboard-bot-management.md` 💡.
+
 - **Bake-time questions sync from GitHub issues** · `captured` — the
   review site's `/questions` ledger is a hand-kept `questions.json` today;
   the `review-bake` workflow already has the Actions token, so a fourth
@@ -119,6 +133,24 @@
   our own sweep twice today — recurring drift wants a recurring owner,
   not a rediscovery. Source:
   `.sessions/2026-07-11-chain-entry-refresh.md` 💡.
+- **Dogfood the pickup convention in this lane's own heartbeat** ·
+  `built` (the #150 catch-up heartbeat seeded `pickup: 011 19m` as writer
+  #1; LIVE-VERIFIED end-to-end on deployed /orders — 011 pickup 19.0,
+  summary.pickup count 1) — the consumer (#148) is honest-empty until SOMEONE
+  writes `pickup:` tokens; this lane can be writer #1: when the next
+  order's done= move happens, append `pickup: <id> <mins>m` to the
+  heartbeat notes (ORDER 011's known 19m figure can seed it). Worth
+  having because a convention with zero writers is a spec, not a
+  protocol — and the first write live-verifies the whole parser path
+  end-to-end. Source: `.sessions/2026-07-11-pickup-history-consumer.md` 💡.
+- **Verdict-inheritance guard for carried heartbeat watches** ·
+  `captured` — a watch claim copied across N heartbeat overwrites (the
+  'never delivered' cron verdict rode five) should carry a
+  last-verified timestamp (`watch: <claim> · verified <ISO>`) so
+  readers see staleness and writers re-verify before copying; /fleet
+  could badge watches whose verified-stamp lags the heartbeat. Worth
+  having because inheritance is how this chain's one durable wrong
+  claim propagated. Source: `.sessions/2026-07-11-chain-closeout.md` 💡.
 - **Provenance-token list to the kit lane (gate half)** · `captured` —
   the /orders advisory and the future staged-gate provenance warning
   should share ONE token convention (cse_/session_/coordinator/
@@ -382,6 +414,17 @@
 - **`/activity.xml` Atom feed** — shipped; see the decision ledger +
   `docs/site.md`. File:
   [activity-atom-feed-2026-07-09.md](activity-atom-feed-2026-07-09.md).
+- **Merge holds announced in a file at HEAD** · `captured` — repo-wide
+  merge holds coordinated by session messages failed twice on 2026-07-11
+  (#143/#146 merged mid-hold by wakes that never saw the hold); announce
+  holds as a `control/claims/HOLD-<scope>.md` file at origin/main HEAD so
+  every session's mandatory pull sees them mechanically, and lift = delete
+  the file. Routing half: flag to the kit/manager layer for one fleet-wide
+  shape. Worth having because a file at HEAD reaches every future session
+  by construction — session messages only reach sessions alive at send
+  time. Deduped: nothing in this backlog covers hold coordination. File:
+  [merge-hold-at-head-2026-07-11.md](merge-hold-at-head-2026-07-11.md).
+  Source: `docs/retro/archive-ready-2026-07-11.md` §3 💡.
 
 ## Retired
 

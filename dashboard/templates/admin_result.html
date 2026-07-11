@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Dry-run recorded — control panel — SuperBot dashboard{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> control panel · dry-run · recorded</span>
+    <div class="head-row"><h1>Dry-run: <span class="sb-grad">recorded, not sent</span></h1></div>
+    <p class="sb-lead">Audit entry <code>#{{ entry.id }}</code> at {{ entry.time }} —
+      actor <code>{{ entry.actor }}</code>. This service holds no credentials, so the request below
+      went nowhere; it lives in the in-memory audit log until the process restarts.</p>
+  </section>
+
+  <div class="group-head"><h2>The request that WOULD have been sent</h2></div>
+  <pre class="snippet" id="request-json">{{ request_json }}</pre>
+
+  <div class="kv-row" style="margin-top:var(--sb-s-4)">
+    <a class="sb-btn sb-btn-soft sb-btn-sm" href="/admin/audit">{{ icon("activity", 14) }} View audit log</a>
+    <a class="sb-btn sb-btn-soft sb-btn-sm" href="/admin">{{ icon("back", 14) }} Control panel</a>
+  </div>
+
+  <p class="src-note">{{ icon("info", 14) }} Outcome: <code>{{ entry.outcome }}</code> · the audit
+    log clears on restart/redeploy.</p>
+</div>
+{% endblock %}
