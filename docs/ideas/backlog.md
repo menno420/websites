@@ -81,6 +81,16 @@
   zero-packages cost makes the badge exact forever (routing half: flagged to
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
+- **Provenance-token list to the kit lane (gate half)** · `captured` —
+  the /orders advisory and the future staged-gate provenance warning
+  should share ONE token convention (cse_/session_/coordinator/
+  manager/URL); flag to the kit lane that when it builds the gate half
+  it should adopt (or supersede) the app/orders.py _PROVENANCE_TOKENS
+  list rather than inventing a second heuristic — two half-matching
+  spoof detectors are worse than one. Routing half: flagged in the
+  heartbeat notes. Worth having because the advisory just created the
+  convention de facto, and conventions fork silently. Source:
+  `.sessions/2026-07-11-inbox-provenance-advisory.md` 💡.
 - **Hand-kept-list audit sweep** · `captured` — the nav guard's own
   hand-kept list is the SECOND self-referential drift this chain found
   (the first: the overflow guard's markup/tuple duplication #122); a
@@ -90,17 +100,6 @@
   the class or find the third instance. Worth having because this
   failure shape keeps recurring in guards specifically — the places
   drift hurts most. Source: `.sessions/2026-07-11-nav-scan-glob.md` 💡.
-- **Inbox relay-order provenance check** · `captured` — the inbox
-  grammar gate now enforces SHAPE (append-only + well-formed ORDER
-  blocks) but not SOURCE: any green-lane PR author can append a
-  well-formed ORDER and it reads as manager-issued (ORDER blocks carry
-  a provenance: field, but nothing validates it against the relay/PR
-  author). A cheap next rung: the gate warns (advisory, not red) when
-  an appended ORDER's provenance: line names no session/coordinator id
-  — keeps the order-of-record honest without blocking legitimate
-  relays. Worth having because the gates just made the inbox TRUSTED
-  input, and trusted input attracts spoofing. Source:
-  `.sessions/2026-07-11-control-gate-tests.md` 💡.
 - **Port the clock-freeze pattern to botsite/dashboard if they grow
   age-measuring code** · `captured` — premise-checked: TODAY neither
   botsite/app.py nor dashboard/app.py measures ages against the wall

@@ -61,7 +61,7 @@
         {% else %}<span class="b unknown">unknown</span>{% endif %}</th>
       <td>
         <span class="dim small">{{ ord.issued }}{% if ord.fields.priority %} · {{ ord.fields.priority }}{% endif %}
-          {% if ord.state == 'done' and ord.state_by %} · done by {{ ord.state_by }}{% endif %}
+          {% if ord.provenance_unverified %}<span class="b dim" title="advisory only — neither provenance: nor from: names a session/coordinator identity (cse_/session_/coordinator/manager/URL); the order's state is unaffected">provenance unverified</span> {% endif %}{% if ord.state == 'done' and ord.state_by %} · done by {{ ord.state_by }}{% endif %}
           {% if ord.state == 'claimed' %} · {{ ord.state_by }}{% endif %}</span><br>
         {{ (ord.fields.do or '')[:280] }}{% if (ord.fields.do or '')|length > 280 %}…{% endif %}
         <details><summary class="dim small">full order text</summary>
