@@ -7,7 +7,17 @@
   <p class="dim small">The <code>docs/ideas/</code> conveyor across the fleet. Titles and
     one-line summaries are parsed from each idea file; every idea deep-links to its
     source on GitHub (and to the in-app markdown view). Repos without an ideas
-    directory are simply absent below.</p>
+    directory are simply absent below. State counts cover each repo's newest
+    enriched files (honest scope); <em>unstated</em> = no lifecycle front-matter.</p>
+  <p class="small">state:
+    <a href="/ideas" class="{{ 'b repo' if not repos or not repos[0].state_filter else '' }}">all</a>
+    {% for s in ['captured', 'planned', 'built', 'retired', 'unstated'] %}
+    · <a href="/ideas?state={{ s }}" class="{{ 'b repo' if repos and repos[0].state_filter == s else '' }}">{{ s }}</a>
+    {% endfor %}</p>
+  {% if repos and repos[0].state_filter and not repos[0].state_filter_known %}
+  <div class="banner">⚠ unknown state <code>{{ repos[0].state_filter }}</code> — pick one of the
+    filters above (nothing is filtered out on a guess).</div>
+  {% endif %}
 </div>
 
 {% for r in repos %}
@@ -15,6 +25,13 @@
   <h2>{{ r.repo }}
     <span class="dim small">· <a href="{{ r.github_url }}">docs/ideas ↗</a>
       {% if r.total %}· {{ r.total }} idea{{ 's' if r.total != 1 }}{% endif %}</span></h2>
+  {% if r.state_counts %}
+  <p class="small">
+    {% for s in ['captured', 'planned', 'built', 'retired', 'unstated'] %}
+    {% if r.state_counts.get(s) %}<span class="b {{ 'ok' if s == 'built' else ('unknown' if s == 'unstated' else ('design' if s == 'retired' else 'repo')) }}">{{ r.state_counts[s] }} {{ s }}</span>{% endif %}
+    {% endfor %}
+    <span class="dim small">of the newest {{ r.shown }}</span></p>
+  {% endif %}
 
   {% if r.listing_error %}
   <div class="banner">⚠ could not list docs/ideas — {{ r.listing_error }}
@@ -28,12 +45,15 @@
     <div class="idea-row">
       <div class="idea-title">
         <a href="{{ i.internal_url }}">{{ i.title }}</a>
+        {% if i.state %}<span class="b {{ 'ok' if i.state == 'built' else ('design' if i.state == 'retired' else 'repo') }}">{{ i.state }}</span>{% endif %}
         <span class="small"> · <a href="{{ i.github_url }}" class="dim">GitHub ↗</a></span>
       </div>
       {% if i.summary %}<div class="idea-sum">{{ i.summary }}</div>
       {% elif i.degraded %}<div class="idea-sum">(summary unavailable — could not fetch file)</div>
       {% endif %}
     </div>
+    {% else %}
+    <p class="dim small">no ideas in this state among the newest {{ r.shown }}.</p>
     {% endfor %}
     {% if r.more %}
     <p class="dim small" style="margin-top:.6rem">…and {{ r.more }} more —
