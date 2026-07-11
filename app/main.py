@@ -88,9 +88,15 @@ async def board(request: Request):
     # ideas listing is missing or errored simply shows no chip here: the
     # board stays a readiness surface; /ideas is the honest home for idea
     # errors/absences.
-    rows, idea_rows = await asyncio.gather(
+    repo_names = list(config.REPOS)
+    rows, idea_rows, fleet_fresh = await asyncio.gather(
         readiness.board(refresh=refresh),
         ideas.overview(refresh=refresh),
+        # Heartbeat-freshness chips: ONLY the board repos' status.md files
+        # (TTL-cached) — deliberately not the full 18-lane fleet fan-out.
+        asyncio.gather(
+            *[fleet.heartbeat_freshness(r, refresh=refresh) for r in repo_names]
+        ),
     )
     idea_chips = {
         r["repo"]: {"counts": r["state_counts"], "shown": r["shown"],
@@ -98,12 +104,18 @@ async def board(request: Request):
         for r in idea_rows
         if r.get("state_counts") and not r.get("listing_error")
     }
+    heartbeat_chips = {
+        repo: fresh
+        for repo, fresh in zip(repo_names, fleet_fresh)
+        if fresh is not None
+    }
     return templates.TemplateResponse(
         request,
         "board.html",
         {
             "rows": rows,
             "idea_chips": idea_chips,
+            "heartbeat_chips": heartbeat_chips,
             "ttl": config.CACHE_TTL_SECONDS,
             "active": "board",
             "autorefresh_seconds": config.AUTOREFRESH_SECONDS,

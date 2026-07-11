@@ -31,13 +31,6 @@
   normalize markdown emphasis (`*`/`_`) away before phrase matching. Source:
   `.sessions/2026-07-11-kit-upgrade-v1.10.0.md` 💡.
 
-- **`tooling:` capability token in the fired session's heartbeat** ·
-  `captured` — the routine-fired protocol's mandated probe should stamp its
-  result (`tooling: pr-capable | ritual-only`) in the heartbeat so /fleet
-  and sibling sessions see which fires can land work, and a systemic
-  tooling regression shows as a trend (the 04:03Z ritual-only fire was only
-  discovered via its stranded branch). Source:
-  `.sessions/2026-07-11-relay-doctrine-backlog-factcheck.md` 💡.
 - **Ask the manager for a generated `lanes.json`** · `captured` — /fleet
   now parses the LANES literal out of fleet-manager's gen_roster.py source
   (honest but coupled to a script's internals); one generated
@@ -46,13 +39,6 @@
   manifest→roster move broke this site once already, caught by the cron).
   Routing half: flagged to the manager in the heartbeat. Source:
   `.sessions/2026-07-11-lane-source-registry.md` 💡.
-- **Board-row fleet chip (heartbeat freshness on the habit path)** ·
-  `captured` — chip each board row with its lane's heartbeat age/stale badge
-  from fleet.overview()'s cached lanes, so the owner's first glance carries
-  the signal /fleet exists for; the chips pattern (route-level gather, no
-  readiness.py change, no JSON change) is proven cheap by the ideas chips.
-  Distinct from the retired unseen-orders badge. Source:
-  `.sessions/2026-07-11-board-conveyor-chips.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
@@ -68,6 +54,20 @@
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
 ## Built
+
+- **Board-row fleet chip (heartbeat freshness on the habit path)** — shipped
+  2026-07-11 (continuous-mode slice 18): each board repo row shows its
+  lane's heartbeat age/stale badge via `fleet.heartbeat_freshness` (only the
+  board repos' status.md files over the TTL cache — deliberately not the
+  18-lane overview fan-out); no readable/parseable heartbeat → no chip,
+  never a guessed age. Source:
+  `.sessions/2026-07-11-board-conveyor-chips.md` 💡.
+- **`tooling:` capability token in fired heartbeats** — shipped 2026-07-11
+  (slice 18): optional `tooling: pr-capable | ritual-only` status line
+  (control/README.md + fleet.KNOWN_KEYS leak-guard + /fleet row flagging
+  ritual-only as "cannot land work"); this repo's heartbeat writes it from
+  this wake on. Source:
+  `.sessions/2026-07-11-relay-doctrine-backlog-factcheck.md` 💡.
 
 - **Conveyor-health chips on the readiness board rows** — shipped 2026-07-11
   (continuous-mode slice 17): each board row with a readable ideas dir shows

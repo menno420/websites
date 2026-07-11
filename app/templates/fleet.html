@@ -87,6 +87,8 @@
     {% endif %}
     {% if l.fields.deployed %}<tr><th>deployed</th><td>{{ l.fields.deployed }}</td></tr>{% endif %}
     {% if l.fields.rung %}<tr><th>rung</th><td>{{ l.fields.rung }}</td></tr>{% endif %}
+    {% if l.fields.tooling %}<tr><th>tooling</th><td>{{ l.fields.tooling }}
+      {% if 'ritual-only' in l.fields.tooling %}<span class="b warn">cannot land work</span>{% endif %}</td></tr>{% endif %}
     {% if l.fields.kit %}<tr><th>kit</th><td>{{ l.fields.kit }}</td></tr>{% endif %}
     <tr><th>⚑ needs-owner</th><td>
       {% if l.fields['needs-owner'] %}<span class="note">{{ l.fields['needs-owner'] }}</span>

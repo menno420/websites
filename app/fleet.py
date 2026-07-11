@@ -67,6 +67,12 @@ KNOWN_KEYS = {
     # so it can never leak into the previous field as a continuation (the
     # routine:-into-blockers incident class).
     "rung",
+    # Tooling capability token (backlog, 2026-07-11): a fired session stamps
+    # its mandated landing-tools probe result (`pr-capable | ritual-only`) so
+    # a PR-tooling wall (the 04:03Z ritual-only fire) is visible on /fleet
+    # without branch archaeology, and a cross-lane tooling regression shows
+    # as a trend. Recognized here for the same leak-guard reason as rung.
+    "tooling",
 }
 
 _ISO_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?")
@@ -390,6 +396,26 @@ def freshness(updated: str, now: Optional[datetime] = None) -> dict[str, Any]:
         "age_human": _human_age(age_hours),
         "stale": age_hours >= config.FLEET_STALE_HOURS,
     }
+
+
+async def heartbeat_freshness(
+    repo: str, refresh: bool = False
+) -> Optional[dict[str, Any]]:
+    """One repo's heartbeat freshness — the cheap chip for the board rows.
+
+    Fetches ONLY ``control/status.md`` (TTL-cached; deliberately NOT the
+    full ``overview()`` fan-out — the board needs one number per repo, not
+    18 lanes × commits × pulls). Returns the ``freshness`` dict when the
+    heartbeat exists and its ``updated:`` parses; ``None`` for a repo with
+    no readable/parseable heartbeat — the board shows no chip rather than
+    a guessed age (/fleet stays the honest home for lane errors).
+    """
+    res = await github.fetch_file(repo, "control/status.md", refresh=refresh)
+    if not (res["ok"] and isinstance(res["data"], str) and res["data"].strip()):
+        return None
+    fields = parse_status(res["data"], repo)["fields"]
+    fresh = freshness(fields.get("updated", ""))
+    return fresh if fresh["ok"] else None
 
 
 def _commit_age(commits_res: dict, now: datetime) -> dict[str, Any]:
