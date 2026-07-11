@@ -30,8 +30,11 @@ the first lane adopts it.
 - `tests/test_orders.py` (+2) — parser formats/tolerance/duplicates; a
   DONE order recovering 19.0 from the notes token and feeding
   `summary.pickup`, open orders honestly None; frozen now=NOW.
-- `docs/ideas/backlog.md` — consumer bullet moved to Built; fresh 💡
-  captured (dogfood the convention as writer #1, below).
+- `docs/ideas/backlog.md` — Built entry + fresh 💡 added (dogfood the
+  convention as writer #1, below). NOTE: the consumer idea's `captured`
+  bullet lives on held #147's branch, not main — its retirement happens
+  at landing-time reconciliation (#148 lands after #147; both touch the
+  backlog, expect a merge-in then).
 
 ## Close-out (auto-drafted 2026-07-11 — edit, don't author)
 
