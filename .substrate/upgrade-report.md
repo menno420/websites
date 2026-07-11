@@ -1,8 +1,8 @@
-# substrate-kit upgrade report — v1.8.0 → v1.9.0
+# substrate-kit upgrade report — v1.9.0 → v1.10.0
 
 > Generated 2026-07-11 by `bootstrap.py upgrade`. Rollback: `python3 bootstrap.py upgrade --rollback`.
 
-**Docs:** consumer-edited: 17 · template-improved: 1 · unchanged: 4
+**Docs:** consumer-edited: 17 · unchanged: 5
 
 | planted doc | class | note |
 |---|---|---|
@@ -27,17 +27,8 @@
 | control/status.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | control/claims/README.md | unchanged | template identical across versions |
 | scripts/env-setup.sh | consumer-edited | template unchanged — consumer-owned, nothing to apply |
-| .claude/CLAUDE.md | template-improved | consumer-untouched + template improved — safe to apply with `upgrade --apply-docs` |
+| .claude/CLAUDE.md | unchanged | template identical across versions |
 
 ## Carve-out scan
 
 - carve-out scan: ran — no kit-owned live workflow installed, nothing to scan.
-
-<!-- Section restored by hand after `upgrade --apply-docs`: the post-hoc
-     apply pass rewrites this report WITHOUT the carve-out section the main
-     upgrade pass wrote (kit-side bug, flagged to the kit lane 2026-07-11).
-     The line above is the main pass's output, verbatim. -->
-
-## Applied (--apply-docs)
-
-- applied: .claude/CLAUDE.md (template@new, hash re-recorded)
