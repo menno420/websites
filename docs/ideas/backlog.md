@@ -10,14 +10,26 @@
 ## Captured / planned (pick highest-value buildable first)
 
 - **Flag to kit lane: `upgrade --apply-docs` rewrites `.substrate/upgrade-report.md`
-  without the Carve-out scan section** · `captured` — verified live on the
-  v1.9.0 upgrade (this repo, PR #101): the main upgrade pass wrote the
-  #156-mandated explicit carve-out section, then the post-hoc `--apply-docs`
-  pass regenerated the report with only the docs table + an "Applied" section,
-  silently dropping the carve-out audit record (hand-restored here). Every
-  adopter that takes apply-docs post-hoc loses that record — the kit's report
-  writer should carry the carve-out result through re-renders. Source:
-  `.sessions/2026-07-11-kit-upgrade-v1.9.0.md` 💡.
+  without the Carve-out scan section** · `retired` (fixed upstream in kit #176;
+  verified live on this repo's v1.10.0 upgrade, PR #105 — `--apply-docs` rode
+  the upgrade invocation and the carve-out section survived natively) —
+  originally verified live on the v1.9.0 upgrade (this repo, PR #101): the
+  main upgrade pass wrote the #156-mandated explicit carve-out section, then
+  the post-hoc `--apply-docs` pass regenerated the report with only the docs
+  table + an "Applied" section, silently dropping the carve-out audit record
+  (hand-restored here). Source: `.sessions/2026-07-11-kit-upgrade-v1.9.0.md` 💡.
+
+- **Flag to kit lane: model-doctrine idempotence phrase-match should be
+  emphasis-insensitive** · `captured` — verified live on the v1.10.0 upgrade
+  (this repo, PR #105): websites' `.sessions/README.md` already carried the
+  hand-merged doctrine from #101, but with bold markers inside the sentence
+  (`family-level model name **your own harness/environment reports this
+  session**`), so `_merge_model_doctrine`'s exact-substring detection phrase
+  missed it and appended a second, near-duplicate doctrine paragraph
+  (harmless — append-only + provenance-marked — but noise on every adopter
+  that hand-merged before the retroactive pass). The detector should
+  normalize markdown emphasis (`*`/`_`) away before phrase matching. Source:
+  `.sessions/2026-07-11-kit-upgrade-v1.10.0.md` 💡.
 
 - **`tooling:` capability token in the fired session's heartbeat** ·
   `captured` — the routine-fired protocol's mandated probe should stamp its

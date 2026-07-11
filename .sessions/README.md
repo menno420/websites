@@ -60,3 +60,6 @@ session: say so here and why — honest "nothing" beats forced filler.>
 - [ ] Real verification output summarized under "What was done" (actual test count + check verdict, not "should pass").
 - [ ] No `[[fill:` placeholder left anywhere on the card (unresolved fills keep the card red under `--strict`).
 - [ ] Heartbeat `control/status.md` overwrite queued as the session's FINAL step (after the merge; a `control/**`-only diff rides the fast lane and needs no card).
+
+<!-- substrate-kit: model-attribution doctrine (family-level names — ORDER 012) -->
+The `📊 Model:` model segment is the **family-level model name your own harness/environment reports this session** (e.g. `fable-5`, `opus-4.8`, `sonnet-5`) — the committed card's self-report is the attribution ground truth. Never copy it from an external surface (schedule/Routines screens are evidenced to misattribute), and never record a full dated model ID — family-level names only.
