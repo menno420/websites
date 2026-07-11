@@ -20,6 +20,14 @@ websites is built in Python 3.12 (FastAPI + Jinja2 + httpx, server-rendered; pin
    append the finding same session.
 4. `docs/AGENT_ORIENTATION.md` — the task-specific reading router.
 
+## Kit machinery — search hygiene
+
+`bootstrap.py` (~12k generated lines) and `.substrate/` (kit state + a byte
+backup of the previous dist) are substrate-kit machinery, not project code.
+Exclude them from repo-wide searches: `grep -r --exclude=bootstrap.py
+--exclude-dir=.substrate …`, or ripgrep `rg -g '!bootstrap.py' -g
+'!.substrate' …`.
+
 ## Architecture — layers & import rules
 
 Three independent server-rendered FastAPI services in one repo — control-plane (app/), botsite (botsite/), dashboard (dashboard/) — that share code, never a running process (each has its own Dockerfile + requirements.txt + Railway service). Inside a service the layers are: routes (app/main.py or app.py, plus app/owner.py) -> domain/data (readiness.py, journal.py, data_source.py) -> client (app/github.py: live GitHub REST + raw-content fetch behind a TTL cache) -> templates (Jinja2). Import rules: routes may import the domain, data, and client layers; lower layers never import routes or templates; no service imports another service's package; and no service ever imports superbot's disbot/ — cross-repo data arrives only as committed JSON read over raw.githubusercontent.com (read-only, forward-only).
