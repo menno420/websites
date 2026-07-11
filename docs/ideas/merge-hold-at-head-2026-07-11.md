@@ -1,5 +1,7 @@
 # 💡 Merge holds announced in a file at HEAD, not in session messages
 
+> **Status:** `ideas`
+
 - **Captured:** 2026-07-11, archive-prep capture session.
 - **State:** `captured` (also bulleted in `backlog.md`).
 
