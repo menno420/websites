@@ -121,7 +121,7 @@ def classify_order(
     ``claim_age_human`` for display. A claim whose timestamp did not parse
     ages honestly as unknown (never flagged stale on a guess).
     """
-    base = {"claim_stale": False, "claim_age_human": ""}
+    base = {"claim_stale": False, "claim_age_human": "", "claimed_at": None}
     if not statuses:
         return {"state": "unknown", "by": "", **base}
     now = now or clock.now()
@@ -149,6 +149,7 @@ def classify_order(
                 pass
     if claimed_by:
         out = {"state": "claimed", "by": claimed_by, **base}
+        out["claimed_at"] = claimed_at
         dt = fleet._parse_iso(claimed_at or "")
         if dt is not None:
             age_hours = (now - dt).total_seconds() / 3600
@@ -219,10 +220,32 @@ async def _repo_orders(
         order["state_by"] = cls["by"]
         order["claim_stale"] = cls["claim_stale"]
         order["claim_age_human"] = cls["claim_age_human"]
+        lat = pickup_latency(order.get("issued", ""), cls.get("claimed_at"))
+        order["pickup_latency_mins"] = lat["mins"]
+        order["pickup_latency_human"] = lat["human"]
         order["body_html"] = journal.render_markdown(order["body"])
         out["orders"].append(order)
         out[f"{cls['state']}_count"] += 1
     return out
+
+
+def pickup_latency(issued: str, claimed_at: Optional[str]) -> dict[str, Any]:
+    """filed→claimed latency — the fleet's order-routing SLO, finally visible.
+
+    Both timestamps already live in the data /orders parses (the ORDER
+    header's issued stamp; the lane claim's ISO token); this subtracts
+    them. Honest on any miss: an unparseable/absent stamp or a negative
+    delta (clock skew between two hand-written timestamps) yields
+    ``{"mins": None, "human": ""}`` — latency is never guessed.
+    """
+    filed = fleet._parse_iso(issued or "")
+    claimed = fleet._parse_iso(claimed_at or "")
+    if filed is None or claimed is None:
+        return {"mins": None, "human": ""}
+    mins = (claimed - filed).total_seconds() / 60
+    if mins < 0:
+        return {"mins": None, "human": ""}
+    return {"mins": round(mins, 1), "human": fleet._human_age(mins / 60)}
 
 
 def _sort_key(card: dict[str, Any]) -> tuple:

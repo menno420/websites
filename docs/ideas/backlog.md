@@ -68,16 +68,6 @@
   zero-packages cost makes the badge exact forever (routing half: flagged to
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
-- **Order-ack latency line in the heartbeat** · `captured` — ORDER 011
-  sat 17 minutes between filing (09:59Z) and claim (10:16Z) purely
-  because a send_later nudge happened to fire; an
-  `orders-latency: <id> filed→claimed <mins>` heartbeat line (or /orders
-  surfacing per-repo filed→claimed deltas from the two files it already
-  parses) would let the manager MEASURE each lane's order-pickup latency
-  instead of inferring it across control/inbox.md and control/status.md
-  timestamps. Worth having because pickup latency is the fleet's real
-  routing SLO and today it is invisible. Source:
-  `.sessions/2026-07-11-order-011-self-review.md` 💡.
 - **Inbox relay-order provenance check** · `captured` — the inbox
   grammar gate now enforces SHAPE (append-only + well-formed ORDER
   blocks) but not SOURCE: any green-lane PR author can append a
@@ -98,6 +88,16 @@
   pattern instead of re-learning the 08:45Z lesson. Worth having
   because the failure class is service-agnostic and the fix is one
   small module. Source: `.sessions/2026-07-11-route-clock-freeze.md` 💡.
+- **Fleet-wide pickup-latency rollup on /orders** · `captured` — with
+  per-order pickup_latency_mins now in every card, a summary
+  median/max chip ("fleet pickup: median 22m · slowest 3h") plus a
+  per-repo figure turns the routing SLO from per-order trivia into a
+  manageable number the manager can watch trend; pure presentation
+  over data /orders already computes (summary keys change → move pins
+  same-PR). Worth having because a single slow-pickup lane is exactly
+  what the manager sweep should catch early, and medians resist the
+  one-weird-timestamp outlier. Source:
+  `.sessions/2026-07-11-order-pickup-latency.md` 💡.
 - **Nav membership scan should glob `app/*.py`, not a hand list** ·
   `captured` — `tests/test_nav_manifest.py` scans a hand-kept
   `ROUTE_SOURCES = [app/main.py, app/owner.py]` for `active` keys: the
