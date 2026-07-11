@@ -62,20 +62,38 @@ jobs:
 
       # Kit gate: docs hygiene (badges / links / reachability), session-log
       # markers, namespace shadowing, seam authority, orientation budget, and
-      # the decision ledger. --require-session-log fails (not just advises)
-      # when a PR adds a session card that is not yet complete.
+      # the decision ledger — gated on EVERY session card this PR/push
+      # touches, never a single picked one (kit v1.10.1 every-card gate,
+      # ported 2026-07-11 from the staged .substrate/ci/substrate-gate.yml
+      # into this single enforced lane; the old `tail -1` picker graded only
+      # the last-sorting card, so a PR that ADDED a born-red card and
+      # MODIFIED a later-sorting sibling shipped the in-progress card GREEN
+      # — the multi-card shadowing loophole).
       #
-      # PR-diff-aware card selection (kit v1.0.0, `adopt --wire-enforcement`):
-      # a fresh CI checkout flattens every file mtime to checkout time, so the
-      # engine's newest-by-mtime card guess is arbitrary here — an OLD complete
-      # card could mask THIS PR's in-progress one (the leak that let #19
-      # auto-merge on a born-red card alone). Derive the card from what the
-      # PR/push diff touches under .sessions/ and pass it via --session-log; no
-      # card in the diff -> argument omitted -> the engine's mtime fallback
-      # (fail-open). This snippet is the kit's generated substrate-gate step,
-      # folded into this single required `quality` gate so there is exactly one
-      # enforced session-log path (no double / conflicting logic).
-      - name: substrate check (strict, diff-aware session gate)
+      # Lanes, mirroring the staged gate exactly (gate file path adapted to
+      # this folded workflow):
+      #  * cards ADDED by the PR (born-red at birth is the REQUIRED state):
+      #    absent sentinel + --added-card per card — the engine grades each
+      #    card by what it DECLARES: in-progress/drafted = the designed
+      #    born-red HOLD (red until the card flips complete), grammar misses
+      #    red, complete passes; any added card holding holds the step.
+      #    Modified sibling cards in the same diff are ADVISORY-ONLY
+      #    (logged, never grade-affecting) — a sibling backfill can no
+      #    longer shadow the added card.
+      #  * diff that ONLY MODIFIES cards (every close-out flips one): the
+      #    full locked-door gate on EACH modified card, so a close-out that
+      #    forgot to flip `complete` still reds.
+      #  * no card in the diff: an explicitly named, NONEXISTENT sentinel
+      #    WITHOUT --require-session-log — per the engine's contract an
+      #    explicit absent card is ADVISORY, while the bare mtime fallback
+      #    would latch onto a mid-session in-progress card and red every
+      #    unrelated PR (CI flattens mtimes; the omitted argument was never
+      #    fail-open in CI).
+      #  * a PR that also touches THIS workflow file (gate regen/change):
+      #    every ADDED card keeps the FULL locked door + --simulate-added-card
+      #    — hold semantics may only tighten, never loosen, inside the PR
+      #    that changes them.
+      - name: substrate check (strict, every-card diff-aware session gate)
         if: steps.lane.outputs.control_only != 'true'
         run: |
           if [ -n "${{ github.base_ref }}" ]; then
@@ -83,9 +101,37 @@ jobs:
           else
             range="${{ github.event.before }}..${{ github.sha }}"
           fi
-          card="$(git diff --name-only --diff-filter=d "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null | tail -1)"
-          echo "session gate card: ${card:-<none - mtime fallback>}"
-          python3 bootstrap.py check --strict --require-session-log ${card:+--session-log "$card"}
+          cards="$(git diff --name-only --diff-filter=d "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null)"
+          added="$(git diff --name-only --diff-filter=A "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null)"
+          gate_regen="$(git diff --name-only "$range" -- '.github/workflows/quality.yml' 2>/dev/null | tail -1)"
+          echo "session gate cards: ${cards:-<none - advisory sentinel>}"
+          fail=0
+          if [ -n "$added" ]; then
+            while IFS= read -r card; do
+              [ -z "$card" ] && continue
+              if printf '%s\n' "$added" | grep -Fxq -- "$card"; then continue; fi
+              echo "modified sibling card (advisory — logged, never grade-affecting): $card"
+            done <<< "$cards"
+            while IFS= read -r card; do
+              [ -z "$card" ] && continue
+              if [ -n "$gate_regen" ]; then
+                echo "card $card is ADDED but this PR also touches the gate workflow itself — locked-door gate (mid-PR semantics may only tighten; flip the card complete to merge)"
+                python3 bootstrap.py check --strict --require-session-log --session-log "$card" --simulate-added-card "$card" || fail=1
+              else
+                echo "card $card is newly ADDED by this PR (born-red heartbeat) — added-card gate: in-progress HOLDs until the card flips complete; grammar misses red"
+                python3 bootstrap.py check --strict --session-log .sessions/__born-red-card-added__.md --added-card "$card" || fail=1
+              fi
+            done <<< "$added"
+          elif [ -n "$cards" ]; then
+            while IFS= read -r card; do
+              [ -z "$card" ] && continue
+              echo "card $card is MODIFIED by this PR (close-out flip) — locked-door gate"
+              python3 bootstrap.py check --strict --require-session-log --session-log "$card" || fail=1
+            done <<< "$cards"
+          else
+            python3 bootstrap.py check --strict --session-log .sessions/__no-card-in-diff__.md
+          fi
+          exit "$fail"
 
       # Enforcing guard: no tracked code may read the ambient production-bot
       # Railway IDs (RAILWAY_PROJECT_ID / SERVICE_ID / ENVIRONMENT_ID), and a
