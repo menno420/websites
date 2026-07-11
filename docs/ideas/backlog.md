@@ -81,6 +81,15 @@
   zero-packages cost makes the badge exact forever (routing half: flagged to
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
+- **Chain-entry refresh as a close-out ender** · `captured` — the
+  consolidated current-state chain entry went twelve slices stale
+  because extending it belongs to no slice; make it part of the
+  CHAIN-END ritual (or every Nth slice's enders): one bullet-line per
+  ~5 slices, test-truth line refreshed. Worth having because the
+  living ledger is orientation doc #2 and its staleness was found by
+  our own sweep twice today — recurring drift wants a recurring owner,
+  not a rediscovery. Source:
+  `.sessions/2026-07-11-chain-entry-refresh.md` 💡.
 - **Provenance-token list to the kit lane (gate half)** · `captured` —
   the /orders advisory and the future staged-gate provenance warning
   should share ONE token convention (cse_/session_/coordinator/
@@ -91,7 +100,10 @@
   heartbeat notes. Worth having because the advisory just created the
   convention de facto, and conventions fork silently. Source:
   `.sessions/2026-07-11-inbox-provenance-advisory.md` 💡.
-- **Hand-kept-list audit sweep** · `captured` — the nav guard's own
+- **Hand-kept-list audit sweep** · `retired` (executed 2026-07-11,
+  continuous-mode slice 32, PR #142: CLASS CLEAR — every hit in tests/ +
+  scripts/ is a single-file pointer or legitimate allowlist; the Railway
+  guard enumerates git-tracked files; no third instance) — the nav guard's own
   hand-kept list is the SECOND self-referential drift this chain found
   (the first: the overflow guard's markup/tuple duplication #122); a
   one-off rung-5 sweep grepping tests/ and scripts/ for hard-coded
