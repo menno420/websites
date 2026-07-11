@@ -61,6 +61,46 @@ def test_classify_empty_is_empty():
     assert open_work.classify({}, prs={}, unmerged={}) == []
 
 
+def test_classify_no_content_diff_is_ignorable_not_a_rescue_alarm():
+    """A branch with commits but ZERO tree diff vs main (empty probe commit,
+    or content that landed via another PR's squash) classifies NO-DIFF —
+    never PR-LESS/PR-UNKNOWN. The 2026-07-11 false-positive class: the
+    probe branch + two squash-landed branches each cost an MCP PR-state
+    check to clear from the ⚠ stranded list."""
+    rows = open_work.classify(
+        {"claude/probe": "e" * 40, "claude/really-stranded": "f" * 40},
+        prs=None,
+        unmerged={"claude/probe": True, "claude/really-stranded": True},
+        content_diff={"claude/probe": False, "claude/really-stranded": True},
+    )
+    by = {r["branch"]: r for r in rows}
+    assert by["claude/probe"]["state"] == "NO-DIFF"
+    assert "ignorable" in by["claude/probe"]["note"]
+    # a real content diff still raises the alarm
+    assert by["claude/really-stranded"]["state"] == "PR-UNKNOWN"
+
+
+def test_classify_without_content_map_keeps_old_behavior():
+    """content_diff is optional — callers/tests without it see the exact
+    pre-change classification (no silent behavior change)."""
+    rows = open_work.classify(
+        {"claude/stranded": "b" * 40}, prs=None,
+        unmerged={"claude/stranded": True},
+    )
+    assert rows[0]["state"] == "PR-UNKNOWN"
+
+
+def test_classify_unknown_content_diff_stays_alarmed():
+    """A failed content comparison (None) must NOT silence the alarm —
+    unknown is treated as potentially-real work, never guessed ignorable."""
+    rows = open_work.classify(
+        {"claude/x": "9" * 40}, prs=None,
+        unmerged={"claude/x": True},
+        content_diff={"claude/x": None},
+    )
+    assert rows[0]["state"] == "PR-UNKNOWN"
+
+
 # --------------------------------------------------------------------------- #
 # rung: heartbeat line
 # --------------------------------------------------------------------------- #
