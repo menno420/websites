@@ -20,7 +20,10 @@
   (hand-restored here). Source: `.sessions/2026-07-11-kit-upgrade-v1.9.0.md` 💡.
 
 - **Flag to kit lane: model-doctrine idempotence phrase-match should be
-  emphasis-insensitive** · `captured` — verified live on the v1.10.0 upgrade
+  emphasis-insensitive** · `retired` (fixed upstream in kit #187, shipped in
+  v1.10.1; verified live on this repo's v1.10.1 upgrade, PR #113 —
+  `.sessions/README.md` byte-identical across the upgrade, no new append) —
+  originally verified live on the v1.10.0 upgrade
   (this repo, PR #105): websites' `.sessions/README.md` already carried the
   hand-merged doctrine from #101, but with bold markers inside the sentence
   (`family-level model name **your own harness/environment reports this
@@ -30,6 +33,17 @@
   that hand-merged before the retroactive pass). The detector should
   normalize markdown emphasis (`*`/`_`) away before phrase matching. Source:
   `.sessions/2026-07-11-kit-upgrade-v1.10.0.md` 💡.
+
+- **Fold the v1.10.1 every-card session-gate loop into the live
+  `quality.yml` lane** · `captured` — the host-owned folded lane in
+  `.github/workflows/quality.yml` still derives the PR's card with
+  `… | tail -1` (single-card picker), the exact multi-card shadowing shape
+  kit v1.10.1 fixed in the staged `.substrate/ci/substrate-gate.yml`: a PR
+  adding a born-red card AND modifying a later-sorting sibling grades only
+  the sibling and ships the in-progress card green. Port the staged gate's
+  every-card loop (added → per-card HOLD lane, modified siblings advisory,
+  modified-only → locked door per card) into the folded step. Source:
+  `.sessions/2026-07-11-kit-upgrade-v1.10.1.md` 💡.
 
 - **Ask the manager for a generated `lanes.json`** · `captured` — /fleet
   now parses the LANES literal out of fleet-manager's gen_roster.py source

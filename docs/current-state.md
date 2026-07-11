@@ -56,9 +56,9 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   it derives the session card from the PR/push diff and passes it via
   `check --session-log <card>`, so a stale `complete` card can't mask THIS
   PR's `in-progress` one (`fetch-depth: 0` on checkout feeds the diff). The
-  vendored `bootstrap.py` is kit **v1.10.0** (stepwise §4.3 upgrades
+  vendored `bootstrap.py` is kit **v1.10.1** (stepwise §4.3 upgrades
   v1.6.0 → v1.7.0 (#62) → v1.7.1 → v1.8.0 → v1.9.0 (#101) → v1.10.0
-  (#105); this passage said v1.6.0 until 2026-07-11 — verified against the
+  (#105) → v1.10.1 (#113); this passage said v1.6.0 until 2026-07-11 — verified against the
   `bootstrap.py` header) whose checker fails a born-red
   (`in-progress`/`wip`/`hold`/`drafted`) card under `--strict` — the leak that
   let PR #19 auto-merge on a born-red card alone is closed.
@@ -143,7 +143,7 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
     `scripts/cron_slots.py`, `scripts/review_row_check.py`.
   - **Nav overflow guard (#109):** header nav 11 → 6 top-level; secondary
     pages under a no-JS `<details>` "more ▾" dropdown.
-  - **Kit:** v1.6.0 → v1.10.0 stepwise; ORDER 010 (model-line doctrine)
+  - **Kit:** v1.6.0 → v1.10.1 stepwise; ORDER 010 (model-line doctrine)
     done. **Tests:** app suite 157 → 177; full three-service suite 235.
   - **Backlog:** `docs/ideas/backlog.md` seeded, worked, and drained —
     buildable bullets **dry** as of #109 (manager routing requested via the
