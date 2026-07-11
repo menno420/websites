@@ -53,6 +53,16 @@
   zero-packages cost makes the badge exact forever (routing half: flagged to
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
+- **Nav manifest: one `(href, label, group)` list driving base.html and a
+  membership test** · `captured` — the "which pages live under more ▾"
+  decision currently exists twice by hand (template markup in base.html +
+  the GROUPED/PRIMARY tuples in tests/test_nav_overflow.py); a single
+  manifest (template context or a constants module the template iterates)
+  with a test asserting every route with a nav `active` key appears in it
+  means page 12 physically cannot be added outside the overflow guard.
+  Worth having because the guard's value is only as durable as its
+  membership list — today drift is silent. Source:
+  `.sessions/2026-07-11-nav-overflow-guard.md` 💡.
 ## Built
 
 - **Nav overflow guard** — shipped 2026-07-11 (continuous-mode slice 19, the
