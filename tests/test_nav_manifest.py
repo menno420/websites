@@ -17,8 +17,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import nav  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-# Every module that renders control-plane templates with an `active` key.
-ROUTE_SOURCES = [REPO_ROOT / "app" / "main.py", REPO_ROOT / "app" / "owner.py"]
+# Every module in the app package is scanned (glob, not a hand-kept list —
+# the guard against hand-kept nav lists must not contain one: with the old
+# ROUTE_SOURCES = [main.py, owner.py] list, splitting routes into a new
+# module silently exited the scan). Source-text based on purpose; a module
+# with no `active` keys (owner.py today) simply contributes nothing.
+ROUTE_SOURCES = sorted((REPO_ROOT / "app").glob("*.py"))
 
 # `"active": "board"` (context dicts) and `active="board"` (kwargs).
 _ACTIVE_RE = re.compile(r'(?:"active"\s*:\s*|\bactive\s*=\s*)"([a-z_]+)"')
