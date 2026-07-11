@@ -89,6 +89,15 @@
   relays. Worth having because the gates just made the inbox TRUSTED
   input, and trusted input attracts spoofing. Source:
   `.sessions/2026-07-11-control-gate-tests.md` 💡.
+- **Port the clock-freeze pattern to botsite/dashboard if they grow
+  age-measuring code** · `captured` — premise-checked: TODAY neither
+  botsite/app.py nor dashboard/app.py measures ages against the wall
+  clock (no datetime.now in either — verified by grep this slice), so
+  there is nothing to port YET; this bullet exists so the first
+  age-measuring feature in either service starts from app/clock.py's
+  pattern instead of re-learning the 08:45Z lesson. Worth having
+  because the failure class is service-agnostic and the fix is one
+  small module. Source: `.sessions/2026-07-11-route-clock-freeze.md` 💡.
 - **Nav membership scan should glob `app/*.py`, not a hand list** ·
   `captured` — `tests/test_nav_manifest.py` scans a hand-kept
   `ROUTE_SOURCES = [app/main.py, app/owner.py]` for `active` keys: the
@@ -98,18 +107,6 @@
   Worth having because self-maintaining guards should not have the
   exact failure mode they guard against. Source:
   `.sessions/2026-07-11-nav-manifest.md` 💡.
-- **Route-level clock freeze for TestClient tests** · `captured` — the
-  new time-discipline guard covers DIRECT calls to age-measuring
-  functions, but route-level tests (TestClient hitting /fleet, /orders,
-  the board) still exercise the real wall clock through the endpoints;
-  today they only assert time-monotonic-safe things, but nothing
-  enforces that. A test-only clock override (e.g. an app dependency or
-  config hook the suite pins) would close the remaining half. Worth
-  having because the 08:45Z class survives in route tests the static
-  guard cannot see. Source:
-  `.sessions/2026-07-11-test-time-discipline-guard.md` 💡.
-## Built
-
 - **Control-gate suite tests** — shipped 2026-07-11 (continuous-mode
   slice 26): tests/test_control_gates.py drives the real
   `check --strict --status-only [--inbox-base]` CLI against a synthetic
