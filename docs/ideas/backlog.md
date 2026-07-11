@@ -56,16 +56,6 @@
   zero-packages cost makes the badge exact forever (routing half: flagged to
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
-- **Nav manifest: one `(href, label, group)` list driving base.html and a
-  membership test** · `captured` — the "which pages live under more ▾"
-  decision currently exists twice by hand (template markup in base.html +
-  the GROUPED/PRIMARY tuples in tests/test_nav_overflow.py); a single
-  manifest (template context or a constants module the template iterates)
-  with a test asserting every route with a nav `active` key appears in it
-  means page 12 physically cannot be added outside the overflow guard.
-  Worth having because the guard's value is only as durable as its
-  membership list — today drift is silent. Source:
-  `.sessions/2026-07-11-nav-overflow-guard.md` 💡.
 - **Order-ack latency line in the heartbeat** · `captured` — ORDER 011
   sat 17 minutes between filing (09:59Z) and claim (10:16Z) purely
   because a send_later nudge happened to fire; an
@@ -76,6 +66,15 @@
   timestamps. Worth having because pickup latency is the fleet's real
   routing SLO and today it is invisible. Source:
   `.sessions/2026-07-11-order-011-self-review.md` 💡.
+- **Nav membership scan should glob `app/*.py`, not a hand list** ·
+  `captured` — `tests/test_nav_manifest.py` scans a hand-kept
+  `ROUTE_SOURCES = [app/main.py, app/owner.py]` for `active` keys: the
+  guard against hand-kept nav lists itself contains a hand-kept module
+  list, so splitting routes into a new module silently exits the scan.
+  Glob `app/*.py` (cheap, source-text scan) or enumerate `app.routes`.
+  Worth having because self-maintaining guards should not have the
+  exact failure mode they guard against. Source:
+  `.sessions/2026-07-11-nav-manifest.md` 💡.
 - **Port the staged fast-lane control gates into quality.yml too** ·
   `captured` — the staged substrate-gate.yml runs TWO extra steps this
   repo's folded lane does not: (a) a control-status gate ON the fast
@@ -99,6 +98,14 @@
   guard cannot see. Source:
   `.sessions/2026-07-11-test-time-discipline-guard.md` 💡.
 ## Built
+
+- **Nav manifest** — shipped 2026-07-11 (continuous-mode slice 24):
+  `app/nav.py` is the single `(href, label, key)` source for the header
+  nav; base.html iterates it via Jinja globals, the overflow tests
+  import it, and `tests/test_nav_manifest.py` holds every route's
+  `active` key to it (membership + uniqueness + no-dead-entries) — page
+  12 physically cannot skip the overflow guard. Source:
+  `.sessions/2026-07-11-nav-overflow-guard.md` 💡.
 
 - **quality.yml every-card session gate** — shipped 2026-07-11
   (continuous-mode slice 23): the folded lane's `tail -1` single-card
