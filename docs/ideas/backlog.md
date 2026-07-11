@@ -14,6 +14,12 @@
   3c/1b") reusing repo_ideas' cached lifecycle counts puts conveyor health
   where the owner already looks (zero new fetch on a warm cache). Source:
   `.sessions/2026-07-11-ideas-states-waitdeploy.md` 💡.
+- **Relay-PR merge protocol on the bus** · `captured` — one line in
+  `control/README.md`: a `control/inbox.md`-only relay PR from the manager
+  may be merged by ANY lane session that finds it green (the inbox has one
+  WRITER, not one MERGER); the ORDER 010 relay sat open with its author
+  session ended until this chain happened to wake. Source:
+  `.sessions/2026-07-11-order-010-and-tooling.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
