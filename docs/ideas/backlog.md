@@ -9,6 +9,12 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **`/ideas` state filter (conveyor health)** · `captured` — surface
+  captured/planned/built/retired counts per repo on /ideas now that
+  `docs/ideas/backlog.md` carries meaningful Built/Retired sections; shows
+  how much of each repo's idea flow actually ships (the conveyor-health
+  metric); one section-header scan over already-fetched files. Source:
+  `.sessions/2026-07-11-json-contracts-pr9-retire.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
