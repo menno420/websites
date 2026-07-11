@@ -77,6 +77,16 @@
   Worth having because the guard's value is only as durable as its
   membership list — today drift is silent. Source:
   `.sessions/2026-07-11-nav-overflow-guard.md` 💡.
+- **Order-ack latency line in the heartbeat** · `captured` — ORDER 011
+  sat 17 minutes between filing (09:59Z) and claim (10:16Z) purely
+  because a send_later nudge happened to fire; an
+  `orders-latency: <id> filed→claimed <mins>` heartbeat line (or /orders
+  surfacing per-repo filed→claimed deltas from the two files it already
+  parses) would let the manager MEASURE each lane's order-pickup latency
+  instead of inferring it across control/inbox.md and control/status.md
+  timestamps. Worth having because pickup latency is the fleet's real
+  routing SLO and today it is invisible. Source:
+  `.sessions/2026-07-11-order-011-self-review.md` 💡.
 - **Route-level clock freeze for TestClient tests** · `captured` — the
   new time-discipline guard covers DIRECT calls to age-measuring
   functions, but route-level tests (TestClient hitting /fleet, /orders,
