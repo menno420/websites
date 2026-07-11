@@ -111,9 +111,9 @@
   `claude/wire-github-token-docs`, `manager/control-plant`.
 - **Decide-and-flag decisions taken this window (reversible, no veto
   needed unless you disagree):** repointing /fleet's lane registry to the
-  `LANES` literal inside fleet-manager's `scripts/gen_roster.py` (D-0035 —
-  honest but coupled to a script's internals; the standing ask to the
-  manager for a generated `lanes.json` makes it stable); adopting the
+  `LANES` literal inside fleet-manager's `scripts/gen_roster.py` (decision
+  in the ledger; honest but coupled to a script's internals — the standing
+  ask to the manager for a generated `lanes.json` makes it stable); adopting the
   relay-landing doctrine in `control/README.md`; self-arming this lane's
   4-hourly wake trigger (ORDER 008) and running the send_later
   continuation chain through the 2026-07-14 free window.
