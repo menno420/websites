@@ -210,3 +210,39 @@ def test_overview_carries_pickup_latency_for_claimed_orders(monkeypatch):
         assert claimed["pickup_latency_mins"] >= 0
     # open + done orders have no claim stamp -> honest None
     assert by_id["003"]["pickup_latency_mins"] is None
+
+
+def test_pickup_rollup_median_max_and_honest_none():
+    """Median/max across measurable pickups; None (never zero) when nothing
+    is measurable — stats are never invented."""
+    from app import orders
+
+    def card(lats):
+        return {"orders": [{"pickup_latency_mins": v} for v in lats]}
+
+    roll = orders._pickup_rollup([card([10.0, 30.0]), card([50.0])])
+    assert roll["count"] == 3
+    assert roll["median_mins"] == 30.0 and roll["max_mins"] == 50.0
+    assert roll["median_human"] and roll["max_human"]
+
+    assert orders._pickup_rollup([card([None, None]), card([])]) is None
+
+
+def test_overview_summary_and_cards_carry_pickup_rollup(monkeypatch):
+    """summary.pickup + per-card pickup_median_* present; honest None/""
+    when the fixture world has no measurable claim stamps."""
+    _fake_world(
+        monkeypatch,
+        inbox_by_repo={"websites": _INBOX},
+        status_by_repo={"websites": _STATUS},
+    )
+    out = asyncio.run(orders.overview(now=NOW))
+    assert "pickup" in out["summary"]
+    top = next(c for c in out["cards"] if c["repo"] == "websites")
+    assert "pickup_median_mins" in top and "pickup_median_human" in top
+    if out["summary"]["pickup"] is None:
+        assert all(
+            o["pickup_latency_mins"] is None for o in top["orders"]
+        )
+    else:
+        assert out["summary"]["pickup"]["count"] >= 1
