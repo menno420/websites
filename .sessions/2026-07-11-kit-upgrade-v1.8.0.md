@@ -1,6 +1,6 @@
 # 2026-07-11 — substrate-kit upgrade v1.7.1 → v1.8.0 (§4.3 release flow)
 
-> **Status:** `in-progress` — applying the v1.8.0 release upgrade as one kit-scoped PR.
+> **Status:** `complete` — upgrade applied, gates green, shipped as PR #85.
 
 - **📊 Model:** claude-fable-5 (coordinator-tasked distribution worker)
 
