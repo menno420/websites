@@ -509,6 +509,12 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   one-repo/multi-Railway-service fit-alongside recommendation, botsite-first
   migration order + rollback, and seven open questions for the owner (now routed
   into `docs/question-router.md`). No code ported; live sites untouched.
+- **PLANNED (not built yet)** — gated live env-variable visibility: a
+  `/owner/environments` page that loads each project's Railway variables live
+  (project-scoped token) and links to where each is managed. Spec:
+  `docs/planning/live-env-visibility-plan-2026-07-11.md` (owner-directed
+  2026-07-11; revives the deferred live-Railway-read half of the ORDER 005 env
+  surface).
 - **PR #3** (`2f93b32`) — Railway deployment recorded (`docs/deployment.md`,
   this ledger filled from kit template, [D-0005]). Deploy itself is
   operational, not code: fresh Railway project `superbot-websites` created
