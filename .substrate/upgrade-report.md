@@ -1,8 +1,8 @@
-# substrate-kit upgrade report — v1.10.0 → v1.10.1
+# substrate-kit upgrade report — v1.10.1 → v1.11.0
 
 > Generated 2026-07-11 by `bootstrap.py upgrade`. Rollback: `python3 bootstrap.py upgrade --rollback`.
 
-**Docs:** consumer-edited: 17 · unchanged: 5
+**Docs:** consumer-edited: 17 · template-improved: 1 · unchanged: 4
 
 | planted doc | class | note |
 |---|---|---|
@@ -27,7 +27,7 @@
 | control/status.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | control/claims/README.md | unchanged | template identical across versions |
 | scripts/env-setup.sh | consumer-edited | template unchanged — consumer-owned, nothing to apply |
-| .claude/CLAUDE.md | unchanged | template identical across versions |
+| .claude/CLAUDE.md | template-improved | consumer-untouched + template improved — safe to apply with `upgrade --apply-docs` |
 
 ## Carve-out scan
 
