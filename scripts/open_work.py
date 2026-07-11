@@ -28,6 +28,12 @@ Output: one line per remote work branch (claude/* and manager/*), classified:
   PR-LESS <branch>        — commits not on main and no open PR: a rescue
                             candidate (the stranded-work protocol) or a
                             session mid-work before its PR — check age.
+  NO-DIFF <branch>        — commits not on main but ZERO content diff vs
+                            main (an empty probe commit, or content that
+                            landed via another PR's squash — the relayed
+                            heartbeats / merged squash branches): ignorable,
+                            prune candidate, NEVER a rescue alarm (this
+                            false-positive class misfired 4× on 2026-07-11).
   MERGED-STALE <branch>   — no commits beyond main: landed content, prune
                             candidate (deletion needs rights this repo's
                             sessions lack — the documented 403 wall).
@@ -92,10 +98,26 @@ def has_unmerged_commits(branch: str, sha: str) -> bool | None:
     return None  # sha not present locally even after fetch — unknown
 
 
+def has_content_diff(sha: str) -> bool | None:
+    """True when the branch tree differs from main at the merge-base diff
+    (three-dot). False for empty probe commits and squash-landed content.
+    None when the comparison itself fails (state unknown, never guessed)."""
+    probe = subprocess.run(
+        ["git", "diff", "--quiet", f"origin/main...{sha}"],
+        capture_output=True, check=False,
+    )
+    if probe.returncode == 0:
+        return False
+    if probe.returncode == 1:
+        return True
+    return None
+
+
 def classify(
     branches: dict[str, str],
     prs: dict[str, int] | None,
     unmerged: dict[str, bool | None],
+    content_diff: dict[str, bool | None] | None = None,
 ) -> list[dict]:
     """Pure classification (unit-tested): branch rows with state + note."""
     rows: list[dict] = []
@@ -104,7 +126,11 @@ def classify(
             state, note = "PR-OPEN", f"#{prs[name]} — leave to its session"
         else:
             u = unmerged.get(name)
-            if u is True:
+            if u is True and content_diff is not None and content_diff.get(name) is False:
+                state = "NO-DIFF"
+                note = ("commits but zero content diff vs main "
+                        "(probe/landed-elsewhere) — ignorable, prune candidate")
+            elif u is True:
                 state = "PR-LESS" if prs is not None else "PR-UNKNOWN"
                 note = (
                     "rescue candidate or mid-work — check age"
@@ -126,7 +152,12 @@ def main() -> int:
         return 0
     prs = open_prs()
     unmerged = {n: has_unmerged_commits(n, s) for n, s in branches.items()}
-    rows = classify(branches, prs, unmerged)
+    content_diff = {
+        n: has_content_diff(s)
+        for n, s in branches.items()
+        if unmerged.get(n) is True
+    }
+    rows = classify(branches, prs, unmerged, content_diff)
 
     width = max(len(r["branch"]) for r in rows)
     print(f"open-work on {OWNER_REPO} "

@@ -62,7 +62,10 @@
   `.sessions/2026-07-11-kit-upgrade-v1.10.0.md` 💡.
 
 - **Apply the HANDOFF read-first line to the live `.claude/CLAUDE.md` via
-  `upgrade --apply-docs`** · `captured` — the v1.11.0 upgrade report (PR
+  `upgrade --apply-docs`** · `built` (PR #146 — the v1.12.0 kit upgrade ran
+  `upgrade --apply-docs`; the live working agreement now carries the
+  three-surface boot set incl. the HANDOFF read-first line, diff-reviewed
+  against the staged `.substrate/claude/CLAUDE.md` render) — the v1.11.0 upgrade report (PR
   #129) classes the live working agreement as "consumer-untouched + template
   improved — safe to apply with `upgrade --apply-docs`": one flag-run adopts
   the staged orientation change (read boot-generated `HANDOFF.md` before
@@ -72,6 +75,17 @@
   `current-state.md`. Out of the distribution lane's scope (live CLAUDE.md is
   host-owned); a websites session should run it deliberately and diff-review.
   Source: `.sessions/2026-07-11-kit-upgrade-v1.11.0.md` 💡.
+
+- **Hand-merge the v1.12.0 boot-set-trim deltas into the two diverged
+  planted docs (CONSTITUTION.md, docs/AGENT_ORIENTATION.md)** · `captured` —
+  the v1.12.0 upgrade (PR #146) could not auto-apply the trim to them (both
+  the template and the docs moved); the exact diffs are preserved in
+  `.substrate/upgrade-report.md` § Template deltas for manual merge.
+  AGENT_ORIENTATION still carries the duplicate start-list + duplicate
+  verify block the new template deletes ("one list, one home");
+  CONSTITUTION still enumerates the full PL register the new template
+  condenses to a cite-the-register pointer. Apply by hand, diff-review, keep
+  the host slot content. Source: `.sessions/2026-07-11-kit-upgrade-v1.12.0.md` 💡.
 
 - **Ask the manager for a generated `lanes.json`** · `captured` — /fleet
   now parses the LANES literal out of fleet-manager's gen_roster.py source
@@ -104,6 +118,14 @@
   our own sweep twice today — recurring drift wants a recurring owner,
   not a rediscovery. Source:
   `.sessions/2026-07-11-chain-entry-refresh.md` 💡.
+- **Dogfood the pickup convention in this lane's own heartbeat** ·
+  `captured` — the consumer (#148) is honest-empty until SOMEONE
+  writes `pickup:` tokens; this lane can be writer #1: when the next
+  order's done= move happens, append `pickup: <id> <mins>m` to the
+  heartbeat notes (ORDER 011's known 19m figure can seed it). Worth
+  having because a convention with zero writers is a spec, not a
+  protocol — and the first write live-verifies the whole parser path
+  end-to-end. Source: `.sessions/2026-07-11-pickup-history-consumer.md` 💡.
 - **Provenance-token list to the kit lane (gate half)** · `captured` —
   the /orders advisory and the future staged-gate provenance warning
   should share ONE token convention (cse_/session_/coordinator/
