@@ -185,6 +185,9 @@ async def _repo_orders(
                     "orders_info": fleet.parse_orders(
                         parsed["fields"].get("orders", "")
                     ),
+                    "pickup_history": parse_pickup_history(
+                        parsed["fields"].get("notes", "")
+                    ),
                 }
             )
 
@@ -224,6 +227,22 @@ async def _repo_orders(
         order["claim_stale"] = cls["claim_stale"]
         order["claim_age_human"] = cls["claim_age_human"]
         lat = pickup_latency(order.get("issued", ""), cls.get("claimed_at"))
+        if lat["mins"] is None:
+            # Durable fallback: a lane-reported `pickup:` notes token (the
+            # persistence convention) — the datum survives the claim
+            # clearing on completion. Stamp-derived values keep precedence.
+            for st in statuses:
+                hist = st.get("pickup_history") or {}
+                try:
+                    reported = next(
+                        v for k, v in hist.items()
+                        if int(k) == int(order["id"])
+                    )
+                except (StopIteration, ValueError):
+                    continue
+                lat = {"mins": round(reported, 1),
+                       "human": fleet._human_age(reported / 60)}
+                break
         order["pickup_latency_mins"] = lat["mins"]
         order["pickup_latency_human"] = lat["human"]
         order["provenance_unverified"] = provenance_unverified(order)
@@ -265,6 +284,31 @@ def provenance_unverified(order: dict[str, Any]) -> bool:
     if not text.strip():
         return True
     return not any(tok in text for tok in _PROVENANCE_TOKENS)
+
+
+# `pickup: 011 19m` / `pickup: 011 19m, 009 42.5m` tokens in a lane's
+# heartbeat NOTES — the proposed persistence convention: the executor
+# appends the figure when its done= move clears the claim, so the routing
+# SLO survives order completion. This parser is the convention's CONSUMER,
+# shipped ahead of adoption (consumer-first is how the tooling:/landing:
+# tokens rolled out) — honest-empty until any lane writes the tokens.
+_PICKUP_SEG_RE = re.compile(
+    r"pickup:\s*((?:\d{1,4}\s+\d+(?:\.\d+)?m(?:\s*,\s*)?)+)", re.IGNORECASE
+)
+_PICKUP_TOK_RE = re.compile(r"(\d{1,4})\s+(\d+(?:\.\d+)?)m", re.IGNORECASE)
+
+
+def parse_pickup_history(notes: str) -> dict[str, float]:
+    """order id -> reported pickup minutes, from `pickup:` notes tokens.
+
+    Tolerant: only well-formed `<id> <mins>m` tokens inside a `pickup:`
+    segment parse; anything else is ignored (never a crash, never a guess).
+    Later duplicates win (a lane restating a figure supersedes)."""
+    out: dict[str, float] = {}
+    for seg in _PICKUP_SEG_RE.findall(notes or ""):
+        for oid, mins in _PICKUP_TOK_RE.findall(seg):
+            out[oid] = float(mins)
+    return out
 
 
 def _pickup_rollup(cards: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
