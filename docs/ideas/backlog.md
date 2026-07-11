@@ -104,6 +104,16 @@
   our own sweep twice today — recurring drift wants a recurring owner,
   not a rediscovery. Source:
   `.sessions/2026-07-11-chain-entry-refresh.md` 💡.
+- **Consume the pickup-persistence convention ahead of adoption** ·
+  `captured` — the manager-side latency-persistence ask has a buildable
+  LOCAL half: /orders could already parse `pickup: <id> <mins>` tokens
+  out of heartbeat notes into a durable per-lane latency history
+  (honest-empty until any lane writes them), so the convention works
+  the moment the first lane adopts it instead of waiting a full
+  build-cycle after. Worth having because consumer-first shipping is
+  how the tooling:/landing: tokens rolled out successfully (parser
+  #67, first foreign writer 12:05Z same-day). Source:
+  `.sessions/2026-07-11-open-work-content-diff.md` 💡.
 - **Provenance-token list to the kit lane (gate half)** · `captured` —
   the /orders advisory and the future staged-gate provenance warning
   should share ONE token convention (cse_/session_/coordinator/
