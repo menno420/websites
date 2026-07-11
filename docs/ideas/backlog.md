@@ -34,17 +34,6 @@
   normalize markdown emphasis (`*`/`_`) away before phrase matching. Source:
   `.sessions/2026-07-11-kit-upgrade-v1.10.0.md` 💡.
 
-- **Fold the v1.10.1 every-card session-gate loop into the live
-  `quality.yml` lane** · `captured` — the host-owned folded lane in
-  `.github/workflows/quality.yml` still derives the PR's card with
-  `… | tail -1` (single-card picker), the exact multi-card shadowing shape
-  kit v1.10.1 fixed in the staged `.substrate/ci/substrate-gate.yml`: a PR
-  adding a born-red card AND modifying a later-sorting sibling grades only
-  the sibling and ships the in-progress card green. Port the staged gate's
-  every-card loop (added → per-card HOLD lane, modified siblings advisory,
-  modified-only → locked door per card) into the folded step. Source:
-  `.sessions/2026-07-11-kit-upgrade-v1.10.1.md` 💡.
-
 - **Ask the manager for a generated `lanes.json`** · `captured` — /fleet
   now parses the LANES literal out of fleet-manager's gen_roster.py source
   (honest but coupled to a script's internals); one generated
@@ -87,6 +76,18 @@
   timestamps. Worth having because pickup latency is the fleet's real
   routing SLO and today it is invisible. Source:
   `.sessions/2026-07-11-order-011-self-review.md` 💡.
+- **Port the staged fast-lane control gates into quality.yml too** ·
+  `captured` — the staged substrate-gate.yml runs TWO extra steps this
+  repo's folded lane does not: (a) a control-status gate ON the fast
+  lane (`check --strict --status-only`) so a heartbeat-breaking or
+  heartbeat-deleting control-only PR cannot merge green and pre-redden
+  the next unrelated PR, and (b) an inbox append-only gate (pure-append
+  diff vs merge-base + ORDER grammar, runs on BOTH lanes) so a green
+  control-only PR cannot rewrite or erase orders. Today the folded
+  fast lane short-circuits with NO validation at all. Worth having
+  because ~half this lane's PRs ride the fast lane (heartbeats, claims,
+  relays) and the inbox is the fleet's order of record. Source:
+  `.sessions/2026-07-11-quality-every-card-gate.md` 💡.
 - **Route-level clock freeze for TestClient tests** · `captured` — the
   new time-discipline guard covers DIRECT calls to age-measuring
   functions, but route-level tests (TestClient hitting /fleet, /orders,
@@ -98,6 +99,17 @@
   guard cannot see. Source:
   `.sessions/2026-07-11-test-time-discipline-guard.md` 💡.
 ## Built
+
+- **quality.yml every-card session gate** — shipped 2026-07-11
+  (continuous-mode slice 23): the folded lane's `tail -1` single-card
+  picker (multi-card shadowing loophole) replaced with the staged
+  substrate-gate.yml every-card loop — added cards get the per-card
+  born-red HOLD lane (siblings advisory), modified-only diffs get the
+  locked door per card, no-card diffs use the explicit advisory
+  sentinel, and PRs touching the gate file keep the full locked door +
+  --simulate-added-card (semantics only tighten mid-PR); gate_regen
+  path adapted to quality.yml; validated live on the port PR's own
+  runs. Source: `.sessions/2026-07-11-kit-upgrade-v1.10.1.md` 💡.
 
 - **Time-discipline guard for tests** — shipped 2026-07-11
   (continuous-mode slice 21): `tests/test_time_discipline.py` AST-scans
