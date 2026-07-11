@@ -105,13 +105,23 @@
   not a rediscovery. Source:
   `.sessions/2026-07-11-chain-entry-refresh.md` 💡.
 - **Dogfood the pickup convention in this lane's own heartbeat** ·
-  `captured` — the consumer (#148) is honest-empty until SOMEONE
+  `built` (the #150 catch-up heartbeat seeded `pickup: 011 19m` as writer
+  #1; LIVE-VERIFIED end-to-end on deployed /orders — 011 pickup 19.0,
+  summary.pickup count 1) — the consumer (#148) is honest-empty until SOMEONE
   writes `pickup:` tokens; this lane can be writer #1: when the next
   order's done= move happens, append `pickup: <id> <mins>m` to the
   heartbeat notes (ORDER 011's known 19m figure can seed it). Worth
   having because a convention with zero writers is a spec, not a
   protocol — and the first write live-verifies the whole parser path
   end-to-end. Source: `.sessions/2026-07-11-pickup-history-consumer.md` 💡.
+- **Verdict-inheritance guard for carried heartbeat watches** ·
+  `captured` — a watch claim copied across N heartbeat overwrites (the
+  'never delivered' cron verdict rode five) should carry a
+  last-verified timestamp (`watch: <claim> · verified <ISO>`) so
+  readers see staleness and writers re-verify before copying; /fleet
+  could badge watches whose verified-stamp lags the heartbeat. Worth
+  having because inheritance is how this chain's one durable wrong
+  claim propagated. Source: `.sessions/2026-07-11-chain-closeout.md` 💡.
 - **Provenance-token list to the kit lane (gate half)** · `captured` —
   the /orders advisory and the future staged-gate provenance warning
   should share ONE token convention (cse_/session_/coordinator/
