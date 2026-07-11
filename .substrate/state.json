@@ -7,13 +7,13 @@
     "soft_target_sessions": 50
   },
   "graduation_proposed": false,
-  "kit_version": "1.8.0",
+  "kit_version": "1.9.0",
   "last_compaction_session": 0,
   "mode": "guided",
   "mode_history": [],
   "open_questions": [],
   "planted_doc_hashes": {
-    ".claude/CLAUDE.md": "0701d135dbe3c6ef8bfb2977927370d017cd6a7fe46b19fc59e9907053557f55",
+    ".claude/CLAUDE.md": "0ca6628c90b6bd02ea752a163d222875a18586d58f539156398199f80a8f3994",
     "control/claims/README.md": "14cb7a6a66bc2b9ee6d97c0c72e8642356907ffec3ff706d27a732470b3a19ac",
     "docs/CAPABILITIES.md": "b0b2b57311a27a1c04d76743e3ff3db1d9b50fd67b84c5ea57033645867fafdf",
     "docs/ai-project-workflow.md": "bb2400128907f591860ac016b0d230185a7e5db815865e8701a87893df94c911",
@@ -28,6 +28,12 @@
     "last_mined": "2026-07-09"
   },
   "review_log": [],
+  "session_anchor": {
+    "branch": "claude/kit-upgrade-v1.9.0",
+    "epoch": 1783745921.901527,
+    "head": "c0c78e4752b233e3920edd5ba7d704060dea88e2",
+    "ts": "2026-07-11T04:58:41+00:00"
+  },
   "session_count": 12,
   "slot_values": {
     "architecture_layers": {

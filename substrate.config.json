@@ -3,7 +3,7 @@
     "branch_patterns": [
       "claude/*"
     ],
-    "required_context": "substrate-gate"
+    "required_context": "quality"
   },
   "badge_tokens": [
     "binding",
@@ -44,7 +44,7 @@
   ],
   "interpreter": "/usr/local/bin/python3",
   "interpreter_for_checks": null,
-  "kit_version": "1.8.0",
+  "kit_version": "1.9.0",
   "namespace": {
     "reserved": {},
     "roots": []
