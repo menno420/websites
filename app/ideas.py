@@ -27,6 +27,29 @@ SUMMARY_MAX = 200
 
 _FRONTMATTER = re.compile(r"^---\s*\n.*?\n---\s*\n", re.DOTALL)
 
+# The idea lifecycle states the fleet's backlog convention uses
+# (docs/ideas/README.md: captured → planned → built → retired). An idea file
+# whose front-matter carries no recognizable `state:` counts as `unstated` —
+# an honest bucket, never guessed into a lifecycle stage.
+IDEA_STATES = ("captured", "planned", "built", "retired")
+_STATE_RE = re.compile(r"^state:\s*([A-Za-z-]+)\s*$", re.MULTILINE)
+
+
+def extract_state(text: str) -> str:
+    """The idea's lifecycle state from its front-matter, or "" (unstated).
+
+    Only the front-matter block is searched (a body sentence mentioning
+    "state:" must not classify the idea), and only the four known lifecycle
+    tokens count — anything else is unstated, honestly.
+    """
+    m = _FRONTMATTER.match(text or "")
+    if not m:
+        return ""
+    sm = _STATE_RE.search(m.group(0))
+    if sm and sm.group(1).lower() in IDEA_STATES:
+        return sm.group(1).lower()
+    return ""
+
 
 def _title_from_filename(name: str) -> str:
     """Human title from a `some-idea-name-2026-07-09.md` filename: drop the .md
@@ -125,13 +148,19 @@ async def repo_ideas(repo: str, refresh: bool = False) -> dict[str, Any]:
     )
 
     ideas: list[dict] = []
+    state_counts: dict[str, int] = {}
     for f, fres in zip(to_enrich, fetched):
         fallback = _title_from_filename(f["name"])
         if fres["ok"] and isinstance(fres["data"], str):
             parsed = parse_idea(fres["data"], fallback)
             title, summary, degraded = parsed["title"], parsed["summary"], False
+            state = extract_state(fres["data"])
         else:
             title, summary, degraded = fallback, "", True
+            state = ""
+        state_counts[state or "unstated"] = (
+            state_counts.get(state or "unstated", 0) + 1
+        )
         ideas.append(
             {
                 "repo": repo,
@@ -139,6 +168,7 @@ async def repo_ideas(repo: str, refresh: bool = False) -> dict[str, Any]:
                 "path": f["path"],
                 "title": title,
                 "summary": summary,
+                "state": state,  # "" = unstated (honest)
                 "degraded": degraded,
                 "github_url": f.get("html_url") or _gh_blob(repo, f["path"]),
                 "internal_url": f"/journal/{repo}/file?path={f['path']}",
@@ -155,10 +185,32 @@ async def repo_ideas(repo: str, refresh: bool = False) -> dict[str, Any]:
         "shown": len(ideas),
         "more": max(0, total - len(ideas)),
         "ideas": ideas,
+        # Conveyor-health counts over the ENRICHED (newest) files only — the
+        # only ones whose content was fetched; honest scope, labeled on the
+        # page ("of the newest N"). "unstated" = no recognizable front-matter
+        # state, never guessed.
+        "state_counts": state_counts,
     }
 
 
-async def overview(refresh: bool = False) -> list[dict]:
-    return list(
+async def overview(
+    refresh: bool = False, state: str | None = None
+) -> list[dict]:
+    """Every repo's ideas; ``state`` filters the DISPLAYED ideas to one
+    lifecycle state (counts stay full — the filter narrows the list, never
+    the truth). An unknown state value shows nothing and flags itself."""
+    repos = list(
         await asyncio.gather(*[repo_ideas(r, refresh=refresh) for r in config.REPOS])
     )
+    wanted = (state or "").strip().lower() or None
+    for r in repos:
+        r["state_filter"] = wanted
+        r["state_filter_known"] = wanted is None or wanted in (
+            IDEA_STATES + ("unstated",)
+        )
+        if wanted and r["state_filter_known"]:
+            r["ideas"] = [
+                i for i in r["ideas"]
+                if (i["state"] or "unstated") == wanted
+            ]
+    return repos

@@ -9,18 +9,17 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
-- **`/ideas` state filter (conveyor health)** · `captured` — surface
-  captured/planned/built/retired counts per repo on /ideas now that
-  `docs/ideas/backlog.md` carries meaningful Built/Retired sections; shows
-  how much of each repo's idea flow actually ships (the conveyor-health
-  metric); one section-header scan over already-fetched files. Source:
-  `.sessions/2026-07-11-json-contracts-pr9-retire.md` 💡.
 - **Cron-slot helper (`next-slot`)** · `captured` — parse a workflow's cron
   expression and print its next wall-clock fire slots so heartbeats stop
   hand-computing them; this wake found five heartbeats carrying the same
   wrong "~02:17Z" slot (`17 */6` anchors to hours 0/6/12/18) and a nudge
   timed against the wrong number. Source:
   `.sessions/2026-07-11-open-work-rung-cronfinding.md` 💡.
+- **Conveyor-health chips on the readiness board rows** · `captured` — the
+  board (/) is the owner's habit path; one small per-repo chip ("ideas:
+  3c/1b") reusing repo_ideas' cached lifecycle counts puts conveyor health
+  where the owner already looks (zero new fetch on a warm cache). Source:
+  `.sessions/2026-07-11-ideas-states-waitdeploy.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
@@ -31,11 +30,6 @@
   `inbox.md` last-commit is newer than its status `updated:` stamp. Sources:
   `.sessions/2026-07-09-kit-upgrade-v1.6.0.md` ⟲ review; queue-state NEXT
   item 5.
-- **`scripts/wait-deploy.py` post-merge sha-convergence poller** · `captured` —
-  poll all three `/version` endpoints until `sha` == a given commit or
-  timeout; turns the manual "merge = deploy" verification loop into a
-  deterministic PASS/FAIL. Source:
-  `.sessions/2026-07-10-gen2-walking-skeleton.md` 💡.
 - **Review-queue row auto-check for this repo's own PRs** · `captured` — a
   script / advisory quality step computing a merged PR's runtime changed-line
   count against the fleet review-queue's BINDING 50-line rule and printing
@@ -61,6 +55,19 @@
   rebuilt in slice 7). The dedup rule covers new ideas, not decayed old ones.
   Source: `.sessions/2026-07-10-own-heartbeat-selfcheck.md` 💡.
 ## Built
+
+- **`/ideas` state filter (conveyor health)** — shipped 2026-07-11
+  (continuous-mode slice 13): each idea's front-matter `state:` surfaces as
+  a badge, per-repo captured/planned/built/retired/unstated counts (honest
+  scope: the newest enriched files), and a `?state=` filter that narrows the
+  list but never the counts; unknown states flag, never guess. Source:
+  `.sessions/2026-07-11-json-contracts-pr9-retire.md` 💡.
+- **`scripts/wait-deploy.py` post-merge sha-convergence poller** — shipped
+  2026-07-11 (slice 13) as `scripts/wait_deploy.py`: poll all three
+  `/version` endpoints until sha == a given commit or timeout — one
+  deterministic PASS/FAIL instead of hand-curling (first live run:
+  CONVERGED in one poll at 7f948445). Source:
+  `.sessions/2026-07-10-gen2-walking-skeleton.md` 💡.
 
 - **Open-PR awareness at wake** — shipped 2026-07-11 (continuous-mode slice
   12): `scripts/open_work.py` classifies every remote `claude/*`/`manager/*`

@@ -281,9 +281,18 @@ async def orders_json(request: Request):
     return JSONResponse(payload)
 
 
+def _state_param(request: Request) -> str | None:
+    """The /ideas ``?state=`` lifecycle filter, or None (validated in
+    ideas.overview — an unknown value flags itself, never guesses)."""
+    value = (request.query_params.get("state") or "").strip().lower()
+    return value or None
+
+
 @app.get("/ideas", response_class=HTMLResponse)
 async def ideas_backlog(request: Request):
-    repos = await ideas.overview(refresh=_refresh(request))
+    repos = await ideas.overview(
+        refresh=_refresh(request), state=_state_param(request)
+    )
     return templates.TemplateResponse(
         request, "ideas.html", {"repos": repos, "active": "ideas"}
     )
@@ -291,7 +300,9 @@ async def ideas_backlog(request: Request):
 
 @app.get("/ideas.json")
 async def ideas_backlog_json(request: Request):
-    return JSONResponse(await ideas.overview(refresh=_refresh(request)))
+    return JSONResponse(
+        await ideas.overview(refresh=_refresh(request), state=_state_param(request))
+    )
 
 
 @app.get("/journal", response_class=HTMLResponse)
