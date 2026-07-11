@@ -165,3 +165,19 @@ above came from the fleet's lived 2026-07 findings; local ones go here.)
   allowed) · evidence: live board + `docs/deployment.md` owner TODO (mint a
   durable PAT) · workaround: none agent-side — the token is an owner-held
   service variable on Railway.
+- 2026-07-11 · wall (provisional) · **A freshly-added Actions cron schedule
+  did not fire at its first eligible slot** — `.github/workflows/
+  healthcheck.yml` (cron `17 */6 * * *`, merged to main 2026-07-10T21:03Z)
+  had its first eligible slot at 00:17Z and had produced NO `schedule`-event
+  run by 02:23Z (`list_workflow_runs healthcheck.yml` → total_count 1, only
+  the 21:03Z `workflow_dispatch` run) · evidence: MCP actions_list at
+  2026-07-11T02:22Z · known GitHub behaviors that could explain it:
+  scheduled events are delivered best-effort (delays of minutes-to-hours
+  under load are documented), and brand-new schedules sometimes lag before
+  first registration · verdict PROVISIONAL: check again after the 06:17Z
+  slot — a second no-show upgrades this to a real wall (workaround: the
+  4-hourly session wake can run `scripts/healthcheck.py` itself; or
+  re-dispatch manually) · lesson also captured: `17 */6 * * *` anchors to
+  wall-clock hours 0/6/12/18 — NOT "+6h from merge"; this repo's own record
+  said "~02:17Z" for five heartbeats (cron fields are wall-clock anchored,
+  compute slots from the epoch, not from now).

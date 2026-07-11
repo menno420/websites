@@ -112,6 +112,7 @@ orders: acked=<ids> done=<ids> [claimed-by: <ids> <lane-or-session> <ISO8601>]
 routine: armed · cron <expr> · last-fired <ISO8601>   # OPTIONAL — wake-clock state
 landing: all-merged | pushed-unmerged <branch> | LOCAL-ONLY <branch>   # OPTIONAL — where this session's work physically is
 deployed: <short-sha> · verified <ISO8601>            # OPTIONAL — last live-verified deploy
+rung: <order|queue|backlog|self|upkeep-dry>[, …]      # OPTIONAL — which work-ladder rung(s) fired this wake
 ⚑ needs-owner: <a decision/action only the owner can give, or `none`>
 notes: <anything the manager should know>
 ```

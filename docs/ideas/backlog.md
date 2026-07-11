@@ -15,6 +15,12 @@
   how much of each repo's idea flow actually ships (the conveyor-health
   metric); one section-header scan over already-fetched files. Source:
   `.sessions/2026-07-11-json-contracts-pr9-retire.md` 💡.
+- **Cron-slot helper (`next-slot`)** · `captured` — parse a workflow's cron
+  expression and print its next wall-clock fire slots so heartbeats stop
+  hand-computing them; this wake found five heartbeats carrying the same
+  wrong "~02:17Z" slot (`17 */6` anchors to hours 0/6/12/18) and a nudge
+  timed against the wrong number. Source:
+  `.sessions/2026-07-11-open-work-rung-cronfinding.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
@@ -47,11 +53,6 @@
   zero-packages cost makes the badge exact forever (routing half: flagged to
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
-- **Ladder-rung telemetry in the heartbeat** · `captured` — one `rung:` token
-  per wake (which work-ladder rung fired) so the manager sees at a glance
-  whether a lane is living off orders or self-generated work, and backlog
-  dryness becomes a trend, not a one-off line. Source:
-  `.sessions/2026-07-10-never-idle-work-ladder.md` 💡 (this session).
 - **Backlog fact-check pass before promoting a bullet** · `captured` — one
   grep/route-check against the codebase for what a bullet asks for BEFORE
   branching on it; a stale `captured` bullet costs a whole duplicate slice in
@@ -59,15 +60,21 @@
   shipped as the PR #36 lane_source notice — by 12+ hours and nearly got
   rebuilt in slice 7). The dedup rule covers new ideas, not decayed old ones.
   Source: `.sessions/2026-07-10-own-heartbeat-selfcheck.md` 💡.
-- **Open-PR awareness at wake (sibling-session collision check)** · `captured`
-  — one wake-ritual step listing open PRs + PR-less unmerged `claude/*`
-  branches before picking a work rung, so concurrent sessions stop duplicating
-  builds / conflicting on shared files / raising false rescue alarms (the
-  order-claim fix, applied to branches). Distinct from heartbeat enrichment's
-  `landing:` line, which covers a session's OWN branch only. File:
-  [open-pr-awareness-at-wake-2026-07-10.md](open-pr-awareness-at-wake-2026-07-10.md).
-
 ## Built
+
+- **Open-PR awareness at wake** — shipped 2026-07-11 (continuous-mode slice
+  12): `scripts/open_work.py` classifies every remote `claude/*`/`manager/*`
+  branch as PR-OPEN (leave to its session) / PR-LESS (rescue candidate) /
+  MERGED-STALE (prune candidate) / PR-UNKNOWN (api wall — labeled, never
+  guessed); run at session start before picking a rung. First live run
+  surfaced exactly the four gen-1 leftover branches. File:
+  [open-pr-awareness-at-wake-2026-07-10.md](open-pr-awareness-at-wake-2026-07-10.md).
+- **Ladder-rung telemetry in the heartbeat** — shipped 2026-07-11 (slice 12):
+  optional `rung:` status line (documented in `control/README.md`, in
+  `fleet.KNOWN_KEYS` so it can never leak into the previous field — the
+  routine:-line incident class — and rendered as a /fleet row when present);
+  this repo's heartbeat writes it from this wake on. Source:
+  `.sessions/2026-07-10-never-idle-work-ladder.md` 💡.
 
 - **Same-shape contract tests for /orders.json, /queue.json, /projects.json,
   /reviews.json** — shipped 2026-07-11 (continuous-mode slice 11):
