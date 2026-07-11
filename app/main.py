@@ -98,9 +98,18 @@ async def board_json(request: Request):
     return JSONResponse(await readiness.board(refresh=_refresh(request)))
 
 
+def _repo_param(request: Request) -> str | None:
+    """The ``?repo=`` filter value, or None. Validation (unknown repo → an
+    honest empty state, never a 500) happens in activity.timeline."""
+    value = (request.query_params.get("repo") or "").strip()
+    return value or None
+
+
 @app.get("/activity", response_class=HTMLResponse)
 async def activity_timeline(request: Request):
-    data = await activity.timeline(refresh=_refresh(request))
+    data = await activity.timeline(
+        refresh=_refresh(request), repo=_repo_param(request)
+    )
     return templates.TemplateResponse(
         request, "activity.html", {"a": data, "active": "activity"}
     )
@@ -108,18 +117,25 @@ async def activity_timeline(request: Request):
 
 @app.get("/activity.json")
 async def activity_timeline_json(request: Request):
-    return JSONResponse(await activity.timeline(refresh=_refresh(request)))
+    return JSONResponse(
+        await activity.timeline(refresh=_refresh(request), repo=_repo_param(request))
+    )
 
 
 @app.get("/activity.xml")
 async def activity_feed(request: Request):
     """The /activity timeline as a subscribable Atom 1.0 feed. Same TTL-cached
     data as /activity — a second serializer, not a second fetch — so a reader or
-    webhook can watch fleet PR activity without polling the page."""
-    data = await activity.timeline(refresh=_refresh(request))
+    webhook can watch fleet PR activity without polling the page. With ?repo=
+    it becomes a per-lane subscription (feed title names the repo)."""
+    repo = _repo_param(request)
+    data = await activity.timeline(refresh=_refresh(request), repo=repo)
     base = str(request.base_url).rstrip("/")
+    suffix = f"?repo={repo}" if repo else ""
     xml = activity.atom_feed(
-        data, self_url=f"{base}/activity.xml", alternate_url=f"{base}/activity"
+        data,
+        self_url=f"{base}/activity.xml{suffix}",
+        alternate_url=f"{base}/activity{suffix}",
     )
     return Response(content=xml, media_type="application/atom+xml")
 

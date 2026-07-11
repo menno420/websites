@@ -75,16 +75,36 @@ async def repo_activity(repo: str, refresh: bool = False) -> dict[str, Any]:
     return {"repo": repo, "items": items, "result": res}
 
 
-async def timeline(refresh: bool = False) -> dict[str, Any]:
+async def timeline(
+    refresh: bool = False, repo: str | None = None
+) -> dict[str, Any]:
     """One reverse-chronological stream across every fleet repo.
 
     Fetches each repo's recent PRs concurrently (cache-backed), merges them,
     sorts newest-first by merge/update time, and caps the combined length.
     Fetch failures are collected into ``errors`` so the UI shows an honest
     banner per repo rather than silently dropping it.
+
+    ``repo`` narrows the stream to ONE fleet repo (the ``?repo=`` filter) —
+    fewer fetches, and the Atom feed becomes a per-lane subscription. An
+    unknown repo returns an honest empty result flagged ``unknown_repo``
+    (with the known set for the page to offer) — never a guess, never a 500.
     """
+    known = list(config.REPOS)
+    if repo is not None and repo not in config.REPOS:
+        return {
+            "items": [],
+            "errors": [],
+            "repos_ok": [],
+            "total": 0,
+            "repo_filter": repo,
+            "unknown_repo": True,
+            "known_repos": known,
+        }
+
+    wanted = [repo] if repo else known
     per_repo = await asyncio.gather(
-        *[repo_activity(r, refresh=refresh) for r in config.REPOS]
+        *[repo_activity(r, refresh=refresh) for r in wanted]
     )
 
     items: list[dict] = []
@@ -109,6 +129,9 @@ async def timeline(refresh: bool = False) -> dict[str, Any]:
         "errors": errors,
         "repos_ok": [pr["repo"] for pr in per_repo if pr["result"]["ok"]],
         "total": len(items),
+        "repo_filter": repo,
+        "unknown_repo": False,
+        "known_repos": known,
     }
 
 
@@ -158,7 +181,12 @@ def atom_feed(data: dict[str, Any], self_url: str, alternate_url: str) -> str:
     # Items arrive newest-first, so entries[0] is the newest dated one.
     feed_updated = entries[0]["ts"] if entries else _now_rfc3339()
 
-    _el(feed, "title", FEED_TITLE)
+    # A repo-filtered feed names its lane in the title, so a reader shows
+    # "… — superbot" instead of ten identical-looking subscriptions.
+    title = FEED_TITLE
+    if data.get("repo_filter"):
+        title = f"{FEED_TITLE} — {data['repo_filter']}"
+    _el(feed, "title", title)
     _el(feed, "id", self_url)
     _el(feed, "updated", feed_updated)
     self_link = _el(feed, "link")
