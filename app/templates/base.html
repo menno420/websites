@@ -130,20 +130,19 @@ mark { background:rgba(210,153,34,.35); color:var(--fg); border-radius:3px; padd
 <header>
   <span class="brand">superbot control plane</span>
   <nav>
-    <a href="/" class="{{ 'on' if active == 'board' else '' }}">readiness board</a>
-    <a href="/fleet" class="{{ 'on' if active == 'fleet' else '' }}">fleet</a>
-    <a href="/queue" class="{{ 'on' if active == 'queue' else '' }}">owner queue</a>
-    <a href="/activity" class="{{ 'on' if active == 'activity' else '' }}">activity</a>
-    <a href="/journal" class="{{ 'on' if active == 'journal' else '' }}">journal browser</a>
-    {% set more_active = active in ('environments', 'projects', 'reviews', 'orders', 'ideas') %}
+    {#- The nav is driven by the app/nav.py manifest (Jinja globals set in
+        app/main.py) — edit the manifest, not this markup; the membership
+        test holds every route's active key to it. -#}
+    {%- for item in NAV_PRIMARY %}
+    <a href="{{ item.href }}" class="{{ 'on' if active == item.key else '' }}">{{ item.label }}</a>
+    {%- endfor %}
+    {%- set more_active = active in (NAV_GROUPED | map(attribute='key') | list) %}
     <details class="navmore" {{ 'open' if more_active }}>
       <summary class="{{ 'on' if more_active else '' }}">more ▾</summary>
       <div class="navmore-panel">
-        <a href="/environments" class="{{ 'on' if active == 'environments' else '' }}">environments</a>
-        <a href="/projects" class="{{ 'on' if active == 'projects' else '' }}">projects</a>
-        <a href="/reviews" class="{{ 'on' if active == 'reviews' else '' }}">reviews</a>
-        <a href="/orders" class="{{ 'on' if active == 'orders' else '' }}">orders</a>
-        <a href="/ideas" class="{{ 'on' if active == 'ideas' else '' }}">ideas</a>
+        {%- for item in NAV_GROUPED %}
+        <a href="{{ item.href }}" class="{{ 'on' if active == item.key else '' }}">{{ item.label }}</a>
+        {%- endfor %}
       </div>
     </details>
   </nav>

@@ -27,6 +27,7 @@ from . import (
     github,
     ideas,
     journal,
+    nav,
     orders,
     owner,
     owner_queue,
@@ -48,6 +49,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+# Nav manifest as Jinja globals: base.html iterates ONE list (app/nav.py)
+# instead of hand-kept markup — the overflow-guard membership lives in
+# exactly one place (tests/test_nav_manifest.py holds routes to it).
+templates.env.globals["NAV_PRIMARY"] = nav.PRIMARY
+templates.env.globals["NAV_GROUPED"] = nav.GROUPED
 
 # Static assets (the live-monitoring auto-refresh JS). Public, no credentials —
 # served straight from app/static/ (mirrors the credential-free public site).

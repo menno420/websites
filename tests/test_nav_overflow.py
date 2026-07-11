@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import github  # noqa: E402
+from app import github, nav  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -32,8 +32,10 @@ def _offline(monkeypatch):
     monkeypatch.setattr(github, "repo_api", fake_api)
 
 
-GROUPED = ("/environments", "/projects", "/reviews", "/orders", "/ideas")
-PRIMARY = ("/", "/fleet", "/queue", "/activity", "/journal")
+# Sourced from the SAME manifest the template renders (app/nav.py) — these
+# used to be hand-kept tuples that could silently drift from the markup.
+GROUPED = tuple(item["href"] for item in nav.GROUPED)
+PRIMARY = tuple(item["href"] for item in nav.PRIMARY)
 
 
 def test_nav_groups_secondary_pages_and_keeps_all_reachable(monkeypatch):
