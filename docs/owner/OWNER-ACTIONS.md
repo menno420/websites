@@ -25,10 +25,19 @@
 WHAT: Create the fourth Railway service so the new program-review site (built for Anthropic reviewers) goes live.
 WHERE: railway.app → project superbot-websites → New → Service → GitHub repo menno420/websites.
 HOW: set Root Directory = review (the service's own Dockerfile at review/Dockerfile is picked up automatically, exactly like botsite/dashboard); branch = main; no environment variables needed (the service is read-only and network-free). After the first deploy, check <service-url>/healthz returns {"status":"ok"} and /version shows the deployed sha.
-WHY-IT-MATTERS: the review site — process, growth charts, successes, and an honest problems page, all from the repo's committed record — exists on main but has no URL until the service exists.
-UNBLOCKS: a shareable live URL for Anthropic reviewers; the board's deploy-drift row and scripts/healthcheck.py can then also add the fourth service.
+WHY-IT-MATTERS: the review site — process, growth charts, successes, an honest problems page, and (since the 2026-07-11 expansion) the fleet index, continuous review editions with a subscribable Atom feed, and the evidence-backed questionnaire — exists on main but has no URL until the service exists.
+UNBLOCKS: a shareable live URL for Anthropic reviewers (including /reviews/feed.xml they can subscribe to); the board's deploy-drift row and scripts/healthcheck.py can then also add the fourth service. The scheduled review-bake workflow already refreshes the site's committed data daily, so the service goes live self-updating.
 VERIFIED-NEEDED: service creation is a Railway account mutation — the Railway-safety policy (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger) forbids agent-initiated Railway mutations without your explicit go, so this was deliberately not attempted (the same policy wall as the Postgres ask; no new attempt/error needed).
 ```
+
+**PAT side-note (extends the standing GITHUB_TOKEN ask in
+`control/status.md` + `docs/deployment.md`):** a durable fine-grained PAT
+would ALSO unlock richer live stats for the review site's daily
+`review-bake` workflow — today `review/gen_stats.py` runs on the Actions
+token (fine for public repos) and cannot see private fleet repos, whose
+fleet cards honestly say "no data mirrored yet"; a PAT with read access to
+the private repos, set as a repo Actions secret passed to the bake, would
+fill those gaps. Same token errand, one more payoff.
 
 (Previous state: none open — the one conditional ask (external wake-trigger
 fallback) self-expired 2026-07-10T16:01:32Z: the self-armed routine's first
