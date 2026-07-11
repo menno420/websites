@@ -1,6 +1,6 @@
 # Self-review 2026-07-11 — websites lane, last ~24h (ORDER 011)
 
-> **Status:** `report` — owner-directed fleet-wide self-review (ORDER 011,
+> **Status:** `audit` — owner-directed fleet-wide self-review (ORDER 011,
 > P1, filed 2026-07-11T09:59Z, relayed by the fleet-manager coordinator on
 > the owner's in-session instruction). Window: 2026-07-10 ~20:00Z →
 > 2026-07-11 ~10:20Z. Written by the continuous-mode chain that did the
