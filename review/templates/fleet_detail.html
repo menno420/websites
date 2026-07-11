@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ lane.lane }} — Fleet — Program Review{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey"><a href="/fleet">Fleet</a> / {{ lane.repo }}</p>
+    <h1>{{ lane.lane }}</h1>
+    <p class="sb-lead">
+      <span class="rv-chip rv-chip-{{ lane.disposition or 'unknown' }}">{{ lane.disposition or "?" }}</span>
+      seat · repo <a href="{{ lane.repo_url }}" target="_blank" rel="noopener" class="sb-mono">menno420/{{ lane.repo }}</a>
+      — everything below comes from the committed fleet mirror
+      (baked {{ fleet_age.age_human }}, as of {{ fleet_age.iso if fleet_age.ok else "unknown" }}){% if fleet_age.stale %} — <strong>stale</strong>{% endif %}.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    {% if lane.heartbeat_available %}
+    <div class="sb-sec-head"><h2>Heartbeat — the lane's own committed report</h2></div>
+    <p class="sb-muted">
+      Parsed from <a href="{{ lane.heartbeat_source_url }}" target="_blank" rel="noopener"><code>control/status.md</code></a>,
+      the file each session overwrites as its deliberate last step. Long fields are truncated for
+      this mirror; the source link has the full text.
+      Heartbeat written {{ lane.freshness.age_human }}{% if lane.freshness.stale %} — <strong>stale</strong> (older than 12h at bake time){% endif %}.
+    </p>
+    <div class="sb-card">
+      <ul class="rv-kv rv-kv-detail">
+        {% if lane.health != "unknown" %}
+        <li><span>health</span><strong>
+          {% if lane.health == "green" %}<span class="rv-chip rv-chip-green">green</span>
+          {% elif lane.health == "broken" %}<span class="rv-chip rv-chip-red">broken</span>
+          {% else %}<span class="rv-chip rv-chip-design">{{ lane.health }}</span>{% endif %}
+        </strong></li>
+        {% endif %}
+        {% if lane.orders.ok %}
+        <li><span>orders</span><strong>{{ lane.orders.done }} done of {{ lane.orders.acked }} acked{% if lane.orders.outstanding %} · outstanding: {{ lane.orders.outstanding|join(", ") }}{% endif %}</strong></li>
+        {% endif %}
+        {% if lane.kit %}<li><span>workflow kit</span><strong class="sb-mono">{{ lane.kit }}</strong></li>{% endif %}
+        {% for key in ["phase", "last-shipped", "blockers", "routine", "landing", "deployed", "rung", "tooling", "needs-owner", "notes"] %}
+        {% if lane.fields.get(key) %}
+        <li><span>{{ key }}</span><strong class="rv-field-val">{{ lane.fields[key] }}</strong></li>
+        {% endif %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% else %}
+    <div class="sb-sec-head"><h2>Heartbeat</h2></div>
+    <div class="sb-card"><p class="sb-muted rv-gap">No heartbeat mirrored for this seat — {{ lane.heartbeat_reason }}. That gap is shown rather than filled: this program does not fake data it cannot read.</p></div>
+    {% endif %}
+
+    <div class="sb-sec-head" style="margin-top:var(--sb-s-7)"><h2>Repo activity</h2></div>
+    {% if lane.stats and lane.stats.ok %}
+    <div class="sb-card">
+      <ul class="rv-kv rv-kv-detail">
+        <li><span>last push</span><strong>{{ lane.stats.pushed_at }}</strong></li>
+        {% if lane.stats.total_prs is defined %}<li><span>pull requests ever opened</span><strong>{{ lane.stats.total_prs }}</strong></li>{% endif %}
+        {% if lane.stats.open_issues_and_prs is not none %}<li><span>open issues + PRs</span><strong>{{ lane.stats.open_issues_and_prs }}</strong></li>{% endif %}
+        {% if lane.stats.created_at %}<li><span>repo created</span><strong>{{ lane.stats.created_at[:10] }}</strong></li>{% endif %}
+        {% if lane.stats.description %}<li><span>description</span><strong>{{ lane.stats.description }}</strong></li>{% endif %}
+      </ul>
+      {% if stats_age %}<p class="sb-chart-note sb-muted">as of {{ stats_age.iso }} ({{ stats_age.age_human }}){% if stats_age.stale %} — <strong>stale</strong>{% endif %}</p>{% endif %}
+    </div>
+    {% else %}
+    <div class="sb-card"><p class="sb-muted rv-gap">No activity stats mirrored yet for this repo{% if lane.stats and lane.stats.reason %} — the bake recorded: <span class="sb-mono">{{ lane.stats.reason }}</span>{% elif not stats_ok %} — {{ stats_error }}{% endif %}.</p></div>
+    {% endif %}
+
+    <p class="sb-muted" style="margin-top:var(--sb-s-6)">
+      Questions about this lane? <a href="{{ ask_url }}" target="_blank" rel="noopener">Ask via a prefilled GitHub issue</a> —
+      it becomes an order on the bus and the answer publishes in the next <a href="/reviews">review edition</a>.
+    </p>
+  </div>
+</section>
+{% endblock %}

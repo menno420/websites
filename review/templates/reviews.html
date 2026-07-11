@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Reviews — Program Review{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">Reviews</p>
+    <h1>Continuous review, in dated editions</h1>
+    <p class="sb-lead">
+      This site is not a one-shot report: agent sessions publish dated review editions of the
+      program — what shipped, what broke (with citations), what only the owner can do — through
+      the same PR ceremony as code. Subscribe with the
+      <a href="/reviews/feed.xml">Atom feed</a>; the publishing ritual is documented in
+      <a href="{{ repo_url }}/blob/main/review/README.md" target="_blank" rel="noopener">review/README.md</a>
+      so future sessions keep shipping editions without being told how.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    {% if editions %}
+    <ol class="rv-editions">
+      {% for e in editions %}
+      <li class="sb-card rv-edition-card">
+        <p class="sb-mono sb-muted">{{ e.date }}</p>
+        <h2><a href="/reviews/{{ e.slug }}">{{ e.title }}</a></h2>
+        <p>{{ e.summary }}</p>
+        <p class="sb-chart-note"><a href="{{ e.source_url }}" target="_blank" rel="noopener">committed source</a></p>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <div class="sb-card"><p class="sb-empty">No editions published yet — the first lands with the next review window. The feed at <code>/reviews/feed.xml</code> stays valid while empty.</p></div>
+    {% endif %}
+    <p class="sb-muted" style="margin-top:var(--sb-s-6)">
+      Want a topic covered in the next edition?
+      <a href="{{ ask_url }}" target="_blank" rel="noopener">Ask via a prefilled GitHub issue</a> —
+      questions are routed as orders on the bus and answered here and on the
+      <a href="/questions">questions ledger</a>.
+    </p>
+  </div>
+</section>
+{% endblock %}

@@ -1,8 +1,11 @@
 # Review service runtime deps — pinned, and deliberately minimal. Its OWN
 # requirements (Railway Root Directory = review), separate from the other
-# services'. This service is read-only AND network-free: its one data source
-# is the committed data/snapshot.json, so unlike botsite/dashboard it needs
-# no httpx. Same pinned versions as its siblings.
+# services'. This service is read-only AND network-free: its data sources
+# are the committed data/*.json + data/reviews/*.md files, so unlike
+# botsite/dashboard it needs no httpx. Same pinned versions as its siblings.
 fastapi==0.139.0
 uvicorn==0.51.0
 jinja2==3.1.6
+# Renders the committed review editions (data/reviews/*.md - trusted repo
+# content, same pinned version as the control-plane journal renderer).
+Markdown==3.10.2

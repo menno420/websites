@@ -23,18 +23,33 @@
   the queue-state NEXT list: nothing touches guild data. Source:
   `.sessions/2026-07-11-dashboard-bot-management.md` 💡.
 
-- **Snapshot-aging banner on the review site** · `captured` — the review
-  service's numbers are baked into `review/data/snapshot.json` at commit
-  time, so once deployed they silently fossilize as the repo moves on. The
-  service already knows its own deployed sha (`/version`) and the snapshot
-  records `git_head`: when they differ, render an honest "numbers as of
-  commit X — the repo has moved since" banner, and add a regen habit (a
-  session ender or a CI advisory) so `gen_snapshot.py` reruns when the drift
-  grows. Worth having because a review surface whose numbers silently age
-  misleads exactly the outside audience it was built for — and honest
-  staleness is this estate's house style. Deduped against this backlog +
-  the queue-state NEXT list: nothing existing covers the review service.
-  Source: `.sessions/2026-07-11-anthropic-review-site.md` 💡.
+- **Bake-time questions sync from GitHub issues** · `captured` — the
+  review site's `/questions` ledger is a hand-kept `questions.json` today;
+  the `review-bake` workflow already has the Actions token, so a fourth
+  generator could list this repo's issues titled `[program-review]` (one
+  REST call) and merge them into the ledger automatically (asked date, url,
+  open/closed status), leaving only the answer-links hand-written. Worth
+  having because the interaction loop's slowest step is a session noticing
+  a question exists — the bake noticing it daily makes the ledger honest by
+  default. Deduped: nothing in this backlog touches questions intake.
+  Source: `.sessions/2026-07-11-review-site-expansion.md` 💡.
+- **⚑ owner-gated: live answer-bot on the review site** · `captured` —
+  `/questionnaire` is agent-authored static answers by design; a real
+  ask-anything endpoint (evidence-cited answers generated on demand) needs
+  a model API key provisioned as a service variable — an owner decision
+  with spend attached, deliberately not built. Flagged on the page itself.
+  Source: `.sessions/2026-07-11-review-site-expansion.md` (directive ⚑).
+- **Snapshot-aging banner on the review site** · `built` (2026-07-11,
+  review-site expansion PR — `_base_ctx` compares the deployed sha
+  (`RAILWAY_GIT_COMMIT_SHA`/`GIT_SHA`) against the snapshot's `git_head`
+  and renders the site-wide "numbers baked at X — the repo has moved
+  since" banner on mismatch; regen habit = the scheduled `review-bake`
+  workflow, which re-bakes all three data mirrors daily) — original
+  capture: the review service's numbers are baked into
+  `review/data/snapshot.json` at commit time, so once deployed they
+  silently fossilize as the repo moves on. Worth having because a review
+  surface whose numbers silently age misleads exactly the outside audience
+  it was built for. Source: `.sessions/2026-07-11-anthropic-review-site.md` 💡.
 
 - **Flag to kit lane: `upgrade --apply-docs` rewrites `.substrate/upgrade-report.md`
   without the Carve-out scan section** · `retired` (fixed upstream in kit #176;

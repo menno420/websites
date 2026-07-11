@@ -23,11 +23,15 @@ services (share code, not a process):
   ideas/bugs), with the live-bot-write control panel stubbed by design. Doc:
   `docs/dashboard.md`.
 - **review** (`review/`) — the program-review site built for Anthropic
-  reviewers (owner-directed 2026-07-11): process / growth / successes /
-  problems, rendered server-side from a committed snapshot of the repo's own
-  record (`review/data/snapshot.json`, baked by `review/gen_snapshot.py`).
-  Read-only, network-free at runtime. Railway service creation is a queued
-  ⚑ OWNER-ACTION (`docs/owner/OWNER-ACTIONS.md`).
+  reviewers (owner-directed 2026-07-11, expanded same day): process /
+  growth / successes / problems / fleet index + per-repo detail /
+  continuous review editions (+ Atom feed) / evidence-backed questionnaire
+  + questions ledger, rendered server-side from committed data mirrors
+  (`review/data/*.json` + `review/data/reviews/*.md`, baked by
+  `review/gen_snapshot.py`, `gen_fleet.py`, `gen_stats.py`; refreshed by
+  the scheduled `review-bake` workflow). Read-only, network-free at
+  runtime. Full doc: `review/README.md`. Railway service creation is a
+  queued ⚑ OWNER-ACTION (`docs/owner/OWNER-ACTIONS.md`).
 
 All three services are now **public** — the Basic-auth gate was dropped from
 control-plane + dashboard ([D-0011]); botsite was always public.
@@ -117,6 +121,31 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   the live board; setup steps stay in `docs/deployment.md`).
 
 ## Recently shipped (newest first)
+
+- **2026-07-11 owner-directed: review-site EXPANSION** (branch
+  `claude/review-site-expansion`) — the review service grew from a one-shot
+  report into the owner's continuous review channel to Anthropic. New:
+  **`/fleet`** (+`/fleet/{repo}` +`/fleet.json`) rendering the fleet-manager
+  registry from a committed mirror (`review/data/fleet.json`, baked by
+  `review/gen_fleet.py` — registry counts rendered AS FOUND: 19 seats =
+  18 repo-backed + 1 registry-only at bake time, never hardcoded; unreadable
+  lanes labeled honestly); **scheduled `review-bake` workflow**
+  (`.github/workflows/review-bake.yml`, daily cron + dispatch) regenerating
+  snapshot/fleet/stats mirrors and landing the data-only diff (direct push →
+  `[bake]` PR + auto-merge → visible open PR cascade); `review/gen_stats.py`
+  (2 capped fail-soft REST calls/repo → `review/data/stats.json`; absent
+  until the first CI bake — the pages say so); as-of stamps + 48h staleness
+  banners on every stats surface + the site-wide **snapshot-aging banner**
+  (deployed sha vs baked sha — the backlog idea, built); **`/reviews`**
+  editions (committed markdown under `review/data/reviews/`, front-matter
+  format pinned by tests) + per-edition pages + a valid **Atom feed**
+  (`/reviews/feed.xml`) + edition #1 (adapted from the ORDER 011
+  self-review) + the publishing ritual in `review/README.md`;
+  **`/questionnaire`** (12 anticipated reviewer questions answered from repo
+  evidence, every answer cited) + **`/questions`** ledger (honest empty
+  state + documented intake convention); prefilled GitHub new-issue "ask"
+  links on every page (read-only interaction — no form/DB by design).
+  Tests: review suite 28 → 67; full four-service suite 322.
 
 - **2026-07-11 owner-directed: `review/` — fourth service, the program-review
   site for Anthropic reviewers.** Owner verbatim: "create a website

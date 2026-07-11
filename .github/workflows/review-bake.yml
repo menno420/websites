@@ -1,0 +1,95 @@
+name: review-bake
+
+# Scheduled data bake for the review service (review/) — keeps the site's
+# committed mirrors fresh without any runtime network access:
+#   review/data/snapshot.json  (this repo's own history — gen_snapshot.py)
+#   review/data/fleet.json     (fleet registry + heartbeat mirror — gen_fleet.py)
+#   review/data/stats.json     (per-repo REST numbers — gen_stats.py, which
+#                               uses the Actions GITHUB_TOKEN for rate headroom;
+#                               a durable owner PAT would unlock richer stats —
+#                               queued in docs/owner/OWNER-ACTIONS.md)
+#
+# Trigger: daily cron (best-effort delivery, ±hours — the capability ledger's
+# standing finding; never gate anything on a slot) + workflow_dispatch for a
+# manual refresh. NOT triggered by push — no self-trigger loop is possible.
+#
+# Landing path for the baked diff (touches ONLY review/data/**):
+#   1. try a direct push to main — if the branch ruleset allows it, done;
+#   2. otherwise open a `[bake]` PR and enable auto-merge, so the required
+#      `quality` check still gates the diff (a data-only PR adds no session
+#      card — the quality workflow's no-card path is explicitly advisory for
+#      exactly this kind of diff — and the full test suite runs against the
+#      regenerated data, which the review tests treat shape-wise, not
+#      value-wise);
+#   3. if auto-merge is not permitted either, the PR stays open for a human
+#      click (visible on /orders and the board — never silent).
+#
+# Scope safety: the commit path stages review/data/ files explicitly (never
+# `git add -A`), the job has no secret beyond the repo-scoped Actions token,
+# and a bake that produces no diff exits quietly.
+
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bake:
+    if: github.repository == 'menno420/websites'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: gen_snapshot.py derives per-day numbers from git log.
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The generators are stdlib-only on purpose (urllib, ast, json) — no
+      # dependency install needed for the bake itself.
+      - name: Bake snapshot + fleet mirror + stats
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 review/gen_snapshot.py
+          python3 review/gen_fleet.py
+          python3 review/gen_stats.py
+
+      - name: Commit and land the refreshed data
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "review-bake[bot]"
+          git config user.email "review-bake@users.noreply.github.com"
+          # Stage ONLY the baked data files — never a blanket add.
+          git add review/data/snapshot.json review/data/fleet.json
+          git add review/data/stats.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "bake produced no changes — nothing to land."
+            exit 0
+          fi
+          stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git commit -m "[bake] review data refresh $stamp" \
+                     -m "Scheduled review-bake: regenerated review/data mirrors (snapshot, fleet, stats). Data-only diff; no session card by design (see .github/workflows/review-bake.yml)."
+          if git push origin HEAD:main; then
+            echo "pushed directly to main."
+            exit 0
+          fi
+          echo "direct push rejected (ruleset) — landing via PR + auto-merge."
+          branch="bake/review-data-$(date -u +%Y%m%d-%H%M%S)"
+          git checkout -b "$branch"
+          git push -u origin "$branch"
+          pr_url="$(gh pr create \
+            --title "[bake] review data refresh $stamp" \
+            --body "Automated daily bake of the review service's committed data mirrors (review/data/snapshot.json, fleet.json, stats.json). Data-only diff — no session card by design. Auto-merge is enabled; if it could not be armed, this PR waits for a human click." \
+            --base main --head "$branch")"
+          echo "opened $pr_url"
+          gh pr merge --squash --auto "$pr_url" \
+            || echo "auto-merge could not be enabled — PR left open for a human click (visible on the board)."

@@ -33,11 +33,11 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import story
+from . import editions, fleetdata, story
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -45,6 +45,9 @@ NAV = [
     ("overview", "Overview", "/"),
     ("process", "Process", "/process"),
     ("growth", "Growth", "/growth"),
+    ("fleet", "Fleet", "/fleet"),
+    ("reviews", "Reviews", "/reviews"),
+    ("questionnaire", "Q&A", "/questionnaire"),
     ("successes", "Successes", "/successes"),
     ("problems", "Problems", "/problems"),
 ]
@@ -54,8 +57,14 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
+def _deployed_sha() -> str:
+    return (os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("GIT_SHA") or "").strip()
+
+
 def _base_ctx(request: Request, active: str) -> dict[str, Any]:
     snap = story.load_snapshot()
+    git_head = snap["data"].get("git_head", "") if snap["ok"] else ""
+    deployed = _deployed_sha()
     return {
         "request": request,
         "active": active,
@@ -65,8 +74,15 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
         "snapshot": snap["data"],
         "totals": (snap["data"].get("totals") or {}) if snap["ok"] else {},
         "generated_at": snap["data"].get("generated_at", "") if snap["ok"] else "",
-        "git_head": snap["data"].get("git_head", "") if snap["ok"] else "",
+        "git_head": git_head,
+        # Snapshot-aging honesty (the backlog's snapshot-aging idea, built):
+        # when the deployed commit is known and is NOT the snapshot's source
+        # commit, the repo has moved since the numbers were baked — say so.
+        "snapshot_aged": bool(deployed and git_head and deployed[:8] != git_head[:8]),
+        "deployed_sha": deployed,
         "repo_url": story.REPO_URL,
+        # "Room to interact", read-only: a prefilled new-issue link per page.
+        "ask_url": story.ask_url(f"{active or 'site'} page"),
     }
 
 
@@ -142,6 +158,113 @@ async def problems(request: Request):
     ctx = _base_ctx(request, "problems")
     ctx.update({"items": story.PROBLEMS})
     return templates.TemplateResponse(request, "problems.html", ctx)
+
+
+# ---------------------------------------------------------------------------
+# Fleet — every seat in the manager's registry, from the committed mirror.
+# ---------------------------------------------------------------------------
+@app.get("/fleet", response_class=HTMLResponse)
+async def fleet(request: Request):
+    ctx = _base_ctx(request, "fleet")
+    fl = fleetdata.load_fleet()
+    st = fleetdata.load_stats()
+    ctx.update(
+        {
+            "fleet_ok": fl["ok"],
+            "fleet_error": fl["error"],
+            "stats_ok": st["ok"],
+            "stats_error": st["error"],
+            "overview": fleetdata.fleet_overview(fl["data"], st["data"]) if fl["ok"] else {},
+            "fleet_age": fleetdata.freshness(fl["data"].get("generated_at", "")) if fl["ok"] else None,
+            "stats_age": fleetdata.freshness(st["data"].get("generated_at", "")) if st["ok"] else None,
+        }
+    )
+    return templates.TemplateResponse(request, "fleet.html", ctx)
+
+
+@app.get("/fleet.json")
+async def fleet_json() -> JSONResponse:
+    """The fleet + stats mirrors, machine-readable — same honesty as the page."""
+    fl = fleetdata.load_fleet()
+    st = fleetdata.load_stats()
+    return JSONResponse(
+        {
+            "fleet": {"ok": fl["ok"], "error": fl["error"], "data": fl["data"]},
+            "stats": {"ok": st["ok"], "error": st["error"], "data": st["data"]},
+        }
+    )
+
+
+@app.get("/fleet/{repo}", response_class=HTMLResponse)
+async def fleet_repo(request: Request, repo: str):
+    ctx = _base_ctx(request, "fleet")
+    fl = fleetdata.load_fleet()
+    st = fleetdata.load_stats()
+    lane = fleetdata.lane_detail(fl["data"], st["data"], repo) if fl["ok"] else None
+    if lane is None:
+        ctx["fleet_error"] = fl["error"]
+        return templates.TemplateResponse(request, "not_found.html", ctx, status_code=404)
+    ctx.update(
+        {
+            "lane": lane,
+            "fleet_age": fleetdata.freshness(fl["data"].get("generated_at", "")),
+            "stats_age": fleetdata.freshness(st["data"].get("generated_at", "")) if st["ok"] else None,
+            "stats_ok": st["ok"],
+            "stats_error": st["error"],
+            "ask_url": story.ask_url(f"fleet repo {repo}"),
+        }
+    )
+    return templates.TemplateResponse(request, "fleet_detail.html", ctx)
+
+
+# ---------------------------------------------------------------------------
+# Reviews — dated editions + Atom feed (the continuous-review channel).
+# ---------------------------------------------------------------------------
+@app.get("/reviews", response_class=HTMLResponse)
+async def reviews(request: Request):
+    ctx = _base_ctx(request, "reviews")
+    ctx.update({"editions": editions.list_editions()})
+    return templates.TemplateResponse(request, "reviews.html", ctx)
+
+
+@app.get("/reviews/feed.xml")
+async def reviews_feed(request: Request) -> Response:
+    xml = editions.atom_feed(editions.list_editions(), str(request.base_url))
+    return Response(content=xml, media_type="application/atom+xml")
+
+
+@app.get("/reviews/{slug}", response_class=HTMLResponse)
+async def review_edition(request: Request, slug: str):
+    ctx = _base_ctx(request, "reviews")
+    edition = editions.get_edition(slug)
+    if edition is None:
+        return templates.TemplateResponse(request, "not_found.html", ctx, status_code=404)
+    ctx.update(
+        {
+            "edition": edition,
+            "body_html": editions.render_markdown(edition["body_md"]),
+            "ask_url": story.ask_url(f"review edition {slug}"),
+        }
+    )
+    return templates.TemplateResponse(request, "edition.html", ctx)
+
+
+# ---------------------------------------------------------------------------
+# Questionnaire + questions ledger (interaction, read-only by design).
+# ---------------------------------------------------------------------------
+@app.get("/questionnaire", response_class=HTMLResponse)
+async def questionnaire(request: Request):
+    ctx = _base_ctx(request, "questionnaire")
+    ctx.update({"items": story.QUESTIONNAIRE})
+    return templates.TemplateResponse(request, "questionnaire.html", ctx)
+
+
+@app.get("/questions", response_class=HTMLResponse)
+async def questions(request: Request):
+    ctx = _base_ctx(request, "questionnaire")
+    q = story.load_questions()
+    ctx.update({"q_ok": q["ok"], "q_error": q["error"], "ledger": q["data"]})
+    return templates.TemplateResponse(request, "questions.html", ctx)
 
 
 @app.exception_handler(404)

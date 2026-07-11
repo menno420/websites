@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Questions ledger — Program Review{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey"><a href="/questionnaire">Q&amp;A</a> / ledger</p>
+    <h1>Questions asked → answered</h1>
+    <p class="sb-lead">
+      Every real question asked through this site, and where its answer landed. The intake is
+      deliberately read-only: <a href="{{ ask_url }}" target="_blank" rel="noopener">a prefilled
+      GitHub issue</a> (no form, no database, no credential) → the fleet manager routes it as an
+      order on the bus → the evidence-backed answer publishes in the next
+      <a href="/reviews">review edition</a> and lands here with links to both.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    {% if not q_ok %}
+    <div class="sb-error" role="alert"><strong>Ledger unavailable.</strong> <span class="sb-mono">{{ q_error }}</span></div>
+    {% elif ledger.questions %}
+    <div class="sb-table-scroll">
+      <table class="sb-table">
+        <thead><tr><th>Asked</th><th>Question</th><th>Status</th><th>Answered where</th></tr></thead>
+        <tbody>
+          {% for q in ledger.questions %}
+          <tr>
+            <td class="sb-mono">{{ q.asked or "?" }}</td>
+            <td>{% if q.url %}<a href="{{ q.url }}" target="_blank" rel="noopener">{{ q.title }}</a>{% else %}{{ q.title }}{% endif %}</td>
+            <td>{{ q.status or "open" }}</td>
+            <td>{% if q.answer_url %}<a href="{{ q.answer_url }}">{{ q.answer_label or "answer" }}</a>{% else %}<span class="sb-muted">pending</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="sb-card">
+      <p class="sb-empty">No external reviewer questions on record yet.</p>
+      <p class="sb-muted">{{ ledger.note }}</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
