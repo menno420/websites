@@ -28,6 +28,12 @@
       {% else %}{{ badge('unknown', 'no check runs') }}{% endif %}
     </span>
   </h2>
+  {% set chips = idea_chips.get(r.repo) if idea_chips is defined else none %}
+  {% if chips %}
+  <p class="dim small">ideas conveyor:
+    {% for s in ['captured', 'planned', 'built', 'retired', 'unstated'] %}{% if chips.counts.get(s) %}<a href="/ideas?state={{ s }}"><span class="b {{ 'ok' if s == 'built' else ('unknown' if s == 'unstated' else ('design' if s == 'retired' else 'repo')) }}">{{ chips.counts[s] }} {{ s }}</span></a> {% endif %}{% endfor %}
+    <span class="dim">— newest {{ chips.shown }} of {{ chips.total }} · <a href="/ideas">/ideas</a></span></p>
+  {% endif %}
 
   <table>
     <tr><th>signal</th><th>configured?</th><th>working now?</th><th>detail</th></tr>

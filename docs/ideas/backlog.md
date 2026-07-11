@@ -31,11 +31,6 @@
   normalize markdown emphasis (`*`/`_`) away before phrase matching. Source:
   `.sessions/2026-07-11-kit-upgrade-v1.10.0.md` 💡.
 
-- **Conveyor-health chips on the readiness board rows** · `captured` — the
-  board (/) is the owner's habit path; one small per-repo chip ("ideas:
-  3c/1b") reusing repo_ideas' cached lifecycle counts puts conveyor health
-  where the owner already looks (zero new fetch on a warm cache). Source:
-  `.sessions/2026-07-11-ideas-states-waitdeploy.md` 💡.
 - **`tooling:` capability token in the fired session's heartbeat** ·
   `captured` — the routine-fired protocol's mandated probe should stamp its
   result (`tooling: pr-capable | ritual-only`) in the heartbeat so /fleet
@@ -51,6 +46,13 @@
   manifest→roster move broke this site once already, caught by the cron).
   Routing half: flagged to the manager in the heartbeat. Source:
   `.sessions/2026-07-11-lane-source-registry.md` 💡.
+- **Board-row fleet chip (heartbeat freshness on the habit path)** ·
+  `captured` — chip each board row with its lane's heartbeat age/stale badge
+  from fleet.overview()'s cached lanes, so the owner's first glance carries
+  the signal /fleet exists for; the chips pattern (route-level gather, no
+  readiness.py change, no JSON change) is proven cheap by the ideas chips.
+  Distinct from the retired unseen-orders badge. Source:
+  `.sessions/2026-07-11-board-conveyor-chips.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
@@ -66,6 +68,14 @@
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
 ## Built
+
+- **Conveyor-health chips on the readiness board rows** — shipped 2026-07-11
+  (continuous-mode slice 17): each board row with a readable ideas dir shows
+  lifecycle count chips (deep-linked to the /ideas ?state= filters), reusing
+  the exact TTL-cached /ideas fetch path; a repo with no/unreadable ideas
+  shows no chip (the board stays a readiness surface — /ideas holds the
+  honest absence); /api/readiness.json untouched (pinned by test). Source:
+  `.sessions/2026-07-11-ideas-states-waitdeploy.md` 💡.
 
 - **Relay-PR merge protocol on the bus** — shipped 2026-07-11 (continuous-mode
   slice 15): doctrine section "Landing other sessions' control-only work" in
