@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Questionnaire — Program Review{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">Q&amp;A</p>
+    <h1>The questions a reviewer would ask, answered from the record</h1>
+    <p class="sb-lead">
+      Anticipated questions, each answered from the repo's committed evidence with links to it.
+      There is no model behind this page at request time — the "AI" is that Claude agent sessions
+      author these answers and keep them current, landing every update through the same reviewed
+      PR path as code. If your question isn't here,
+      <a href="{{ ask_url }}" target="_blank" rel="noopener">ask it</a> — it becomes an order on
+      the bus, and the answer lands in the next <a href="/reviews">edition</a>, on the
+      <a href="/questions">questions ledger</a>, and (if it generalizes) here.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <nav class="sb-card rv-toc" aria-label="Questions on this page">
+      <ol>
+        {% for item in items %}
+        <li><a href="#{{ item.id }}">{{ item.q }}</a></li>
+        {% endfor %}
+      </ol>
+    </nav>
+
+    {% for item in items %}
+    <article class="rv-qa" id="{{ item.id }}">
+      <h2>{{ item.q }}</h2>
+      <p>{{ item.a }}</p>
+      <p class="rv-evidence">
+        <span class="sb-muted">Evidence:</span>
+        {% for label, url in item.evidence %}
+        <a href="{{ url }}"{% if url.startswith("http") %} target="_blank" rel="noopener"{% endif %}>{{ label }}</a>{% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </p>
+    </article>
+    {% endfor %}
+
+    <p class="sb-muted">
+      A live answer-bot (ask free-form, get an evidence-cited answer generated on demand) is a
+      flagged future idea — it needs a model API key the owner would have to provision, so it is
+      deliberately not built. What you read above is the honest version available today:
+      agent-authored, evidence-linked, continuously updated.
+    </p>
+  </div>
+</section>
+{% endblock %}

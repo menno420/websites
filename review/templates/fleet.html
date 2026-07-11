@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Fleet — Program Review{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">Fleet</p>
+    <h1>Every seat in the fleet, from the manager's own registry</h1>
+    <p class="sb-lead">
+      The websites lane is one seat of a fleet of Claude Projects, each bound to a repo and
+      coordinated over committed git files. This page mirrors the fleet-manager's canonical
+      registry{% if fleet_ok %} (<a href="{{ overview.registry.url }}" target="_blank" rel="noopener">the source of truth</a>){% endif %}
+      plus each lane's own committed heartbeat — baked to JSON, never estimated. Where a lane's
+      data can't be read, the gap is labeled, not filled in.
+    </p>
+  </div>
+</section>
+
+{% if not fleet_ok %}
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-error" role="alert">
+      <strong>Fleet mirror unavailable.</strong>
+      <span class="sb-mono">{{ fleet_error }}</span> — no lanes are shown because none can be
+      shown honestly. The bake script is <code>review/gen_fleet.py</code>.
+    </div>
+  </div>
+</section>
+{% else %}
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-statrow sb-statrow-4">
+      <div class="sb-stat">
+        <div class="rv-stat-value">{{ overview.counts.total_seats }}</div>
+        <div class="sb-label">seats in the registry</div>
+        <div class="sb-muted rv-stat-sub">{{ overview.counts.repo_seats }} repo-backed + {{ overview.counts.registry_only }} registry-only</div>
+      </div>
+      <div class="sb-stat">
+        <div class="rv-stat-value">{{ overview.counts.live }}</div>
+        <div class="sb-label">live lanes</div>
+        <div class="sb-muted rv-stat-sub">{{ overview.counts.archived }} archived · {{ overview.counts.hub }} hub</div>
+      </div>
+      <div class="sb-stat">
+        <div class="rv-stat-value">{{ overview.counts.heartbeats_mirrored }}</div>
+        <div class="sb-label">heartbeats mirrored</div>
+        <div class="sb-muted rv-stat-sub">of {{ overview.counts.repo_seats }} repo-backed seats</div>
+      </div>
+      <div class="sb-stat">
+        <div class="rv-stat-value sb-mono" style="font-size:var(--sb-text-xl)">{{ fleet_age.age_human if fleet_age else "?" }}</div>
+        <div class="sb-label">mirror baked</div>
+        <div class="sb-muted rv-stat-sub">as of {{ fleet_age.iso if fleet_age and fleet_age.ok else "unknown" }}</div>
+      </div>
+    </div>
+    <p class="sb-chart-note sb-muted">
+      Seat counts come from the registry as found — never hardcoded here. A "registry-only" seat
+      is real (it appears in the manager's roster) but has no repo of its own to feature:
+      {% for name in overview.registry.registry_only_seats %}<span class="sb-mono">{{ name }}</span>{% if not loop.last %}, {% endif %}{% endfor %}.
+    </p>
+    {% if fleet_age and fleet_age.stale %}
+    <div class="rv-aged" role="note">
+      <strong>This mirror is stale</strong> — baked {{ fleet_age.age_human }} ({{ fleet_age.iso }});
+      the daily bake appears not to have landed since. What you see was true then, not necessarily now.
+    </div>
+    {% endif %}
+    {% if not stats_ok %}
+    <p class="sb-chart-note sb-muted">Per-repo activity stats: {{ stats_error }}.</p>
+    {% elif stats_age %}
+    <p class="sb-chart-note sb-muted">Per-repo activity stats as of {{ stats_age.iso }} ({{ stats_age.age_human }}){% if stats_age.stale %} — <strong>stale</strong>{% endif %}.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-sec-head"><h2>The seats</h2></div>
+    <div class="sb-grid-2">
+      {% for l in overview.lanes %}
+      <div class="sb-card rv-lane-card">
+        <h3>
+          {% if l.repo %}<a href="/fleet/{{ l.repo }}">{{ l.lane }}</a>{% else %}{{ l.lane }}{% endif %}
+          <span class="rv-chip rv-chip-{{ l.disposition or 'unknown' }}">{{ l.disposition or "?" }}</span>
+          {% if l.heartbeat_available %}
+            {% if l.health == "green" %}<span class="rv-chip rv-chip-green">green</span>
+            {% elif l.health == "broken" %}<span class="rv-chip rv-chip-red">broken</span>
+            {% elif l.health == "red-by-design" %}<span class="rv-chip rv-chip-design">red-by-design</span>
+            {% endif %}
+          {% endif %}
+        </h3>
+        {% if l.repo %}<p class="sb-mono sb-muted rv-lane-repo"><a href="{{ l.repo_url }}" target="_blank" rel="noopener">menno420/{{ l.repo }}</a></p>{% endif %}
+        {% if l.heartbeat_available %}
+        <ul class="rv-kv">
+          <li><span>heartbeat</span><strong>{{ l.freshness.age_human }}{% if l.freshness.stale %} · stale{% endif %}</strong></li>
+          {% if l.orders.ok %}<li><span>orders</span><strong>{{ l.orders.done }}/{{ l.orders.acked }} done{% if l.orders.outstanding %} · {{ l.orders.outstanding|length }} outstanding{% endif %}</strong></li>{% endif %}
+          {% if l.kit %}<li><span>kit</span><strong class="sb-mono">{{ l.kit }}</strong></li>{% endif %}
+          {% if l.fields.get("last-shipped") %}<li><span>last shipped</span><strong>{{ l.fields["last-shipped"][:120] }}</strong></li>{% endif %}
+        </ul>
+        {% elif l.repo %}
+        <p class="sb-muted rv-gap">No heartbeat mirrored — {{ l.heartbeat_reason }}.</p>
+        {% else %}
+        <p class="sb-muted rv-gap">{{ l.heartbeat_reason }}.</p>
+        {% endif %}
+        {% if l.stats and l.stats.ok %}
+        <p class="sb-chart-note sb-muted">last push {{ l.stats.pushed_at[:10] }}{% if l.stats.total_prs is defined %} · {{ l.stats.total_prs }} PRs ever opened{% endif %}{% if l.stats.open_issues_and_prs is not none %} · {{ l.stats.open_issues_and_prs }} open issues+PRs{% endif %}</p>
+        {% elif l.repo %}
+        <p class="sb-chart-note sb-muted">activity stats: no data mirrored yet{% if l.stats and l.stats.reason %} ({{ l.stats.reason }}){% endif %}.</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <p class="sb-muted rv-gap">
+      Reading key: <strong>hub</strong> = a coordination seat with no heartbeat by design ·
+      <strong>archived</strong> = stale-by-design (a finished experiment) ·
+      "no heartbeat mirrored" usually means the repo is not publicly readable — an honest wall,
+      recorded in <a href="{{ repo_url }}/blob/main/docs/CAPABILITIES.md" target="_blank" rel="noopener">the capability ledger</a>.
+      Machine-readable: <a href="/fleet.json"><code>/fleet.json</code></a>.
+    </p>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

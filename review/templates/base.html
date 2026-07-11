@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="/static/ds/tokens.css">
 <link rel="stylesheet" href="/static/ds/components.css">
 <link rel="stylesheet" href="/static/site.css">
+<link rel="alternate" type="application/atom+xml" title="Program review editions" href="/reviews/feed.xml">
 </head>
 <body>
 <a class="sb-skip" href="#main">Skip to content</a>
@@ -59,6 +60,17 @@
   </div>
 </div>
 {% endif %}
+{% if snapshot_aged %}
+<div class="sb-wrap" style="padding-top:16px">
+  <div class="rv-aged" role="note">
+    Numbers on this site were baked at commit
+    <a href="{{ repo_url }}/commit/{{ git_head }}" target="_blank" rel="noopener" class="sb-mono">{{ git_head[:8] }}</a>
+    ({{ generated_at }}); the repo has moved since (this deployment runs
+    <span class="sb-mono">{{ deployed_sha[:8] }}</span>). Honest staleness beats silent aging —
+    a scheduled bake refreshes the data files daily.
+  </div>
+</div>
+{% endif %}
 
 <main id="main" class="sb-view">
   {% block content %}{% endblock %}
@@ -73,6 +85,8 @@
       {% if generated_at %}<span class="sb-muted">generated {{ generated_at }}</span>{% endif %}
       <a href="{{ repo_url }}" target="_blank" rel="noopener">source repo</a>
       <a href="/story.json">story.json</a>
+      <a href="/reviews/feed.xml">Atom feed</a>
+      {% if ask_url %}<a href="{{ ask_url }}" target="_blank" rel="noopener">Ask about this page</a>{% endif %}
     </span>
   </div>
 </footer>

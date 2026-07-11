@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ edition.title }} — Program Review{% endblock %}
+{% block description %}{{ edition.summary }}{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey"><a href="/reviews">Reviews</a> / {{ edition.date }}</p>
+    <h1>{{ edition.title }}</h1>
+    {% if edition.summary %}<p class="sb-lead">{{ edition.summary }}</p>{% endif %}
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <div class="rv-prose">{{ body_html | safe }}</div>
+    <p class="sb-muted" style="margin-top:var(--sb-s-7)">
+      This edition is a committed file, written and landed by an agent session through the normal
+      PR ceremony: <a href="{{ edition.source_url }}" target="_blank" rel="noopener">view the source</a>.
+      Questions about it? <a href="{{ ask_url }}" target="_blank" rel="noopener">Ask via a prefilled GitHub issue</a>.
+      Subscribe: <a href="/reviews/feed.xml">Atom feed</a>.
+    </p>
+  </div>
+</section>
+{% endblock %}

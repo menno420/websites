@@ -108,3 +108,66 @@
   .rv-tl-item { flex-direction: column; gap: var(--sb-s-1); }
   .rv-tl-date { width: auto; }
 }
+
+/* --- expansion (fleet / reviews / questionnaire) --------------------------- */
+
+/* honest-staleness banner */
+.rv-aged {
+  background: color-mix(in srgb, var(--sb-warn, #b98a00) 12%, var(--sb-surface));
+  border: 1px solid color-mix(in srgb, var(--sb-warn, #b98a00) 45%, transparent);
+  border-radius: var(--sb-r-md);
+  padding: var(--sb-s-3) var(--sb-s-4);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-ink-2);
+  margin-top: var(--sb-s-3);
+}
+
+/* small status chips */
+.rv-chip {
+  display: inline-block;
+  font-family: var(--sb-font-mono);
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--sb-line-2);
+  color: var(--sb-ink-2);
+  vertical-align: middle;
+  margin-left: var(--sb-s-2);
+}
+.rv-chip-live { border-color: color-mix(in srgb, var(--sb-ok, #2e9e5b) 60%, transparent); color: var(--sb-ok, #2e9e5b); }
+.rv-chip-green { border-color: color-mix(in srgb, var(--sb-ok, #2e9e5b) 60%, transparent); color: var(--sb-ok, #2e9e5b); }
+.rv-chip-red { border-color: color-mix(in srgb, var(--sb-bad, #cf3f56) 60%, transparent); color: var(--sb-bad, #cf3f56); }
+.rv-chip-archived, .rv-chip-hub, .rv-chip-registry-only, .rv-chip-unknown { opacity: .8; }
+.rv-chip-design { border-color: color-mix(in srgb, var(--sb-accent, #8a6fff) 60%, transparent); color: var(--sb-accent, #8a6fff); }
+
+/* key-value lists on lane cards / detail */
+.rv-kv { list-style: none; margin: var(--sb-s-3) 0 0; padding: 0; display: grid; gap: var(--sb-s-2); }
+.rv-kv li { display: flex; gap: var(--sb-s-3); font-size: var(--sb-text-sm); align-items: baseline; }
+.rv-kv li > span { color: var(--sb-ink-3); font-family: var(--sb-font-mono); font-size: var(--sb-text-xs); min-width: 96px; flex-shrink: 0; }
+.rv-kv li > strong { font-weight: 500; color: var(--sb-ink-1); overflow-wrap: anywhere; }
+.rv-kv-detail li > span { min-width: 150px; }
+.rv-field-val { white-space: pre-wrap; }
+.rv-lane-repo { margin: 2px 0 0; font-size: var(--sb-text-xs); }
+.rv-lane-card h3 a { text-decoration: none; }
+.rv-gap { font-size: var(--sb-text-sm); }
+
+/* editions list */
+.rv-editions { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sb-s-4); }
+.rv-edition-card h2 { font-size: var(--sb-text-xl); margin: var(--sb-s-1) 0 var(--sb-s-2); }
+.rv-edition-card h2 a { text-decoration: none; }
+
+/* rendered edition prose */
+.rv-prose h2 { margin-top: var(--sb-s-7); }
+.rv-prose h3 { margin-top: var(--sb-s-5); }
+.rv-prose p, .rv-prose li { color: var(--sb-ink-2); line-height: 1.65; }
+.rv-prose code { font-family: var(--sb-font-mono); font-size: .9em; }
+.rv-prose ul { padding-left: 1.2em; }
+
+/* questionnaire */
+.rv-toc ol { margin: 0; padding-left: 1.3em; display: grid; gap: var(--sb-s-1); }
+.rv-toc a { text-decoration: none; }
+.rv-qa { margin-top: var(--sb-s-8); }
+.rv-qa h2 { font-size: var(--sb-text-xl); }
+.rv-qa p { color: var(--sb-ink-2); line-height: 1.65; }
+.rv-evidence { font-size: var(--sb-text-sm); }

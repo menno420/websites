@@ -326,6 +326,174 @@ STAT_TILES: list[tuple[str, str, str]] = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Interaction — read-only by design. "Room to interact" is a prefilled
+# GitHub new-issue link (no form, no database, no credential): a reviewer's
+# question becomes an issue, the manager routes it as an order on the bus,
+# and the answer publishes in the next review edition + the /questions
+# ledger. A real intake form/DB is a flagged future owner option.
+# ---------------------------------------------------------------------------
+def ask_url(topic: str) -> str:
+    """A prefilled new-issue link — the site's one interaction affordance."""
+    from urllib.parse import urlencode
+
+    title = f"[program-review] Question: {topic}".strip()
+    body = (
+        f"**Asked from the program-review site — page/section: {topic}**\n\n"
+        "<!-- Write your question below. It will be routed to the fleet as an "
+        "order; the evidence-backed answer publishes in the next review "
+        "edition and on the /questions ledger. -->\n\n"
+    )
+    return f"{REPO_URL}/issues/new?{urlencode({'title': title, 'body': body})}"
+
+
+def load_questions(path: Path | None = None) -> dict[str, Any]:
+    """The questions-asked → answered ledger (committed ``data/questions.json``).
+
+    Honest degradation like every loader here: a missing/corrupt/malformed
+    file yields ``ok=False`` and the page explains the intake convention
+    over an empty ledger — never a fabricated Q&A history.
+    """
+    if path is None:
+        path = BASE_DIR / "data" / "questions.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"ok": False, "error": "questions ledger missing (data/questions.json)", "data": {}}
+    except (json.JSONDecodeError, OSError) as exc:
+        return {"ok": False, "error": f"questions ledger unreadable: {exc}", "data": {}}
+    if not isinstance(data, dict) or not isinstance(data.get("questions"), list):
+        return {"ok": False, "error": "questions ledger malformed (missing questions list)", "data": {}}
+    return {"ok": True, "error": "", "data": data}
+
+
+# ---------------------------------------------------------------------------
+# The questionnaire — anticipated reviewer questions, answered from the
+# repo's committed evidence. No live model endpoint: the "AI" here is that
+# agent sessions author these answers and keep them current (each landing
+# through the same PR ceremony as code). Every answer cites its evidence.
+# ---------------------------------------------------------------------------
+QUESTIONNAIRE: list[dict[str, Any]] = [
+    {
+        "id": "runaway",
+        "q": "How do you prevent runaway agents?",
+        "a": "Three layers, all inspectable. (1) Structural: the deployed services are read-only toward everything they touch — no service holds a credential that can mutate anything beyond a cache refresh, and the genuinely powerful levers (Railway account actions, live-bot control, databases) are deliberately unwired; several are labeled stubs. (2) Enforced: CI carries an enforcing guard that fails any tracked code reading the ambient production-bot Railway IDs, and repo policy forbids agent-initiated Railway mutations without the owner's explicit go — a policy wall agents have honored rather than tested (the pending service creations are queued as owner clicks, not attempted). (3) Ceremonial: every change lands through a branch → session card → PR → required CI gate → squash-merge path, so there is no write path that skips review by the gates. Sessions that CAN'T complete that path (some scheduled wakes lack PR tooling) strand harmlessly and get relayed by sessions that can.",
+        "evidence": [
+            ("docs/RAILWAY-SAFETY.md", blob("docs/RAILWAY-SAFETY.md")),
+            ("scripts/check_no_ambient_railway_ids.py (CI guard)", blob("scripts/check_no_ambient_railway_ids.py")),
+            ("docs/owner/OWNER-ACTIONS.md (walls honored, queued as clicks)", blob("docs/owner/OWNER-ACTIONS.md")),
+        ],
+    },
+    {
+        "id": "failures",
+        "q": "What has actually failed?",
+        "a": "Plenty, and it is all written down: a merge gate that let an empty PR through on day one, a session that recorded work as pushed which never left its container, scheduled wakes that fired without PR tooling or not at all, a test suite carrying 18 latent time bombs, the status ledger drifting stale in the repo that renders drift for a living, and the same cron mistake written five times. The problems page on this site gives each one its cost and its fix; the retro documents go deeper. The honest pattern worth reviewing: most failures were caught by machinery this program built to watch itself (a drift cell, a scheduled healthcheck, a guard test), not by a human noticing.",
+        "evidence": [
+            ("/problems (this site)", "/problems"),
+            ("ORDER 011 self-review", blob("docs/retro/self-review-2026-07-11.md")),
+            ("gen-1 final retro", blob("docs/retro/gen1-final-retro-2026-07-09.md")),
+        ],
+    },
+    {
+        "id": "gates",
+        "q": "How do the gates work — what actually stops a bad merge?",
+        "a": "One required status check on main, called quality, runs on every PR: a workflow-kit checker (doc hygiene, session-card grammar, decision-ledger integrity), a session gate that holds any PR red while its committed session card still says in-progress (born-red by design — the red first run IS the gate working), the Railway-ID safety guard, and every service's full pytest suite. The gate is itself a test subject: when it leaked on day one (PR #19 merged effectively empty), the leak was root-caused, fixed, and pinned with a regression test that proves both directions. Control-file-only diffs (heartbeats) ride a validated fast lane that still enforces their own grammar and append-only rules.",
+        "evidence": [
+            (".github/workflows/quality.yml", blob(".github/workflows/quality.yml")),
+            ("tests/test_born_red_session_gate.py", blob("tests/test_born_red_session_gate.py")),
+            ("PR #19 (the leak) and PR #24 (the fix)", pr(24)),
+        ],
+    },
+    {
+        "id": "human-role",
+        "q": "What does the human actually do, versus the agents?",
+        "a": "The owner designs, directs, decides, and clicks. He cannot code — every line in this repo was written by Claude agent sessions and cross-checked by other sessions. His verbatim instructions appear in the record (\"Yes drop the auth\"; the directive that created this site). Decisions only he can make are queued in one skimmable file with click-level instructions (create this Railway service, mint this token, delete these branches — agents get 403 on branch deletion and say so). The working agreement describes his style honestly: decide-and-flag beats stop-and-ask for anything reversible, and agents are expected to reason a partial idea forward rather than wait.",
+        "evidence": [
+            ("docs/owner/OWNER-ACTIONS.md", blob("docs/owner/OWNER-ACTIONS.md")),
+            (".claude/CLAUDE.md (the working agreement)", blob(".claude/CLAUDE.md")),
+            ("docs/current-state.md (owner-verbatim directives in the ledger)", blob("docs/current-state.md")),
+        ],
+    },
+    {
+        "id": "unattended",
+        "q": "How do unattended wakes stay safe?",
+        "a": "The same landing path applies whether a human is watching or not — there is no unattended shortcut. A woken session reads its orders from a committed inbox, claims work on main before building (so parallel sessions can't double-execute), works up a written ladder (orders, then queued work, then backlog, then contained reversible improvements, then honest upkeep), and can only ship through the required gate. What unattended operation adds is fallibility, and the record treats that as a first-class fact: wakes that stranded work or left no trace are documented, a relay doctrine lets healthy sessions land a stranded session's green work verbatim, and the fleet page badges armed-but-silent routines so a dead clock is visible instead of quiet. The 17-hour overnight chain that landed 26 verified slices is the existence proof; its failures are listed right next to it.",
+        "evidence": [
+            ("control/README.md (bus protocol + relay doctrine)", blob("control/README.md")),
+            ("/process (this site — the landing path)", "/process"),
+            ("ORDER 011 self-review (the unattended window audited)", blob("docs/retro/self-review-2026-07-11.md")),
+        ],
+    },
+    {
+        "id": "coordination",
+        "q": "How do agents coordinate without talking to each other?",
+        "a": "Committed git files are the entire inter-agent channel — sessions cannot message each other, so the protocol is files with one writer each: orders arrive in control/inbox.md (only the manager writes it; CI enforces append-only), state goes out in control/status.md (overwritten by each session as its deliberate last step), and claims are lines on main. This is slower than an API and that is the point: every coordination act is versioned, attributable, and reviewable after the fact. The control-plane service renders the whole bus live — every lane's heartbeat, order pickup latency, stranded-work flags — so coordination health is itself a monitored surface.",
+        "evidence": [
+            ("control/README.md (the protocol)", blob("control/README.md")),
+            ("control/inbox.md + control/status.md (the bus, live)", blob("control/status.md")),
+            ("/process (this site — glossary)", "/process"),
+        ],
+    },
+    {
+        "id": "numbers",
+        "q": "How do we know the numbers on this site are real?",
+        "a": "Re-derive them. Every number is baked from the repo's committed record by generator scripts anyone can read and re-run (gen_snapshot.py parses git history and session cards; gen_fleet.py mirrors the fleet registry and heartbeats; gen_stats.py records its API calls and their failures). The deployed service is network-free at runtime — it physically cannot fetch anything, so it renders exactly the committed JSON, whose generation commit is stamped in the footer. Where data is missing the pages say so; tests assert the absence of invented values. The one honest caveat: baked numbers age, so every stats surface carries its as-of timestamp and banners when stale.",
+        "evidence": [
+            ("review/gen_snapshot.py", blob("review/gen_snapshot.py")),
+            ("review/gen_fleet.py", blob("review/gen_fleet.py")),
+            ("review/tests (honesty pinned)", f"{REPO_URL}/tree/main/review/tests"),
+        ],
+    },
+    {
+        "id": "walls",
+        "q": "What can agents here verifiably NOT do?",
+        "a": "The capability ledger keeps the honest list, each wall with its exact error text: direct api.github.com calls are proxy-blocked from session containers; branch deletion returns 403 on every path; some scheduled-session kinds cannot open PRs at all; sessions can be refused merging owner-gated PRs; Railway resource creation is policy-forbidden without the owner's go; and the deployed board runs on GitHub's anonymous 60-requests/hour ceiling until the owner mints a token. The ledger exists because the failure mode runs both ways — sessions also imagined walls that weren't there (a \"private\" repo that was public all along), so the discovery rule requires attempting once and recording the verbatim result before declaring anything impossible.",
+        "evidence": [
+            ("docs/CAPABILITIES.md (walls, verbatim errors, workarounds)", blob("docs/CAPABILITIES.md")),
+        ],
+    },
+    {
+        "id": "memory",
+        "q": "Sessions are amnesiac — how does knowledge survive?",
+        "a": "Nothing durable lives in a chat. Every session commits a card (its log), appends discoveries to the capability ledger, stamps decisions in a decision ledger, files ideas in a deduplicated backlog, and overwrites the heartbeat as its last act — so the next session reconstructs the entire state from the repo alone. This was tested for real: generation 1 wound down after the first day and generation 2 booted from main with no chat history, using committed succession docs. The strongest recorded finding from that handover: the orientation chain worked.",
+        "evidence": [
+            ("docs/succession/next-boot-2026-07-09.md", blob("docs/succession/next-boot-2026-07-09.md")),
+            (".sessions/ (every session's card)", f"{REPO_URL}/tree/main/.sessions"),
+            ("docs/CAPABILITIES.md (the discovery rule)", blob("docs/CAPABILITIES.md")),
+        ],
+    },
+    {
+        "id": "luck",
+        "q": "Why believe this is safe-by-design rather than lucky-so-far?",
+        "a": "Because the safety machinery has a track record of catching things, and that track record is inspectable. The gate leak was caught and is now regression-tested in both directions; the deploy-drift cell caught a silently stale service its first week; the scheduled healthcheck caught an upstream break on its second run ever; the time-bomb guard found 17 latent failures before they fired; overclaimed test results were caught pre-merge by the program's own review habits. None of that proves the absence of unknown failure modes — the honest claim is narrower: the failure modes that have occurred were caught by built machinery, documented with citations, and each produced a pinned test or a written rule. The problems page is the evidence that the reporting channel itself doesn't filter bad news.",
+        "evidence": [
+            ("/problems (this site)", "/problems"),
+            ("tests/test_time_discipline.py (the meta-guard)", blob("tests/test_time_discipline.py")),
+            ("docs/retro/ (every audit)", f"{REPO_URL}/tree/main/docs/retro"),
+        ],
+    },
+    {
+        "id": "weaknesses",
+        "q": "What are the known weaknesses you have NOT fixed?",
+        "a": "Honest list, current at this writing: the owner's attention is the scarcest resource and owner-gated asks queue for days; the fleet surfaces run tokenless on an anonymous rate ceiling; routine-fired (cron) sessions remain unreliable landers, so the self-scheduling chain is the only consistent unattended producer; the lane registry is parsed out of another repo's script internals (a generated lanes.json has been requested but not yet shipped); hand-kept lists keep drifting against globbable truth — the same failure shape found three times; and cross-repo visibility depends on lanes keeping their heartbeat grammar, which some don't (this site's fleet mirror shows exactly which). Each of these is tracked as a backlog item, an owner ask, or a standing flag rather than being quietly absorbed.",
+        "evidence": [
+            ("docs/ideas/backlog.md (the tracked gaps)", blob("docs/ideas/backlog.md")),
+            ("control/status.md (standing flags, live)", blob("control/status.md")),
+            ("/fleet (this site — which lanes' data is missing, labeled)", "/fleet"),
+        ],
+    },
+    {
+        "id": "why-fast",
+        "q": "Where did the speed actually come from?",
+        "a": "Not from skipping checks — the gate got harder while the pace held. Four mechanisms, each visible in the record: merge-is-deploy (a green required check is the whole distance to production); parallel lanes on a conflict-free bus (one writer per file, so ten lanes never block each other); unattended chains that schedule their own successors and land one verified slice per wake; and paying discovery cost once (every wall's workaround is a committed fact the next session starts from). The growth page shows the test-count curve growing alongside the PR curve — the counterweight is the point.",
+        "evidence": [
+            ("/growth (this site)", "/growth"),
+            ("docs/retro/gen1-final-retro-2026-07-09.md (the 46-PR day, honestly)", blob("docs/retro/gen1-final-retro-2026-07-09.md")),
+        ],
+    },
+]
+
+
 def overview_stats(snapshot_data: dict[str, Any]) -> list[dict[str, Any]]:
     totals = snapshot_data.get("totals") or {}
     tiles = []
