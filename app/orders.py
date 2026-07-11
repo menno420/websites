@@ -33,7 +33,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from . import config, fleet, github, journal
+from . import clock, config, fleet, github, journal
 
 INBOX_PATH = "control/inbox.md"
 
@@ -124,7 +124,7 @@ def classify_order(
     base = {"claim_stale": False, "claim_age_human": ""}
     if not statuses:
         return {"state": "unknown", "by": "", **base}
-    now = now or datetime.now(timezone.utc)
+    now = now or clock.now()
     claimed_by = ""
     claimed_at: Optional[str] = None
     for s in statuses:
@@ -165,7 +165,7 @@ async def _repo_orders(
     now: Optional[datetime] = None,
 ) -> dict[str, Any]:
     """One repo's inbox card: parsed orders + per-lane status cross-reference."""
-    now = now or datetime.now(timezone.utc)
+    now = now or clock.now()
     status_paths = [(l["lane"], l["status_path"]) for l in lanes]
     fetches = await asyncio.gather(
         github.fetch_file(repo, INBOX_PATH, refresh=refresh),
@@ -252,7 +252,7 @@ async def overview(
     ``now`` is injectable (module convention) so fixed-stamp test fixtures
     stay deterministic.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or clock.now()
     lane_defs, lane_source = await fleet.resolve_lanes(refresh=refresh)
     by_repo: dict[str, list[dict[str, Any]]] = {}
     for lane in lane_defs:
