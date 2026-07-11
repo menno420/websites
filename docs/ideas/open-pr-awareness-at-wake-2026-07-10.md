@@ -1,10 +1,10 @@
 ---
-state: captured
+state: built
 origin: session:2026-07-10-session-card-template
-shipped_pr: null
+shipped_pr: null  # filled at flip
 shipped_repo: null
 merged_date: null
-outcome: open
+outcome: shipped
 ---
 
 # Open-PR awareness at wake — sibling-session collision check (2026-07-10)

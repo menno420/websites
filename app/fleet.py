@@ -59,6 +59,12 @@ KNOWN_KEYS = {
     "routine",
     "landing",
     "deployed",
+    # Ladder-rung telemetry (backlog, 2026-07-11): one `rung:` token per wake
+    # (order / queue / backlog / self / upkeep-dry) so the manager sees
+    # whether a lane lives off orders or self-generated work. Recognized here
+    # so it can never leak into the previous field as a continuation (the
+    # routine:-into-blockers incident class).
+    "rung",
 }
 
 _ISO_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?")
