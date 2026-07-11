@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from typing import Any
 
-from . import config, github
+from . import clock, config, github
 
 ATOM_NS = "http://www.w3.org/2005/Atom"
 FEED_TITLE = "SuperBot fleet activity"
@@ -147,7 +147,7 @@ def _now_rfc3339() -> str:
     """Feed-generation time in RFC3339 (Atom's required timestamp form). Used
     only as a *clearly-derived* fallback for the feed-level ``updated`` and the
     diagnostic entry when there are no real dated entries — never to fake a PR."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return clock.now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _el(parent: ET.Element, tag: str, text: str | None = None) -> ET.Element:

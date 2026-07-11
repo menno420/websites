@@ -24,7 +24,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from . import config, github, journal
+from . import clock, config, github, journal
 
 OWNER = config.OWNER
 
@@ -286,7 +286,7 @@ def classify_routine(value: str, now: Optional[datetime] = None) -> dict[str, An
     An armed routine with NO parseable fire yet is ``no_fire_recorded`` (an
     honest unknown, not silent — it may simply be freshly armed).
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or clock.now()
     v = (value or "").strip()
     low = v.lower()
     if not v:
@@ -383,7 +383,7 @@ def freshness(updated: str, now: Optional[datetime] = None) -> dict[str, Any]:
     a stale heartbeat as a dark Project. An unparseable timestamp is ``ok=False``
     (rendered honestly as "age unknown", never faked fresh).
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or clock.now()
     dt = _parse_iso(updated)
     if dt is None:
         return {"ok": False, "iso": (updated or "").strip(), "age_hours": None,
@@ -600,7 +600,7 @@ async def lane_status(
     attach the repo's last-commit age + open-PR count. Honest per-lane state:
     ``missing`` (no status file — absence, not error) or ``fetch_error`` (an
     honest banner) when the fetch does not return a body."""
-    now = now or datetime.now(timezone.utc)
+    now = now or clock.now()
     repo = lane["repo"]
     path = lane["status_path"]
 
@@ -706,7 +706,7 @@ async def overview(
     same convention as every other age-measuring function here) so tests
     with fixed heartbeat stamps stay deterministic instead of time-bombing
     when the fixtures cross the stale threshold."""
-    now = now or datetime.now(timezone.utc)
+    now = now or clock.now()
     lane_defs, lane_source = await resolve_lanes(refresh=refresh)
     lanes = list(
         await asyncio.gather(
