@@ -1,6 +1,7 @@
 # Bot control API — v1 contract (specification)
 
-> **Status:** `spec` — written 2026-07-11 (owner-directed bot-management push).
+> **Status:** `plan` — the v1 wire-contract specification, written 2026-07-11
+> (owner-directed bot-management push).
 >
 > This document SPECIFIES the wire contract for managing the live SuperBot
 > from a web control panel. **Nothing in this repo implements the armed

@@ -57,7 +57,7 @@ WHERE: railway.app → project superbot-websites → New → Service (a NEW serv
 HOW: after Q-0004 and the OAuth app: create the service, set its env per docs/specs/bot-control-api-v1.md §9 (OAuth client id/secret/redirect, session secret, control URL + scoped token). Never reuse the ambient production RAILWAY_*_ID vars (docs/RAILWAY-SAFETY.md); the dashboard service gets NOTHING.
 WHY-IT-MATTERS: the credential boundary is the whole design — the public read-only dashboard stays permanently credential-free, so a compromise of it can never reach the live bot; the power lives in one small gated service you provision knowingly.
 UNBLOCKS: flipping the specified armed path from spec to service; the dashboard's dry-run flows are the exact UX + request contract it will reuse.
-VERIFIED-NEEDED: Railway service creation + secret provisioning are owner account mutations (D-0005 / RAILWAY-SAFETY forbid agent-initiated Railway mutations without your explicit go — the same policy wall as the review-service ask above; not attempted).
+VERIFIED-NEEDED: Railway service creation + secret provisioning are owner account mutations — the Railway-safety policy (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger) forbids agent-initiated Railway mutations without your explicit go (the same policy wall as the review-service ask above; not attempted).
 ```
 
 (Previous state: none open — the one conditional ask (external wake-trigger

@@ -1,6 +1,6 @@
 # Dashboard bot-management readiness matrix
 
-> **Status:** `living-assessment` — written 2026-07-11 (owner-directed: "find
+> **Status:** `audit` — written 2026-07-11 (owner-directed: "find
 > out how ready the dashboard is for actually managing the bot… bring it as
 > close to finished as you can"). Sourced from the same-day audits of the
 > dashboard service, the repo's ideas/decisions, and the live cross-repo data

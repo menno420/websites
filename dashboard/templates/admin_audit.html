@@ -28,7 +28,7 @@
         <td>
           <details>
             <summary class="sb-mono" style="cursor:pointer">JSON</summary>
-            <pre class="snippet">{{ entries_json[e.id] }}</pre>
+            <pre class="snippet">{{ e.request | tojson(indent=2) }}</pre>
           </details>
         </td>
       </tr>

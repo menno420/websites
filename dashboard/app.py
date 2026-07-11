@@ -433,14 +433,14 @@ async def admin_login(request: Request):
 @app.get("/admin/audit", response_class=HTMLResponse)
 async def admin_audit(request: Request):
     ctx = await _base_ctx(request, "admin")
-    entries = cp.controller.entries()
-    ctx.update(
-        {
-            "entries": list(reversed(entries)),
-            "entries_json": {e["id"]: json.dumps(e["request"], indent=2) for e in entries},
-        }
-    )
+    ctx.update({"entries": list(reversed(cp.controller.entries()))})
     return templates.TemplateResponse(request, "admin_audit.html", ctx)
+
+
+def _rejected(request: Request, ctx: dict[str, Any], action: str, exc: cp.ActionRejected):
+    """Honest 400 for an action that failed typed validation — nothing recorded."""
+    ctx.update({"reject_code": exc.code, "reject_message": str(exc), "action": action})
+    return templates.TemplateResponse(request, "admin_rejected.html", ctx, status_code=400)
 
 
 @app.post("/admin/actions/preview", response_class=HTMLResponse)
@@ -452,8 +452,7 @@ async def admin_action_preview(request: Request):
     try:
         req = cp.controller.build_request(action, form, ctx["data"])
     except cp.ActionRejected as exc:
-        ctx.update({"reject_code": exc.code, "reject_message": str(exc), "action": action})
-        return templates.TemplateResponse(request, "admin_rejected.html", ctx, status_code=400)
+        return _rejected(request, ctx, action, exc)
     carry = [(k, v) for k, v in form.items() if k not in ("idempotency_key", "requested_at")]
     carry += [("idempotency_key", req["idempotency_key"]), ("requested_at", req["requested_at"])]
     ctx.update({"action": action, "request_json": json.dumps(req, indent=2), "carry": carry})
@@ -475,8 +474,7 @@ async def admin_action_confirm(request: Request):
             requested_at=form.get("requested_at") or None,
         )
     except cp.ActionRejected as exc:
-        ctx.update({"reject_code": exc.code, "reject_message": str(exc), "action": action})
-        return templates.TemplateResponse(request, "admin_rejected.html", ctx, status_code=400)
+        return _rejected(request, ctx, action, exc)
     entry = cp.controller.record(req)
     ctx.update({"entry": entry, "request_json": json.dumps(req, indent=2)})
     return templates.TemplateResponse(request, "admin_result.html", ctx)
