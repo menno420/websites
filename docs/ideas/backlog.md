@@ -94,13 +94,25 @@
 - **Hand-merge the v1.12.0 boot-set-trim deltas into the two diverged
   planted docs (CONSTITUTION.md, docs/AGENT_ORIENTATION.md)** · `captured` —
   the v1.12.0 upgrade (PR #146) could not auto-apply the trim to them (both
-  the template and the docs moved); the exact diffs are preserved in
-  `.substrate/upgrade-report.md` § Template deltas for manual merge.
+  the template and the docs moved); the exact diffs were preserved in
+  `.substrate/upgrade-report.md` § Template deltas — the v1.12.1 upgrade
+  (PR #155) overwrote that file, so retrieve them from git:
+  `git show 31cfd9f:.substrate/upgrade-report.md`.
   AGENT_ORIENTATION still carries the duplicate start-list + duplicate
   verify block the new template deletes ("one list, one home");
   CONSTITUTION still enumerates the full PL register the new template
   condenses to a cite-the-register pointer. Apply by hand, diff-review, keep
   the host slot content. Source: `.sessions/2026-07-11-kit-upgrade-v1.12.0.md` 💡.
+
+- **Pin the current-state kit line to `substrate.config.json` with a test**
+  · `captured` — `docs/current-state.md`'s "vendored `bootstrap.py` is kit
+  vX.Y.Z" line is hand-edited every upgrade and has drifted before (it said
+  v1.6.0 until 2026-07-11 while the tree was five releases ahead). A small
+  suite test that extracts that version token and asserts it equals
+  `substrate.config.json` `kit_version` makes the ledger drift impossible —
+  same exact-pin philosophy as `tests/test_born_red_session_gate.py`, aimed
+  at the docs ledger instead of the config. Source:
+  `.sessions/2026-07-11-kit-upgrade-v1.12.1.md` 💡.
 
 - **Ask the manager for a generated `lanes.json`** · `captured` — /fleet
   now parses the LANES literal out of fleet-manager's gen_roster.py source
