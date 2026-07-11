@@ -283,3 +283,42 @@ def test_overview_orders_carry_provenance_flag(monkeypatch):
     assert all("provenance_unverified" in o for o in top["orders"])
     # the flag never changes an order's state classification
     assert {o["state"] for o in top["orders"]} == {"done", "claimed", "open"}
+
+
+def test_parse_pickup_history_tokens():
+    """The persistence convention's consumer: `pickup: <id> <mins>m` notes
+    tokens -> {id: mins}; tolerant of comma lists, later duplicates win,
+    garbage never parses (never a guess)."""
+    from app import orders
+
+    hist = orders.parse_pickup_history(
+        "rails held. pickup: 011 19m, 009 42.5m; later pickup: 011 20m"
+    )
+    assert hist == {"011": 20.0, "009": 42.5}
+    assert orders.parse_pickup_history("") == {}
+    assert orders.parse_pickup_history("pickup: soon-ish") == {}
+    assert orders.parse_pickup_history("no tokens here 12m") == {}
+
+
+def test_overview_falls_back_to_lane_reported_pickup(monkeypatch):
+    """A DONE order (claim annotation gone) recovers its latency from the
+    lane's `pickup:` notes token — the datum survives completion. Live
+    stamps keep precedence for CLAIMED orders."""
+    status_with_notes = _STATUS + "notes: rails held. pickup: 001 19m\n"
+    _fake_world(
+        monkeypatch,
+        inbox_by_repo={"websites": _INBOX},
+        status_by_repo={"websites": status_with_notes},
+    )
+    out = asyncio.run(orders.overview(now=NOW))
+    top = next(c for c in out["cards"] if c["repo"] == "websites")
+    by_id = {o["id"]: o for o in top["orders"]}
+    # 001 is done (no claim stamp) -> lane-reported 19.0 recovered
+    assert by_id["001"]["state"] == "done"
+    assert by_id["001"]["pickup_latency_mins"] == 19.0
+    assert by_id["001"]["pickup_latency_human"]
+    # the recovered datum feeds the fleet rollup
+    assert out["summary"]["pickup"] is not None
+    assert out["summary"]["pickup"]["count"] >= 1
+    # 003 is open, no token -> honest None unchanged
+    assert by_id["003"]["pickup_latency_mins"] is None
