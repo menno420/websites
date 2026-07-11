@@ -30,6 +30,7 @@ ORDERS_CARD = {
 ORDERS_ORDER = {  # per-order dict, body_html dropped in JSON
     "id", "issued", "inbox_status", "fields", "body",
     "state", "state_by", "claim_stale", "claim_age_human",
+    "pickup_latency_mins", "pickup_latency_human",
 }
 ORDERS_SUMMARY = {
     "repos", "with_inbox", "open", "claimed", "done", "unknown",

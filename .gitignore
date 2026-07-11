@@ -5,3 +5,7 @@ __pycache__/
 
 # substrate-kit local guard-fire telemetry (per-run, not source)
 .substrate/guard-fires.jsonl
+
+# substrate-kit handoff pointer (v1.11.0+): regenerated UNTRACKED at every
+# session boot — read it, never commit it (kit machinery, not source).
+HANDOFF.md
