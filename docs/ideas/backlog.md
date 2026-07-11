@@ -31,6 +31,14 @@
   tooling regression shows as a trend (the 04:03Z ritual-only fire was only
   discovered via its stranded branch). Source:
   `.sessions/2026-07-11-relay-doctrine-backlog-factcheck.md` 💡.
+- **Ask the manager for a generated `lanes.json`** · `captured` — /fleet
+  now parses the LANES literal out of fleet-manager's gen_roster.py source
+  (honest but coupled to a script's internals); one generated
+  docs/lanes.json (repo, lane, disposition) from the same roster run makes
+  the registry a real API and the next migration a non-event (the
+  manifest→roster move broke this site once already, caught by the cron).
+  Routing half: flagged to the manager in the heartbeat. Source:
+  `.sessions/2026-07-11-lane-source-registry.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
