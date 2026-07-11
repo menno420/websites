@@ -66,6 +66,18 @@
   timestamps. Worth having because pickup latency is the fleet's real
   routing SLO and today it is invisible. Source:
   `.sessions/2026-07-11-order-011-self-review.md` 💡.
+- **Pin the control-gate behaviors as suite tests** · `captured` — the
+  quality.yml control gates (status-only on the fast lane, inbox
+  append-only on both lanes) were validated BY HAND at port time (four
+  lane behaviors: clean 0 / broken heartbeat 1 / inbox rewrite 1 /
+  pure append 0); a tests/test_control_gates.py driving the real
+  `bootstrap.py check --status-only [--inbox-base]` CLI against fixture
+  heartbeats/inboxes — the same pattern test_born_red_session_gate.py
+  uses for the card gate — pins them forever. Worth having because
+  today the validation evidence lives in a PR body, and an engine
+  regression would only surface on a live control PR (possibly a
+  manager's inbox append). Source:
+  `.sessions/2026-07-11-fastlane-control-gates.md` 💡.
 - **Nav membership scan should glob `app/*.py`, not a hand list** ·
   `captured` — `tests/test_nav_manifest.py` scans a hand-kept
   `ROUTE_SOURCES = [app/main.py, app/owner.py]` for `active` keys: the
@@ -75,18 +87,6 @@
   Worth having because self-maintaining guards should not have the
   exact failure mode they guard against. Source:
   `.sessions/2026-07-11-nav-manifest.md` 💡.
-- **Port the staged fast-lane control gates into quality.yml too** ·
-  `captured` — the staged substrate-gate.yml runs TWO extra steps this
-  repo's folded lane does not: (a) a control-status gate ON the fast
-  lane (`check --strict --status-only`) so a heartbeat-breaking or
-  heartbeat-deleting control-only PR cannot merge green and pre-redden
-  the next unrelated PR, and (b) an inbox append-only gate (pure-append
-  diff vs merge-base + ORDER grammar, runs on BOTH lanes) so a green
-  control-only PR cannot rewrite or erase orders. Today the folded
-  fast lane short-circuits with NO validation at all. Worth having
-  because ~half this lane's PRs ride the fast lane (heartbeats, claims,
-  relays) and the inbox is the fleet's order of record. Source:
-  `.sessions/2026-07-11-quality-every-card-gate.md` 💡.
 - **Route-level clock freeze for TestClient tests** · `captured` — the
   new time-discipline guard covers DIRECT calls to age-measuring
   functions, but route-level tests (TestClient hitting /fleet, /orders,
@@ -98,6 +98,15 @@
   guard cannot see. Source:
   `.sessions/2026-07-11-test-time-discipline-guard.md` 💡.
 ## Built
+
+- **Fast-lane control gates in quality.yml** — shipped 2026-07-11
+  (continuous-mode slice 25): the control fast lane no longer
+  short-circuits green unvalidated — a control-status gate runs ON the
+  fast lane (stdlib-only --status-only; heartbeat PRs stay fast and
+  card-free) and an inbox append-only + ORDER-grammar gate runs on BOTH
+  lanes (--inbox-base vs merge-base; self-skips when the inbox is
+  untouched). All four lane behaviors validated locally pre-push.
+  Source: `.sessions/2026-07-11-quality-every-card-gate.md` 💡.
 
 - **Nav manifest** — shipped 2026-07-11 (continuous-mode slice 24):
   `app/nav.py` is the single `(href, label, key)` source for the header
