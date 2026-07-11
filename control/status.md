@@ -10,7 +10,7 @@ landing: all-merged — every branch this chain opened is squash-merged; four ge
 deployed: 02adf7c · verified 2026-07-11T09:47Z — ALL THREE services /version == main HEAD (wait_deploy.py CONVERGED); /orders.json live (18 cards, registry source) + board heartbeat chips rendering post-change.
 rung: backlog
 tooling: pr-capable
-orders: acked=001-010 done=001-010
+orders: acked=001-011 done=001-010 claimed-by: 011 websites-continuous-chain 2026-07-11T10:18Z
 ⚑ needs-owner: two asks — canonical list in docs/owner/OWNER-ACTIONS.md.
   ⚑ OWNER-ACTION
   WHAT: Create a small Postgres for the botsite /submit intake and point the botsite service at it.
