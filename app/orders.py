@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import statistics
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -199,6 +200,8 @@ async def _repo_orders(
         "claimed_count": 0,
         "done_count": 0,
         "unknown_count": 0,
+        "pickup_median_mins": None,
+        "pickup_median_human": "",
     }
 
     if not (
@@ -226,7 +229,46 @@ async def _repo_orders(
         order["body_html"] = journal.render_markdown(order["body"])
         out["orders"].append(order)
         out[f"{cls['state']}_count"] += 1
+
+    lats = [
+        o["pickup_latency_mins"]
+        for o in out["orders"]
+        if o["pickup_latency_mins"] is not None
+    ]
+    if lats:
+        med = statistics.median(lats)
+        out["pickup_median_mins"] = round(med, 1)
+        out["pickup_median_human"] = fleet._human_age(med / 60)
+    else:
+        # honest absence — a repo with no measurable pickups gets no number
+        out["pickup_median_mins"] = None
+        out["pickup_median_human"] = ""
     return out
+
+
+def _pickup_rollup(cards: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    """Median/max over every measurable pickup latency across the fleet.
+
+    ``None`` when no order anywhere carries a latency (claims drop on
+    completion, so quiet fleets legitimately have nothing to aggregate) —
+    the page then shows no chip instead of a fabricated zero.
+    """
+    lats = [
+        o["pickup_latency_mins"]
+        for c in cards
+        for o in c["orders"]
+        if o.get("pickup_latency_mins") is not None
+    ]
+    if not lats:
+        return None
+    med, worst = statistics.median(lats), max(lats)
+    return {
+        "count": len(lats),
+        "median_mins": round(med, 1),
+        "median_human": fleet._human_age(med / 60),
+        "max_mins": round(worst, 1),
+        "max_human": fleet._human_age(worst / 60),
+    }
 
 
 def pickup_latency(issued: str, claimed_at: Optional[str]) -> dict[str, Any]:
@@ -303,5 +345,10 @@ async def overview(
         "stale_claims": sum(
             1 for c in cards for o in c["orders"] if o.get("claim_stale")
         ),
+        # Fleet-wide pickup-latency rollup (filed→claimed, the routing SLO):
+        # median resists the one-weird-hand-written-timestamp outlier, max
+        # names the worst pickup. None (not zero) when NO order carries a
+        # measurable latency — stats are never invented.
+        "pickup": _pickup_rollup(cards),
     }
     return {"cards": cards, "summary": summary, "lane_source": lane_source}

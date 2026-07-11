@@ -26,6 +26,7 @@ ORDERS_CARD = {
     "repo", "inbox_url", "repo_url", "missing", "fetch_error",
     "status_readable", "orders",
     "open_count", "claimed_count", "done_count", "unknown_count",
+    "pickup_median_mins", "pickup_median_human",
 }
 ORDERS_ORDER = {  # per-order dict, body_html dropped in JSON
     "id", "issued", "inbox_status", "fields", "body",
@@ -34,7 +35,7 @@ ORDERS_ORDER = {  # per-order dict, body_html dropped in JSON
 }
 ORDERS_SUMMARY = {
     "repos", "with_inbox", "open", "claimed", "done", "unknown",
-    "errored", "stale_claims",
+    "errored", "stale_claims", "pickup",
 }
 
 QUEUE_TOP = {

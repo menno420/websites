@@ -88,16 +88,18 @@
   pattern instead of re-learning the 08:45Z lesson. Worth having
   because the failure class is service-agnostic and the fix is one
   small module. Source: `.sessions/2026-07-11-route-clock-freeze.md` 💡.
-- **Fleet-wide pickup-latency rollup on /orders** · `captured` — with
-  per-order pickup_latency_mins now in every card, a summary
-  median/max chip ("fleet pickup: median 22m · slowest 3h") plus a
-  per-repo figure turns the routing SLO from per-order trivia into a
-  manageable number the manager can watch trend; pure presentation
-  over data /orders already computes (summary keys change → move pins
-  same-PR). Worth having because a single slow-pickup lane is exactly
-  what the manager sweep should catch early, and medians resist the
-  one-weird-timestamp outlier. Source:
-  `.sessions/2026-07-11-order-pickup-latency.md` 💡.
+- **Persist pickup latencies before claims clear** · `captured` — the
+  rollup can only see CURRENTLY-standing claims (done orders drop
+  their claimed-by annotation per doctrine, taking the latency datum
+  with them — live-verified on ORDER 011 post-#133); the honest fix is
+  at the protocol layer, not scraping: ask the manager to consider a
+  one-line convention where the executor's done= move appends the
+  pickup figure to the heartbeat notes (e.g. `pickup: 011 19m`), which
+  /orders could then parse into a durable per-lane history. Routing
+  half: flag to the manager in the heartbeat. Worth having because the
+  SLO's history vanishes exactly when an order completes — the moment
+  it becomes most meaningful. Source:
+  `.sessions/2026-07-11-pickup-latency-rollup.md` 💡.
 - **Nav membership scan should glob `app/*.py`, not a hand list** ·
   `captured` — `tests/test_nav_manifest.py` scans a hand-kept
   `ROUTE_SOURCES = [app/main.py, app/owner.py]` for `active` keys: the

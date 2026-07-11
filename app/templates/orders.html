@@ -22,6 +22,7 @@
     <span class="b repo">{{ o.summary.repos }} repos</span>
     <span class="b {{ 'warn' if o.summary.open else 'ok' }}">{{ o.summary.open }} open</span>
     {% if o.summary.claimed %}<span class="b design">{{ o.summary.claimed }} claimed</span>{% endif %}
+    {% if o.summary.pickup %}<span class="b" title="filed→claimed pickup latency over {{ o.summary.pickup.count }} measurable claim(s)">pickup: median {{ o.summary.pickup.median_human | replace(' ago','') }} · slowest {{ o.summary.pickup.max_human | replace(' ago','') }}</span>{% endif %}
     <span class="b ok">{{ o.summary.done }} done</span>
     {% if o.summary.unknown %}<span class="b unknown">{{ o.summary.unknown }} state unknown</span>{% endif %}
     {% if o.summary.stale_claims %}<span class="b warn">{{ o.summary.stale_claims }} stale claim{{ 's' if o.summary.stale_claims != 1 }}</span>{% endif %}
@@ -35,6 +36,7 @@
     {% if c.open_count %}<span class="b warn">{{ c.open_count }} open</span>{% endif %}
     {% if c.claimed_count %}<span class="b design">{{ c.claimed_count }} claimed</span>{% endif %}
     {% if c.orders and not c.open_count and not c.claimed_count and not c.unknown_count %}<span class="b ok">all done</span>{% endif %}
+    {% if c.pickup_median_mins is not none %}<span class="b" title="this repo's median filed→claimed pickup">pickup ~{{ c.pickup_median_human | replace(' ago','') }}</span>{% endif %}
     <span class="dim small">· <a href="{{ c.repo_url }}">{{ c.repo }}</a>
       · <a href="{{ c.inbox_url }}">inbox ↗</a></span></h2>
 
