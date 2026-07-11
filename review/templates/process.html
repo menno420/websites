@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Process — Program Review{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">Process</p>
+    <h1>The substrate workflow</h1>
+    <p class="sb-lead">
+      Agent sessions cannot talk to each other and remember nothing between runs. The workflow
+      turns those limits into structure: <strong>every channel is a committed file, every session
+      leaves a record, and every merge passes one enforced gate.</strong> What follows is the
+      actual mechanism, not an idealization — the same files and gates are linked as evidence.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <h2>The bus: two files, one writer each</h2>
+    <p>
+      Coordination runs over a two-file protocol in <code>control/</code>
+      (<a href="{{ repo_url }}/blob/main/control/README.md" target="_blank" rel="noopener">spec</a>):
+    </p>
+    <div class="sb-grid-2">
+      <div class="sb-card">
+        <h3><code>control/inbox.md</code> — orders in</h3>
+        <p>The manager lane appends numbered ORDER blocks: priority, the ask, why, and a checkable
+        <em>done-when</em>. Only the manager ever writes this file. CI enforces it: an inbox diff must
+        be pure-append and grammatically a well-formed order.</p>
+      </div>
+      <div class="sb-card">
+        <h3><code>control/status.md</code> — heartbeat out</h3>
+        <p>Each session overwrites this as its deliberate last step: phase, health, last shipped PR,
+        blockers, orders acked/done, and anything only the owner can do. Only this lane ever writes
+        it. Stale heartbeat = the fleet page treats the lane as dark.</p>
+      </div>
+    </div>
+    <p>
+      One writer per file means two agents never edit the same file, so there are no merge
+      conflicts by construction. The control-plane site renders every lane's heartbeat on one
+      screen — the owner's single glance over a fleet whose sessions are otherwise invisible.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-sec-head">
+      <h2>The landing path — what one unit of work walks through</h2>
+      <p class="sb-muted">Every box below is enforced by a gate or proven by a committed artifact; none of it is convention-only.</p>
+    </div>
+    <figure class="rv-flow" role="img" aria-label="The landing path: wake, claim, born-red card, build and verify, ready PR, flip and merge, deploy and prove, heartbeat.">
+      <ol class="rv-flow-list">
+        {% for title, detail in landing_path %}
+        <li class="rv-flow-step">
+          <span class="rv-flow-num" aria-hidden="true">{{ loop.index }}</span>
+          <div>
+            <h3>{{ title }}</h3>
+            <p>{{ detail }}</p>
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
+    </figure>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <h2>The gate that makes it real</h2>
+    <p>
+      <code>quality</code> — <a href="{{ repo_url }}/blob/main/.github/workflows/quality.yml" target="_blank" rel="noopener">one required CI check</a>
+      on <code>main</code> — runs the workflow engine's strict checker (doc hygiene, session-card
+      markers, heartbeat grammar), repo-specific safety guards, and every service's full test
+      suite. Its sharpest tooth is the <strong>born-red session gate</strong>: a PR whose session card
+      still says <code>in-progress</code> fails CI <em>by design</em>, so a red first run on every build
+      PR is the system working — the merge unlocks only when the session flips its card
+      <code>complete</code> with the write-up done. Control-file-only diffs (heartbeats, order appends)
+      ride a fast lane that still validates them.
+    </p>
+    <p>
+      The gates are themselves under test: the born-red gate has a both-directions regression
+      test, and the fast-lane gates are driven end-to-end against the real checker CLI
+      (<a href="{{ repo_url }}/blob/main/tests/test_control_gates.py" target="_blank" rel="noopener">tests/test_control_gates.py</a>).
+      The <a href="/problems">problems page</a> tells the story of the day this gate leaked — and how that was found and fixed.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <h2>What a session does when nobody routed it work</h2>
+    <p>
+      The <strong>work ladder</strong>: inbox orders first, then queued work, then the ideas backlog
+      (each session must capture one deduplicated idea, so the backlog self-feeds), then contained
+      self-initiated improvements, then honest upkeep — truth-sweeping stale docs, verifying live
+      deploys, rescuing other sessions' stranded work. "Idle" is not a state; neither is inventing
+      busywork — an upkeep pass that finds nothing says so in the heartbeat.
+    </p>
+    <h2>Unattended operation</h2>
+    <p>
+      Sessions arm their own wake-up clocks: a 4-hourly scheduled routine (self-armed after the
+      manager verified the capability — ORDER 008) plus a self-scheduled timer chain for continuous
+      mode, which landed 26 verified slices and 3 rescues across one 17-hour unattended run. The
+      reliability caveats are real and documented on the <a href="/problems">problems page</a>.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-sec-head"><h2>Glossary — the jargon, translated</h2></div>
+    <div class="sb-table-scroll">
+      <table class="sb-table">
+        <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+        <tbody>
+          {% for term, meaning in glossary %}
+          <tr><td class="sb-mono rv-term">{{ term }}</td><td>{{ meaning }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

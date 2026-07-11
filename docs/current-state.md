@@ -22,6 +22,12 @@ services (share code, not a process):
   oversight of the bot's own inventory (functions/commands/settings/access/env/
   ideas/bugs), with the live-bot-write control panel stubbed by design. Doc:
   `docs/dashboard.md`.
+- **review** (`review/`) — the program-review site built for Anthropic
+  reviewers (owner-directed 2026-07-11): process / growth / successes /
+  problems, rendered server-side from a committed snapshot of the repo's own
+  record (`review/data/snapshot.json`, baked by `review/gen_snapshot.py`).
+  Read-only, network-free at runtime. Railway service creation is a queued
+  ⚑ OWNER-ACTION (`docs/owner/OWNER-ACTIONS.md`).
 
 All three services are now **public** — the Basic-auth gate was dropped from
 control-plane + dashboard ([D-0011]); botsite was always public.
@@ -111,6 +117,27 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   the live board; setup steps stay in `docs/deployment.md`).
 
 ## Recently shipped (newest first)
+
+- **2026-07-11 owner-directed: `review/` — fourth service, the program-review
+  site for Anthropic reviewers.** Owner verbatim: "create a website
+  specifically for anthropic to review the way we have been running our
+  projects … a clear visual explanation of the problems and successes as well
+  as the process and the way we managed to grow so quickly." Same pattern as
+  botsite/dashboard (own Dockerfile/requirements/tests, FastAPI + Jinja2 on
+  the vendored `ds/`, server-rendered, no client framework). Pages: overview
+  (stat tiles + the program in one paragraph), `/process` (the bus, the
+  landing path, the gates, work ladder, glossary — written for an outsider),
+  `/growth` (single-hue SVG column charts of PR merges / session cards / test
+  functions per UTC day + a table view + milestones), `/successes` and
+  `/problems` (each claim evidence-linked; the problems page is deliberately
+  as specific as the successes — gate leak #19, stranded push + rescue #59,
+  silent routine fires, the 5× cron error, time-bomb tests, ledger drift,
+  walls). Data model: committed `review/data/snapshot.json` baked from git
+  history/`.sessions/` by `review/gen_snapshot.py` (Root-Directory deploys
+  ship only the service folder, so runtime repo reads are impossible by
+  design); missing snapshot → honest banner, tested. `quality.yml` runs the
+  new suite. Tests: +28 (full four-service suite 273). Deployment is a queued
+  ⚑ OWNER-ACTION (new Railway service, Root Directory = `review`).
 
 - **2026-07-11 continuous-mode chain (manager Q-0265): slices #69 → #109 +
   2 rescues** — one consolidated entry; per-slice detail lives in the
