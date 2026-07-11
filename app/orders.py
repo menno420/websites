@@ -44,7 +44,7 @@ _ORDER_HEAD_RE = re.compile(
     re.IGNORECASE,
 )
 # Field lines inside a block: `priority: P1`, `do: …`, `why: …`, `done-when: …`
-_FIELD_KEYS = {"priority", "do", "why", "done-when", "done_when"}
+_FIELD_KEYS = {"priority", "do", "why", "done-when", "done_when", "provenance", "from"}
 
 MAX_ORDERS_PER_REPO = 50
 
@@ -226,6 +226,7 @@ async def _repo_orders(
         lat = pickup_latency(order.get("issued", ""), cls.get("claimed_at"))
         order["pickup_latency_mins"] = lat["mins"]
         order["pickup_latency_human"] = lat["human"]
+        order["provenance_unverified"] = provenance_unverified(order)
         order["body_html"] = journal.render_markdown(order["body"])
         out["orders"].append(order)
         out[f"{cls['state']}_count"] += 1
@@ -244,6 +245,26 @@ async def _repo_orders(
         out["pickup_median_mins"] = None
         out["pickup_median_human"] = ""
     return out
+
+
+# Tokens that make an ORDER's provenance read as a real session/coordinator
+# identity (the #125/#127 gates enforce SHAPE — append-only + grammar — but
+# not SOURCE; this surfaces the gap advisory-only). Case-insensitive.
+_PROVENANCE_TOKENS = ("cse_", "session_", "coordinator", "manager", "http://", "https://")
+
+
+def provenance_unverified(order: dict[str, Any]) -> bool:
+    """True when neither ``provenance:`` nor ``from:`` names a recognizable
+    session/coordinator identity (or both are absent). ADVISORY-ONLY — never
+    affects the order's state; legitimate relays stay legal. The muted chip
+    on /orders keeps the order-of-record honest now that the gates made the
+    inbox trusted machine-readable input."""
+    text = " ".join(
+        order.get("fields", {}).get(k, "") for k in ("provenance", "from")
+    ).lower()
+    if not text.strip():
+        return True
+    return not any(tok in text for tok in _PROVENANCE_TOKENS)
 
 
 def _pickup_rollup(cards: list[dict[str, Any]]) -> Optional[dict[str, Any]]:

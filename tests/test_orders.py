@@ -246,3 +246,40 @@ def test_overview_summary_and_cards_carry_pickup_rollup(monkeypatch):
         )
     else:
         assert out["summary"]["pickup"]["count"] >= 1
+
+
+def test_provenance_unverified_heuristic():
+    """Advisory-only source check: recognizable identity tokens in
+    provenance:/from: -> verified; absent/unrecognized -> flagged. Never
+    affects state (relays stay legal)."""
+    from app import orders
+
+    def o(**fields):
+        return {"fields": fields}
+
+    # the real conventions seen on this repo's inbox
+    assert orders.provenance_unverified(
+        o(provenance="filed by fleet-manager on coordinator direction (cse_012o8py...)")
+    ) is False
+    assert orders.provenance_unverified(
+        o(**{"from": "fleet-manager manager — ORDER 010 per-lane relay"})
+    ) is False
+    assert orders.provenance_unverified(
+        o(provenance="see https://github.com/menno420/fleet-manager/pull/63")
+    ) is False
+    # absent or unrecognizable -> advisory flag
+    assert orders.provenance_unverified(o()) is True
+    assert orders.provenance_unverified(o(provenance="someone said so")) is True
+
+
+def test_overview_orders_carry_provenance_flag(monkeypatch):
+    _fake_world(
+        monkeypatch,
+        inbox_by_repo={"websites": _INBOX},
+        status_by_repo={"websites": _STATUS},
+    )
+    out = asyncio.run(orders.overview(now=NOW))
+    top = next(c for c in out["cards"] if c["repo"] == "websites")
+    assert all("provenance_unverified" in o for o in top["orders"])
+    # the flag never changes an order's state classification
+    assert {o["state"] for o in top["orders"]} == {"done", "claimed", "open"}
