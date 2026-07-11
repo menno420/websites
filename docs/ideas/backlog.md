@@ -15,6 +15,11 @@
   wrong "~02:17Z" slot (`17 */6` anchors to hours 0/6/12/18) and a nudge
   timed against the wrong number. Source:
   `.sessions/2026-07-11-open-work-rung-cronfinding.md` 💡.
+- **Conveyor-health chips on the readiness board rows** · `captured` — the
+  board (/) is the owner's habit path; one small per-repo chip ("ideas:
+  3c/1b") reusing repo_ideas' cached lifecycle counts puts conveyor health
+  where the owner already looks (zero new fetch on a warm cache). Source:
+  `.sessions/2026-07-11-ideas-states-waitdeploy.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
