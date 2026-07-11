@@ -14,22 +14,12 @@
   3c/1b") reusing repo_ideas' cached lifecycle counts puts conveyor health
   where the owner already looks (zero new fetch on a warm cache). Source:
   `.sessions/2026-07-11-ideas-states-waitdeploy.md` 💡.
-- **Relay-PR merge protocol on the bus** · `captured` — one line in
-  `control/README.md`: a `control/inbox.md`-only relay PR from the manager
-  may be merged by ANY lane session that finds it green (the inbox has one
-  WRITER, not one MERGER); the ORDER 010 relay sat open with its author
-  session ended until this chain happened to wake. Source:
-  `.sessions/2026-07-11-order-010-and-tooling.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
   feeling responsible. A grouped/overflow ("more ▾") treatment or a CSS
   audit at current width keeps the owner's phone glance usable. Source:
   `.sessions/2026-07-10-activity-repo-filter.md` 💡.
-- **"Unseen orders?" badge on `/fleet`** · `captured` — flag a lane whose
-  `inbox.md` last-commit is newer than its status `updated:` stamp. Sources:
-  `.sessions/2026-07-09-kit-upgrade-v1.6.0.md` ⟲ review; queue-state NEXT
-  item 5.
 - **`meta.md` state-line convention in the fleet-manager projects/ registry**
   · `captured` — ask the manager to standardize ONE `deployed:` line format
   in `projects/*/meta.md` (e.g. `deployed: <where> · <ISO date>`) while the
@@ -38,14 +28,20 @@
   zero-packages cost makes the badge exact forever (routing half: flagged to
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
-- **Backlog fact-check pass before promoting a bullet** · `captured` — one
-  grep/route-check against the codebase for what a bullet asks for BEFORE
-  branching on it; a stale `captured` bullet costs a whole duplicate slice in
-  continuous mode (the /fleet manifest-badge bullet outlived its own build —
-  shipped as the PR #36 lane_source notice — by 12+ hours and nearly got
-  rebuilt in slice 7). The dedup rule covers new ideas, not decayed old ones.
-  Source: `.sessions/2026-07-10-own-heartbeat-selfcheck.md` 💡.
 ## Built
+
+- **Relay-PR merge protocol on the bus** — shipped 2026-07-11 (continuous-mode
+  slice 15): doctrine section "Landing other sessions' control-only work" in
+  `control/README.md` — any session may land a green control-only relay or
+  stranded heartbeat verbatim (one WRITER, not one MERGER); generalized from
+  two same-night incidents (relay PR #94; 04:03Z heartbeat rescued as PR #98).
+  Source: `.sessions/2026-07-11-order-010-and-tooling.md` 💡.
+- **Backlog fact-check pass before promoting a bullet** — shipped 2026-07-11
+  (slice 15): the habit line lives in `docs/ideas/README.md` § Lifecycle
+  ("fact-check before promoting"), and the first full pass was executed the
+  same slice (verdicts: unseen-orders badge retired as superseded; nav guard
+  + board chips + meta.md convention confirmed still-live). Source:
+  `.sessions/2026-07-10-own-heartbeat-selfcheck.md` 💡.
 
 - **Cron-slot helper** — shipped 2026-07-11 (continuous-mode slice 14) as
   `scripts/cron_slots.py`: 5-field cron → next wall-clock UTC fire slots
@@ -180,6 +176,13 @@
   [activity-atom-feed-2026-07-09.md](activity-atom-feed-2026-07-09.md).
 
 ## Retired
+
+- **"Unseen orders?" badge on `/fleet`** — retired 2026-07-11 (slice 15
+  fact-check pass): superseded by `/orders` (decision home `docs/site.md`
+  § 3f) — the badge would have flagged "inbox commit newer than status
+  updated:" as a heuristic; /orders now computes the actual outstanding
+  orders per repo (done/claimed/open/unknown badges + fleet-wide roll-up),
+  strictly stronger than the commit-time proxy. Nothing left to build.
 
 - **Re-check closed-unmerged PR #9 branch `claude/rework-dashboard` for lost
   hardening work** — retired 2026-07-11 (slice 11 investigation, nothing to

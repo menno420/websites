@@ -27,7 +27,10 @@ retired   -> deliberately not doing it; keep the bullet + one line of why
 The work ladder (`docs/project/project-instructions.md` § Never idle) makes
 this backlog rung 3: when the inbox and the queue-state NEXT list are dry,
 promote the highest-value buildable idea — idea → small plan → build the first
-increment the same wake.
+increment the same wake. **Fact-check before promoting**: grep the codebase
+for the thing the bullet asks for FIRST — a stale `captured` bullet costs a
+whole duplicate slice (the /fleet manifest-badge bullet outlived its own
+build by 12+ hours and nearly got rebuilt).
 
 ## Dedup rule
 
