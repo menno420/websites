@@ -99,6 +99,19 @@ legacy homes `docs/owner/claims/` and root `claims/` are auto-detected
 during the migration window, and a deliberate different home is pinned via
 `substrate.config.json` → `claims_dir`.)
 
+## Landing other sessions' control-only work (relays & stranded heartbeats)
+
+One writer per file governs who WRITES a control file — not who LANDS the
+write. A green PR (or pushed-unmerged branch) whose diff touches ONLY
+`control/**` and was authored by its rightful writer — the manager's
+`inbox.md`-only relay, or a lane session's own `status*.md` heartbeat pushed
+behind the routine-fired PR-tooling wall — may be opened and/or merged by ANY
+session of this Project that finds it. Never edit the content while landing
+it (land verbatim; your own later overwrite supersedes normally). Realized
+twice on 2026-07-11: the ORDER 010 relay PR #94 sat authorless-open until the
+active chain merged it, and the 04:03Z fire's heartbeat branch was rescued as
+PR #98 per its own `landing:` ask.
+
 ## `status.md` format (what you write every session — your heartbeat)
 ```markdown
 # <project> · status
