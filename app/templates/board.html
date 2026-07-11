@@ -28,6 +28,12 @@
       {% else %}{{ badge('unknown', 'no check runs') }}{% endif %}
     </span>
   </h2>
+  {% set hb = heartbeat_chips.get(r.repo) if heartbeat_chips is defined else none %}
+  {% if hb %}
+  <p class="dim small">lane heartbeat:
+    <a href="/fleet"><span class="b {{ 'warn' if hb.stale else 'ok' }}">{{ hb.age_human }}{{ ' · stale' if hb.stale }}</span></a>
+    <span class="dim">— /fleet has the full lane</span></p>
+  {% endif %}
   {% set chips = idea_chips.get(r.repo) if idea_chips is defined else none %}
   {% if chips %}
   <p class="dim small">ideas conveyor:
