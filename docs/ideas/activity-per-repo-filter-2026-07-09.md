@@ -1,10 +1,10 @@
 ---
-state: captured
+state: built
 origin: control-plane
 shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_repo: menno420/websites
+merged_date: 2026-07-11
+outcome: shipped
 ---
 
 # `?repo=` filter on the activity views (`/activity`, `.json`, `.xml`) (2026-07-09)

@@ -48,6 +48,14 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    feed or a fake PR. The `/activity` page advertises it with a
    `<link rel="alternate" type="application/atom+xml">` discovery tag in the head
    and a visible **Subscribe (Atom)** link.
+   **Per-repo `?repo=` filter** ([D-0034]) on all three views: narrows the
+   stream to ONE fleet repo — the filtered case fetches only that repo
+   (fewer fetches, not a post-filter), the Atom feed becomes a **per-lane
+   subscription** whose title names the repo ("… — superbot"), the page
+   offers filter chips (all repos + each known repo, repo badges in rows
+   link to their filter), and an unknown `?repo=` renders an honest
+   empty-state banner with the known set — never a guess, never a 500.
+   `/activity.json` carries `repo_filter` / `unknown_repo` / `known_repos`.
 3. **Idea backlog** (`/ideas`, `.json` variant) — the `docs/ideas/` conveyor
    across every repo that keeps one (superbot ~220, substrate-kit ~16; the other
    two only a README). Each idea's title + one-line summary is parsed from the
@@ -232,7 +240,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/reviews.json` | public | same ledger as JSON (rendered HTML stripped) |
 | `/orders` | public | every repo's inbox ORDERs × heartbeat done= cross-reference (HTML) — [D-0032] |
 | `/orders.json` | public | same orders view as JSON (rendered body HTML stripped) |
-| `/activity` | public | cross-repo PR activity timeline (HTML) — [D-0020] |
+| `/activity` | public | cross-repo PR activity timeline (HTML; `?repo=` per-lane filter) — [D-0020] |
 | `/activity.json` | public | same timeline as JSON |
 | `/activity.xml` | public | same timeline as a subscribable Atom 1.0 feed (`application/atom+xml`) — [D-0025] |
 | `/ideas` | public | cross-repo `docs/ideas/` backlog (HTML) — [D-0020] |

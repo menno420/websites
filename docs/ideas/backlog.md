@@ -22,10 +22,6 @@
   2026-07-10 `list_branches`); the launch-readiness flag (coordinator dispatch,
   2026-07-10) asks whether hardening in it never landed via #10. Diff it
   against `main`, salvage or retire explicitly.
-- **Per-repo `?repo=` filter on the activity views** · `captured` — narrow
-  `/activity`, `/activity.json`, `/activity.xml` to one repo so a reader
-  subscribes to a single lane's feed; reuses the cached timeline. File:
-  [activity-per-repo-filter-2026-07-09.md](activity-per-repo-filter-2026-07-09.md).
 - **"Unseen orders?" badge on `/fleet`** · `captured` — flag a lane whose
   `inbox.md` last-commit is newer than its status `updated:` stamp. Sources:
   `.sessions/2026-07-09-kit-upgrade-v1.6.0.md` ⟲ review; queue-state NEXT
@@ -73,6 +69,14 @@
   [open-pr-awareness-at-wake-2026-07-10.md](open-pr-awareness-at-wake-2026-07-10.md).
 
 ## Built
+
+- **Per-repo `?repo=` filter on the activity views** — shipped 2026-07-11
+  (continuous-mode slice 10; decision stamped in `docs/site.md` § 2 + the
+  decision ledger): /activity, /activity.json, /activity.xml narrow to one
+  fleet repo (filtered case fetches only that repo; the Atom feed becomes a
+  per-lane subscription with the repo in its title; unknown repo = honest
+  empty state). File:
+  [activity-per-repo-filter-2026-07-09.md](activity-per-repo-filter-2026-07-09.md).
 
 - **`/fleet.json` shape-contract test** — shipped 2026-07-10 (continuous-mode
   slice 9): `tests/test_fleet_json_contract.py` pins the exact key sets of
