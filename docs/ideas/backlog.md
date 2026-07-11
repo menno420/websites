@@ -9,6 +9,16 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Flag to kit lane: `upgrade --apply-docs` rewrites `.substrate/upgrade-report.md`
+  without the Carve-out scan section** · `captured` — verified live on the
+  v1.9.0 upgrade (this repo, PR #101): the main upgrade pass wrote the
+  #156-mandated explicit carve-out section, then the post-hoc `--apply-docs`
+  pass regenerated the report with only the docs table + an "Applied" section,
+  silently dropping the carve-out audit record (hand-restored here). Every
+  adopter that takes apply-docs post-hoc loses that record — the kit's report
+  writer should carry the carve-out result through re-renders. Source:
+  `.sessions/2026-07-11-kit-upgrade-v1.9.0.md` 💡.
+
 - **Conveyor-health chips on the readiness board rows** · `captured` — the
   board (/) is the owner's habit path; one small per-repo chip ("ideas:
   3c/1b") reusing repo_ideas' cached lifecycle counts puts conveyor health

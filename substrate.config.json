@@ -3,7 +3,7 @@
     "branch_patterns": [
       "claude/*"
     ],
-    "required_context": "substrate-gate"
+    "required_context": "quality"
   },
   "badge_tokens": [
     "binding",
