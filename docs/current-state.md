@@ -66,9 +66,9 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   it derives the session card from the PR/push diff and passes it via
   `check --session-log <card>`, so a stale `complete` card can't mask THIS
   PR's `in-progress` one (`fetch-depth: 0` on checkout feeds the diff). The
-  vendored `bootstrap.py` is kit **v1.11.0** (stepwise §4.3 upgrades
+  vendored `bootstrap.py` is kit **v1.12.0** (stepwise §4.3 upgrades
   v1.6.0 → v1.7.0 (#62) → v1.7.1 → v1.8.0 → v1.9.0 (#101) → v1.10.0
-  (#105) → v1.10.1 (#113) → v1.11.0 (#129); this passage said v1.6.0 until 2026-07-11 — verified against the
+  (#105) → v1.10.1 (#113) → v1.11.0 (#129) → v1.12.0 (#146); this passage said v1.6.0 until 2026-07-11 — verified against the
   `bootstrap.py` header) whose checker fails a born-red
   (`in-progress`/`wip`/`hold`/`drafted`) card under `--strict` — the leak that
   let PR #19 auto-merge on a born-red card alone is closed.
@@ -214,7 +214,7 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
     session/coordinator identity (advisory-only, relays legal).
   - **ORDER 011 (#117/#118):** owner-directed ~24h self-review shipped as
     `docs/retro/self-review-2026-07-11.md` (claim-first ritual held).
-  - **Kit:** v1.6.0 → v1.11.0 stepwise; ORDER 010 (model-line doctrine)
+  - **Kit:** v1.6.0 → v1.12.0 stepwise; ORDER 010 (model-line doctrine)
     done. **Tests:** app suite 157 → 197; full FOUR-service suite 283
     (review/ landed by the sibling #132 session).
   - **Backlog:** `docs/ideas/backlog.md` seeded, worked, drained to dry
@@ -538,6 +538,12 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   one-repo/multi-Railway-service fit-alongside recommendation, botsite-first
   migration order + rollback, and seven open questions for the owner (now routed
   into `docs/question-router.md`). No code ported; live sites untouched.
+- **PLANNED (not built yet)** — gated live env-variable visibility: a
+  `/owner/environments` page that loads each project's Railway variables live
+  (project-scoped token) and links to where each is managed. Spec:
+  `docs/planning/live-env-visibility-plan-2026-07-11.md` (owner-directed
+  2026-07-11; revives the deferred live-Railway-read half of the ORDER 005 env
+  surface).
 - **PR #3** (`2f93b32`) — Railway deployment recorded (`docs/deployment.md`,
   this ledger filled from kit template, [D-0005]). Deploy itself is
   operational, not code: fresh Railway project `superbot-websites` created
