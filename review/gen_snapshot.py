@@ -13,9 +13,9 @@ Run from the repo root (any session, any time the numbers should refresh):
 
     python3 review/gen_snapshot.py
 
-It parses, from the real repo:
+It parses, from the real repo (the generating checkout's HEAD history):
 - merged-PR references per UTC day (squash-merge ``(#N)`` suffixes and merge
-  commits on ``main`` — each PR number counted once, on its merge date);
+  commits — each PR number counted once, on its merge date);
 - commits per UTC day;
 - ``.sessions/`` cards per day (from the ``YYYY-MM-DD-*.md`` filenames);
 - test functions per day (``def test_`` across every service's test dir, at
@@ -55,8 +55,8 @@ def _utc_date(iso: str) -> str:
 
 
 def commit_and_pr_days() -> tuple[dict[str, int], dict[str, int], int, int]:
-    """Commits/day and unique merged-PR refs/day from ``main``'s history."""
-    log = _git("log", "--pretty=%cI\x1f%s", "main")
+    """Commits/day and unique merged-PR refs/day from HEAD's history."""
+    log = _git("log", "--pretty=%cI\x1f%s", "HEAD")
     commits: dict[str, int] = defaultdict(int)
     pr_seen: dict[int, str] = {}
     for line in log.splitlines():
@@ -98,9 +98,9 @@ def test_functions_at(ref: str) -> int:
 
 
 def eod_commit(day: str) -> str | None:
-    """Last commit on main at or before the end of the given UTC day."""
+    """Last commit on HEAD's history at or before the end of the given UTC day."""
     before = f"{day}T23:59:59Z"
-    sha = _git("rev-list", "-1", f"--before={before}", "main").strip()
+    sha = _git("rev-list", "-1", f"--before={before}", "HEAD").strip()
     return sha or None
 
 
