@@ -225,7 +225,11 @@ def test_overview_sorts_stranded_landing_above_healthy_and_counts(monkeypatch):
     async def run():
         monkeypatch.setattr(github, "fetch_file", fake_fetch)
         monkeypatch.setattr(github, "repo_api", _fake_repo_api())
-        return await fleet.overview()
+        # Frozen `now`: with wall-clock time this test TIME-BOMBED on
+        # 2026-07-11T08:45Z — the plain lane's fixed `updated:` stamp
+        # crossed FLEET_STALE_HOURS, both lanes collapsed into the same
+        # attention rank, and within-rank age ordering flipped the sort.
+        return await fleet.overview(now=NOW)
 
     out = asyncio.run(run())
     lanes = out["lanes"]
