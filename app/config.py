@@ -193,28 +193,31 @@ FLEET_STALE_HOURS = int(os.environ.get("FLEET_STALE_HOURS", "12"))
 # this badges `claim stale?` so a dead lane can't silently deadlock an order.
 CLAIM_STALE_HOURS = int(os.environ.get("CLAIM_STALE_HOURS", "24"))
 
+# Hand-kept FALLBACK copy of the fleet-manager registry (LANES in
+# scripts/gen_roster.py) — used only when the live registry fetch/parse
+# fails, with a visible notice. Refreshed 2026-07-11 to the registry's 18
+# repo seats (registry-only seats carry no repo and are not lanes here).
 FLEET_LANES: list = [
     {
         "lane": "superbot",
         "repo": "superbot",
         "status_path": "control/status.md",
         "model": "unknown",
-        "note": "SuperBot coordinator (superbot + superbot-next); its heartbeat "
-        "is written to superbot-next, so this repo has no own status file.",
+        "note": "hub seat — no control/status.md by design (honest absence).",
     },
     {
         "lane": "superbot-next",
         "repo": "superbot-next",
         "status_path": "control/status.md",
         "model": "unknown",
-        "note": "SuperBot coordinator heartbeat (rebuild + game-plugin host).",
+        "note": "",
     },
     {
         "lane": "substrate-kit",
         "repo": "substrate-kit",
         "status_path": "control/status.md",
         "model": "unknown",
-        "note": "kit-lab.",
+        "note": "",
     },
     {
         "lane": "websites",
@@ -227,42 +230,99 @@ FLEET_LANES: list = [
         "lane": "trading-strategy",
         "repo": "trading-strategy",
         "status_path": "control/status.md",
-        "model": "Opus 4.8",
-        "note": "trading-lab (backtesting research; research-only).",
+        "model": "unknown",
+        "note": "",
+    },
+    {
+        "lane": "venture-lab",
+        "repo": "venture-lab",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "",
+    },
+    {
+        "lane": "superbot-games",
+        "repo": "superbot-games",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "Seat A.",
+    },
+    {
+        "lane": "superbot-idle",
+        "repo": "superbot-idle",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "Seat B.",
+    },
+    {
+        "lane": "superbot-mineverse",
+        "repo": "superbot-mineverse",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "",
+    },
+    {
+        "lane": "pokemon-mod-lab",
+        "repo": "pokemon-mod-lab",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "",
+    },
+    {
+        "lane": "gba-homebrew",
+        "repo": "gba-homebrew",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "",
+    },
+    {
+        "lane": "product-forge",
+        "repo": "product-forge",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "",
+    },
+    {
+        "lane": "idea-engine",
+        "repo": "idea-engine",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "",
+    },
+    {
+        "lane": "sim-lab",
+        "repo": "sim-lab",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "",
     },
     {
         "lane": "codetool-lab-fable5",
         "repo": "codetool-lab-fable5",
         "status_path": "control/status.md",
-        "model": "Fable 5",
-        "note": "model-comparison coding arm.",
+        "model": "unknown",
+        "note": "archived seat (stale-by-design).",
     },
     {
         "lane": "codetool-lab-opus4.8",
         "repo": "codetool-lab-opus4.8",
         "status_path": "control/status.md",
-        "model": "Opus 4.8",
-        "note": "model-comparison coding arm (identical brief; only the model differs).",
+        "model": "unknown",
+        "note": "archived seat (stale-by-design).",
     },
     {
         "lane": "codetool-lab-sonnet5",
         "repo": "codetool-lab-sonnet5",
         "status_path": "control/status.md",
-        "model": "Sonnet 5",
-        "note": "model-comparison coding arm (third arm).",
+        "model": "unknown",
+        "note": "archived seat (stale-by-design).",
     },
     {
-        "lane": "superbot-games · mining",
-        "repo": "superbot-games",
-        "status_path": "control/status-mining.md",
-        "model": "default",
-        "note": "game-mining lane (superbot-games shared-repo cohabitation).",
-    },
-    {
-        "lane": "superbot-games · exploration",
-        "repo": "superbot-games",
-        "status_path": "control/status-exploration.md",
-        "model": "default",
-        "note": "game-exploration lane (superbot-games shared-repo cohabitation).",
+        "lane": "fleet-manager",
+        "repo": "fleet-manager",
+        "status_path": "control/status.md",
+        "model": "unknown",
+        "note": "the manager's own repo.",
     },
 ]
+

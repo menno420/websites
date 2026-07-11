@@ -81,20 +81,28 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    honest absence (not an error — the bare `superbot` lane, whose heartbeat is
    written to superbot-next, is the real case); a fetch failure shows an honest
    banner. The **lane set** is derived **live** from the manager's canonical
-   registry `menno420/superbot` → `docs/eap/fleet-manifest.md` ([D-0022]):
-   `resolve_lanes` fetches that manifest (same TTL-cached github layer, superbot
-   read-only), `parse_manifest` reads its markdown table by header name, and
-   `manifest_to_lanes` expands it into lane dicts — the `manager` row (no concrete
-   repo) is skipped, the multi-repo SuperBot coordinator becomes a `superbot` +
-   `superbot-next` lane, and a repo shared by >1 row (the superbot-games
-   cohabitation lanes) reads `control/status-<slug>.md`. A lane **added to the
-   manifest auto-appears** here (drift removed). If the manifest can't be
-   fetched/parsed the page falls back to the hand-kept `config.FLEET_LANES` and
-   shows an **honest "cached fallback list" notice** (never silently pretends it
-   was live); `lane_source` in `/fleet.json` reports `manifest` vs `fallback`. A
-   manifest lane whose repo the token can't read renders an honest `unreadable`
-   state rather than being dropped. No new dependency, no new secret, no Railway
-   op; the websites row dogfoods its own status.
+   registry — since 2026-07-11 ([D-0035], superseding the [D-0022] superbot
+   fleet-manifest source, which went `historical` upstream) that is the
+   `LANES` literal inside `menno420/fleet-manager` →
+   `scripts/gen_roster.py` (the roster generator's one hand-maintained
+   input; the generated `docs/roster.md` itself is a status snapshot with no
+   repo column). `resolve_lanes` fetches that file (same TTL-cached github
+   layer, fleet-manager read-only), `parse_registry` extracts the literal
+   with `ast.literal_eval` (pure data, never executed), and
+   `registry_to_lanes` maps entries to lane dicts — registry-only seats
+   (`repo: None`) are skipped, hub/archived dispositions are kept with
+   honest notes, every lane reads `control/status.md`. A lane **added to
+   the registry auto-appears** here (drift removed — 18 lanes at repoint,
+   up from the manifest's 10). If the registry can't be fetched/parsed the
+   page falls back to the hand-kept `config.FLEET_LANES` (refreshed to the
+   18-seat set) with an **honest "cached fallback list" notice**;
+   `lane_source` in `/fleet.json` reports `registry` vs `fallback` and the
+   top-level URL key is `registry_url` (contract pin updated in the same
+   PR). A registry lane whose repo the token can't read renders an honest
+   `unreadable` state rather than being dropped. The break was caught LIVE
+   by the healthcheck cron's first scheduled run (the retro-A3 alert doing
+   its exact job). No new dependency, no new secret, no Railway op; the
+   websites row dogfoods its own status.
    **Enriched machine-readable heartbeat fields** ([D-0028], retro G3): the
    `orders:` line is parsed (`acked=`/`done=` ids, ranges like `001-008`
    expanded; **outstanding = acked minus done**, computable from the heartbeat

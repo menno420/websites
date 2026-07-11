@@ -181,3 +181,16 @@ above came from the fleet's lived 2026-07 findings; local ones go here.)
   wall-clock hours 0/6/12/18 — NOT "+6h from merge"; this repo's own record
   said "~02:17Z" for five heartbeats (cron fields are wall-clock anchored,
   compute slots from the epoch, not from now).
+- 2026-07-11 · capability (resolves the 02:23Z provisional wall) · **Actions
+  cron schedules DO fire — best-effort, hours late for a fresh workflow**:
+  healthcheck run 2 (`event: schedule`) fired 2026-07-11T03:40:51Z against
+  the 00:17Z slot (~3.4h delay; the 06:17Z slot was never the first one —
+  see the cron-arithmetic lesson above) · evidence: MCP `list_workflow_runs
+  healthcheck.yml` at 06:2xZ shows run 2 event=schedule created 03:40:51Z ·
+  AND the run's FAILURE was the smoke check working: all 6 service probes
+  200 PASS, `fleet-manifest live parse: FAIL (parsed to ZERO lanes)` —
+  root cause the 2026-07-11 upstream supersession (superbot fleet-manifest →
+  `historical`; canonical registry moved to fleet-manager `scripts/
+  gen_roster.py` LANES + generated `docs/roster.md`) · consequence: treat
+  cron timing as ±hours, never gate anything on a cron slot; the lane-source
+  repoint shipped the same wake.

@@ -11,19 +11,19 @@
     visible truth of a running agent (the claude.ai UI can't show session activity).
     Fields are parsed from the <a href="https://github.com/menno420/superbot/blob/main/control/README.md">documented status format</a>;
     the lane set is derived <strong>live</strong> from the manager's
-    <a href="{{ f.manifest_url }}">fleet-manifest ↗</a>, so a lane added there appears
+    <a href="{{ f.registry_url }}">fleet-manager registry ↗</a>, so a lane added there appears
     here automatically. A heartbeat older than
     {{ f.stale_hours }}h badges <span class="b warn">stale</span>; a lane with no status
     file yet shows an honest absence, not an error.</p>
-  {% if f.lane_source.source == 'manifest' %}
-  <p class="dim small">lane set: <span class="b ok">live from manifest</span> —
+  {% if f.lane_source.source == 'registry' %}
+  <p class="dim small">lane set: <span class="b ok">live from registry</span> —
     {{ f.lane_source.count }} lanes parsed from the
-    <a href="{{ f.manifest_url }}">fleet-manifest ↗</a>.</p>
+    <a href="{{ f.registry_url }}">fleet-manager registry ↗</a>.</p>
   {% else %}
   <div class="banner">⚠ lane set: <strong>cached fallback list</strong> — the live
-    <a href="{{ f.manifest_url }}">fleet-manifest ↗</a> could not be used
+    <a href="{{ f.registry_url }}">fleet-manager registry ↗</a> could not be used
     ({{ f.lane_source.reason }}); showing the last hand-kept lane copy. The lanes are
-    real; only the SET may be stale until the manifest is reachable again.</div>
+    real; only the SET may be stale until the registry is reachable again.</div>
   {% endif %}
   <p class="small">
     <span class="b repo">{{ f.summary.total }} lanes</span>

@@ -22,7 +22,7 @@ from app.main import app  # noqa: E402
 
 # --- the pinned contract ---------------------------------------------------
 
-TOP_KEYS = {"lanes", "summary", "stale_hours", "lane_source", "manifest_url"}
+TOP_KEYS = {"lanes", "summary", "stale_hours", "lane_source", "registry_url"}
 
 # lane_status() output minus body_html (the JSON route strips rendered HTML).
 LANE_KEYS = {

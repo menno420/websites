@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Post-deploy healthcheck: GET /healthz and / on the three live services, plus
-the `/fleet` manifest live-parse smoke check.
+the `/fleet` registry live-parse smoke check.
 
 ──────────────────────────────────────────────────────────────────────────────
 PROVENANCE / KILL-SWITCH HEADER
@@ -18,16 +18,17 @@ PROVENANCE / KILL-SWITCH HEADER
 
 All three services are PUBLIC (2026-07-09 auth-drop), so `/` is expected 200.
 
-The manifest check (retro A3 / queue-state NEXT item 2) fetches the manager's
-LIVE `fleet-manifest.md` (menno420/superbot) and asserts the SAME parser
-`/fleet` uses (`app.fleet.parse_manifest` + `manifest_to_lanes`) still yields a
+The registry check (retro A3 / queue-state NEXT item 2) fetches the manager's
+LIVE registry (menno420/fleet-manager scripts/gen_roster.py) and asserts the SAME parser
+`/fleet` uses (`app.fleet.parse_registry` + `registry_to_lanes`) still yields a
 non-empty, well-formed lane set. `/fleet` itself degrades a bad parse to the
 `config.FLEET_LANES` fallback with an honest on-page banner — safe, but silent
-to anyone not looking at the page. This check is what alerts a manifest
-reformat instead of letting it degrade unnoticed.
+to anyone not looking at the page. This check is what alerts a registry
+reformat/move instead of letting it degrade unnoticed (it caught the
+2026-07-11 manifest supersession live, on schedule run 2).
 
 Usage:  python3 scripts/healthcheck.py
-Exit 0 = every checked endpoint returned its expected status AND the manifest
+Exit 0 = every checked endpoint returned its expected status AND the registry
 parsed to a non-empty lane set; exit 1 = any of those fail.
 """
 
@@ -53,9 +54,9 @@ ENDPOINTS = ("/healthz", "/")
 EXPECTED = 200
 TIMEOUT = 15
 
-MANIFEST_URL = (
-    f"{config.GITHUB_RAW_BASE}/{config.OWNER}/{fleet.MANIFEST_REPO}/main/"
-    f"{fleet.MANIFEST_PATH}"
+REGISTRY_URL = (
+    f"{config.GITHUB_RAW_BASE}/{config.OWNER}/{fleet.REGISTRY_REPO}/main/"
+    f"{fleet.REGISTRY_PATH}"
 )
 
 
@@ -71,10 +72,12 @@ def _probe(url: str) -> tuple[int, str]:
         return 0, str(getattr(exc, "reason", exc))
 
 
-def check_fleet_manifest() -> tuple[bool, str]:
-    """Fetch the live fleet-manifest and assert it parses to a non-empty,
-    well-formed lane set — see the module docstring for why this exists."""
-    req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "healthcheck"})
+def check_fleet_registry() -> tuple[bool, str]:
+    """Fetch the live fleet-manager registry (LANES in gen_roster.py) and
+    assert it parses to a non-empty, well-formed lane set — the alert that
+    caught the 2026-07-11 manifest supersession lives on against the NEW
+    source."""
+    req = urllib.request.Request(REGISTRY_URL, headers={"User-Agent": "healthcheck"})
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
             text = resp.read().decode("utf-8")
@@ -82,12 +85,12 @@ def check_fleet_manifest() -> tuple[bool, str]:
         return False, f"fetch failed: {getattr(exc, 'reason', exc)}"
 
     try:
-        lanes = fleet.manifest_to_lanes(fleet.parse_manifest(text))
+        lanes = fleet.registry_to_lanes(fleet.parse_registry(text))
     except Exception as exc:  # defensive: a parser bug shouldn't crash the check
         return False, f"parse raised {type(exc).__name__}: {exc}"
 
     if not lanes:
-        return False, "parsed to ZERO lanes — manifest reformat suspected"
+        return False, "parsed to ZERO lanes — registry reformat/move suspected"
 
     unresolved = [lane["lane"] for lane in lanes if not lane.get("repo") or not lane.get("status_path")]
     if unresolved:
@@ -115,10 +118,10 @@ def main() -> int:
         extra = f"  ({note})" if note and not ok else ""
         print(f"{label.ljust(width)}  {ep:9}  {shown:>6}  {mark}{extra}")
 
-    manifest_ok, manifest_note = check_fleet_manifest()
-    ok_all = ok_all and manifest_ok
+    registry_ok, registry_note = check_fleet_registry()
+    ok_all = ok_all and registry_ok
     print()
-    print(f"fleet-manifest live parse: {'PASS' if manifest_ok else 'FAIL'} ({manifest_note})")
+    print(f"fleet-registry live parse: {'PASS' if registry_ok else 'FAIL'} ({registry_note})")
 
     print()
     print("RESULT:", "all healthy" if ok_all else "ONE OR MORE DOWN")
