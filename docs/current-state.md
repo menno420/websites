@@ -168,8 +168,8 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   new suite. Tests: +28 (full four-service suite 273). Deployment is a queued
   ⚑ OWNER-ACTION (new Railway service, Root Directory = `review`).
 
-- **2026-07-11 continuous-mode chain (manager Q-0265): slices #69 → #109 +
-  2 rescues** — one consolidated entry; per-slice detail lives in the
+- **2026-07-11 continuous-mode chain (manager Q-0265): slices #69 → #139 +
+  3 rescues** — one consolidated entry, extended as the chain runs; per-slice detail lives in the
   `.sessions/` cards and `docs/site.md` §§ 2/3a/3d/3e/3f/Routes. What is
   now true that wasn't at #67:
   - **New public control-plane routes:** `/orders`(+`.json`) — inbox render
@@ -197,13 +197,29 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
   - **Ops tooling:** `scripts/open_work.py` (stranded-work scan),
     `scripts/wait_deploy.py` (post-merge three-service convergence),
     `scripts/cron_slots.py`, `scripts/review_row_check.py`.
-  - **Nav overflow guard (#109):** header nav 11 → 6 top-level; secondary
-    pages under a no-JS `<details>` "more ▾" dropdown.
+  - **Nav overflow guard (#109) + manifest (#122, #137):** header nav 11 →
+    6 top-level with a no-JS "more ▾" dropdown; `app/nav.py` is the single
+    `(href,label,key)` source (template + membership tests, glob-scanned).
+  - **Time discipline (#111/#114/#130):** the 08:45Z wall-clock time-bomb
+    defused; an AST guard reds age-measuring test calls without `now=`
+    (17 latent sites fixed); `app/clock.py` is the app's single wall-clock
+    read (route tests freeze whole requests; a source guard enforces it).
+  - **CI gates completed (#120/#125/#127):** quality.yml carries the kit
+    every-card session gate (multi-card shadowing closed) + the fast-lane
+    control gates (status-only on the fast lane; inbox append-only + ORDER
+    grammar on both lanes); five gate behaviors pinned as suite tests.
+  - **Order telemetry (#133/#135/#139):** filed→claimed pickup latency
+    per order + fleet median/max rollup on `/orders` (honest None, never
+    fabricated); provenance advisory flags orders naming no
+    session/coordinator identity (advisory-only, relays legal).
+  - **ORDER 011 (#117/#118):** owner-directed ~24h self-review shipped as
+    `docs/retro/self-review-2026-07-11.md` (claim-first ritual held).
   - **Kit:** v1.6.0 → v1.11.0 stepwise; ORDER 010 (model-line doctrine)
-    done. **Tests:** app suite 157 → 177; full three-service suite 235.
-  - **Backlog:** `docs/ideas/backlog.md` seeded, worked, and drained —
-    buildable bullets **dry** as of #109 (manager routing requested via the
-    heartbeat low-water signal).
+    done. **Tests:** app suite 157 → 197; full FOUR-service suite 283
+    (review/ landed by the sibling #132 session).
+  - **Backlog:** `docs/ideas/backlog.md` seeded, worked, drained to dry
+    TWICE (at #109 and again at #139) — every buildable captured bullet
+    shipped; remaining items are manager-side asks + dormant patterns.
 - **20:00Z continuous-mode wake: card template (#64) + heartbeat enrichment
   (#67; decision stamped in `docs/site.md` § 3a + the decision
   ledger)** (2026-07-10; manager switched the lane to continuous mode
