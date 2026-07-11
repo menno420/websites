@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Successes — Program Review{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">Successes</p>
+    <h1>What worked — with receipts</h1>
+    <p class="sb-lead">
+      Each claim below links into the committed record: the PR, the test, the ledger entry.
+      The same rule the <a href="/problems">problems page</a> follows, because a success list is
+      only credible next to an equally specific failure list.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-stack">
+      {% for item in items %}
+      <article class="sb-card rv-story-card">
+        <h2>{{ item.title }}</h2>
+        <p>{{ item.what }}</p>
+        <p class="rv-evidence">
+          <span class="sb-label">Evidence:</span>
+          {% for label, url in item.evidence %}
+          <a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a>{% if not loop.last %} · {% endif %}
+          {% endfor %}
+        </p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

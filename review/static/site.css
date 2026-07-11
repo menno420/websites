@@ -1,0 +1,110 @@
+/* Review-site page styles — thin layer over the vendored ds/ system.
+   Chart marks use --sb-chart-* tokens (single-hue magnitude); all text wears
+   ink tokens, never the mark color (program dataviz rules). */
+
+/* stat tiles */
+.rv-stat-value {
+  font-family: var(--sb-font-display);
+  font-weight: 700;
+  font-size: var(--sb-text-4xl);
+  letter-spacing: var(--sb-track-tight);
+  color: var(--sb-ink-1);
+  line-height: 1.1;
+}
+.rv-stat-sub { font-size: var(--sb-text-xs); }
+
+/* charts */
+.rv-chart-grid { align-items: stretch; }
+.rv-chart-card h3 { font-size: var(--sb-text-md); margin: 0 0 var(--sb-s-3); }
+.rv-chart { width: 100%; height: auto; display: block; }
+.rv-col { fill: var(--sb-chart-mark); }
+.rv-axis { stroke: var(--sb-chart-axis); stroke-width: 1; }
+.rv-val {
+  font-family: var(--sb-font-mono);
+  font-size: 12px;
+  fill: var(--sb-ink-2);
+}
+.rv-tick {
+  font-family: var(--sb-font-mono);
+  font-size: 10.5px;
+  fill: var(--sb-ink-3);
+}
+
+/* landing-path flow */
+.rv-flow-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sb-s-3);
+}
+.rv-flow-step {
+  display: flex;
+  gap: var(--sb-s-4);
+  align-items: flex-start;
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-r-md);
+  padding: var(--sb-s-4) var(--sb-s-5);
+  position: relative;
+}
+.rv-flow-step + .rv-flow-step::before {
+  content: "";
+  position: absolute;
+  left: 30px;
+  top: calc(-1 * var(--sb-s-3) - 1px);
+  height: var(--sb-s-3);
+  border-left: 2px solid var(--sb-line-2);
+}
+.rv-flow-step h3 { margin: 0 0 var(--sb-s-1); font-size: var(--sb-text-md); }
+.rv-flow-step p { margin: 0; color: var(--sb-ink-2); font-size: var(--sb-text-sm); }
+.rv-flow-num {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sb-r-pill);
+  display: grid;
+  place-items: center;
+  background: var(--sb-brand-tint);
+  color: var(--sb-brand-ink);
+  border: 1px solid var(--sb-brand-line);
+  font-family: var(--sb-font-mono);
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* story cards (successes / problems) */
+.rv-story-card h2 { font-size: var(--sb-text-xl); margin: 0 0 var(--sb-s-3); }
+.rv-story-card p { color: var(--sb-ink-2); }
+.rv-evidence { font-size: var(--sb-text-sm); margin-bottom: 0; }
+.rv-evidence .sb-label { margin-right: var(--sb-s-2); }
+.rv-problem-kv { margin: var(--sb-s-4) 0; }
+.rv-problem-kv p { margin: var(--sb-s-1) 0 0; font-size: var(--sb-text-sm); }
+
+/* timeline */
+.rv-timeline {
+  list-style: none;
+  margin: 0 0 var(--sb-s-7);
+  padding: 0;
+  display: grid;
+  gap: var(--sb-s-4);
+}
+.rv-tl-item {
+  display: flex;
+  gap: var(--sb-s-5);
+  align-items: flex-start;
+  border-left: 2px solid var(--sb-line-2);
+  padding-left: var(--sb-s-5);
+}
+.rv-tl-date { flex: none; width: 118px; color: var(--sb-ink-3); font-size: var(--sb-text-sm); margin-top: 3px; }
+.rv-tl-item h3 { margin: 0 0 var(--sb-s-1); font-size: var(--sb-text-md); }
+.rv-tl-item p { margin: 0; color: var(--sb-ink-2); font-size: var(--sb-text-sm); }
+
+/* glossary */
+.rv-term { white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .rv-tl-item { flex-direction: column; gap: var(--sb-s-1); }
+  .rv-tl-date { width: auto; }
+}

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Program Review — how an owner + agent fleet ships{% endblock %}</title>
+<meta name="description" content="{% block description %}An honest, evidence-linked account of how this owner + Claude-agent program runs: process, growth, successes, and problems.{% endblock %}">
+{# Set the theme before first paint to avoid a flash (ds.js persists the choice). #}
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("sb:theme");
+      document.documentElement.setAttribute("data-theme", (t === "light" || t === "dark") ? t : "dark");
+    } catch (e) { document.documentElement.setAttribute("data-theme", "dark"); }
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/ds/tokens.css">
+<link rel="stylesheet" href="/static/ds/components.css">
+<link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+<a class="sb-skip" href="#main">Skip to content</a>
+
+<header class="sb-nav">
+  <div class="sb-wrap-wide sb-nav-in">
+    <a class="sb-brand" href="/" aria-label="Program review home">
+      <span class="sb-brand-tile" aria-hidden="true">⟲</span>
+      Program Review
+    </a>
+    <nav class="sb-nav-links" aria-label="Primary">
+      {% for id, label, href in nav %}
+      <a class="sb-nav-link" href="{{ href }}"{% if active == id %} aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+    <span class="sb-nav-spacer"></span>
+    <button class="sb-iconbtn" data-theme-toggle aria-label="Toggle theme" aria-pressed="false"></button>
+    <button class="sb-iconbtn sb-menubtn" data-menu-toggle aria-expanded="false" aria-controls="sb-drawer" aria-label="Open menu"></button>
+  </div>
+  <div class="sb-drawer" id="sb-drawer" data-drawer>
+    {% for id, label, href in nav %}
+    <a class="sb-nav-link" href="{{ href }}"{% if active == id %} aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </div>
+</header>
+
+{% if not snap_ok %}
+<div class="sb-wrap" style="padding-top:16px">
+  <div class="sb-error" role="alert">
+    <div>
+      <strong>Data snapshot unavailable.</strong>
+      The committed <code>data/snapshot.json</code> could not be read
+      {% if snap_error %}(<span class="sb-mono">{{ snap_error }}</span>){% endif %}.
+      Nothing below is faked — number-driven sections render only what the snapshot provides;
+      the narrative sections still cite their committed evidence directly.
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<main id="main" class="sb-view">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="sb-footer">
+  <div class="sb-wrap-wide sb-footer-in">
+    <span>Program review — the record explaining itself.</span>
+    <span class="sb-muted">Every number derived from the repo's committed history; every claim linked to its evidence.</span>
+    <span class="right">
+      {% if git_head %}<a href="{{ repo_url }}/commit/{{ git_head }}" target="_blank" rel="noopener">snapshot @ {{ git_head[:8] }}</a>{% endif %}
+      {% if generated_at %}<span class="sb-muted">generated {{ generated_at }}</span>{% endif %}
+      <a href="{{ repo_url }}" target="_blank" rel="noopener">source repo</a>
+      <a href="/story.json">story.json</a>
+    </span>
+  </div>
+</footer>
+
+<script src="/static/ds/ds.js"></script>
+</body>
+</html>

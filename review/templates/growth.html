@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Growth — Program Review{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">Growth</p>
+    <h1>Three days, measured from git</h1>
+    <p class="sb-lead">
+      Nothing here is estimated. Each chart is derived from the repo's committed history by a
+      generator script anyone can re-run
+      (<a href="{{ repo_url }}/blob/main/review/gen_snapshot.py" target="_blank" rel="noopener">review/gen_snapshot.py</a>);
+      the snapshot's exact source commit is in the footer. Speed came from parallel lanes and
+      unattended session chains — but every single merge below passed the same required gate.
+    </p>
+  </div>
+</section>
+
+{% if charts %}
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-grid-3 rv-chart-grid">
+      {% for c in charts %}
+      <figure class="sb-card rv-chart-card">
+        <figcaption>
+          <h3>{{ c.title }}</h3>
+        </figcaption>
+        {% if not c.chart.empty %}
+        <svg viewBox="0 0 {{ c.chart.width }} {{ c.chart.height }}" class="rv-chart" role="img" aria-label="{{ c.title }}: {% for col in c.chart.columns %}{{ col.label }}: {{ col.value }}{% if not loop.last %}, {% endif %}{% endfor %}">
+          {# baseline — hairline, recessive #}
+          <line x1="0" y1="{{ c.chart.baseline }}" x2="{{ c.chart.width }}" y2="{{ c.chart.baseline }}" class="rv-axis" />
+          {% for col in c.chart.columns %}
+          <g>
+            <title>{{ col.label }}: {{ col.value }}</title>
+            {# column: 4px rounded data-end at the top, square at the baseline #}
+            {% if col.h > 4 %}
+            <path d="M {{ col.x }} {{ col.baseline }}
+                     L {{ col.x }} {{ col.y + 4 }}
+                     Q {{ col.x }} {{ col.y }} {{ col.x + 4 }} {{ col.y }}
+                     L {{ col.x + col.w - 4 }} {{ col.y }}
+                     Q {{ col.x + col.w }} {{ col.y }} {{ col.x + col.w }} {{ col.y + 4 }}
+                     L {{ col.x + col.w }} {{ col.baseline }} Z" class="rv-col" />
+            {% elif col.h > 0 %}
+            <rect x="{{ col.x }}" y="{{ col.y }}" width="{{ col.w }}" height="{{ col.h }}" class="rv-col" />
+            {% endif %}
+            {# value on the cap; date label under the baseline — ink tokens, never the mark color #}
+            <text x="{{ col.cx }}" y="{{ col.y - 7 }}" text-anchor="middle" class="rv-val">{{ "{:,}".format(col.value) }}</text>
+            <text x="{{ col.cx }}" y="{{ col.baseline + 15 }}" text-anchor="middle" class="rv-tick">{{ col.label }}</text>
+          </g>
+          {% endfor %}
+        </svg>
+        {% else %}
+        <p class="sb-empty">No data in the snapshot for this series.</p>
+        {% endif %}
+        <p class="sb-chart-note sb-muted">{{ c.note }}</p>
+      </figure>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-sec-head"><h2>The same numbers, as a table</h2></div>
+    <div class="sb-table-scroll">
+      <table class="sb-table">
+        <thead>
+          <tr><th>UTC day</th><th>PRs merged</th><th>Commits</th><th>Session cards</th><th>Test functions (end of day)</th></tr>
+        </thead>
+        <tbody>
+          {% for d in days %}
+          <tr>
+            <td class="sb-mono">{{ d.date }}{% if d.get("partial") %} <span class="sb-badge sb-badge-info">partial day</span>{% endif %}</td>
+            <td>{{ d.prs_merged }}</td>
+            <td>{{ d.commits }}</td>
+            <td>{{ d.session_cards }}</td>
+            <td>{{ d.get("test_functions_eod", "—") }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <div class="sb-sec-head"><h2>Milestones under the numbers</h2></div>
+    <ol class="rv-timeline">
+      {% for m in milestones %}
+      <li class="rv-tl-item">
+        <span class="sb-mono rv-tl-date">{{ m.date }}</span>
+        <div>
+          <h3>{{ m.title }}</h3>
+          <p>{{ m.detail }}</p>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    <h2>Why it could move this fast</h2>
+    <ul class="sb-bullets">
+      <li><strong>Merge is the deploy</strong> — no release train; a green required check is the entire distance between an idea and production.</li>
+      <li><strong>Parallel lanes with a conflict-free bus</strong> — one writer per file means ten lanes never block each other on coordination.</li>
+      <li><strong>Unattended chains</strong> — sessions schedule their own successors; the 26-slice overnight run is most of day three's bar.</li>
+      <li><strong>Discovered cost is paid once</strong> — every wall goes into the capability ledger with its exact error and workaround, so no later session re-pays it.</li>
+      <li><strong>The gates scale with the speed</strong> — the test count chart is the counterweight to the PR chart; both grew together, on purpose.</li>
+    </ul>
+  </div>
+</section>
+{% endblock %}
