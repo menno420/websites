@@ -20,7 +20,10 @@
   (hand-restored here). Source: `.sessions/2026-07-11-kit-upgrade-v1.9.0.md` 💡.
 
 - **Flag to kit lane: model-doctrine idempotence phrase-match should be
-  emphasis-insensitive** · `captured` — verified live on the v1.10.0 upgrade
+  emphasis-insensitive** · `retired` (fixed upstream in kit #187, shipped in
+  v1.10.1; verified live on this repo's v1.10.1 upgrade, PR #113 —
+  `.sessions/README.md` byte-identical across the upgrade, no new append) —
+  originally verified live on the v1.10.0 upgrade
   (this repo, PR #105): websites' `.sessions/README.md` already carried the
   hand-merged doctrine from #101, but with bold markers inside the sentence
   (`family-level model name **your own harness/environment reports this
