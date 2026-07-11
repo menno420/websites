@@ -20,10 +20,20 @@
 
 ### ⚑ Active six-field asks
 
-None open this session — the one conditional ask (external wake-trigger
+```markdown
+⚑ OWNER-ACTION
+WHAT: Create the fourth Railway service so the new program-review site (built for Anthropic reviewers) goes live.
+WHERE: railway.app → project superbot-websites → New → Service → GitHub repo menno420/websites.
+HOW: set Root Directory = review (the service's own Dockerfile at review/Dockerfile is picked up automatically, exactly like botsite/dashboard); branch = main; no environment variables needed (the service is read-only and network-free). After the first deploy, check <service-url>/healthz returns {"status":"ok"} and /version shows the deployed sha.
+WHY-IT-MATTERS: the review site — process, growth charts, successes, and an honest problems page, all from the repo's committed record — exists on main but has no URL until the service exists.
+UNBLOCKS: a shareable live URL for Anthropic reviewers; the board's deploy-drift row and scripts/healthcheck.py can then also add the fourth service.
+VERIFIED-NEEDED: service creation is a Railway account mutation — the Railway-safety policy (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger) forbids agent-initiated Railway mutations without your explicit go, so this was deliberately not attempted (the same policy wall as the Postgres ask; no new attempt/error needed).
+```
+
+(Previous state: none open — the one conditional ask (external wake-trigger
 fallback) self-expired 2026-07-10T16:01:32Z: the self-armed routine's first
-fire landed (this session IS that fire; see row E and
-`.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`).
+fire landed; see row E and
+`.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`.)
 
 **Historical record (kept verbatim per the capability ledger):** before ORDER
 008, the fleet **coordinator's** toolset exposed **no send_later/scheduling

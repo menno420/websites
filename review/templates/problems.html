@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Problems — Program Review{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">Problems</p>
+    <h1>What went wrong — specifically</h1>
+    <p class="sb-lead">
+      This program's own retrospectives lead with mistakes, and so does this page. Every entry
+      names what happened, what it cost, and what changed — with links to the committed evidence.
+      Most of these failures were caught by the program's own gates and habits; a few needed a
+      human, and those say so.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-stack">
+      {% for item in items %}
+      <article class="sb-card rv-story-card">
+        <h2>{{ item.title }}</h2>
+        <p>{{ item.what }}</p>
+        <div class="sb-kv-grid rv-problem-kv">
+          <div class="sb-kv"><span class="sb-label">Cost</span><p>{{ item.cost }}</p></div>
+          <div class="sb-kv"><span class="sb-label">What changed</span><p>{{ item.fix }}</p></div>
+        </div>
+        <p class="rv-evidence">
+          <span class="sb-label">Evidence:</span>
+          {% for label, url in item.evidence %}
+          <a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a>{% if not loop.last %} · {% endif %}
+          {% endfor %}
+        </p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <h2>The meta-point</h2>
+    <p>
+      None of these failures were hidden, and most produced a durable artifact: a regression test,
+      a ledger entry with the exact error text, a doctrine section, a guard script. That loop —
+      <em>fail, record, harden, and let the next session inherit the hardening instead of the
+      failure</em> — is the actual mechanism behind the <a href="/growth">growth numbers</a>, more
+      than any single session being clever.
+    </p>
+  </div>
+</section>
+{% endblock %}

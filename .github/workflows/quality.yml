@@ -100,6 +100,7 @@ jobs:
             -r requirements.txt \
             -r botsite/requirements.txt \
             -r dashboard/requirements.txt \
+            -r review/requirements.txt \
             pytest
 
       # Kit gate: docs hygiene (badges / links / reachability), session-log
@@ -182,7 +183,7 @@ jobs:
         if: steps.lane.outputs.control_only != 'true'
         run: python3 scripts/check_no_ambient_railway_ids.py
 
-      # Every service's test suite. FastAPI apps in app/, botsite/, dashboard/.
+      # Every service's test suite. FastAPI apps in app/, botsite/, dashboard/, review/.
       - name: pytest (all services)
         if: steps.lane.outputs.control_only != 'true'
-        run: python3 -m pytest tests/ botsite/tests dashboard/tests -q
+        run: python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q
