@@ -44,6 +44,48 @@ jobs:
           echo "control_only=$control_only" >> "$GITHUB_OUTPUT"
           echo "control-only diff: $control_only"
 
+      # Fast-lane control gates (kit staged-gate port #2, 2026-07-11 — the
+      # #120 every-card port covered the session-card lanes; these cover the
+      # CONTROL lanes the fast lane used to skip entirely):
+      #
+      # (a) control-status gate — a control-only PR edits exactly the files
+      #     the status checker validates; without this a heartbeat-deleting
+      #     or heartbeat-breaking control PR merges GREEN and pre-reddens
+      #     the NEXT unrelated PR (kit fleet review 2026-07-09). Scoped +
+      #     stdlib-only on the system python3 (no setup-python): the lane
+      #     stays fast and heartbeat PRs still need no session card.
+      - name: control-status gate (fast lane — a control diff must still prove its heartbeat)
+        if: steps.lane.outputs.control_only == 'true'
+        run: python3 bootstrap.py check --strict --status-only
+
+      # (b) inbox append-only gate — control/inbox.md is one-writer /
+      #     append-only by protocol (control/README.md): without this a
+      #     green control-only PR could rewrite or erase orders. Holds the
+      #     PR red unless the inbox diff is PURE-APPEND vs the merge-base
+      #     and the appended text is well-formed ORDER blocks. Runs on BOTH
+      #     lanes (no lane condition): an inbox append rides the fast lane,
+      #     but a mixed PR could smuggle an inbox edit through the full
+      #     lane too. Stdlib-only system python3; git extracts the base
+      #     blob here in bash because the engine never shells out.
+      #     Self-skips when control/inbox.md is untouched.
+      - name: inbox append-only gate (control/inbox.md pure-append + ORDER grammar)
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)"
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            base="${{ github.event.before }}"
+            range="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          changed="$(git diff --name-only "$range" 2>/dev/null | grep -Fx 'control/inbox.md' || true)"
+          if [ -z "$changed" ]; then
+            echo "control/inbox.md not in diff — inbox append-only gate skipped."
+          else
+            basefile="$(mktemp)"
+            git show "$base:control/inbox.md" > "$basefile" 2>/dev/null || : > "$basefile"
+            python3 bootstrap.py check --strict --status-only --inbox-base "$basefile"
+          fi
+
       - name: Set up Python 3.12
         if: steps.lane.outputs.control_only != 'true'
         uses: actions/setup-python@v5
