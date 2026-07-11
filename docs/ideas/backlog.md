@@ -66,18 +66,17 @@
   timestamps. Worth having because pickup latency is the fleet's real
   routing SLO and today it is invisible. Source:
   `.sessions/2026-07-11-order-011-self-review.md` 💡.
-- **Pin the control-gate behaviors as suite tests** · `captured` — the
-  quality.yml control gates (status-only on the fast lane, inbox
-  append-only on both lanes) were validated BY HAND at port time (four
-  lane behaviors: clean 0 / broken heartbeat 1 / inbox rewrite 1 /
-  pure append 0); a tests/test_control_gates.py driving the real
-  `bootstrap.py check --status-only [--inbox-base]` CLI against fixture
-  heartbeats/inboxes — the same pattern test_born_red_session_gate.py
-  uses for the card gate — pins them forever. Worth having because
-  today the validation evidence lives in a PR body, and an engine
-  regression would only surface on a live control PR (possibly a
-  manager's inbox append). Source:
-  `.sessions/2026-07-11-fastlane-control-gates.md` 💡.
+- **Inbox relay-order provenance check** · `captured` — the inbox
+  grammar gate now enforces SHAPE (append-only + well-formed ORDER
+  blocks) but not SOURCE: any green-lane PR author can append a
+  well-formed ORDER and it reads as manager-issued (ORDER blocks carry
+  a provenance: field, but nothing validates it against the relay/PR
+  author). A cheap next rung: the gate warns (advisory, not red) when
+  an appended ORDER's provenance: line names no session/coordinator id
+  — keeps the order-of-record honest without blocking legitimate
+  relays. Worth having because the gates just made the inbox TRUSTED
+  input, and trusted input attracts spoofing. Source:
+  `.sessions/2026-07-11-control-gate-tests.md` 💡.
 - **Nav membership scan should glob `app/*.py`, not a hand list** ·
   `captured` — `tests/test_nav_manifest.py` scans a hand-kept
   `ROUTE_SOURCES = [app/main.py, app/owner.py]` for `active` keys: the
@@ -98,6 +97,14 @@
   guard cannot see. Source:
   `.sessions/2026-07-11-test-time-discipline-guard.md` 💡.
 ## Built
+
+- **Control-gate suite tests** — shipped 2026-07-11 (continuous-mode
+  slice 26): tests/test_control_gates.py drives the real
+  `check --strict --status-only [--inbox-base]` CLI against a synthetic
+  fixture install, pinning FIVE lanes (clean 0 / broken heartbeat 1 /
+  inbox rewrite 1 / pure append 0 / malformed append 1 — the grammar
+  lane was found while prototyping). Source:
+  `.sessions/2026-07-11-fastlane-control-gates.md` 💡.
 
 - **Fast-lane control gates in quality.yml** — shipped 2026-07-11
   (continuous-mode slice 25): the control fast lane no longer
