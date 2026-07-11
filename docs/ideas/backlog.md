@@ -15,6 +15,12 @@
   same silent-rename risk and the pattern file now exists to copy — one
   parametrized test file covers all four at near-zero marginal cost. Source:
   `.sessions/2026-07-10-fleet-json-contract.md` 💡.
+- **Nav overflow guard** · `captured` — the header nav now carries ten
+  links and each fleet-info slice added one; on a phone the wrap costs
+  multiple rows and usability decays one link at a time with nobody's slice
+  feeling responsible. A grouped/overflow ("more ▾") treatment or a CSS
+  audit at current width keeps the owner's phone glance usable. Source:
+  `.sessions/2026-07-10-activity-repo-filter.md` 💡.
 - **Re-check closed-unmerged PR #9 branch `claude/rework-dashboard` for lost
   hardening work** · `captured` — #9 was closed superseded in the
   parallel-checkout churn (`docs/retro/self-review-2026-07-09.md` A4) but the
