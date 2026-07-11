@@ -15,6 +15,12 @@
   how much of each repo's idea flow actually ships (the conveyor-health
   metric); one section-header scan over already-fetched files. Source:
   `.sessions/2026-07-11-json-contracts-pr9-retire.md` 💡.
+- **Cron-slot helper (`next-slot`)** · `captured` — parse a workflow's cron
+  expression and print its next wall-clock fire slots so heartbeats stop
+  hand-computing them; this wake found five heartbeats carrying the same
+  wrong "~02:17Z" slot (`17 */6` anchors to hours 0/6/12/18) and a nudge
+  timed against the wrong number. Source:
+  `.sessions/2026-07-11-open-work-rung-cronfinding.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
