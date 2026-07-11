@@ -34,6 +34,13 @@
   manifest→roster move broke this site once already, caught by the cron).
   Routing half: flagged to the manager in the heartbeat. Source:
   `.sessions/2026-07-11-lane-source-registry.md` 💡.
+- **Board-row fleet chip (heartbeat freshness on the habit path)** ·
+  `captured` — chip each board row with its lane's heartbeat age/stale badge
+  from fleet.overview()'s cached lanes, so the owner's first glance carries
+  the signal /fleet exists for; the chips pattern (route-level gather, no
+  readiness.py change, no JSON change) is proven cheap by the ideas chips.
+  Distinct from the retired unseen-orders badge. Source:
+  `.sessions/2026-07-11-board-conveyor-chips.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
