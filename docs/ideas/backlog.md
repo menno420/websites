@@ -68,6 +68,15 @@
   zero-packages cost makes the badge exact forever (routing half: flagged to
   the manager in the heartbeat notes). Source:
   `.sessions/2026-07-10-order-009-projects.md` 💡.
+- **Hand-kept-list audit sweep** · `captured` — the nav guard's own
+  hand-kept list is the SECOND self-referential drift this chain found
+  (the first: the overflow guard's markup/tuple duplication #122); a
+  one-off rung-5 sweep grepping tests/ and scripts/ for hard-coded
+  module/file lists that shadow a globbable truth (e.g. any
+  `= [REPO_ROOT /` or literal path-list patterns) would either clear
+  the class or find the third instance. Worth having because this
+  failure shape keeps recurring in guards specifically — the places
+  drift hurts most. Source: `.sessions/2026-07-11-nav-scan-glob.md` 💡.
 - **Inbox relay-order provenance check** · `captured` — the inbox
   grammar gate now enforces SHAPE (append-only + well-formed ORDER
   blocks) but not SOURCE: any green-lane PR author can append a
@@ -100,15 +109,6 @@
   SLO's history vanishes exactly when an order completes — the moment
   it becomes most meaningful. Source:
   `.sessions/2026-07-11-pickup-latency-rollup.md` 💡.
-- **Nav membership scan should glob `app/*.py`, not a hand list** ·
-  `captured` — `tests/test_nav_manifest.py` scans a hand-kept
-  `ROUTE_SOURCES = [app/main.py, app/owner.py]` for `active` keys: the
-  guard against hand-kept nav lists itself contains a hand-kept module
-  list, so splitting routes into a new module silently exits the scan.
-  Glob `app/*.py` (cheap, source-text scan) or enumerate `app.routes`.
-  Worth having because self-maintaining guards should not have the
-  exact failure mode they guard against. Source:
-  `.sessions/2026-07-11-nav-manifest.md` 💡.
 - **Control-gate suite tests** — shipped 2026-07-11 (continuous-mode
   slice 26): tests/test_control_gates.py drives the real
   `check --strict --status-only [--inbox-base]` CLI against a synthetic
