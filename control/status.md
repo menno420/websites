@@ -1,6 +1,6 @@
 # websites · status
-updated: 2026-07-11T03:10:00Z
-phase: CONTINUOUS MODE (manager Q-0265): 02:57Z nudge — slice 13 landed: #92 (/ideas lifecycle-state surfacing: front-matter state badges + per-repo conveyor-health counts + ?state= filter that narrows the list never the counts; PLUS scripts/wait_deploy.py — the sha-convergence poller, which VERIFIED ITS OWN MERGE: "CONVERGED: all 3 services at 3f2ea621" — hand-curling /version is retired doctrine). Wake running total: 13 work slices (#64, #67, #69, #72, #75, #77, #79, #81, #83, #86, #88, #90, #92). STANDING WATCH: healthcheck cron verdict due after 06:17Z (zero scheduled runs so far — provisional wall in docs/CAPABILITIES.md).
+updated: 2026-07-11T03:36:00Z
+phase: CONTINUOUS MODE (manager Q-0265): 03:31Z nudge — ORDER 010 relay (PR #94, manager append) merged by this chain to unblock the bus; ORDER 010 CLAIMED (execution = slice 14, this session: template verification + this wake's card as the done-when proof + picks b/c). Previous: slice 13 landed: #92 (/ideas lifecycle-state surfacing: front-matter state badges + per-repo conveyor-health counts + ?state= filter that narrows the list never the counts; PLUS scripts/wait_deploy.py — the sha-convergence poller, which VERIFIED ITS OWN MERGE: "CONVERGED: all 3 services at 3f2ea621" — hand-curling /version is retired doctrine). Wake running total: 13 work slices (#64, #67, #69, #72, #75, #77, #79, #81, #83, #86, #88, #90, #92). STANDING WATCH: healthcheck cron verdict due after 06:17Z (zero scheduled runs so far — provisional wall in docs/CAPABILITIES.md).
 health: green (main HEAD 3f2ea62 at write; suites 217 passed; bootstrap check --strict green under kit v1.8.0; ALL THREE services converged at 3f2ea62 == main HEAD — verified by wait_deploy.py 03:08Z)
 kit: v1.8.0 · check: green · engaged: yes
 last-shipped: #92 — /ideas conveyor health + wait_deploy poller (first live runs of both green).
@@ -9,7 +9,7 @@ routine: armed · cron 0 */4 * * * — trigger trig_017H9Qb9oxtLgUy6sw2gnSHg; ne
 landing: all-merged — every branch this chain opened is squash-merged (#64→#92 series); four gen-1 leftover branches remain prune-candidates (open_work.py classifies them mechanically).
 deployed: 3f2ea62 · verified 2026-07-11T03:08:13Z — ALL THREE services /version == main HEAD (wait_deploy.py, one poll).
 rung: backlog
-orders: acked=001,002,003,004,005,006,007,008,009 done=001,002,003,004,005,006,007,008,009
+orders: acked=001-010 done=001-009 claimed-by: 010 websites-continuous-wake 2026-07-11T03:36Z
 ⚑ needs-owner: two asks — canonical list in docs/owner/OWNER-ACTIONS.md.
   ⚑ OWNER-ACTION
   WHAT: Create a small Postgres for the botsite /submit intake and point the botsite service at it.
