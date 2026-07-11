@@ -55,7 +55,8 @@
   caught by run 2 of the new healthcheck cron (a real regression catch,
   not flakiness) and repointed to the fleet-manager `gen_roster.py` LANES
   registry, live-verified at 18 lanes. Citations: cron PR #69 (`fc8354e`),
-  repoint PR #102 (`ce2ec38`), decision D-0035 (ledger).
+  repoint PR #102 (`ce2ec38`), registry decision stamped in `docs/site.md`
+  § Routes + the decision ledger.
 - **Routine-fired (4-hourly) sessions are unreliable landers** — the
   04:03Z fire did work but stranded its heartbeat (no PR tooling in that
   session; rescued verbatim by this chain as PR #98, `b09d0b1`); the
