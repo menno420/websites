@@ -10,6 +10,7 @@ healthcheck.
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -80,12 +81,29 @@ async def version():
 
 @app.get("/", response_class=HTMLResponse)
 async def board(request: Request):
-    rows = await readiness.board(refresh=_refresh(request))
+    refresh = _refresh(request)
+    # Conveyor-health chips (idea-lifecycle counts per repo) render on the
+    # board rows — the owner's habit path — reusing the exact TTL-cached
+    # fetches /ideas rides (zero extra fetch on a warm cache). A repo whose
+    # ideas listing is missing or errored simply shows no chip here: the
+    # board stays a readiness surface; /ideas is the honest home for idea
+    # errors/absences.
+    rows, idea_rows = await asyncio.gather(
+        readiness.board(refresh=refresh),
+        ideas.overview(refresh=refresh),
+    )
+    idea_chips = {
+        r["repo"]: {"counts": r["state_counts"], "shown": r["shown"],
+                    "total": r["total"]}
+        for r in idea_rows
+        if r.get("state_counts") and not r.get("listing_error")
+    }
     return templates.TemplateResponse(
         request,
         "board.html",
         {
             "rows": rows,
+            "idea_chips": idea_chips,
             "ttl": config.CACHE_TTL_SECONDS,
             "active": "board",
             "autorefresh_seconds": config.AUTOREFRESH_SECONDS,
