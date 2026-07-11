@@ -73,6 +73,48 @@ retry send_message shortly". That coordinator-side wall still stands; ORDER
 008's finding is that a **worker session on this surface** does carry a
 scheduler primitive (`docs/CAPABILITIES.md` append log, 2026-07-10).
 
+### ⚑ Asks consolidated at project-chat archive (2026-07-11 — see `docs/retro/archive-ready-2026-07-11.md`)
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Squash-merge PR #141 (the review-site expansion) — the one open PR agents cannot merge for you.
+WHERE: github.com/menno420/websites/pull/141.
+HOW: click only — if GitHub says the branch is out of date, click "Update branch", wait for the `quality` check to go green (an agent drift-watchdog also keeps re-greening it), then "Squash and merge".
+WHY-IT-MATTERS: the review site's whole expansion — fleet coverage, the daily stats bake, continuous review editions + Atom feed, the questionnaire, interaction hooks — is finished and green but invisible until this click.
+UNBLOCKS: the full review-site content on main; the review-bake workflow; the ask below.
+VERIFIED-NEEDED: agent merge attempts on this PR are platform-denied because its diff adds a workflow file (`.github/workflows/review-bake.yml`) — recorded on the 2026-07-11 heartbeat; you ruled in chat that you personally merge workflow-file PRs (durable record: `docs/retro/archive-ready-2026-07-11.md` §2c).
+```
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Run the review-bake workflow once, manually, right after merging PR #141.
+WHERE: github.com/menno420/websites → Actions → "review-bake" → "Run workflow" (branch: main).
+HOW: click only.
+WHY-IT-MATTERS: `review/data/stats.json` is deliberately absent until the first successful CI bake — one manual run seeds the live fleet stats immediately instead of waiting for the daily cron, and proves the Action end-to-end while attention is on it.
+UNBLOCKS: real fleet/stats data on the review site's pages from day one.
+VERIFIED-NEEDED: not an agent wall (agents can trigger workflow_dispatch — `docs/CAPABILITIES.md`) but a sequencing ask: the workflow only exists on main after YOUR merge above, and with the project chat archived no agent session is guaranteed to be running at that moment. Any future session may do this instead — then strike this ask.
+```
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Create the botsite submissions PostgreSQL database and give the botsite service its connection string.
+WHERE: railway.app → project superbot-websites → New → Database → PostgreSQL; then service botsite → Variables.
+HOW: add variable DATABASE_URL = the connection string Railway shows for the new Postgres. One paste.
+WHY-IT-MATTERS: the public /submit intake (feature/bug submissions with a moderated queue) stays a labeled stub until the database exists.
+UNBLOCKS: the submissions pipeline (rework Q5 — Open row 2 above); the moderation → GitHub-issue mirror is the follow-up build once data can persist.
+VERIFIED-NEEDED: Railway mutations are policy-walled for agents (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger — deliberately not attempted; same wall as the review-service ask). Click steps first recorded in `docs/retro/self-review-2026-07-11.md` §2.
+```
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Mint a durable fine-grained GitHub token and set it on the control-plane service as GITHUB_TOKEN.
+WHERE: github.com → Settings → Developer settings → Fine-grained tokens; then railway.app → superbot-websites → control-plane → Variables.
+HOW: scope the token to your repos with Contents + Actions read (Actions write only if you want the CI re-run button); paste it as GITHUB_TOKEN. Exact steps: `docs/deployment.md` § owner TODO.
+WHY-IT-MATTERS: every fleet page (/fleet /orders /queue /projects /reviews) runs on the anonymous 60-requests/hour GitHub ceiling today.
+UNBLOCKS: reliable live fleet surfaces on the control-plane; per the PAT side-note above, the SAME token errand (added as a repo Actions secret) also unlocks live + private-repo stats for the review site's daily bake.
+VERIFIED-NEEDED: wall recorded in `docs/CAPABILITIES.md` (2026-07-09: `GITHUB_TOKEN` unset/limited on the live service; anonymous rate-limit 403 captured) — the token is owner-held; no agent path exists.
+```
+
 ## 🟢 Decided / resolved
 
 | # | Item | Decision | Provenance |

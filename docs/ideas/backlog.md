@@ -399,6 +399,17 @@
 - **`/activity.xml` Atom feed** — shipped; see the decision ledger +
   `docs/site.md`. File:
   [activity-atom-feed-2026-07-09.md](activity-atom-feed-2026-07-09.md).
+- **Merge holds announced in a file at HEAD** · `captured` — repo-wide
+  merge holds coordinated by session messages failed twice on 2026-07-11
+  (#143/#146 merged mid-hold by wakes that never saw the hold); announce
+  holds as a `control/claims/HOLD-<scope>.md` file at origin/main HEAD so
+  every session's mandatory pull sees them mechanically, and lift = delete
+  the file. Routing half: flag to the kit/manager layer for one fleet-wide
+  shape. Worth having because a file at HEAD reaches every future session
+  by construction — session messages only reach sessions alive at send
+  time. Deduped: nothing in this backlog covers hold coordination. File:
+  [merge-hold-at-head-2026-07-11.md](merge-hold-at-head-2026-07-11.md).
+  Source: `docs/retro/archive-ready-2026-07-11.md` §3 💡.
 
 ## Retired
 
