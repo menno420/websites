@@ -63,6 +63,18 @@
   Worth having because the guard's value is only as durable as its
   membership list — today drift is silent. Source:
   `.sessions/2026-07-11-nav-overflow-guard.md` 💡.
+- **Time-discipline guard for tests** · `captured` — a fleet-enrichment
+  sort test time-bombed at 2026-07-11T08:45Z (green for days, then failed
+  on wall-clock time alone: fixed fixture `updated:` stamps crossed
+  `FLEET_STALE_HOURS` inside `fleet.overview()`, which measured against
+  real now; defused in the truth-sweep PR by giving `overview()` the
+  module's standard injectable `now=`). The guard: a small suite-level
+  check that flags tests calling age-measuring entry points (`overview`,
+  `lane_status`, `freshness`, `heartbeat_freshness`, `classify_order`)
+  without a frozen `now=`. Worth having because the next fixed-stamp
+  fixture reproduces the bomb silently, and this class of failure
+  detonates in routine-fired sessions with nobody watching. Source:
+  `.sessions/2026-07-11-current-state-truth-sweep.md` 💡.
 ## Built
 
 - **Nav overflow guard** — shipped 2026-07-11 (continuous-mode slice 19, the
