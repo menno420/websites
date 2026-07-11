@@ -14,6 +14,13 @@
   3c/1b") reusing repo_ideas' cached lifecycle counts puts conveyor health
   where the owner already looks (zero new fetch on a warm cache). Source:
   `.sessions/2026-07-11-ideas-states-waitdeploy.md` 💡.
+- **`tooling:` capability token in the fired session's heartbeat** ·
+  `captured` — the routine-fired protocol's mandated probe should stamp its
+  result (`tooling: pr-capable | ritual-only`) in the heartbeat so /fleet
+  and sibling sessions see which fires can land work, and a systemic
+  tooling regression shows as a trend (the 04:03Z ritual-only fire was only
+  discovered via its stranded branch). Source:
+  `.sessions/2026-07-11-relay-doctrine-backlog-factcheck.md` 💡.
 - **Nav overflow guard** · `captured` — the header nav now carries ten
   links and each fleet-info slice added one; on a phone the wrap costs
   multiple rows and usability decays one link at a time with nobody's slice
