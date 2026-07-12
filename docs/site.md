@@ -357,6 +357,17 @@ action, while the main site stays browsable:
   on this authed path via `readiness.board(reveal_secrets=True)`), plus a
   broken-check list and oldest-PR links.
 - **`GET /owner/api/readiness.json`** is the authed JSON with names included.
+- **`GET /owner/environments`** — live-env-visibility page (ORDER 015 slice 1,
+  `docs/planning/live-env-visibility-plan-2026-07-11.md`): per-service
+  committed env facts (documented variable NAMES + purpose + a prefix-matched
+  "manage →" console deep link; the control-plane also reports set/unset for
+  its OWN runtime — presence only, never a value), plus a live section that
+  reads variable **names, never values** (plan option A) from the Railway
+  GraphQL API via a **project-scoped `RAILWAY_TOKEN`**. Token unset (the
+  state until the owner mints it) → an explicit **owner-errand-pending**
+  banner; read failure → honest `unavailable` with the reason. Read-only GET
+  behind the same gate — no CSRF surface (the ORDER 013 hardening applies to
+  the POST actions only).
 - **Privileged actions** (POST, same gate, all reversible, using creds already
   on the service):
   - **force cache refresh** — clears the in-memory TTL cache; the next load
@@ -368,7 +379,12 @@ action, while the main site stays browsable:
 
 **Deliberately NOT wired** (separate owner approval): any Railway
 account-token action and any **live production-bot** control API. No
-`RAILWAY_API_KEY` is present in the service env.
+`RAILWAY_API_KEY` is present in the service env. The one Railway read the
+repo now carries — `/owner/environments`' variable-NAME query via a
+**project-scoped** `RAILWAY_TOKEN` (owner-decided 2026-07-11, see the plan
+doc) — is read-only, gated, scoped to `superbot-websites` by the token
+itself, and never uses the account key or the ambient production IDs
+(`docs/RAILWAY-SAFETY.md`).
 
 ## Env vars
 
@@ -381,6 +397,7 @@ account-token action and any **live production-bot** control API. No
 | `AUTOREFRESH_SECONDS` | no | client poll interval for the board `/` + `/fleet` live-monitoring auto-refresh, default `45` ([D-0023]) |
 | `GITHUB_API_BASE` | no | REST base override (testing behind restricted egress) |
 | `GITHUB_RAW_BASE` | no | raw-content base override |
+| `RAILWAY_TOKEN` | for `/owner/environments` live half | **Project-scoped** Railway token (superbot-websites only — never the account `RAILWAY_API_KEY`, never the ambient production IDs) powering the gated live variable-NAME read. Unset → the page renders committed facts with an honest owner-errand banner. |
 
 ## Mobile / responsive ([D-0014])
 

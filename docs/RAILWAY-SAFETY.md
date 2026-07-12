@@ -23,10 +23,19 @@
 ## Why this repo is safe by construction
 
 The websites services (`control-plane` / `botsite` / `dashboard`) make **no
-Railway API calls at all**. They read GitHub over HTTPS and render HTML — no
-Railway SDK, no `RAILWAY_API_KEY` in any app env, no deploy hook wired. So the
-*only* way one of those three ambient IDs could reach a Railway mutation is if
-someone wired new code that reads it. The guard below makes that a hard failure.
+Railway mutations and no account-token calls at all**. They read GitHub over
+HTTPS and render HTML — no Railway SDK, no `RAILWAY_API_KEY` in any app env,
+no deploy hook wired. So the *only* way one of those three ambient IDs could
+reach a Railway mutation is if someone wired new code that reads it. The guard
+below makes that a hard failure.
+
+**The one deliberate exception (owner-decided 2026-07-11,
+`docs/planning/live-env-visibility-plan-2026-07-11.md`):** `app/railway.py`
+issues **read-only GraphQL queries** for variable **names** (never values)
+behind the gated `/owner/environments` page, authenticated by a
+**project-scoped `RAILWAY_TOKEN`** whose blast radius is `superbot-websites`
+only. It never reads the ambient IDs (the guard still enforces that), never
+uses `RAILWAY_API_KEY`, and contains no mutation strings.
 
 ## The enforcing guard
 

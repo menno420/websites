@@ -22,10 +22,14 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from . import config, github, readiness
+from . import config, github, railway, readiness
 
 router = APIRouter(prefix="/owner")
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+# The environments page deep-links each live variable name to its console
+# (prefix-matched in app/railway.py) — exposed as a filter so the template
+# needs no hand-kept link table.
+templates.env.filters["manage_link"] = railway.manage_link
 
 _UNAUTH_HEADERS = {"WWW-Authenticate": 'Basic realm="owner area"'}
 
@@ -84,6 +88,22 @@ async def owner_board_json(request: Request, _: None = Depends(require_owner)):
     # secret names (under each row's secrets.names).
     return JSONResponse(
         await readiness.board(refresh=_refresh(request), reveal_secrets=True)
+    )
+
+
+@router.get("/environments", response_class=HTMLResponse)
+async def owner_environments(request: Request, _: None = Depends(require_owner)):
+    """Live-env-visibility page (ORDER 015, plan slice 1 —
+    docs/planning/live-env-visibility-plan-2026-07-11.md). Read-only GET
+    behind the same gate as the rest of /owner: committed per-service env
+    facts always; live Railway variable NAMES (never values) when the
+    project-scoped RAILWAY_TOKEN is configured; an honest owner-errand
+    banner while it is not."""
+    data = await railway.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request,
+        "owner_environments.html",
+        {"env": data, "ttl": config.CACHE_TTL_SECONDS},
     )
 
 

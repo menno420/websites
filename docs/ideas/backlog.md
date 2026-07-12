@@ -9,6 +9,19 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **/owner/environments drift check: documented vs live variable names** ·
+  `captured` — once the owner's project-scoped `RAILWAY_TOKEN` lands, the
+  page holds both halves of a diff it does not yet compute: the COMMITTED
+  documented env-var names per service (`app/railway.py` SERVICES) and the
+  LIVE names Railway reports. One comparison column (documented-but-unset /
+  set-but-undocumented badges per service) turns the page from two lists
+  into an actionable drift detector, exactly like the readiness board's
+  deploy-drift cell. Worth having because undocumented live variables are
+  invisible config debt and documented-but-missing ones are outage
+  foot-guns — today both hide in plain sight. Deduped against this backlog
+  + the queue-state NEXT list: nothing touches env-var drift. Source:
+  `.sessions/2026-07-12-order-015-owner-environments.md` 💡.
+
 - **Seat role-coverage chips on the /projects dispatch index** · `captured`
   — the dispatch screen (PR #158) renders whatever role files a package
   has, but the INDEX doesn't say which seats are dispatch-READY: a seat
