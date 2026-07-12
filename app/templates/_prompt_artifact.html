@@ -3,9 +3,12 @@
    artifacts through this macro; do not fork per-page variants. `a` is the
    canonical artifact dict from app/prompt_artifacts.py; `ttl` the cache TTL
    in seconds. The body is UNTRUSTED DATA: autoescaped <pre>, never |safe,
-   whitespace preserved exactly (paste artifacts must not be mutated). The
-   copy button comes from /static/copycode.js — include it in the page's
-   scripts block. #}
+   whitespace preserved exactly. `a.text` is the CLEAN PASTE BODY
+   (extract_paste_body strips the registry's generation metadata upstream of
+   this macro) — the copy button copies exactly what the <pre> shows; the
+   GitHub link keeps the full file with metadata reachable. The copy button
+   comes from /static/copycode.js — include it in the page's scripts
+   block. #}
 {% macro prompt_block(a, ttl) %}
   {% if a.ok %}
   <p class="small">
@@ -14,7 +17,9 @@
   </p>
   <p class="dim small">fetched {{ a.fetched_at }}
     {%- if a.cached %} · served from cache (TTL {{ ttl }}s — age ≤ TTL){% else %} · live fetch{% endif %}
-    · {{ a.chars }} chars</p>
+    · {{ a.chars }} chars
+    · generation metadata hidden — copy gives the paste-ready body
+    (<a href="{{ a.github_url }}">full file on GitHub ↗</a>)</p>
   <pre>{{ a.text }}</pre>
   {% else %}
   <div class="banner">⚠ could not fetch <code>{{ a.path }}</code> — {{ a.error }} ·
