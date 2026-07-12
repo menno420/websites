@@ -2,7 +2,7 @@
 
 Executes slice 1 of the owner-directed plan
 ``docs/planning/live-env-visibility-plan-2026-07-11.md`` (ORDER 015): show
-what is configured where across the three Railway services, live where
+what is configured where across the four Railway services, live where
 possible, honest where not.
 
 Two data halves, deliberately separated:
@@ -61,6 +61,7 @@ MANAGE_LINKS: list[tuple[str, str, str]] = [
     ("STRIPE_", "Stripe dashboard", "https://dashboard.stripe.com/apikeys"),
     ("GITHUB_", "GitHub token settings", "https://github.com/settings/tokens"),
     ("GH_", "GitHub token settings", "https://github.com/settings/tokens"),
+    ("ANTHROPIC_", "Anthropic console", "https://console.anthropic.com/settings/keys"),
     ("RAILWAY_", "Railway project", PROJECT_URL),
 ]
 _DEFAULT_MANAGE = (f"Railway variables — {PROJECT_NAME}", PROJECT_URL)
@@ -130,6 +131,23 @@ SERVICES: list[dict[str, Any]] = [
             _var("DATA_CACHE_TTL_SECONDS", "data cache TTL (default 180)"),
             _var("SUPERBOT_REPO", "upstream repo for committed JSON (default menno420/superbot)"),
             _var("SUPERBOT_REF", "upstream ref (default main)"),
+            _var("PORT", "bind port (Railway injects it)"),
+        ],
+    },
+    {
+        # Was omitted while the review service had no Railway deployment;
+        # the owner created + verified it live 2026-07-12
+        # (docs/owner/OWNER-ACTIONS.md row J) — ORDER 021 adds the row.
+        "name": "review",
+        "package": "review/",
+        "dockerfile": "review/Dockerfile",
+        "requirements": "review/requirements.txt",
+        "url": "https://review-production-f027.up.railway.app",
+        "self": False,
+        "env_vars": [
+            _var("ANTHROPIC_API_KEY", "Claude API key for the /ask live assistant (set on the service 2026-07-12, ORDER 022)"),
+            _var("REVIEW_AI_MODEL", "assistant model override (default pinned in review/ai.py)"),
+            _var("REVIEW_AI_LOG_SALT", "salt for the assistant's hashed rate-limit keys (random per boot when unset)"),
             _var("PORT", "bind port (Railway injects it)"),
         ],
     },
