@@ -1,7 +1,7 @@
 # 2026-07-12 — ORDER 017 B: on-site AI review assistant (/ask)
 
-> **Status:** `in-progress` — branch `claude/order-017-ai-assistant`; flips to `complete`
-> + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/order-017-ai-assistant`; landed as the
+> ORDER 017 workstream-B PR (number assigned at open; see the PR for this branch).
 
 - **📊 Model:** claude-fable-5 · high · feature-build (order-directed)
 
