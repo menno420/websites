@@ -163,3 +163,14 @@ provenance: owner live in the coordinator session 2026-07-12 (landed into the in
 do: find all website related plans across the multiple repos and execute all the important ones
 why: owner live directive 2026-07-12 — website-related plans are scattered across the fleet's repos (planning docs, ideas backlogs, inbox orders, review findings) and nothing sweeps them into execution.
 done-when: a committed discovery inventory lists the website-related plans found across the repos, each important one is executed or explicitly ledgered with a reason (owner-gated / superseded / deferred), and status.md reports done=016.
+
+## ORDER 019 · 2026-07-12T15:42Z · status: new
+priority: P1
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (~15:40Z), with a screen-recording attachment showing the owner-action queue as one long unfilterable list
+why: the owner-action queue is one long list with no way to sort or filter; the owner needs multi-dimensional filtering, and this should be a centralized/reusable feature applied consistently across the site's list views, not a one-off.
+done-when: a reusable filter/sort feature lands and is applied to the owner queue (filters at least by project, by task, and by action kind/type) plus a site-wide audit that rolls the same feature out to the other list surfaces; verified live.
+do: OWNER-QUEUE FILTERS + CENTRALIZED LIST FILTER/SORT — the owner's order VERBATIM between the markers:
+BEGIN ORDER TEXT
+the owner queue is currrenty onle long list with no way to sort or filter things, I'd like multiple filters, per project, per task, what kind of action it is etc, and the rest of the website should be reviewed aswell to make sure this is implemented as a centralized feature
+END ORDER TEXT
