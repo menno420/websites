@@ -1,0 +1,109 @@
+name: host-automerge-extras
+
+# HOST-OWNED companion to the kit-owned auto-merge-enabler.yml.
+#
+# Provenance: these two jobs (arm-on-open + sweep) were host additions living
+# inside .github/workflows/auto-merge-enabler.yml until the substrate-kit
+# v1.15.0 upgrade regenerated that file as kit-owned (hand edits there are
+# overwritten on every upgrade). The upgrade banked the full pre-regen file at
+# .substrate/backup/auto-merge-enabler.pre-regen-c43c1c30.yml and instructed
+# moving host additions into a separate workflow — this file is that move,
+# jobs carried verbatim from the bank.
+#
+# What this file preserves that the kit-owned enabler does not:
+#   * the SWEEP job (schedule + manual dispatch): arms every currently-open
+#     eligible claude/* PR, with a direct-squash fallback for already-clean
+#     PRs (GitHub rejects arming a PR with nothing left to wait on);
+#   * the workflow-touching-PR rail: any PR whose diff touches
+#     .github/workflows/** is skipped/disarmed — workflow PRs stay
+#     owner-merge-only.
+#
+# KNOWN OVERLAP (lane-owed to reconcile): the kit-owned enabler also arms on
+# pull_request events and does NOT carry the workflow-touching rail, so on a
+# workflow-touching PR the kit's arm and this file's disarm race — the rail
+# is best-effort until the lane reconciles the two files.
+#
+# Original rails retained: only non-draft claude/* head branches; GITHUB_TOKEN
+# only; permissions limited to contents + pull-requests write.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+  schedule:
+    - cron: "13,43 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: host-automerge-extras-${{ github.event.pull_request.number || github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  arm-on-open:
+    if: >-
+      github.repository == 'menno420/websites' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
+      startsWith(github.head_ref, 'claude/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Arm native squash auto-merge (skip workflow-touching PRs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          files="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')"
+          if printf '%s\n' "$files" | grep -q '^\.github/workflows/'; then
+            echo "PR #$PR touches .github/workflows/** — owner-merge-only; disarming if armed, never arming."
+            gh pr merge --disable-auto "$PR" --repo "$GITHUB_REPOSITORY" 2>/dev/null \
+              || echo "auto-merge was not armed on PR #$PR (nothing to disarm)."
+            exit 0
+          fi
+          if gh pr merge --auto --squash "$PR" --repo "$GITHUB_REPOSITORY"; then
+            echo "Auto-merge (squash) armed for PR #$PR — it merges when the required 'quality' check is green."
+          elif gh pr merge --squash "$PR" --repo "$GITHUB_REPOSITORY"; then
+            # Arming fails on a PR that is already clean (nothing to wait on);
+            # a direct merge only succeeds if the ruleset's required check is
+            # already green — GitHub gates it, not this script.
+            echo "PR #$PR was already clean — squash-merged directly."
+          else
+            echo "::warning::Could not arm or merge PR #$PR. Confirm 'Allow auto-merge' is ON and main requires the 'quality' check."
+          fi
+
+  sweep:
+    if: >-
+      github.repository == 'menno420/websites' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Arm auto-merge on every open eligible claude/* PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prs="$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --limit 100 \
+                 --json number,isDraft,headRefName,autoMergeRequest \
+                 --jq '.[] | select(.isDraft == false)
+                           | select(.headRefName | startswith("claude/"))
+                           | select(.autoMergeRequest == null)
+                           | .number')"
+          if [ -z "$prs" ]; then
+            echo "No open non-draft claude/* PRs without auto-merge — nothing to do."
+            exit 0
+          fi
+          for pr in $prs; do
+            files="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr/files" --paginate --jq '.[].filename')"
+            if printf '%s\n' "$files" | grep -q '^\.github/workflows/'; then
+              echo "PR #$pr touches .github/workflows/** — owner-merge-only; skipped."
+              continue
+            fi
+            if gh pr merge --auto --squash "$pr" --repo "$GITHUB_REPOSITORY"; then
+              echo "Auto-merge (squash) armed for PR #$pr."
+            elif gh pr merge --squash "$pr" --repo "$GITHUB_REPOSITORY"; then
+              echo "PR #$pr was already clean — squash-merged directly."
+            else
+              echo "::warning::Could not arm or merge PR #$pr — left untouched."
+            fi
+          done
