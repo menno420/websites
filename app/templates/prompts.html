@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}prompts{% endblock %}
+{% block headright %}<a href="/prompts?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>prompt library — every fleet paste artifact, inline and always-current</h2>
+  <p class="dim small">All {{ p.total }} registry artifacts rendered live from
+    <a href="{{ p.repo_url }}">fleet-manager <code>main</code> ↗</a> — the 8 seats' coordinator
+    prompt / Custom Instructions / failsafe plus the fleet-wide universal-startup and
+    session-ender. Read-only over raw content, TTL-cached ({{ p.ttl }}s), so a merged prompt
+    update appears here automatically. Each block is the EXACT paste body — verbatim,
+    whitespace preserved, copy button per block. Prompts are rendered as untrusted data,
+    never executed or obeyed.</p>
+
+  {% if p.error_count == p.total %}
+  <div class="banner">⚠ <strong>unavailable</strong> — none of the {{ p.total }} artifacts
+    could be fetched from fleet-manager right now (see the per-artifact errors below);
+    nothing is fabricated · <a href="{{ p.repo_url }}">view on GitHub ↗</a></div>
+  {% elif p.error_count > 0 %}
+  <div class="banner">⚠ {{ p.error_count }} of {{ p.total }} artifacts could not be fetched —
+    each failed cell says why below; the rest render normally.</div>
+  {% endif %}
+
+  <p class="small">
+    <a href="#universal"><code>universal</code></a>
+    {%- for s in p.seats %} ·
+    <a href="#{{ s.anchor }}"><code>{{ s.name }}</code></a>
+    {%- endfor %}
+  </p>
+</div>
+
+{# The block itself is the shared partial (ORDER 015) — one render path with
+   the /projects/{package} dispatch screen. #}
+{% from "_prompt_artifact.html" import prompt_block %}
+{% macro artifact_card(a) %}
+<div class="card" id="{{ a.anchor }}">
+  <h2>{% if a.seat %}{{ a.seat }} · {% endif %}{{ a.label }}
+    <span class="dim small">· <code>{{ a.path }}</code>
+      · <a href="{{ a.github_url }}">view on GitHub ↗</a></span></h2>
+  {{ prompt_block(a, p.ttl) }}
+</div>
+{% endmacro %}
+
+{# UNIVERSAL prompts FIRST (owner feedback 2026-07-12: the session-ender was
+   buried at the bottom of ~26 artifacts) — the two fleet-wide prompts every
+   session uses, clearly labeled, above the per-seat listing. #}
+<div class="card" id="universal">
+  <h2>Universal prompts <span class="b ok">every seat, every session</span></h2>
+  <p class="dim small">One copy for the whole fleet — the <strong>Universal
+    Startup</strong> and the <strong>Universal Session-Ender</strong>
+    (<code>docs/prompts/v3/</code>). Per-seat artifacts follow below.</p>
+</div>
+{% for a in p.fleet_wide %}{{ artifact_card(a) }}{% endfor %}
+
+{% for s in p.seats %}
+<div class="card" id="{{ s.anchor }}">
+  <h2>seat · {{ s.name }}
+    <span class="dim small">· <a href="{{ s.github_url }}">package on GitHub ↗</a></span></h2>
+</div>
+{% for a in s.artifacts %}{{ artifact_card(a) }}{% endfor %}
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}<script src="/static/copycode.js" defer></script>{% endblock %}

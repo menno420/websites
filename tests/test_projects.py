@@ -171,8 +171,8 @@ def test_projects_route_empty_state_is_200_with_banner(monkeypatch):
     r = client.get("/projects")
     assert r.status_code == 200
     assert "registry not landed yet" in r.text
-    # nav carries the new link
-    assert 'href="/projects"' in r.text
+    # category nav carries the page's group (projects ∈ console)
+    assert 'href="/console"' in r.text
 
 
 def test_projects_route_happy_renders_cards_and_json(monkeypatch):
@@ -297,6 +297,119 @@ def test_projects_index_splits_seats_and_collapses_stubs(monkeypatch):
     assert 'href="/projects/old-lab"' in r.text
     # seats render before the stub section
     assert r.text.index("venture-lab") < r.text.index("Retired / merged stubs")
+
+
+# --------------------------------------------------------------------------- #
+# dispatch console: seat role-coverage chips (backlog bullet, 2026-07-12)
+# --------------------------------------------------------------------------- #
+
+
+def test_role_coverage_derived_from_listing():
+    """Coverage comes from the role-classified listing alone — one chip per
+    dispatch-critical role (instructions / coordinator / failsafe), in that
+    order, present-or-missing."""
+    files = [
+        {"role": "meta"}, {"role": "instructions"}, {"role": "failsafe"},
+        {"role": "other"},
+    ]
+    cov = projects.role_coverage(files)
+    assert [c["role"] for c in cov] == ["instructions", "coordinator",
+                                        "failsafe"]
+    assert [c["present"] for c in cov] == [True, False, True]
+    assert cov[0]["label"] == "Custom Instructions"
+    # empty listing -> every dispatch role honestly absent
+    assert all(not c["present"] for c in projects.role_coverage([]))
+
+
+def test_overview_coverage_and_dispatch_ready_flag(monkeypatch):
+    """_happy_api's package has instructions + failsafe but NO coordinator:
+    the chip row marks the gap and the seat is not dispatch-ready."""
+
+    async def run():
+        _happy_api(monkeypatch)
+        return await projects.overview()
+
+    out = asyncio.run(run())
+    pkg = out["packages"][0]
+    assert {c["role"]: c["present"] for c in pkg["coverage"]} == {
+        "instructions": True, "coordinator": False, "failsafe": True,
+    }
+    assert pkg["dispatch_ready"] is False
+
+
+def test_coverage_unknown_when_package_unlistable(monkeypatch):
+    """A package whose listing failed shows NO chips — coverage is honest
+    unknown ([] / None), never a fabricated ✗ row."""
+
+    async def fake_api(repo, subpath="", refresh=False):
+        if subpath.endswith("/contents/projects"):
+            return _res(data=_ROOT_LISTING)
+        return _res(ok=False, status=502, data=None, error="bad gateway")
+
+    async def run():
+        monkeypatch.setattr(github, "repo_api", fake_api)
+        return await projects.overview()
+
+    out = asyncio.run(run())
+    pkg = out["packages"][0]
+    assert pkg["error"] and pkg["coverage"] == []
+    assert pkg["dispatch_ready"] is None
+
+    monkeypatch.setattr(github, "repo_api", fake_api)
+    r = TestClient(app).get("/projects")
+    assert r.status_code == 200
+    assert "✗" not in r.text  # no chip row invented for the errored card
+
+
+def test_projects_index_renders_coverage_chips_incomplete_seat(monkeypatch):
+    _happy_api(monkeypatch)
+    r = TestClient(app).get("/projects")
+    assert r.status_code == 200
+    assert "instructions ✓" in r.text
+    assert "coordinator ✗" in r.text
+    assert "failsafe ✓" in r.text
+    assert "NOT dispatch-ready" in r.text
+    # index summary counts the launchable seats
+    assert "0 of 1" in r.text and "dispatch-ready" in r.text
+
+
+def test_projects_index_renders_coverage_chips_ready_seat(monkeypatch):
+    """A package carrying all three dispatch-critical roles reads
+    dispatch-ready — all chips ✓ (reuses the full detail listing)."""
+
+    async def fake_api(repo, subpath="", refresh=False):
+        if subpath.endswith("/contents/projects"):
+            return _res(data=[
+                {"type": "dir", "name": "websites",
+                 "path": "projects/websites"},
+            ])
+        if subpath.endswith("/contents/projects/websites"):
+            return _res(data=_DETAIL_LISTING)
+        return _res(ok=False, status=404, data=None, error="nf")
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        if path in _DETAIL_TEXTS:
+            return _res(data=_DETAIL_TEXTS[path])
+        return _res(ok=False, status=404, data=None, error="nf")
+
+    monkeypatch.setattr(github, "repo_api", fake_api)
+    monkeypatch.setattr(github, "fetch_file", fake_fetch)
+    r = TestClient(app).get("/projects")
+    assert r.status_code == 200
+    assert "instructions ✓" in r.text
+    assert "coordinator ✓" in r.text
+    assert "failsafe ✓" in r.text
+    assert "NOT dispatch-ready" not in r.text and "✗" not in r.text
+    assert "1 of 1" in r.text and "dispatch-ready" in r.text
+
+    # /projects.json carries the coverage structures (contract pinned in
+    # tests/test_json_contracts.py)
+    monkeypatch.setattr(github, "repo_api", fake_api)
+    monkeypatch.setattr(github, "fetch_file", fake_fetch)
+    d = TestClient(app).get("/projects.json").json()
+    pkg = d["packages"][0]
+    assert pkg["dispatch_ready"] is True
+    assert all(c["present"] for c in pkg["coverage"])
 
 
 # --------------------------------------------------------------------------- #

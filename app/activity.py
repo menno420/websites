@@ -136,6 +136,67 @@ async def timeline(
 
 
 # --------------------------------------------------------------------------- #
+# Date-bucket sections for the /activity HTML view (list-IA, 2026-07-12).
+# Presentation-only: computed by the route over timeline()'s already-sorted
+# item list, so /activity.json and the Atom feed keep their exact contracts.
+# --------------------------------------------------------------------------- #
+
+# Fixed section order + anchor slugs (jump targets in the summary header).
+DATE_GROUP_META = [
+    ("today", "today"),
+    ("yesterday", "yesterday"),
+    ("week", "past 7 days"),
+    ("older", "older"),
+    ("undated", "undated"),
+]
+
+
+def date_groups(
+    items: list[dict], now: datetime | None = None
+) -> list[dict[str, Any]]:
+    """Partition the (reverse-chronological) timeline into date sections:
+    today / yesterday / past 7 days / older / undated. Order-preserving,
+    empty sections omitted; an item with no parseable date lands in
+    ``undated`` honestly, never given an invented day. UTC day boundaries —
+    the same clock the timestamps themselves carry."""
+    now = now or clock.now()
+    today = now.date()
+    buckets: dict[str, list[dict]] = {key: [] for key, _label in DATE_GROUP_META}
+    for it in items:
+        raw = it.get("date") or ""
+        try:
+            day = datetime.strptime(raw, "%Y-%m-%d").date()
+        except ValueError:
+            buckets["undated"].append(it)
+            continue
+        delta = (today - day).days
+        if delta <= 0:
+            buckets["today"].append(it)
+        elif delta == 1:
+            buckets["yesterday"].append(it)
+        elif delta <= 7:
+            buckets["week"].append(it)
+        else:
+            buckets["older"].append(it)
+    return [
+        {"key": key, "anchor": f"when-{key}", "label": label,
+         "items": buckets[key]}
+        for key, label in DATE_GROUP_META
+        if buckets[key]
+    ]
+
+
+def state_counts(items: list[dict]) -> dict[str, int]:
+    """Display-state counts over the shown timeline items (merged/open/…),
+    insertion-ordered by first appearance — the summary header's chips."""
+    counts: dict[str, int] = {}
+    for it in items:
+        s = it.get("state") or "unknown"
+        counts[s] = counts.get(s, 0) + 1
+    return counts
+
+
+# --------------------------------------------------------------------------- #
 # Atom 1.0 serializer — a second serializer over the exact timeline() list, so a
 # reader/webhook can subscribe to fleet activity instead of polling /activity.
 # Rides the same TTL-cached data source (no second fetch path). All text/attrs

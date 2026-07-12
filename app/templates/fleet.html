@@ -45,14 +45,18 @@
 
 {% for l in f.lanes %}
 <div class="card">
-  <h2>{{ l.lane }}
-    <span class="b {{ l.health.badge }}">{{ l.health.label }}</span>
-    {% if l.freshness.stale %}<span class="b warn">stale</span>{% endif %}
-    <span class="dim small">·
-      <a href="{{ l.repo_url }}">{{ l.repo }}</a>
-      {% if l.model and l.model != 'unknown' %}· {{ l.model }}{% endif %}
-      · <a href="{{ l.github_url }}">status ↗</a></span>
-  </h2>
+  <div class="rowhead">
+    <h2>{{ l.lane }}
+      <span class="b {{ l.health.badge }}">{{ l.health.label }}</span>
+      {% if l.freshness.stale %}<span class="b warn">stale</span>{% endif %}
+      <span class="dim small">·
+        <a href="{{ l.repo_url }}">{{ l.repo }}</a>
+        {% if l.model and l.model != 'unknown' %}· {{ l.model }}{% endif %}
+        · <a href="{{ l.github_url }}">status ↗</a>
+        {% if l.current_state_url %}· <a href="{{ l.current_state_url }}">current-state</a>{% endif %}</span>
+    </h2>
+    <span class="cr-action"><a class="btn" href="{{ l.status_file_url or l.github_url }}">open status {{ '→' if l.status_file_url else '↗' }}</a></span>
+  </div>
 
   {% if l.fetch_error %}
   <div class="banner">⚠ could not fetch <code>{{ l.status_path }}</code> — {{ l.fetch_error }}

@@ -27,7 +27,7 @@ from __future__ import annotations
 import re
 from typing import Any, Optional
 
-from . import config, fleet, github, journal
+from . import config, fleet, github, journal, listfilter
 
 FLEET_MANAGER_REPO = "fleet-manager"
 OWNER_QUEUE_PATH = "docs/owner-queue.md"
@@ -152,6 +152,157 @@ def _sort_key(item: dict[str, Any]) -> tuple:
     """Newest first by the (newest) source heartbeat; undated items last."""
     ages = [s["age_hours"] for s in item["sources"] if s["age_hours"] is not None]
     return (0, min(ages)) if ages else (1, 0.0)
+
+
+# --------------------------------------------------------------------------- #
+# ORDER 019 — /queue filter dimensions over the centralized listfilter core.
+# The item record stores NO task/kind fields (completion lives upstream in the
+# heartbeats), so KIND is DERIVED deterministically here and labeled as such.
+# --------------------------------------------------------------------------- #
+
+# Action-type classifier: first matching pattern wins, ``other`` is the honest
+# fallback (never a guess dressed as certainty — the dimension says "derived").
+# Underscores normalize to spaces first so GITHUB_TOKEN matches \btoken\b.
+_ACTION_TYPES: list[tuple[str, re.Pattern]] = [
+    ("token/secret", re.compile(
+        r"\b(token|secret|pat|credentials?|api\s?-?key|password)\b", re.I)),
+    ("money", re.compile(
+        r"\$|\b(pay|payment|payout|paypal|budget|invoice|billing|price|cost)\b",
+        re.I)),
+    ("console/settings", re.compile(
+        r"\b(console|settings?|configure|config|enable|toggle|click|panel"
+        r"|railway|env|variable)\b", re.I)),
+    ("decision/review", re.compile(
+        r"\b(decide|decision|review|approve|choose|confirm|sign\s?-?off)\b",
+        re.I)),
+]
+
+
+def classify_action(text: str) -> str:
+    """Deterministic keyword classifier over an ask's WHAT/free text →
+    ``token/secret`` / ``money`` / ``console/settings`` / ``decision/review``
+    / ``other`` (first match wins, in that precedence order)."""
+    t = (text or "").replace("_", " ")
+    for label, rx in _ACTION_TYPES:
+        if rx.search(t):
+            return label
+    return "other"
+
+
+def item_kinds(item: dict[str, Any]) -> list[str]:
+    """All derived KIND values of one queue item: its form (structured ``ask``
+    vs free-text ``note``), each source kind (``lane`` / ``fleet-manager``),
+    and its classified action type. Multi-valued on purpose — selecting any
+    of them matches the item (OR within the dimension)."""
+    kinds = ["ask" if item.get("what") else "note"]
+    for src_kind in sorted({s.get("kind", "") for s in item.get("sources", [])}):
+        if src_kind:
+            kinds.append(src_kind)
+    kinds.append(classify_action(
+        f"{item.get('what', '')} {item.get('text', '')}"))
+    return kinds
+
+
+AGE_BUCKETS = ("<24h", "1-7d", ">7d", "undated")
+
+
+def age_bucket(item: dict[str, Any]) -> str:
+    """Bucket by the item's NEWEST source heartbeat age (the same min
+    ``_sort_key`` orders by); no parseable date anywhere → ``undated``,
+    never an invented time."""
+    ages = [s["age_hours"] for s in item.get("sources", [])
+            if s.get("age_hours") is not None]
+    if not ages:
+        return "undated"
+    newest = min(ages)
+    if newest < 24:
+        return "<24h"
+    if newest <= 7 * 24:
+        return "1-7d"
+    return ">7d"
+
+
+def headline(item: dict[str, Any]) -> str:
+    return item.get("what") or item.get("text") or ""
+
+
+# Age-section metadata for the default /queue view (list-IA, 2026-07-12):
+# stable bucket key -> (anchor slug, section label). Anchors are jump targets
+# from the page's summary header; slugs are fixed here so the header links
+# and the sections can never drift apart.
+AGE_GROUP_META = {
+    "<24h": ("age-fresh", "last 24 hours"),
+    "1-7d": ("age-week", "1–7 days old"),
+    ">7d": ("age-old", "older than 7 days"),
+    "undated": ("age-undated", "undated"),
+}
+
+
+def group_by_age(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Partition an (already ordered) item list into age-bucket sections.
+
+    Order-preserving within each bucket, buckets in fixed freshest-first
+    order, empty buckets omitted. Meant for the DEFAULT newest-first view
+    only — the newest-first sort keys on the same min source age, so the
+    sections read contiguously; the route skips grouping the moment any
+    filter/sort/search is active (an explicit ordering beats sections)."""
+    buckets: dict[str, list[dict[str, Any]]] = {k: [] for k in AGE_BUCKETS}
+    for it in items:
+        buckets[age_bucket(it)].append(it)
+    groups = []
+    for key in AGE_BUCKETS:
+        if not buckets[key]:
+            continue
+        anchor, label = AGE_GROUP_META[key]
+        groups.append(
+            {"key": key, "anchor": anchor, "label": label, "items": buckets[key]}
+        )
+    return groups
+
+
+def _sort_key_oldest(item: dict[str, Any]) -> tuple:
+    """Oldest dated first; undated items still last (their age is unknown,
+    not infinite)."""
+    ages = [s["age_hours"] for s in item["sources"] if s["age_hours"] is not None]
+    return (0, -min(ages)) if ages else (1, 0.0)
+
+
+def _search_text(item: dict[str, Any]) -> str:
+    parts = [item.get("what", ""), item.get("text", "")]
+    parts.extend((item.get("fields") or {}).values())
+    parts.extend(s.get("label", "") for s in item.get("sources", []))
+    return " ".join(parts)
+
+
+FILTER_SPEC = listfilter.ListSpec(
+    path="/queue",
+    dimensions=(
+        listfilter.Dimension(
+            key="project", label="project",
+            get=lambda it: sorted({s["label"] for s in it.get("sources", [])}),
+        ),
+        listfilter.Dimension(
+            key="kind", label="kind", derived=True,
+            values=("ask", "note", "lane", "fleet-manager",
+                    "token/secret", "console/settings", "decision/review",
+                    "money", "other"),
+            get=item_kinds,
+        ),
+        listfilter.Dimension(
+            key="age", label="age", values=AGE_BUCKETS,
+            get=lambda it: [age_bucket(it)],
+        ),
+    ),
+    sorts=(
+        # ``newest`` is the default and reproduces overview()'s own order
+        # exactly (same key) — no params renders identically to before.
+        listfilter.SortOption("newest", "newest", sort_key=_sort_key),
+        listfilter.SortOption("oldest", "oldest", sort_key=_sort_key_oldest),
+        listfilter.SortOption(
+            "az", "A-Z", sort_key=lambda it: headline(it).casefold()),
+    ),
+    search=_search_text,
+)
 
 
 async def _fleet_manager_half(refresh: bool = False) -> dict[str, Any]:

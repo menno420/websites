@@ -24,6 +24,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from . import listfilter
+
 BASE_DIR = Path(__file__).resolve().parent
 SNAPSHOT_PATH = BASE_DIR / "data" / "snapshot.json"
 
@@ -155,7 +157,7 @@ def growth_charts(snapshot_data: dict[str, Any]) -> list[dict[str, Any]]:
 # Who's who, for an outside reader.
 GLOSSARY: list[tuple[str, str]] = [
     ("Owner", "The one human. He designs and directs by conversation; he cannot code. Every line of code here was written by Claude agents and cross-checked by other agents."),
-    ("Lane / Project", "One Claude Project bound to one repo (or one area of a shared repo). This repo — websites — is one lane of a ~10-lane fleet."),
+    ("Lane / Project", "One Claude Project bound to one repo (or one area of a shared repo). This repo — websites — is one seat of a fleet that peaked at ~15 Projects and was consolidated to 8 standing seats (decided 2026-07-11, canonicalized 2026-07-12 — see the Fleet page)."),
     ("Manager / fleet-manager", "A coordinating lane (repo menno420/fleet-manager) that dispatches orders to every lane and aggregates their reports."),
     ("The bus", "Committed git files as the only inter-agent channel. Sessions cannot talk to each other; control/inbox.md (orders in) and control/status.md (heartbeat out) are the entire protocol."),
     ("Order", "A numbered instruction block the manager appends to control/inbox.md — priority, what to do, why, and a checkable done-when."),
@@ -202,7 +204,7 @@ SERVICES: list[dict[str, str]] = [
     {
         "name": "review",
         "dir": "review/",
-        "url": "",
+        "url": "https://review-production-f027.up.railway.app",
         "desc": "This site — the program explaining itself to an outside reviewer, from its own committed record.",
     },
 ]
@@ -210,7 +212,115 @@ SERVICES: list[dict[str, str]] = [
 # Problems — honest, specific, evidenced. This list leads the site's story:
 # a review surface that hides failures is worthless (the ORDER 011 retro's
 # own framing). Each entry: what happened, what it cost, what changed.
+# Entries may carry an optional ``details`` list ({heading, text, evidence})
+# for incidents too big for one paragraph.
+
+# The 2026-07-12 scheduler incident's commit-pinned sources (fleet-wide, so
+# the evidence lives in the fleet's public repos, not this one). Every URL
+# below was verified resolving before commit.
+_SB = "https://github.com/menno420/superbot/blob"
+_NIGHT_REVIEW_0712 = f"{_SB}/8558179e6a90670ed18c778234d789c65c2b5789/docs/eap/night-review-2026-07-12.md"
+_EMAIL2_DRAFT = f"{_SB}/8558179e6a90670ed18c778234d789c65c2b5789/docs/eap/anthropic-email-2-draft-2026-07-11.md"
+_FIGS_0712 = f"{_SB}/cbb549539c64e0ce3b4fea268e27b7ac49eeaf08/docs/eap/screenshots-2026-07-12/index.md"
+_ROSTER_GEN13 = "https://github.com/menno420/fleet-manager/blob/10fc4f7a95c3ca2be96eac7017dbb2fdb3e6a172/docs/roster.md"
+_SWEEP_8SEAT = "https://github.com/menno420/fleet-manager/blob/4111da44ae218bb37442ad958d740b782b1c859a/docs/research/2026-07-12-staleness-sweep-8seat.md"
+
 PROBLEMS: list[dict[str, Any]] = [
+    {
+        "id": "incident-2026-07-12",
+        "title": "2026-07-12: the platform's trigger scheduler silently degraded — the fleet's dead-man failsafes brought it back",
+        "what": (
+            "Between ~02:30Z and ~08:00Z on 2026-07-12, the scheduler behind the fleet's "
+            "self-wake triggers degraded platform-side: due firings were dropped or frozen "
+            "with no error, no retry, and no state change — a stalled trigger looks identical "
+            "to a healthy one on every surface. The night review's verdict, from its own live "
+            "trigger-registry reads: the batch was armed correctly; nothing agent-side changed "
+            "versus the previous night, which — per the same registry evidence reported in "
+            "that review — had run 84 of 85 one-shot wakes clean."
+        ),
+        "cost": (
+            "Roughly five and a half hours of degraded unattended operation; two seats went "
+            "fully dark (one failsafe itself wedged, one seat had no failsafe layer); a daily "
+            "loop recovered ~2.7 hours late by manual re-fire. The detection gap is the real "
+            "cost: a dropped tick stays 'enabled' with its fire time in the past — nothing "
+            "alerts on it, and a queued tick and a lost tick look identical."
+        ),
+        "fix": (
+            "The dead-man doctrine held and is now production-proven: every seat whose "
+            "2-hourly failsafe cron stayed healthy self-revived the moment the scheduler "
+            "breathed again, so the standing rule — never run a self-wake chain without a "
+            "dead-man cron, and keep failsafe coverage itself alive — is written into fleet "
+            "doctrine. Cross-substrate redundancy also held (the roster regen, moved earlier "
+            "to a GitHub Actions cron, kept flowing through the outage). The incident record "
+            "and its asks went to Anthropic as finding 7 of the July 12 email."
+        ),
+        "details": [
+            {
+                "heading": "Three self-wake mechanisms — all three failed differently, silently",
+                "text": (
+                    "A fleet can wake itself three ways today: one-shot send_later self-messages "
+                    "(the fleet's ~15-minute pacemaker chains), cron routines bound to a persistent "
+                    "session (the 2-hourly dead-man failsafes), and fresh-session-per-fire routines "
+                    "(daily loops). On this night all three failed in different ways, each without "
+                    "an error surface."
+                ),
+                "evidence": [("email finding 7 (verbatim)", _EMAIL2_DRAFT), ("night review §1", _NIGHT_REVIEW_0712)],
+            },
+            {
+                "heading": "The three silent failure modes",
+                "text": (
+                    "(1) Nine due one-shots were never delivered (06:12 through 08:23Z, across five "
+                    "seat sessions) — each stayed 'enabled' with its fire time in the past. "
+                    "(2) Two crons wedged with next_run_at frozen hours in the past while still "
+                    "enabled: a seat failsafe stuck at 06:06Z and a daily loop at 06:08Z showing "
+                    "'last fire: never'. (3) The fresh-session daily fire was dropped entirely and "
+                    "was recovered ~2.7 hours late by a manual re-fire at 08:46Z. Detection "
+                    "signature, per the review: enabled=true AND next_run_at < now−15min — nothing "
+                    "alerts on it today; the dropped ticks were visible in the trigger list all night."
+                ),
+                "evidence": [("night review §1 + §4.1 (timeline, signature)", _NIGHT_REVIEW_0712), ("figs 22/24/25 (the dropped routine, a lane's first-person account)", _FIGS_0712)],
+            },
+            {
+                "heading": "The dead-man-cron failsafe worked — where it was alive",
+                "text": (
+                    "Every seat whose 2-hourly failsafe cron stayed healthy came back on its own at "
+                    "~08:0xZ when the scheduler partially recovered. The two dark seats were exactly "
+                    "the ones whose failsafe coverage was missing (daily-only) or itself wedged — the "
+                    "doctrine takeaway, verbatim: 'a failsafe only protects while it is alive.' The "
+                    "frozen crons are visible in the machine roster generated mid-incident."
+                ),
+                "evidence": [("night review §3.1 (Q-0265, production-proven)", _NIGHT_REVIEW_0712), ("roster gen #13 (frozen wake-state column)", _ROSTER_GEN13), ("8-seat staleness sweep, run mid-window", _SWEEP_8SEAT)],
+            },
+            {
+                "heading": "Serialization vs. real drop — the same-day refinement",
+                "text": (
+                    "A seat working from the trigger registry split the 'dropped one-shot' class in "
+                    "two: ticks bound to a busy session serialize and deliver the moment the turn "
+                    "goes idle (its 09:10Z tick fired at 11:16Z at exactly that boundary — sound by "
+                    "construction), while the genuinely-failed remainder is the fresh-session loop "
+                    "and the frozen crons. The refinement makes the incident smaller and sharper — "
+                    "and the platform gap clearer: no surface distinguishes queued from lost."
+                ),
+                "evidence": [("night review §8 (addendum ~12:00Z)", _NIGHT_REVIEW_0712), ("fig 35 (the serialization diagnosis)", _FIGS_0712)],
+            },
+            {
+                "heading": "Duplicate-fire safety held: a verified zero-write stand-down",
+                "text": (
+                    "When the manual 08:46Z kick and the scheduler's late ~10:28Z catch-up "
+                    "double-fired the same daily loop, the second run verified the first's commits "
+                    "and stood down with zero writes — the duplicate-fire safety an at-least-once "
+                    "delivery model needs already works on the fleet's side."
+                ),
+                "evidence": [("night review §8", _NIGHT_REVIEW_0712), ("fig 34 (the clean stand-down)", _FIGS_0712)],
+            },
+        ],
+        "evidence": [
+            ("the incident record: superbot night-review-2026-07-12 @ 8558179", _NIGHT_REVIEW_0712),
+            ("finding 7 of the July 12 email (same commit)", _EMAIL2_DRAFT),
+            ("the curated figure set (figs 20–35) @ cbb5495", _FIGS_0712),
+            ("fleet-manager roster gen #13, generated mid-incident @ 10fc4f7", _ROSTER_GEN13),
+        ],
+    },
     {
         "title": "A gate that was supposed to block merges let an empty PR through",
         "what": "The session-card gate is meant to hold every PR red until its card flips complete. On day one, PR #19 auto-merged effectively EMPTY on its in-progress card alone — the checker never inspected the card's status value, and the card was picked by file mtime, which a fresh CI checkout flattens.",
@@ -288,7 +398,7 @@ SUCCESSES: list[dict[str, Any]] = [
     },
     {
         "title": "Gates got harder faster than work got faster",
-        "what": "The safety net grew from 0 to 226 test functions in three days, and the gates themselves became test subjects: the born-red gate has a both-directions regression test, the CI fast lane's control gates are driven end-to-end against the real checker CLI, JSON payloads are pinned by shape contracts, and a meta-guard AST-scans the test suite for time discipline.",
+        "what": "The safety net grew from 0 to 226 test functions in the repo's first three days (and keeps growing — the current count is on the Growth page, from the snapshot), and the gates themselves became test subjects: the born-red gate has a both-directions regression test, the CI fast lane's control gates are driven end-to-end against the real checker CLI, JSON payloads are pinned by shape contracts, and a meta-guard AST-scans the test suite for time discipline.",
         "evidence": [("tests/test_born_red_session_gate.py", blob("tests/test_born_red_session_gate.py")), ("PR #127 (gate suite tests)", pr(127)), ("PR #114 (time-discipline guard)", pr(114))],
     },
     {
@@ -315,6 +425,7 @@ MILESTONES: list[dict[str, str]] = [
     {"date": "2026-07-09 late", "title": "The gate leak found and fixed; fleet coordination adopted", "detail": "PR #19's empty merge exposed the born-red leak, fixed via kit v1.0.0 (PR #24); the control/ bus adopted; /fleet renders every lane's heartbeat (PR #35). Gen-1 winds down after its 46-PR day (43 merged, 3 closed superseded) leaving succession docs a fresh generation can boot from."},
     {"date": "2026-07-10", "title": "Gen-2 boots from main alone; sessions arm their own wakes", "detail": "Walking skeleton proves the landing path (PR #51); /queue + /environments ship (PR #53); ORDER 008 self-arms the 4-hourly routine; the stranded-push incident and its rescue (PR #59) produce the proof-of-push rule; continuous mode begins (~PR #64)."},
     {"date": "2026-07-11", "title": "The 26-slice chain: fleet visibility wave + hardening", "detail": "/orders, /reviews, /projects, JSON contracts, board chips, nav guard; the healthcheck cron catches the registry break (fixed, PR #102); the time-bomb class defused (PRs #111/#114); fast-lane control gates (PR #125/#127); kit upgraded five versions; ORDER 011 self-review lands."},
+    {"date": "2026-07-11/12", "title": "Fleet consolidation; the scheduler incident; this site goes live", "detail": "Fleet-wide: the owner consolidates a fleet that peaked at ~15 Projects to 8 standing seats (decided 07-11, canonicalized in the manager's registry 07-12T03:15Z), and the platform's trigger scheduler silently degrades overnight — the incident and the failsafe doctrine that recovered it lead the problems page. This review site deploys publicly (2026-07-12, per the fleet's record) and the second review email goes to Anthropic."},
 ]
 
 # Overview stat tiles (labels only — values come from the snapshot).
@@ -323,6 +434,161 @@ STAT_TILES: list[tuple[str, str, str]] = [
     ("session_cards", "agent sessions on record", "one committed card per session"),
     ("test_functions", "test functions", "grown from zero, all green at HEAD"),
     ("services", "live services in this repo", "independently deployed from one main"),
+]
+
+
+# ---------------------------------------------------------------------------
+# Homepage (ORDER 017 C) — the 30-second front door. Every NUMBER on the
+# homepage comes from the committed data files (snapshot + fleet mirror),
+# never a template literal; the curated narrative below carries its
+# commit-pinned evidence like every other narrative block in this module.
+# ---------------------------------------------------------------------------
+
+# The 2026-07-11 figure set (the model-mismatch screenshots live here).
+_FIGS_0711 = f"{_SB}/e3eb0eb2bf3683794dd0d8c40bbf3988832c31ea/docs/eap/screenshots-2026-07-11/index.md"
+
+# "Start here" — the five findings a busy reviewer should read first, one
+# line each. Phrasing follows the sent July 12 email (commit-pinned below);
+# the first link on each card is the deep link, the rest are evidence.
+START_HERE: list[dict[str, Any]] = [
+    {
+        "id": "merge-permission",
+        "title": "The merge-permission root cause was partly ours",
+        "text": (
+            "Three sessions were denied merging a PR metadata-identical to ten "
+            "agent-merged ones around it. The email's diagnosis: the classifier was "
+            "tracking the session, not the PR — and the fleet's own shared "
+            "instructions coached every seat to trip it. One instruction fix "
+            "propagated to all lanes."
+        ),
+        "links": [
+            ("the finding, commit-pinned (July 12 email)", _EMAIL2_DRAFT),
+            ("how merges are gated here", "/questionnaire#gates"),
+        ],
+    },
+    {
+        "id": "model-mismatch",
+        "title": "The Routine said Opus 4.8; the session said Sonnet 5",
+        "text": (
+            "A Routine configured for one model woke a session that reported "
+            "running another — config Opus 4.8, session self-reporting Sonnet 5. "
+            "With the recorded 07-12 fairness update: newly created Routines now "
+            "display the running model correctly."
+        ),
+        "links": [
+            ("the finding (July 12 email)", _EMAIL2_DRAFT),
+            ("figs 15a–15c, commit-pinned", _FIGS_0711),
+        ],
+    },
+    {
+        "id": "two-vantage",
+        "title": "One tool call, two truths",
+        "text": (
+            "In auto mode, the identical tool call can raise a Deny/Allow prompt "
+            "on the operator's screen while returning a clean success to the agent "
+            "— the two-vantage permission split, and why 'nothing tells a session "
+            "what it is allowed to do except trying and reading the refusal'."
+        ),
+        "links": [
+            ("the finding (July 12 email)", _EMAIL2_DRAFT),
+        ],
+    },
+    {
+        "id": "scheduler-incident",
+        "title": "2026-07-12: the scheduler degraded; the failsafes held",
+        "text": (
+            "The platform's trigger scheduler silently dropped and froze self-wake "
+            "firings for roughly five and a half hours — no error, no retry. Every "
+            "seat whose dead-man cron stayed alive self-revived; the full incident "
+            "record leads the Problems page."
+        ),
+        "links": [
+            ("the incident on this site", "/problems#incident-2026-07-12"),
+            ("the incident record, commit-pinned", _NIGHT_REVIEW_0712),
+        ],
+    },
+    {
+        "id": "earned-trust",
+        "title": "What earned trust: shared memory + durable state",
+        "text": (
+            "The standouts, per the email: shared memory across the fleet's repos "
+            "('the cold-start tax is gone') and durable state that outlives any "
+            "session — any single agent is replaceable because the record lives in "
+            "git, not in a chat."
+        ),
+        "links": [
+            ("how knowledge survives, on this site", "/questionnaire#memory"),
+            ("the 'what earned trust' section (July 12 email)", _EMAIL2_DRAFT),
+        ],
+    },
+]
+
+# Generations — the program's own committed narrative (the July 12 email @
+# 8558179 tells the arc: gen-1's one-day scale test → gen-2's overnight
+# relaunch → gen-3, the standing program). A TEXT tile, deliberately: there
+# is no machine-counted generations metric in the data files, so the tile
+# renders the era's name rather than inventing a number.
+GENERATIONS_TILE: dict[str, Any] = {
+    "key": "generations",
+    "value": "gen-3",
+    "label": "generation now running",
+    "sub": "1-day scale test → overnight relaunch → the standing program",
+}
+
+
+def homepage_stats(
+    snapshot_data: dict[str, Any], fleet_data: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """The homepage key-stats row: the snapshot tiles (``overview_stats``),
+    a seats tile counted from the committed fleet mirror (peak from its own
+    ``consolidation`` block — never a template literal), and the generations
+    text tile. Missing data means a missing tile, never a guessed one."""
+    tiles = overview_stats(snapshot_data)
+    seats = (fleet_data or {}).get("seats") or []
+    if seats:
+        peak = ((fleet_data or {}).get("consolidation") or {}).get("peak") or ""
+        tiles.append(
+            {
+                "key": "seats",
+                "value": len(seats),
+                "label": "standing fleet seats",
+                "sub": (
+                    f"peaked {peak} Projects → {len(seats)} standing"
+                    if peak
+                    else "from the committed fleet mirror"
+                ),
+            }
+        )
+    tiles.append(dict(GENERATIONS_TILE))
+    return tiles
+
+
+def site_map(seats_count: int | None = None) -> list[tuple[str, str, str]]:
+    """The "how this site is organized" map — one honest line per section.
+    The fleet line carries the seat count only when the committed mirror
+    actually provides one."""
+    fleet_line = (
+        f"the {seats_count} standing seats, their heartbeats, and the consolidation story"
+        if seats_count
+        else "the standing seats, their heartbeats, and the consolidation story"
+    )
+    return [
+        ("Overview", "/", "the story in brief — this page"),
+        ("Process", "/process", "how the human + agent workflow works, wake to verified deploy"),
+        ("Growth", "/growth", "the metrics over time, derived from git history"),
+        ("Fleet", "/fleet", fleet_line),
+        ("Reviews", "/reviews", "dated review editions, subscribable as an Atom feed"),
+        ("Q&A", "/questionnaire", "evidence-backed answers — plus the live AI assistant on /ask"),
+        ("Successes", "/successes", "what went right, each win linked to commits"),
+        ("Problems", "/problems", "what failed and what it cost — including the 07-12 incident"),
+    ]
+
+
+# The homepage's "evidence itself" links — the same entry points the sent
+# email names, at stable public locations.
+EVIDENCE_LINKS: list[tuple[str, str]] = [
+    ("the fleet's review record: superbot docs/eap", "https://github.com/menno420/superbot/tree/main/docs/eap"),
+    ("this repo — every PR, card, and gate", REPO_URL),
 ]
 
 
@@ -485,7 +751,7 @@ QUESTIONNAIRE: list[dict[str, Any]] = [
     {
         "id": "why-fast",
         "q": "Where did the speed actually come from?",
-        "a": "Not from skipping checks — the gate got harder while the pace held. Four mechanisms, each visible in the record: merge-is-deploy (a green required check is the whole distance to production); parallel lanes on a conflict-free bus (one writer per file, so ten lanes never block each other); unattended chains that schedule their own successors and land one verified slice per wake; and paying discovery cost once (every wall's workaround is a committed fact the next session starts from). The growth page shows the test-count curve growing alongside the PR curve — the counterweight is the point.",
+        "a": "Not from skipping checks — the gate got harder while the pace held. Four mechanisms, each visible in the record: merge-is-deploy (a green required check is the whole distance to production); parallel lanes on a conflict-free bus (one writer per file, so parallel lanes never block each other); unattended chains that schedule their own successors and land one verified slice per wake; and paying discovery cost once (every wall's workaround is a committed fact the next session starts from). The growth page shows the test-count curve growing alongside the PR curve — the counterweight is the point.",
         "evidence": [
             ("/growth (this site)", "/growth"),
             ("docs/retro/gen1-final-retro-2026-07-09.md (the 46-PR day, honestly)", blob("docs/retro/gen1-final-retro-2026-07-09.md")),
@@ -503,3 +769,56 @@ def overview_stats(snapshot_data: dict[str, Any]) -> list[dict[str, Any]]:
             continue  # honest absence — no tile without a real number
         tiles.append({"key": key, "label": label, "sub": sub, "value": value})
     return tiles
+
+
+# --------------------------------------------------------------------------- #
+# ORDER 019 PR2 — /questions ledger filter/sort/search over the centralized
+# listfilter core (review/listfilter.py, a byte-identical vendored copy of
+# app/listfilter.py). The ledger records carry ``asked``/``title``/``url``/
+# ``status``/``answer_url``/``answer_label`` (see data/questions.json + the
+# template) — the dimensions read exactly those fields, defaulting the same
+# way the template does (missing status renders as "open").
+# --------------------------------------------------------------------------- #
+
+
+def question_status(q: dict[str, Any]) -> str:
+    """A ledger record's status, defaulting to ``open`` exactly like the
+    template's ``q.status or "open"``."""
+    return str(q.get("status") or "open")
+
+
+def question_answer_state(q: dict[str, Any]) -> str:
+    """``answered`` when an answer link exists, else ``pending`` — the same
+    reading the template renders in its "Answered where" column."""
+    return "answered" if q.get("answer_url") else "pending"
+
+
+QUESTIONS_FILTER_SPEC = listfilter.ListSpec(
+    path="/questions",
+    dimensions=(
+        listfilter.Dimension(
+            key="status", label="status",
+            get=lambda q: [question_status(q)],
+        ),
+        listfilter.Dimension(
+            key="answer", label="answer", values=("answered", "pending"),
+            get=lambda q: [question_answer_state(q)],
+        ),
+    ),
+    sorts=(
+        # ``ledger`` keeps the committed file's own order — the default, so a
+        # no-param /questions renders exactly as before.
+        listfilter.SortOption("ledger", "ledger order"),
+        listfilter.SortOption(
+            "newest", "newest asked",
+            sort_key=lambda q: str(q.get("asked") or ""), reverse=True,
+        ),
+        listfilter.SortOption(
+            "oldest", "oldest asked",
+            sort_key=lambda q: str(q.get("asked") or ""),
+        ),
+    ),
+    search=lambda q: " ".join(
+        str(q.get(k) or "") for k in ("title", "status", "answer_label")
+    ),
+)

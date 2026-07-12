@@ -14,6 +14,12 @@ Everything runtime-tunable comes from env vars (documented in docs/site.md):
                       for testing behind restricted egress).
   GITHUB_RAW_BASE     raw-content base (default https://raw.githubusercontent.com).
   CACHE_TTL_SECONDS   server-side GitHub cache TTL (default 180 = 3 minutes).
+  RAILWAY_TOKEN       PROJECT-SCOPED Railway token (superbot-websites only) for
+                      the gated /owner/environments live variable-NAME reads —
+                      never the account RAILWAY_API_KEY, never the ambient
+                      production-bot IDs (docs/RAILWAY-SAFETY.md). Unset (the
+                      state until the owner mints it), the page degrades
+                      honestly to committed facts only.
 """
 
 import os
@@ -51,15 +57,16 @@ def version_info(service: str) -> dict:
     }
 
 
-# Public `/version` endpoints of the three superbot-websites Railway services.
+# Public `/version` endpoints of the four superbot-websites Railway services.
 # The readiness board's websites-row "deploy state" cell compares each service's
 # DEPLOYED sha to the websites repo's `main` HEAD. control-plane is THIS app, so
 # its deployed sha is read straight from the environment with no network hop
-# (url = None); the other two are fetched over their public /version JSON.
+# (url = None); the other three are fetched over their public /version JSON.
 SERVICE_DEPLOY_TARGETS: dict = {
     "control-plane": None,
     "botsite": "https://botsite-production-cfd7.up.railway.app/version",
     "dashboard": "https://dashboard-production-a91b.up.railway.app/version",
+    "review": "https://review-production-f027.up.railway.app/version",
 }
 
 GITHUB_API_BASE = os.environ.get("GITHUB_API_BASE", "https://api.github.com").rstrip("/")
@@ -69,6 +76,10 @@ GITHUB_RAW_BASE = os.environ.get(
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 # Gates ONLY the /owner area (see app/owner.py). The public site never reads it.
 SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "")
+# Project-scoped Railway read token for /owner/environments (app/railway.py).
+# Deliberately NOT the account key and NOT an ambient ID — see the docstring
+# above and docs/RAILWAY-SAFETY.md. Read only behind the /owner gate.
+RAILWAY_TOKEN = os.environ.get("RAILWAY_TOKEN", "")
 CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "180"))
 # Client-side poll interval for the LIVE-MONITORING pages only (the board `/`
 # and `/fleet`). A small unobtrusive JS refresh (app/static/autorefresh.js)
@@ -325,4 +336,13 @@ FLEET_LANES: list = [
         "note": "the manager's own repo.",
     },
 ]
+
+# Repos whose committed files the /journal/{repo}/file route may render.
+# Derived, never hand-listed: the four REPOS entries plus every fleet lane
+# repo from FLEET_LANES above (which mirrors the kit's generated
+# docs/adopters.md registry — kit-owned convention). REPOS itself stays the
+# readiness-board / journal-corpus fan-out set and must NOT grow from here.
+JOURNAL_RENDER_REPOS: set = set(REPOS) | {
+    lane["repo"] for lane in FLEET_LANES if lane.get("repo")
+}
 

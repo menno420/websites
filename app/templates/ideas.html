@@ -1,19 +1,55 @@
 {% extends "base.html" %}
 {% block title %}idea backlog{% endblock %}
 {% block headright %}<a href="/ideas?refresh=1">refresh now</a>{% endblock %}
+
+{#- One idea row — used by the live list and the collapsed built/retired
+    section. -#}
+{#- The catrow idiom (IA v2): title + one-line summary left, the primary
+    action as the right-aligned button; GitHub deep-link stays a small
+    secondary link beside it. -#}
+{% macro idea_row(i) %}
+    <div class="catrow">
+      <div class="cr-main">
+        <span class="idea-title">
+          <a href="{{ i.internal_url }}">{{ i.title }}</a>
+          {% if i.state %}<span class="b {{ 'ok' if i.state == 'built' else ('design' if i.state == 'retired' else 'repo') }}">{{ i.state }}</span>{% endif %}
+        </span>
+        {% if i.summary %}<span class="cr-desc">{{ i.summary }}</span>
+        {% elif i.degraded %}<span class="cr-desc">(summary unavailable — could not fetch file)</span>
+        {% endif %}
+      </div>
+      <span class="cr-action"><a class="btn" href="{{ i.internal_url }}">open idea →</a><a href="{{ i.github_url }}" class="dim small">GitHub ↗</a></span>
+    </div>
+{% endmacro %}
+
 {% block content %}
 <div class="card">
   <h2>idea backlog — what's queued to build</h2>
-  <p class="dim small">The <code>docs/ideas/</code> conveyor across the fleet. Titles and
-    one-line summaries are parsed from each idea file; every idea deep-links to its
-    source on GitHub (and to the in-app markdown view). Repos without an ideas
-    directory are simply absent below. State counts cover each repo's newest
-    enriched files (honest scope); <em>unstated</em> = no lifecycle front-matter.</p>
+  <p class="small">
+    <span class="b repo">{{ t.ideas }} idea{{ 's' if t.ideas != 1 }}</span>
+    <span class="b unknown">{{ t.repos_with_ideas }} repo{{ 's' if t.repos_with_ideas != 1 }} with ideas</span>
+    {% if t.errors %}<span class="b bad">{{ t.errors }} listing{{ 's' if t.errors != 1 }} unreadable</span>{% endif %}
+  </p>
   <p class="small">state:
     <a href="/ideas" class="{{ 'b repo' if not repos or not repos[0].state_filter else '' }}">all</a>
     {% for s in ['captured', 'planned', 'built', 'retired', 'unstated'] %}
-    · <a href="/ideas?state={{ s }}" class="{{ 'b repo' if repos and repos[0].state_filter == s else '' }}">{{ s }}</a>
+    · <a href="/ideas?state={{ s }}" class="{{ 'b repo' if repos and repos[0].state_filter == s else '' }}">{{ s }}{% if t.state_counts.get(s) %} · {{ t.state_counts[s] }}{% endif %}</a>
     {% endfor %}</p>
+  <p class="small jump">jump to:
+    {%- for r in repos if r.total or r.listing_error %}
+    <a class="b" href="#repo-{{ r.repo }}">{{ r.repo }} · {{ r.total }}</a>
+    {%- endfor %}
+  </p>
+  <details class="pagehelp">
+    <summary>what this page is</summary>
+    <p class="dim small">The <code>docs/ideas/</code> conveyor across the fleet. Titles and
+      one-line summaries are parsed from each idea file; every idea deep-links to its
+      source on GitHub (and to the in-app markdown view). Repos without an ideas
+      directory are simply absent below. State counts cover each repo's newest
+      enriched files (honest scope); <em>unstated</em> = no lifecycle front-matter.
+      With no state filter, each repo's <em>built/retired</em> ideas sit collapsed
+      under its live captured/planned/unstated list.</p>
+  </details>
   {% if repos and repos[0].state_filter and not repos[0].state_filter_known %}
   <div class="banner">⚠ unknown state <code>{{ repos[0].state_filter }}</code> — pick one of the
     filters above (nothing is filtered out on a guess).</div>
@@ -21,7 +57,7 @@
 </div>
 
 {% for r in repos %}
-<div class="card">
+<div class="card" id="repo-{{ r.repo }}">
   <h2>{{ r.repo }}
     <span class="dim small">· <a href="{{ r.github_url }}">docs/ideas ↗</a>
       {% if r.total %}· {{ r.total }} idea{{ 's' if r.total != 1 }}{% endif %}</span></h2>
@@ -41,20 +77,28 @@
   {% elif r.total == 0 %}
   <p class="dim small">no ideas captured yet (only the backlog README).</p>
   {% else %}
-    {% for i in r.ideas %}
-    <div class="idea-row">
-      <div class="idea-title">
-        <a href="{{ i.internal_url }}">{{ i.title }}</a>
-        {% if i.state %}<span class="b {{ 'ok' if i.state == 'built' else ('design' if i.state == 'retired' else 'repo') }}">{{ i.state }}</span>{% endif %}
-        <span class="small"> · <a href="{{ i.github_url }}" class="dim">GitHub ↗</a></span>
-      </div>
-      {% if i.summary %}<div class="idea-sum">{{ i.summary }}</div>
-      {% elif i.degraded %}<div class="idea-sum">(summary unavailable — could not fetch file)</div>
-      {% endif %}
-    </div>
+    {% if not r.state_filter %}
+    {#- Default view: the live conveyor (captured/planned/unstated) on top;
+        built/retired settled ideas collapsed below — done work should not
+        push the queue off the screen. A state filter shows its list flat. -#}
+    {% set settled = r.ideas | selectattr('state', 'in', ['built', 'retired']) | list %}
+    {% set live = r.ideas | rejectattr('state', 'in', ['built', 'retired']) | list %}
+    {% for i in live %}{{ idea_row(i) }}
+    {% else %}
+    <p class="dim small">nothing live here — every enriched idea is built or retired (collapsed below).</p>
+    {% endfor %}
+    {% if settled %}
+    <details style="margin-top:.6rem">
+      <summary class="dim small">{{ settled | length }} built/retired — collapsed</summary>
+      {% for i in settled %}{{ idea_row(i) }}{% endfor %}
+    </details>
+    {% endif %}
+    {% else %}
+    {% for i in r.ideas %}{{ idea_row(i) }}
     {% else %}
     <p class="dim small">no ideas in this state among the newest {{ r.shown }}.</p>
     {% endfor %}
+    {% endif %}
     {% if r.more %}
     <p class="dim small" style="margin-top:.6rem">…and {{ r.more }} more —
        <a href="{{ r.github_url }}">browse all on GitHub ↗</a></p>

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ cat.key }}{% endblock %}
+{% block headright %}<a href="{{ cat.href }}?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ cat.label }} <span class="dim small">— {{ cat.desc }}</span></h2>
+  <p class="dim small">One row per page: what it is, how much is on it right now,
+    and its primary action. Counts ride the same TTL-cached fetches as the pages
+    themselves — a count that could not be computed shows an honest —.</p>
+
+  {% for row in rows %}
+  <div class="catrow">
+    <div class="cr-main">
+      <a class="cr-name" href="{{ row.href }}">{{ row.label }}</a>
+      <span class="cr-desc">{{ row.desc }}
+        {%- if row.sublinks %} ·
+        {%- for sl in row.sublinks %}
+        <a href="{{ sl.href }}">{{ sl.label }}</a>{{ ' ·' if not loop.last }}
+        {%- endfor %}
+        {%- endif %}</span>
+    </div>
+    {% if row.counted %}
+    <span class="cr-chip">
+      {%- if row.count is not none -%}
+      <span class="b {{ row.chip_state or 'repo' }}">{{ row.count }} {{ row.unit }}</span>
+      {%- else -%}
+      <span class="b unknown" title="count unavailable right now — the page itself says why">—</span>
+      {%- endif -%}
+    </span>
+    {% endif %}
+    <span class="cr-action"><a class="btn" href="{{ row.action.href }}">{{ row.action.label }} →</a></span>
+  </div>
+  {% endfor %}
+
+  {% if cat.key == 'console' %}
+  <p class="dim small" style="margin-top:.8rem">Single canonical homes:
+    <a href="/prompts">/prompts</a> is THE place to find any fleet prompt
+    (universal + per-seat) and the
+    <a href="/owner/environments-hub">environments hub 🔒</a> is THE place for
+    anything environment-shaped — other pages link there rather than keeping
+    their own copies.</p>
+  {% endif %}
+</div>
+{% endblock %}

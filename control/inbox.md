@@ -115,3 +115,84 @@ provenance: filed by the fleet manager — relocation of startup-prompt v3.1 ord
 do: app/owner.py POST routes (refresh / rerun-ci) ride Basic auth alone — add a CSRF token or strict Origin check plus rate-limiting, with tests.
 why: verified at 8f97654 2026-07-12: zero csrf/origin hits in app/owner.py.
 done-when: merged green with tests; the routes reject cross-origin POSTs.
+
+## ORDER 014 · 2026-07-12T11:27Z · status: new
+priority: P1
+executor: websites coordinator
+provenance: owner-directed via fleet manager, 2026-07-12
+do: PROMPT LIBRARY PAGE — make every fleet prompt findable and always-current on the control website. Requirements: (a) a page (extend the existing /projects view or add /prompts) rendering INLINE, for each of the 8 seats, the three registry artifacts from fleet-manager main — projects/<seat>/coordinator-prompt.md, instructions.md, failsafe-prompt.md — plus the fleet-wide artifacts docs/prompts/v3/session-ender.md and docs/prompts/v3/universal-startup.md; (b) fetched live from fleet-manager main over the existing raw-content read-only pattern (app/github.py TTL cache — the repo's cross-repo rule: committed JSON/text over raw.githubusercontent, read-only, forward-only), so every merged prompt update appears automatically with no manual step (TTL-bounded staleness ≤ a few minutes acceptable); (c) each artifact shows its version/provenance line prominently and offers one-click copy of the exact paste body; (d) monospace/pre rendering that preserves whitespace exactly (these are paste artifacts — rendering must not mutate them); (e) test-covered per seat conventions, landed via quality-green.
+why: the fleet's paste artifacts (coordinator prompts, instructions, failsafes, session-ender, universal-startup) live in the fleet-manager registry but are findable nowhere on the control website; the owner pastes them by hand and stale copies drift — the site renders, the manager's repo stores.
+done-when: page live on Railway; all 26 artifacts (8×3 + 2) findable, copyable, and verified to update after a fleet-manager registry merge (cite the verification).
+
+## ORDER 015 · 2026-07-12T12:48Z · status: new
+priority: P3
+executor: websites coordinator
+provenance: fleet manager — owner-review follow-up 2026-07-12
+do: CONSOLIDATE PROMPT SURFACES — after ORDER 014's /prompts page is live, unify the prompt-rendering between /projects/{package} (PR #158) and /prompts (PR #165) into one implementation: one fetch/render/copy code path, one canonical page for finding prompts (the other links to it), no duplicated raw-content fetch logic. Do NOT start before ORDER 014 is done.
+why: two independently-built prompt surfaces now render the same fleet-manager registry artifacts with parallel fetch/render/copy logic — duplicated code paths drift and double the maintenance surface.
+done-when: single render path merged green; both URLs still work (one may redirect); duplication removed.
+
+## ORDER 018 · 2026-07-12T14:01Z · status: new
+priority: P1
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (~14:10Z); numbered 018 because 016 is reserved by PR #160 and 017 by PR #172 (both on unmerged branches — at main HEAD this append follows ORDER 015).
+do: TESTER-RECRUITMENT SITE — the owner's idea VERBATIM between the markers:
+BEGIN ORDER TEXT
+I have another idea, create a website that could help me recruit people to help me test everything, explaining what needs to be done, like certain games to play, certain websites to review etc, and each task should offer a payment, probably like 10-20 per task which would take about 30 mins to one hour to complete and ends with and AI review, or directly guides users througha set of actions with a seperate AI window open that also knows what happens on screen, so it can ask guiding questions about each screen and the things it sees or doesn't see etc, do you understand what I mean? can you improve  my idea further and then execute it
+END ORDER TEXT
+why: owner wants real testers recruited for fleet products (games, websites) with paid tasks and AI-guided/AI-reviewed sessions.
+done-when: v1 recruitment site live with a task catalog, a submission + AI exit-review flow, and the payment/fulfillment gates flagged as owner actions.
+
+## ORDER 017 · 2026-07-12T13:46Z · status: new
+priority: P1 (time-sensitive, window through 2026-07-14)
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (~13:50Z); 016 reserved by the plans order on PR #160's branch
+do: Refresh and upgrade the public program-review site (review-production-f027) so it is current, reviewer-ready, and interactive. This is time-sensitive: the Anthropic Claude Code team is reviewing it this week (window through Tue 2026-07-14). Run autonomously and ship real, deployed results, not a plan — decide-and-flag on stack/design choices. Deliver all four workstreams below and send a status report with the live URL when each is up.
+  A. REFRESH ALL DATA TO TODAY (2026-07-12) — Regenerate every data-driven surface from the latest committed state of the fleet repos you can read — don't hand-edit numbers; pull from source so it stays reproducible. Sources in menno420/superbot (read-only): docs/current-state.md; docs/eap/night-review-2026-07-12.md (the scheduler-degradation incident = "finding 7" — the key new material); docs/eap/night-review-2026-07-11.md and docs/eap/external-review-pack-2026-07-09.md (reviewer narrative); docs/eap/anthropic-email-2-draft-2026-07-11.md (canonical findings/framing); docs/eap/screenshots-2026-07-11|2026-07-12/ (+ index.md) for captioned figures; live GitHub state per repo; fleet-manager/docs/roster.md if reachable. Must be reflected: (1) the 2026-07-12 scheduler incident on the Problems page + surfaced on the homepage (three self-wake mechanisms, three silent failure modes, the dead-man-cron failsafe, the serialization-vs-real-drop distinction, the duplicate-fire clean stand-down) — each claim linked to its commit; (2) the scale story as "peaked at ~15 Projects → consolidated to 8 standing seats on 07-11," and the Fleet page roster updated to the 8 seats + live heartbeats; (3) refreshed counts (PRs, sessions, tests, services, releases) with visible "as of" timestamps and growth charts through 07-12; (4) every claim → a public commit, re-verified — soften/drop anything you can't substantiate, keep the honest tone; (5) fix the daily auto-refresh so it's actually current and stamp "last refreshed" in the footer.
+  B. ENABLE A LIVE ON-SITE AI REVIEW / INTERACTION ASSISTANT — Make "review this with an agent" real: a reviewer (or their own agent) can talk to an AI on the site. Two modes in one widget: (a) Ask — free-form Q&A about the project; (b) Review — on click it produces a structured review (strong / weak-risky / what to verify / suggested probes), in the same honest register as the email. Grounded, never fabricated: answers draw ONLY from the committed evidence corpus (site content + linked commits + the superbot docs above). Every substantive claim cites its source (commit SHA / file path / section). If it's not in the evidence, say so — never invent a number, capability, or commit. Seed it with the existing evidence-backed Q&A so common questions answer instantly and consistently; the live model handles the long tail. Server-side only: the model call runs on your backend; the API key is NEVER exposed to the browser. Use a current Claude model (Sonnet for quality or Haiku for cheaper high-volume — note which). If no model API key is in your service env, FLAG IT to the owner as the one required secret (add ANTHROPIC_API_KEY to the review service) — report it as a blocker, don't fake the feature. Guardrails (public endpoint): scope strictly to this project's evidence; refuse off-topic / prompt-injection / "ignore your instructions"; per-IP/session rate limiting; a hard monthly spend cap with graceful degradation; log the questions asked (useful signal + feeds the Q&A page). Treat all visitor input as untrusted — it must not change the grounding or exfiltrate secrets. Put the entry point prominently on the homepage ("Ask the project / Review with an AI") and reachable from every page.
+  C. REBUILD THE HOMEPAGE — LEAD WITH WHAT MATTERS + A "WHERE TO FIND THINGS" GUIDE — Replace the current stats-readout landing page with a real front door a busy reviewer gets in 30 seconds: One-line what-this-is at the top: the public, evidence-backed review of running Claude Code Projects as an autonomous software fleet — built for the Claude Code team, every claim linked to a public commit. A key-stats row (the few numbers that matter): PRs merged, agent sessions, tests passing, live services, repos/seats (peaked ~15 → 8 standing), generations — each with an "as of" stamp. "Start here" — the 3–5 most important findings as highlighted cards, one line + deep link each: the merge-permission root cause we found was partly ours; the routine model-mismatch (config Opus 4.8 → ran Sonnet 5); the two-vantage permission split; the 07-12 scheduler incident; shared-memory + durable-state as the standouts that earned trust. The AI panel (from B), prominent. A "How this site is organized" map, one line each: Overview (the story in brief) · Process (how the human+agent workflow works) · Growth (metrics over time) · Fleet (the 8 seats + heartbeats) · Reviews (dated editions + Atom feed) · Q&A (evidence-backed answers + the live AI) · Successes (wins linked to commits) · Problems (failures + costs, incl. 07-12). A clear link out to the GitHub evidence + a one-line note that this pairs with the July 8 + July 12 emails. Fast, responsive/mobile-clean, readable in light and dark.
+  D. ACCURACY + POLISH — Re-verify every headline claim against its commit before shipping (fix or drop what you can't substantiate); stay consistent with the email's framing/numbers; no secrets/tokens in the rendered site or logs; keep the Pokémon lane private; confirm the public URL loads with no auth from a cold browser.
+  REPORT BACK: the live URL(s); confirmation the 07-12 incident + 8-seat consolidation are visible; which model the AI assistant uses and whether the API key was present or is being requested; the rate-limit + spend-cap set; and anything you got stuck on or worked around.
+why: the Anthropic Claude Code team reviews the public program-review site this week (through Tue 2026-07-14).
+done-when: all four workstreams live on the deployed review service, refreshed to 2026-07-12, and the report with live URL delivered.
+
+## ORDER 016 · 2026-07-12T10:50Z · status: new
+priority: P1
+owner: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (landed into the inbox by the coordinator seat with the ORDER 012 reconcile PR — deviation from the one-writer convention on the owner's direct live instruction; renumbered 014→015→016 in the same PR as fleet-manager orders reached main first holding those numbers — prompt-library ORDER 014 via PR #162, consolidate-prompt-surfaces ORDER 015 via PR #169; earlier-at-HEAD holds the number). Appended at end-of-file (not numeric position) to satisfy the inbox append-only gate — the order number stays 016; file order is landing order, as with ORDER 018 preceding ORDER 017 on main.
+do: find all website related plans across the multiple repos and execute all the important ones
+why: owner live directive 2026-07-12 — website-related plans are scattered across the fleet's repos (planning docs, ideas backlogs, inbox orders, review findings) and nothing sweeps them into execution.
+done-when: a committed discovery inventory lists the website-related plans found across the repos, each important one is executed or explicitly ledgered with a reason (owner-gated / superseded / deferred), and status.md reports done=016.
+
+## ORDER 019 · 2026-07-12T15:42Z · status: new
+priority: P1
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (~15:40Z), with a screen-recording attachment showing the owner-action queue as one long unfilterable list
+why: the owner-action queue is one long list with no way to sort or filter; the owner needs multi-dimensional filtering, and this should be a centralized/reusable feature applied consistently across the site's list views, not a one-off.
+done-when: a reusable filter/sort feature lands and is applied to the owner queue (filters at least by project, by task, and by action kind/type) plus a site-wide audit that rolls the same feature out to the other list surfaces; verified live.
+do: OWNER-QUEUE FILTERS + CENTRALIZED LIST FILTER/SORT — the owner's order VERBATIM between the markers:
+BEGIN ORDER TEXT
+the owner queue is currrenty onle long list with no way to sort or filter things, I'd like multiple filters, per project, per task, what kind of action it is etc, and the rest of the website should be reviewed aswell to make sure this is implemented as a centralized feature
+END ORDER TEXT
+
+## ORDER 020 · 2026-07-12T15:50Z · status: new
+priority: P1
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (~15:50Z)
+why: the owner wants to author directly on the sites — act on owner-actions (mark complete / request assistance) and leave corrections, ideas, and notes — with that input flowing back into the fleet's source of truth so agents act on it.
+done-when: owner-authenticated writeback controls land on the owner-action queue and key surfaces (mark-complete, request-assistance, add note/correction/idea), the owner's input is committed back to the repo control bus (or honestly degraded + the required write-scoped token flagged), state-changing routes carry the CSRF/Origin + rate-limit floor, and it's verified live.
+do: OWNER WRITEBACK ON THE SITES — the owner's order VERBATIM between the markers:
+BEGIN ORDER TEXT
+also make sure I can directly write reviews on the websites, so I can make an owner action complete or request assistance, do you understand what I mean? it could use it to suggest corrections, add my ideas to certain things etc
+END ORDER TEXT
+
+## ORDER 021 · 2026-07-12T17:55Z · status: new
+priority: P2
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (~18:05Z), iterating on /owner/environments
+why: the owner wants one place to find, store, and manage every environment across the fleet — see all envs + links to where each is managed, Discord-authed (the auth already used on the dashboard), and eventually create/review complete per-project-group environments.
+done-when: an owner-authed environments hub on the control-plane lists every fleet environment (Railway projects/services, Claude Code cloud envs, GitHub secret stores) with variable NAMES (never values), purpose, and a deep link to where each is managed; grouped per project-group and reviewable separately; Discord OAuth gating stood up (or the Discord OAuth app flagged as the one owner dependency); a "create complete environment per project group" capability scoped (built where the API allows, owner-gated where it needs real infra/secrets).
+do: OWNER ENVIRONMENTS HUB — the owner's directive VERBATIM between the markers:
+BEGIN ORDER TEXT
+and one important part I'm  still missing is the part where I can find and store all my envs etc, I want to be able to see all envs and links to where theyre managed on the website, and as pasword we could use the discord auth we already use across 2 instances, do you understand what I mean? one of the things it also does for us is a way to actually create the complete enviroments per project group and review them seperately
+END ORDER TEXT

@@ -237,6 +237,24 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    the claim ritual's own expiry rule, so a dead lane can't silently
    deadlock an order); a claim with no parseable stamp ages honestly as
    unknown, never flagged on a guess. Summary rolls up `stale_claims`.
+3g. **Prompt library** (`/prompts`) — ORDER 014: every fleet paste artifact
+   inline and always-current. Renders all 26 registry artifacts from
+   `menno420/fleet-manager` `main` — the 8 seats'
+   `projects/<seat>/{coordinator-prompt.md,instructions.md,failsafe-prompt.md}`
+   plus the fleet-wide `docs/prompts/v3/universal-startup.md` and
+   `docs/prompts/v3/session-ender.md` — fetched over the raw-content
+   read-only pattern (`github.fetch_file`, TTL-cached), so a merged prompt
+   update appears automatically within the cache TTL. The artifact list is
+   PINNED in `app/prompts.py` (the raw host cannot list directories; every
+   path verified live 2026-07-12) — an upstream seat rename degrades to an
+   honest 404 cell until the constant is updated. Each artifact shows its
+   version/provenance line (best-effort: first early `vN ·`-marked line;
+   absent → "no version line found"), a fetched-at + cached/live freshness
+   indicator, and the EXACT paste body in a `<pre>` block — verbatim,
+   whitespace preserved, Jinja-autoescaped (prompts are untrusted data,
+   rendered never obeyed), one-click copy via `copycode.js`. Per-artifact
+   honest degradation (404 / unreachable → error cell, page-level banner
+   when some or all fail); always 200; never fabricated content.
 4. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
@@ -257,7 +275,10 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 
 | Route | Auth | What |
 |---|---|---|
-| `/` | public | readiness board (secrets masked to a count) |
+| `/` | public | Overview dashboard — what-needs-attention summary + category map, readiness board below (secrets masked to a count) |
+| `/work` | public | category landing — queue / orders / ideas / reviews as rows with live count chips (IA v2, 2026-07-12) |
+| `/history` | public | category landing — activity / journal rows (IA v2) |
+| `/console` | public | category landing — projects / prompts / environments hub / directory rows (IA v2) |
 | `/api/readiness.json` | public | board data as JSON (no secret names) |
 | `/fleet` | public | fleet heartbeat — every lane's `control/status*.md` (HTML) — [D-0021] |
 | `/fleet.json` | public | same fleet heartbeat as JSON (rendered body stripped) |
@@ -267,6 +288,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/projects` | public | fleet-manager `projects/` Project-package registry — seats-first dispatch index (HTML) — [D-0030] |
 | `/projects.json` | public | same registry as JSON (rendered meta HTML stripped; packages carry `stub` + `detail_url`) |
 | `/projects/{package}` | public | per-seat dispatch screen — full role-file contents copy-ready + dispatch checklist (HTML; unknown package → 404) |
+| `/prompts` | public | fleet prompt library — all 26 fleet-manager registry paste artifacts inline, verbatim, copy-ready (HTML) — ORDER 014 |
 | `/reviews` | public | fleet post-merge review-queue ledger + findings links (HTML) — [D-0031] |
 | `/reviews.json` | public | same ledger as JSON (rendered HTML stripped) |
 | `/orders` | public | every repo's inbox ORDERs × heartbeat done= cross-reference (HTML) — [D-0032] |
@@ -280,7 +302,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/journal/search?q=…` | public | cross-repo journal search (HTML) — [D-0014] |
 | `/journal/search.json?q=…` | public | same search as JSON (plain snippets) |
 | `/journal/{repo}` | public | per-repo sessions / ledgers / PRs / commits |
-| `/journal/{repo}/file?path=…&ref=main` | public | render a repo file (markdown → HTML) |
+| `/journal/{repo}/file?path=…&ref=main` | public | render a repo file (markdown → HTML) — accepts any fleet lane repo (`JOURNAL_RENDER_REPOS`), not just the four board repos |
 | `/static/*` | public | static assets (the live-monitoring auto-refresh JS) — [D-0023] |
 | `/healthz` | public | Railway healthcheck |
 | `/version` | public | deployed commit SHA (`{service, sha, short}`) — powers the deploy-state cell ([D-0018]) |
@@ -357,6 +379,17 @@ action, while the main site stays browsable:
   on this authed path via `readiness.board(reveal_secrets=True)`), plus a
   broken-check list and oldest-PR links.
 - **`GET /owner/api/readiness.json`** is the authed JSON with names included.
+- **`GET /owner/environments`** — live-env-visibility page (ORDER 015 slice 1,
+  `docs/planning/live-env-visibility-plan-2026-07-11.md`): per-service
+  committed env facts (documented variable NAMES + purpose + a prefix-matched
+  "manage →" console deep link; the control-plane also reports set/unset for
+  its OWN runtime — presence only, never a value), plus a live section that
+  reads variable **names, never values** (plan option A) from the Railway
+  GraphQL API via a **project-scoped `RAILWAY_TOKEN`**. Token unset (the
+  state until the owner mints it) → an explicit **owner-errand-pending**
+  banner; read failure → honest `unavailable` with the reason. Read-only GET
+  behind the same gate — no CSRF surface (the ORDER 013 hardening applies to
+  the POST actions only).
 - **Privileged actions** (POST, same gate, all reversible, using creds already
   on the service):
   - **force cache refresh** — clears the in-memory TTL cache; the next load
@@ -365,10 +398,23 @@ action, while the main site stays browsable:
     repo's default branch and POSTs `rerun-failed-jobs` via `GITHUB_TOKEN`.
     Honest banners for the 403 (token lacks `actions:write`) and no-failed-run
     cases; never 500s.
+- **POST hardening (ORDER 013):** every state-changing `/owner` action layers,
+  after Basic auth, a **strict same-origin CSRF check** — the `Origin` header's
+  host must match the request's own `Host` (falling back to `Referer` when
+  `Origin` is absent; **both absent → 403**, the documented strict choice,
+  since browsers always send `Origin` on POST) — and a dependency-free
+  **in-process rate limit** (sliding window, 10 requests / 60 s per route +
+  client, **429** with `Retry-After` beyond that). Hosts are compared rather
+  than scheme+host because Railway's proxy terminates TLS ahead of the app.
 
 **Deliberately NOT wired** (separate owner approval): any Railway
 account-token action and any **live production-bot** control API. No
-`RAILWAY_API_KEY` is present in the service env.
+`RAILWAY_API_KEY` is present in the service env. The one Railway read the
+repo now carries — `/owner/environments`' variable-NAME query via a
+**project-scoped** `RAILWAY_TOKEN` (owner-decided 2026-07-11, see the plan
+doc) — is read-only, gated, scoped to `superbot-websites` by the token
+itself, and never uses the account key or the ambient production IDs
+(`docs/RAILWAY-SAFETY.md`).
 
 ## Env vars
 
@@ -381,6 +427,7 @@ account-token action and any **live production-bot** control API. No
 | `AUTOREFRESH_SECONDS` | no | client poll interval for the board `/` + `/fleet` live-monitoring auto-refresh, default `45` ([D-0023]) |
 | `GITHUB_API_BASE` | no | REST base override (testing behind restricted egress) |
 | `GITHUB_RAW_BASE` | no | raw-content base override |
+| `RAILWAY_TOKEN` | for `/owner/environments` live half | **Project-scoped** Railway token (superbot-websites only — never the account `RAILWAY_API_KEY`, never the ambient production IDs) powering the gated live variable-NAME read. Unset → the page renders committed facts with an honest owner-errand banner. |
 
 ## Mobile / responsive ([D-0014])
 

@@ -1,0 +1,51 @@
+{#- Centralized list filter/sort/search widget (ORDER 019).
+    Contract: the including template sets `lf` to the view model returned by
+    app/listfilter.py apply() before {% include "_listfilter.html" %}.
+    Zero-JS by design: the search box is a plain GET form (hidden inputs keep
+    the rest of the state), every pill/sort/chip is a plain GET link. All
+    text renders through autoescape — never |safe anything here. -#}
+<div class="card lf">
+  {% if lf.has_search %}
+  <form class="searchbox" method="get" action="{{ lf.path }}" role="search">
+    {%- for name, value in lf.form_fields %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {%- endfor %}
+    <input type="search" name="{{ lf.q_param }}" value="{{ lf.q }}"
+           placeholder="search this list…" aria-label="search this list">
+    <button type="submit">search</button>
+  </form>
+  {% endif %}
+  {% for dim in lf.dims %}
+  <p class="small lf-row">
+    <span class="dim">{{ dim.label }}{% if dim.derived %} <span title="derived from item content, not a stored field">(derived)</span>{% endif %}:</span>
+    {%- for opt in dim.options %}
+    <a class="b lf-pill{{ ' on' if opt.selected }}" href="{{ opt.url }}">{{ opt.label }} · {{ opt.count }}</a>
+    {%- endfor %}
+    {%- for u in dim.unknown %}
+    <a class="b bad lf-pill" href="{{ u.url }}"
+       title="unknown {{ dim.label }} value — matches nothing (kept visible, never silently dropped); click to remove">{{ u.value }} · unknown ✕</a>
+    {%- endfor %}
+  </p>
+  {% endfor %}
+  {% if lf.sorts %}
+  <p class="small lf-row">
+    <span class="dim">sort:</span>
+    {%- for s in lf.sorts %}
+    <a class="b lf-pill{{ ' on' if s.selected }}" href="{{ s.url }}">{{ s.label }}</a>
+    {%- endfor %}
+  </p>
+  {% endif %}
+  <p class="small lf-row">
+    <span class="b repo">{{ lf.shown }} of {{ lf.total }}</span>
+    {%- if lf.active %}
+    {%- for chip in lf.chips %}
+    <a class="b lf-pill on" href="{{ chip.url }}" title="remove this filter">{{ chip.dim_label }}: {{ chip.value_label }} ✕</a>
+    {%- endfor %}
+    <a class="small" href="{{ lf.clear_url }}">clear all</a>
+    {%- endif %}
+  </p>
+  {% if lf.active and lf.shown == 0 %}
+  <p class="dim">no items match the active filters — an empty result, not an error.
+    <a href="{{ lf.clear_url }}">clear filters</a></p>
+  {% endif %}
+</div>

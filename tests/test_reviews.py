@@ -128,7 +128,7 @@ def test_reviews_route_and_json(monkeypatch):
     assert r.status_code == 200
     assert "superbot#1920" in r.text and "/superbot/pull/1920" in r.text
     assert "findings &amp; records" in r.text
-    assert 'href="/reviews"' in r.text  # nav link
+    assert 'href="/work"' in r.text  # category nav link (reviews ∈ work)
 
     rj = client.get("/reviews.json")
     assert rj.status_code == 200

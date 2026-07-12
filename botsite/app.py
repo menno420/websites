@@ -31,13 +31,18 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from . import arcade as arcade_registry
 from . import data_source as ds
+from . import listfilter
+from . import testing
 
 BASE_DIR = Path(__file__).resolve().parent
 NAV = [
     ("features", "Features", "/features"),
     ("commands", "Commands", "/commands"),
     ("games", "Games", "/games"),
+    ("arcade", "Arcade", "/arcade"),
+    ("testing", "Testing", "/testing"),
     ("changelog", "Changelog", "/changelog"),
     ("status", "Status", "/status"),
 ]
@@ -58,6 +63,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="SuperBot", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+# Tester-recruitment program (ORDER 018): public claim/submit flow + gated
+# owner queue, all under /testing (see botsite/testing.py).
+app.include_router(testing.router)
 
 
 def _base_ctx(request: Request, active: str, site_res: dict[str, Any]) -> dict[str, Any]:
@@ -175,6 +183,31 @@ async def games(request: Request):
     ctx = _base_ctx(request, "games", res)
     ctx.update({"games": ds.games(site)})
     return templates.TemplateResponse(request, "games.html", ctx)
+
+
+@app.get("/arcade", response_class=HTMLResponse)
+async def arcade(request: Request):
+    """Fleet Arcade — public catalog of the fleet's playable games (ORDER 014,
+    slice 1). Data is the committed ``botsite/data/arcade.json`` read from disk
+    at request time — no network. Honest labels: a play/download link renders
+    only when a game is really reachable; otherwise the card carries its
+    status note. Read-only in this slice: no state-changing routes.
+    ORDER 019 PR2: filter/sort/search over the vendored listfilter core
+    (maturity / availability dimensions, defined in arcade.py); no params
+    renders exactly the pre-filter page."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "arcade", res)
+    games = arcade_registry.load_games()
+    state = listfilter.parse(arcade_registry.FILTER_SPEC, request.query_params)
+    ctx.update(
+        {
+            "arcade_games": games,
+            "arcade_filter": listfilter.apply(
+                arcade_registry.FILTER_SPEC, games, state
+            ),
+        }
+    )
+    return templates.TemplateResponse(request, "arcade.html", ctx)
 
 
 @app.get("/changelog", response_class=HTMLResponse)

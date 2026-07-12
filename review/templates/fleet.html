@@ -69,11 +69,59 @@
   </div>
 </section>
 
+{% if seats and seats.ok %}
 <section class="sb-section">
   <div class="sb-wrap">
-    <div class="sb-sec-head"><h2>The seats</h2></div>
+    <div class="sb-sec-head">
+      <h2>The {{ seats.seats|length }} standing seats</h2>
+      <p class="sb-muted">
+        The scale story, precisely: the fleet {{ seats.consolidation.summary }}.
+        The "~" is deliberate — the peak is screenshot-supported, not machine-counted;
+        the 8-seat side is commit-verified.
+        {% for e in seats.consolidation.evidence %}
+        <a href="{{ e.url }}" target="_blank" rel="noopener">{{ e.label }}</a>{% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </p>
+    </div>
     <div class="sb-grid-2">
-      {% for l in overview.lanes %}
+      {% for s in seats.seats %}
+      <div class="sb-card rv-lane-card">
+        <h3>{{ s.seat }}
+          {% if s.last_heartbeat %}<span class="rv-chip {% if s.last_heartbeat.stale %}rv-chip-unknown{% else %}rv-chip-green{% endif %}">hb {{ s.last_heartbeat.age_human }}</span>
+          {% else %}<span class="rv-chip rv-chip-unknown">no heartbeat readable</span>{% endif %}
+        </h3>
+        <p>{{ s.role }}</p>
+        <ul class="rv-kv">
+          {% for m in s.repos %}
+          <li>
+            <span>{% if m.repo_url %}<a href="{{ m.repo_url }}" target="_blank" rel="noopener">{{ m.repo }}</a>{% else %}{{ m.repo }}{% endif %}</span>
+            <strong>{% if m.freshness.ok %}heartbeat {{ m.freshness.age_human }}{% elif not m.heartbeat_available %}not measurable — {{ m.reason }}{% else %}heartbeat age unknown{% endif %}</strong>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="sb-chart-note sb-muted">
+      Seat structure transcribed from its commit-pinned sources
+      ({% for src in seats.sources %}<a href="{{ src.url }}" target="_blank" rel="noopener">{{ src.label }}</a>{% if not loop.last %} · {% endif %}{% endfor %});
+      heartbeat readings come from the same per-repo mirror as the lane cards below — baked
+      {{ fleet_age.iso if fleet_age and fleet_age.ok else "at an unknown time" }}, never hand-written.
+      A member whose heartbeat can't be read says so. One Game Lab lane is private by design and
+      is deliberately not listed here at all.
+    </p>
+  </div>
+</section>
+{% endif %}
+
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-sec-head"><h2>The per-repo lanes under the seats</h2></div>
+    {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
+    {% set lf = lanes_filter %}
+    {% include "_listfilter.html" %}
+    <div class="sb-grid-2">
+      {% for l in lanes_filter['items'] %}
       <div class="sb-card rv-lane-card">
         <h3>
           {% if l.repo %}<a href="/fleet/{{ l.repo }}">{{ l.lane }}</a>{% else %}{{ l.lane }}{% endif %}
@@ -97,6 +145,11 @@
         <p class="sb-muted rv-gap">No heartbeat mirrored — {{ l.heartbeat_reason }}.</p>
         {% else %}
         <p class="sb-muted rv-gap">{{ l.heartbeat_reason }}.</p>
+        {% endif %}
+        {% if l.head and l.head.ok %}
+        <p class="sb-chart-note sb-muted">latest commit <span class="sb-mono">{{ l.head.sha[:8] }}</span>{% if l.head.committed_at %} · {{ l.head.committed_at }}{% endif %} <span title="{{ l.head.source }}">(git transport, at bake time)</span></p>
+        {% elif l.repo and l.head %}
+        <p class="sb-chart-note sb-muted">latest commit: not readable — {{ l.head.reason }}.</p>
         {% endif %}
         {% if l.stats and l.stats.ok %}
         <p class="sb-chart-note sb-muted">last push {{ l.stats.pushed_at[:10] }}{% if l.stats.total_prs is defined %} · {{ l.stats.total_prs }} PRs ever opened{% endif %}{% if l.stats.open_issues_and_prs is not none %} · {{ l.stats.open_issues_and_prs }} open issues+PRs{% endif %}</p>

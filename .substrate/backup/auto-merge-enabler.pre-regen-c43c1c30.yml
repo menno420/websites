@@ -1,0 +1,124 @@
+name: auto-merge-enabler
+
+# Turn ON GitHub-native auto-merge (squash) for session PRs so they merge
+# themselves the moment the required `quality` check passes — removing the
+# owner-click from the loop for routine green session work. Adapted from the
+# proven superbot precedent (.github/workflows/auto-merge-enabler.yml @
+# 66c7389bb5c210ce003b27d1ba3dde2b51ab93fd), with websites-specific rails.
+#
+# HARD REQUIREMENTS (verified live 2026-07-12 before shipping):
+#   1. Repo Settings → General → Pull Requests → "Allow auto-merge" = ON
+#      (live /api/readiness.json: websites auto_merge.allowed = true, from
+#      the repo API's allow_auto_merge field).
+#   2. The `quality` check is REQUIRED on main (owner ruleset since
+#      2026-07-09). Native auto-merge WAITS on it — no green-gating logic
+#      lives here; GitHub's own ruleset is the gate in every path below.
+#
+# TOKEN: secrets.GITHUB_TOKEN only — no PAT, no other secret. This repo's
+# Actions setting "create and approve pull requests" is DISABLED, which is
+# fine: enabling auto-merge / merging is neither PR-create nor PR-approve.
+# KNOWN TRADEOFF (superbot hit the same gotcha): a merge attributed to
+# github-actions[bot] does not trigger `on: push` workflows, so quality's
+# push-to-main run won't fire for auto-merged PRs (the PR run already
+# gated the same commit tree; Railway deploys hook the push itself, not
+# Actions, so deploys are unaffected).
+#
+# SAFETY RAILS (both jobs):
+#   * only head branches matching claude/* — nothing else is ever touched;
+#   * only non-draft PRs;
+#   * any PR whose diff touches .github/workflows/** is SKIPPED — workflow
+#     PRs stay owner-merge-only (this file's own PR included). The
+#     pull_request job additionally DISARMS auto-merge if a later push adds
+#     a workflow file to an already-armed PR;
+#   * permissions limited to contents: write + pull-requests: write;
+#   * concurrency group per PR (sweeps serialize per event kind).
+#
+# Sweep job (schedule + manual dispatch) arms every currently-open eligible
+# PR, so PRs opened before this workflow existed land without new clicks.
+# A PR that is ALREADY green cannot have auto-merge armed (GitHub rejects
+# arming a clean PR), so the sweep falls back to a direct squash merge —
+# which the ruleset only permits when the required `quality` check is green.
+# Cron is best-effort ±hours (capability-ledger finding) — dispatch by hand
+# for an immediate sweep.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+  schedule:
+    - cron: "13,43 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-enabler-${{ github.event.pull_request.number || github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  arm-on-open:
+    if: >-
+      github.repository == 'menno420/websites' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
+      startsWith(github.head_ref, 'claude/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Arm native squash auto-merge (skip workflow-touching PRs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          files="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')"
+          if printf '%s\n' "$files" | grep -q '^\.github/workflows/'; then
+            echo "PR #$PR touches .github/workflows/** — owner-merge-only; disarming if armed, never arming."
+            gh pr merge --disable-auto "$PR" --repo "$GITHUB_REPOSITORY" 2>/dev/null \
+              || echo "auto-merge was not armed on PR #$PR (nothing to disarm)."
+            exit 0
+          fi
+          if gh pr merge --auto --squash "$PR" --repo "$GITHUB_REPOSITORY"; then
+            echo "Auto-merge (squash) armed for PR #$PR — it merges when the required 'quality' check is green."
+          elif gh pr merge --squash "$PR" --repo "$GITHUB_REPOSITORY"; then
+            # Arming fails on a PR that is already clean (nothing to wait on);
+            # a direct merge only succeeds if the ruleset's required check is
+            # already green — GitHub gates it, not this script.
+            echo "PR #$PR was already clean — squash-merged directly."
+          else
+            echo "::warning::Could not arm or merge PR #$PR. Confirm 'Allow auto-merge' is ON and main requires the 'quality' check."
+          fi
+
+  sweep:
+    if: >-
+      github.repository == 'menno420/websites' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Arm auto-merge on every open eligible claude/* PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prs="$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --limit 100 \
+                 --json number,isDraft,headRefName,autoMergeRequest \
+                 --jq '.[] | select(.isDraft == false)
+                           | select(.headRefName | startswith("claude/"))
+                           | select(.autoMergeRequest == null)
+                           | .number')"
+          if [ -z "$prs" ]; then
+            echo "No open non-draft claude/* PRs without auto-merge — nothing to do."
+            exit 0
+          fi
+          for pr in $prs; do
+            files="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr/files" --paginate --jq '.[].filename')"
+            if printf '%s\n' "$files" | grep -q '^\.github/workflows/'; then
+              echo "PR #$pr touches .github/workflows/** — owner-merge-only; skipped."
+              continue
+            fi
+            if gh pr merge --auto --squash "$pr" --repo "$GITHUB_REPOSITORY"; then
+              echo "Auto-merge (squash) armed for PR #$pr."
+            elif gh pr merge --squash "$pr" --repo "$GITHUB_REPOSITORY"; then
+              echo "PR #$pr was already clean — squash-merged directly."
+            else
+              echo "::warning::Could not arm or merge PR #$pr — left untouched."
+            fi
+          done

@@ -42,7 +42,9 @@ ORDERS_SUMMARY = {
 QUEUE_TOP = {
     "items", "lane_notes", "fleet_manager", "field_order", "summary",
     "unreadable_lanes", "lane_source",
+    "filter",  # ORDER 019: echo of the applied filter state (q/sort/selected…)
 }
+QUEUE_FILTER = {"q", "sort", "selected", "active", "shown", "total"}
 QUEUE_ITEM = {"what", "text", "fields", "sources"}
 QUEUE_SOURCE = {"kind", "label", "url", "updated_iso", "age_hours", "age_human"}
 QUEUE_SUMMARY = {"total", "deduped", "lanes_with_asks", "lanes_total"}
@@ -53,9 +55,10 @@ QUEUE_FM = {  # _fleet_manager_half minus body_html
 PROJECTS_TOP = {"state", "reason", "token_set", "repo_url", "packages", "root_files"}
 PROJECTS_PACKAGE = {  # per-package dict, meta_html dropped in JSON
     "name", "path", "github_url", "detail_url", "files", "error",
-    "meta_error", "state", "stub",
+    "meta_error", "state", "stub", "coverage", "dispatch_ready",
 }
 PROJECTS_FILE = {"name", "path", "role", "label", "github_url"}
+PROJECTS_COVERAGE = {"role", "label", "present"}  # role-coverage chip
 
 REVIEWS_TOP = {  # overview minus body_html
     "state", "reason", "token_set", "doc_url", "rows",
@@ -159,6 +162,8 @@ def test_queue_json_shape(monkeypatch):
     assert set(d) == QUEUE_TOP, _drift(set(d), QUEUE_TOP)
     assert set(d["summary"]) == QUEUE_SUMMARY, _drift(set(d["summary"]), QUEUE_SUMMARY)
     assert set(d["fleet_manager"]) == QUEUE_FM, _drift(set(d["fleet_manager"]), QUEUE_FM)
+    assert set(d["filter"]) == QUEUE_FILTER, _drift(set(d["filter"]), QUEUE_FILTER)
+    assert d["filter"]["active"] is False  # no params -> nothing applied
     assert "body_html" not in d["fleet_manager"]
     assert d["items"], "happy path must surface the filed ask"
     for item in d["items"]:
@@ -176,6 +181,9 @@ def test_projects_json_shape(monkeypatch):
         assert "meta_html" not in pkg
         for f in pkg["files"]:
             assert set(f) == PROJECTS_FILE, _drift(set(f), PROJECTS_FILE)
+        assert pkg["coverage"], "happy path must derive role-coverage chips"
+        for c in pkg["coverage"]:
+            assert set(c) == PROJECTS_COVERAGE, _drift(set(c), PROJECTS_COVERAGE)
 
 
 def test_reviews_json_shape(monkeypatch):

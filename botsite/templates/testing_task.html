@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ task.title }} — SuperBot testing program{% endblock %}
+
+{% block content %}
+<div class="wrap" style="max-width:var(--sb-wrap-narrow)">
+  <section class="sb-page-hero">
+    <a class="sb-nav-link" href="/testing" style="padding-left:0">{{ icon("back", 14) }} All test tasks</a>
+    <span class="sb-ey"><span class="dot">·</span> {{ task.type }}</span>
+    <div class="head-row"><h1>{{ task.title }}</h1></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+      <span class="sb-badge">{{ icon("coins", 11) }} ${{ task.payout_usd }} payout</span>
+      <span class="sb-badge">{{ icon("clock", 11) }} ~{{ task.est_minutes }} minutes</span>
+      {% if task.effective_status == 'open' %}
+      <span class="sb-badge">{{ task.slots_left }} of {{ task.slots_total }} slot{{ '' if task.slots_total == 1 else 's' }} left</span>
+      {% else %}
+      <span class="sb-badge sb-badge-warn">{{ task.effective_status }}</span>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if error %}
+  <div class="sb-error section-sm" role="alert">
+    {{ icon("alert", 16) }}
+    <div><strong>Claim not accepted.</strong> {{ error }}</div>
+  </div>
+  {% endif %}
+
+  <div class="section-sm">
+    <h3>The brief</h3>
+    <p>{{ task.brief }}</p>
+    {% if task.product_url and task.effective_status == 'open' %}
+    <p><a class="sb-btn sb-btn-ghost sb-btn-sm" href="{{ task.product_url }}" target="_blank" rel="noopener">Open the product {{ icon("external", 15) }}</a></p>
+    {% endif %}
+    {% if task.note %}
+    <div class="sb-lane-pending" style="margin-top:12px">
+      <div class="head">{{ icon("info", 16) }}<h4>Status note</h4></div>
+      <p>{{ task.note }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if task.effective_status == 'open' %}
+  <form class="section-sm" method="post" action="/testing/tasks/{{ task.id }}/claim">
+    <h3>Claim this task</h3>
+    <div class="sb-field">
+      <label class="sb-label" for="name">Name</label>
+      <input class="sb-inp" id="name" name="name" maxlength="200" required>
+    </div>
+    <div class="sb-field">
+      <label class="sb-label" for="email">Email</label>
+      <input class="sb-inp" id="email" name="email" type="email" maxlength="200" required>
+      <span class="sb-hint">One claim per task per email. Used to identify your work — no mail is sent.</span>
+    </div>
+    <div class="sb-field">
+      <label class="sb-label" for="paypal_email">PayPal email (optional — your payout address)</label>
+      <input class="sb-inp" id="paypal_email" name="paypal_email" type="email" maxlength="200">
+      <span class="sb-hint">Payouts go out via PayPal. Leave empty to sort it out at payout time.</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+      <button class="sb-btn sb-btn-primary" type="submit">Claim this task — ${{ task.payout_usd }}</button>
+    </div>
+    <p class="sb-hint" style="margin-top:8px"><strong>Honest note:</strong> no confirmation email is sent
+      (this site has no mail provider yet). Claiming shows your private submission link
+      <strong>once</strong> — save it. Claims are reviewed manually.</p>
+  </form>
+  {% else %}
+  <div class="sb-empty section-sm"><span class="ico">{{ icon("clock", 20) }}</span>
+    <h4>Not open for claims</h4>
+    <p>This task is {{ task.effective_status }} right now.
+      {% if task.effective_status == 'closed' %}All its slots are taken — check back after review frees a slot.{% endif %}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

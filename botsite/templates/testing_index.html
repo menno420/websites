@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Get paid to test — SuperBot testing program{% endblock %}
+{% block description %}Paid tester program: real test tasks on the fleet's live products, $10–20 per task, 30–60 minutes each.{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> tester program</span>
+    <div class="head-row"><h1>Get paid to test what we build</h1></div>
+    <p class="sb-lead">Real test tasks on this fleet's live products — sites and (soon) games.
+      Each task pays <strong>$10–20</strong> and takes <strong>30–60 minutes</strong>.
+      You claim a task, do the work, file a structured report, and get paid after review.</p>
+  </section>
+
+  <div class="sb-lane-pending section-sm">
+    <div class="head">{{ icon("info", 16) }}<h4>How it works — the honest version</h4></div>
+    <p><strong>1. Claim.</strong> Pick an open task and claim it with your name and email.
+      No email is sent (this site has no mail provider yet) — claiming shows you a
+      <strong>private submission link</strong> you must save. Claims are reviewed manually.</p>
+    <p><strong>2. Test.</strong> Follow the task brief on the live product. Every task here is a
+      real product from this fleet — nothing is invented to look busy.</p>
+    <p><strong>3. Report.</strong> Your private link has a short structured questionnaire plus
+      free-form findings. An AI-assisted exit review is planned for a later update; right now a
+      human reviews every submission — the page says so, honestly.</p>
+    <p><strong>4. Get paid.</strong> Payouts go out via <strong>PayPal</strong> (the optional
+      PayPal email on the claim form is your payout address). Payouts are approved and sent
+      manually for now; automatic payouts are built but deliberately locked in dry-run until the
+      payment rail is armed.</p>
+  </div>
+
+  <div class="section-sm" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+    <span class="sb-badge">{{ icon("coins", 11) }} Open bounty committed: ${{ "%.0f"|format(bounty.committed) }} of the ${{ "%.0f"|format(bounty.cap) }} program cap</span>
+    <span class="sb-hint">When the cap is reached, new claims pause until open work is reviewed.</span>
+  </div>
+
+  {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
+  {% set lf = tasks_filter %}
+  {% include "_listfilter.html" %}
+
+  <div class="card-grid section-sm">
+    {% for t in tasks_filter['items'] %}
+    <a class="sb-card sb-card-hover sb-feat feat-link" href="/testing/tasks/{{ t.id }}" style="--c:{{ 'var(--sb-brand)' if t.type == 'game-test' else 'var(--sb-sky)' if t.type == 'site-review' else 'var(--sb-amber)' }}">
+      <span class="corner" aria-hidden="true"></span>
+      <div class="sb-feat-top">
+        <span class="sb-tile sb-tile-emoji">{{ icon('gamepad', 22) if t.type == 'game-test' else icon('search', 22) if t.type == 'site-review' else icon('flag', 22) }}</span>
+        <h3 style="font-size:var(--sb-text-lg)">{{ t.title }}</h3>
+      </div>
+      <div class="feat-desc">{{ t.brief[:140] }}{% if t.brief|length > 140 %}…{% endif %}</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+        <span class="sb-badge">${{ t.payout_usd }}</span>
+        <span class="sb-badge">~{{ t.est_minutes }} min</span>
+        <span class="sb-badge">{{ t.type }}</span>
+        {% if t.effective_status == 'open' %}
+        <span class="sb-badge">{{ t.slots_left }} slot{{ '' if t.slots_left == 1 else 's' }} left</span>
+        {% elif t.effective_status == 'coming-soon' %}
+        <span class="sb-badge sb-badge-warn">coming soon</span>
+        {% else %}
+        <span class="sb-badge sb-badge-warn">closed</span>
+        {% endif %}
+      </div>
+      {% if t.effective_status == 'coming-soon' and t.note %}
+      <div class="sb-hint" style="margin-top:8px">{{ t.note }}</div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="sb-lane-pending section-sm">
+    <div class="head">{{ icon("alert", 16) }}<h4>What we promise (and what we don't, yet)</h4></div>
+    <p>Payouts are real money and are honored per the ledger you can ask about at any time.
+      What is <em>not</em> live yet, stated plainly: the AI exit-review (a later update reviews
+      your steps automatically), automatic payouts (built, kill-switched off, dry-run only), and
+      the coming-soon tasks above (they open the day their product deploys). Nothing on this
+      page pretends otherwise.</p>
+  </div>
+</div>
+{% endblock %}

@@ -183,6 +183,55 @@ def console_contract_issue(data: dict[str, Any]) -> str:
     return ""
 
 
+# ---------------------------------------------------------------------------
+# dashboard.json schema version pin (cross-repo).
+#
+# The main feed's producer (superbot's ``scripts/export_dashboard_data.py``) stamps
+# ``meta.schema_version`` into every committed ``dashboard/data/dashboard.json``
+# (the live feed ships the integer 1). Until now only console.json was checked at
+# render time; the main feed was consumed unverified. This pin closes that gap:
+# a fetched feed whose version doesn't match what this consumer was built against
+# renders an honest schema-drift banner on every page (never-fake-data posture)
+# instead of silently misrendering. Read-only, forward-only — no producer change.
+# ---------------------------------------------------------------------------
+DASHBOARD_SCHEMA_VERSION = 1
+
+
+def dashboard_schema_issue(data: dict[str, Any]) -> str:
+    """Human-readable schema-drift message for a fetched dashboard feed ('' = ok).
+
+    Accepts the pinned version whether the producer ships it as an int (``1``,
+    the value observed live) or a numeric string (``"1"``). Anything else —
+    missing, non-numeric, newer, older — degrades to an explicit message; this
+    function never raises on feed content.
+    """
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    version = meta.get("schema_version")
+    if version is None:
+        return (
+            "feed carries no meta.schema_version — cannot confirm the shape; this "
+            f"dashboard was built against schema v{DASHBOARD_SCHEMA_VERSION}"
+        )
+    try:
+        numeric = int(str(version).strip())
+    except (TypeError, ValueError):
+        return (
+            f"feed schema_version={version!r} is not a version this dashboard "
+            f"understands — built against schema v{DASHBOARD_SCHEMA_VERSION}"
+        )
+    if numeric > DASHBOARD_SCHEMA_VERSION:
+        return (
+            f"feed schema_version={version!r} — data schema newer than this consumer "
+            f"(built against v{DASHBOARD_SCHEMA_VERSION}); the shape may have changed upstream"
+        )
+    if numeric < DASHBOARD_SCHEMA_VERSION:
+        return (
+            f"feed schema_version={version!r} — data schema older than this consumer "
+            f"(built against v{DASHBOARD_SCHEMA_VERSION})"
+        )
+    return ""
+
+
 def prime_cache(url: str, data: dict[str, Any]) -> None:
     """Seed the cache directly (used by tests to avoid the network)."""
     _cache[url] = {

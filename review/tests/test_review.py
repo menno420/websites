@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 from markupsafe import escape
 
-from review import story
+from review import fleetdata, story
 from review.app import app
 
 client = TestClient(app)
@@ -236,3 +236,191 @@ def test_committed_snapshot_is_current_shape():
     for day in data["days"]:
         assert set(day) >= {"date", "prs_merged", "commits", "session_cards"}
     assert data["totals"]["services"] == 4
+
+
+# ---------------------------------------------------------------------------
+# The 2026-07-12 scheduler incident — the problems page's lead item
+# ---------------------------------------------------------------------------
+def test_scheduler_incident_leads_the_problems_page():
+    """ORDER 017: the 2026-07-12 scheduler-degradation incident is the FIRST
+    problems entry, and its record is commit-pinned to the superbot night
+    review."""
+    lead = story.PROBLEMS[0]
+    assert lead["title"].startswith("2026-07-12")
+    assert "scheduler" in lead["title"]
+    r = client.get("/problems")
+    assert r.status_code == 200
+    # the page carries the incident and its commit-pinned primary source
+    assert "trigger scheduler silently degraded" in r.text
+    assert "8558179e6a90670ed18c778234d789c65c2b5789" in r.text
+    assert "night-review-2026-07-12.md" in r.text
+
+
+def test_scheduler_incident_details_render_and_are_evidence_linked():
+    """Every incident sub-finding renders with at least one commit-pinned
+    evidence link (no URL, no finding — the fleet's own review rule)."""
+    lead = story.PROBLEMS[0]
+    assert lead["details"], "the incident must carry structured sub-findings"
+    r = client.get("/problems")
+    for d in lead["details"]:
+        assert d["heading"].strip() and d["text"].strip()
+        assert d["evidence"], f"detail without evidence: {d['heading']}"
+        for label, url in d["evidence"]:
+            assert label.strip()
+            assert url.startswith("https://github.com/menno420/")
+        assert str(escape(d["heading"])) in r.text
+    # the load-bearing incident specifics are on the page
+    assert "Three self-wake mechanisms" in r.text
+    assert "dead-man" in r.text
+    assert "Serialization vs. real drop" in r.text
+    assert "zero-write stand-down" in r.text
+
+
+def test_incident_unverifiable_numbers_are_attributed_not_asserted():
+    """The 84/85 baseline is not machine-verifiable from git — the site must
+    attribute it to the night review's own registry evidence, never assert it
+    bare (the accuracy rule from the evidence digest)."""
+    lead = story.PROBLEMS[0]
+    assert "84 of 85" in lead["what"]
+    assert "registry evidence reported in" in lead["what"]
+
+
+# ---------------------------------------------------------------------------
+# Footer "last refreshed" stamp — from the data, never hardcoded
+# ---------------------------------------------------------------------------
+def test_footer_stamp_renders_from_snapshot_data():
+    snap = story.load_snapshot()
+    assert snap["ok"]
+    r = client.get("/process")  # any page — the footer is base-template
+    assert f"data last refreshed {snap['data']['generated_at']}" in r.text
+    assert f"snapshot @ {snap['data']['git_head'][:8]}" in r.text
+
+
+def test_footer_stamp_follows_the_data_file(monkeypatch, tmp_path: Path):
+    """Change the committed data → the footer stamp changes with it (proof
+    the stamp is read from the file, not templated in)."""
+    p = tmp_path / "snap.json"
+    p.write_text(
+        json.dumps(
+            {
+                "generated_at": "2031-05-06T07:08:09Z",
+                "git_head": "feedc0defeedc0defeedc0defeedc0defeedc0de",
+                "days": [],
+                "totals": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(story, "SNAPSHOT_PATH", p)
+    r = client.get("/process")
+    assert "data last refreshed 2031-05-06T07:08:09Z" in r.text
+    assert "snapshot @ feedc0de" in r.text
+
+# ---------------------------------------------------------------------------
+# Homepage (ORDER 017 C) — the 30-second front door
+# ---------------------------------------------------------------------------
+def test_homepage_stats_row_from_committed_data():
+    """Every number in the key-stats row comes from the committed data files
+    (snapshot totals + fleet mirror), rendered with its as-of stamps."""
+    snap = story.load_snapshot()
+    fl = fleetdata.load_fleet()
+    assert snap["ok"] and fl["ok"]
+    r = client.get("/")
+    totals = snap["data"]["totals"]
+    for key in ("prs_merged", "session_cards", "test_functions"):
+        assert "{:,}".format(totals[key]) in r.text
+    # seats tile: counted from the fleet mirror, peak from its own
+    # consolidation block — never a template literal
+    seats = fl["data"]["seats"]
+    peak = fl["data"]["consolidation"]["peak"]
+    assert f"peaked {peak} Projects → {len(seats)} standing" in r.text
+    # both as-of stamps render from the data files
+    assert snap["data"]["generated_at"] in r.text
+    assert fl["data"]["generated_at"] in r.text
+
+
+def test_homepage_stats_unit_shapes():
+    """homepage_stats: seats counted from the mirror; absence means absence."""
+    tiles = story.homepage_stats(
+        {"totals": {"prs_merged": 5}},
+        {"seats": [{"seat": "a"}, {"seat": "b"}], "consolidation": {"peak": "~15"}},
+    )
+    keys = [t["key"] for t in tiles]
+    assert keys == ["prs_merged", "seats", "generations"]
+    seats_tile = tiles[1]
+    assert seats_tile["value"] == 2
+    assert seats_tile["sub"] == "peaked ~15 Projects → 2 standing"
+    # no fleet mirror -> no seats tile, never a guessed one
+    assert [t["key"] for t in story.homepage_stats({}, {})] == ["generations"]
+
+
+def test_homepage_degrades_without_fleet_mirror(monkeypatch, tmp_path: Path):
+    """Fleet mirror gone: the page still 200s, snapshot tiles still render,
+    and the seats tile is honestly absent."""
+    monkeypatch.setattr(fleetdata, "FLEET_PATH", tmp_path / "gone.json")
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "standing fleet seats" not in r.text
+    snap = story.load_snapshot()
+    assert "{:,}".format(snap["data"]["totals"]["prs_merged"]) in r.text
+
+
+def test_homepage_start_here_cards():
+    """The five start-here findings render, each with its deep link; the
+    incident card deep-links the /problems anchor and the trust card the
+    questionnaire anchor; external evidence is commit-pinned."""
+    assert len(story.START_HERE) == 5
+    r = client.get("/")
+    for card in story.START_HERE:
+        assert card["links"], f"start-here card without links: {card['id']}"
+        assert str(escape(card["title"])) in r.text
+        for label, url in card["links"]:
+            assert label.strip()
+            assert url.startswith("/") or url.startswith("https://github.com/menno420/")
+    assert "/problems#incident-2026-07-12" in r.text
+    assert "/questionnaire#memory" in r.text
+    # the commit-pinned email/night-review evidence rides along
+    assert "8558179e6a90670ed18c778234d789c65c2b5789" in r.text
+
+
+def test_problems_page_carries_the_incident_anchor():
+    """The homepage's incident deep link has a real target."""
+    r = client.get("/problems")
+    assert 'id="incident-2026-07-12"' in r.text
+
+
+def test_ask_ai_reachable_from_every_page_and_prominent_on_home():
+    """'Ask AI' is in the site nav (base template) and the homepage carries
+    the prominent panel pointing at /ask."""
+    for path in ["/", "/process", "/problems", "/fleet"]:
+        r = client.get(path)
+        assert 'href="/ask"' in r.text, f"nav missing /ask on {path}"
+    home = client.get("/")
+    assert "Ask the project" in home.text
+    assert "Run a structured review" in home.text
+
+
+def test_homepage_org_map():
+    """The 'how this site is organized' map names every section with a link."""
+    r = client.get("/")
+    assert "How this site is organized" in r.text
+    for label, href, line in story.site_map():
+        assert f'href="{href}"' in r.text
+        assert str(escape(label)) in r.text
+
+
+def test_homepage_evidence_links_and_email_pairing():
+    r = client.get("/")
+    assert "github.com/menno420/superbot/tree/main/docs/eap" in r.text
+    assert "github.com/menno420/websites" in r.text
+    assert "July 12" in r.text and "July 8" in r.text
+
+
+def test_homepage_accuracy_floor():
+    """Workstream D: the private lane is never mentioned; the peak count is
+    only ever the softened '~15' from the fleet mirror, not a bare 15."""
+    r = client.get("/")
+    low = r.text.lower()
+    assert "pokemon" not in low and "pokémon" not in low
+    assert "peaked ~15" in r.text
+    assert "peaked 15" not in r.text

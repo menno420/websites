@@ -7,18 +7,21 @@
     "soft_target_sessions": 50
   },
   "graduation_proposed": false,
-  "kit_version": "1.12.1",
+  "kit_version": "1.15.0",
   "last_compaction_session": 0,
   "mode": "guided",
   "mode_history": [],
   "open_questions": [],
   "planted_doc_hashes": {
-    ".claude/CLAUDE.md": "fc898c339bde7ac68ba5f57870d8040b334608eaf4d13680a056b283d4d911dd",
+    ".claude/CLAUDE.md": "26af862a36e83f202c0b08febdf22ca6346b0871cc4681c2320d0d48072864e4",
     "control/claims/README.md": "14cb7a6a66bc2b9ee6d97c0c72e8642356907ffec3ff706d27a732470b3a19ac",
     "docs/CAPABILITIES.md": "b0b2b57311a27a1c04d76743e3ff3db1d9b50fd67b84c5ea57033645867fafdf",
-    "docs/ai-project-workflow.md": "bb2400128907f591860ac016b0d230185a7e5db815865e8701a87893df94c911",
+    "docs/ROUTINES.md": "1b5a41971e142e358202006ebafb929d92c4db352a062228106ef1205643b1f5",
+    "docs/SKILLS.md": "7de2326f2793f1318fc039e30b15e0d96356d26cd3935fc9ca483943c9cc4ae4",
+    "docs/ai-project-workflow.md": "35932f33b9b5d3e1af227c36cafcc5299e47aaeef19cc3f82dfddb60bcc67fc9",
     "docs/helper-policy.md": "21b91ac9c09bca03e6dcf8350680513b639a47367e5373ca73ac909bc201b0c3",
-    "docs/owner-profile.md": "27c5748bb6d087a9a8384723fd499b91e9b4634d635aa5bf397bf69702c67b00"
+    "docs/owner-profile.md": "27c5748bb6d087a9a8384723fd499b91e9b4634d635aa5bf397bf69702c67b00",
+    "docs/seat-digest.md": "126d63a9e931a3ee34ad2c97b8956b37e32643fe36ec55298abf097104e13152"
   },
   "project_id": "4b6a55b0bafb",
   "promotion_rights": "propose",
@@ -30,16 +33,16 @@
   "review_log": [],
   "session_anchor": {
     "branch": null,
-    "epoch": 1783854839.117413,
-    "head": "b92507286ca2d067b8ec5a8d6a4f2d079246ac09",
-    "ts": "2026-07-12T11:13:59+00:00"
+    "epoch": 1783871335.70832,
+    "head": "0fd2f48998fb6743456ab49cf4fb915c3b3ec230",
+    "ts": "2026-07-12T15:48:55+00:00"
   },
   "session_count": 12,
   "slot_values": {
     "architecture_layers": {
       "question_id": "Q-004",
       "source": "user",
-      "value": "Three independent server-rendered FastAPI services in one repo \u2014 control-plane (app/), botsite (botsite/), dashboard (dashboard/) \u2014 that share code, never a running process (each has its own Dockerfile + requirements.txt + Railway service). Inside a service the layers are: routes (app/main.py or app.py, plus app/owner.py) -> domain/data (readiness.py, journal.py, data_source.py) -> client (app/github.py: live GitHub REST + raw-content fetch behind a TTL cache) -> templates (Jinja2). Import rules: routes may import the domain, data, and client layers; lower layers never import routes or templates; no service imports another service's package; and no service ever imports superbot's disbot/ \u2014 cross-repo data arrives only as committed JSON read over raw.githubusercontent.com (read-only, forward-only)."
+      "value": "Four independent server-rendered FastAPI services in one repo \u2014 control-plane (app/), botsite (botsite/), dashboard (dashboard/), review (review/) \u2014 that share code, never a running process (each has its own Dockerfile + requirements.txt + Railway service). Inside a service the layers are: routes (app/main.py or app.py, plus app/owner.py; review/app.py) -> domain/data (readiness.py, journal.py, data_source.py; review's editions.py + fleetdata.py over committed review/data/*.json baked by gen_*.py) -> client (app/github.py: live GitHub REST + raw-content fetch behind a TTL cache) -> templates (Jinja2). Import rules: routes may import the domain, data, and client layers; lower layers never import routes or templates; no service imports another service's package; and no service ever imports superbot's disbot/ \u2014 cross-repo data arrives only as committed JSON read over raw.githubusercontent.com (read-only, forward-only)."
     },
     "doc_roots": {
       "question_id": "Q-007",
@@ -64,7 +67,7 @@
     "new_area_ownership": {
       "question_id": "Q-013",
       "source": "user",
-      "value": "A new surface belongs to the service that renders it (app/ control-plane, botsite/, or dashboard/): add its route + data helper there and a row to the table above \u2014 never spin up a fourth process for a page. Cross-repo data for it must arrive as committed JSON over raw GitHub, keeping the new area read-only toward superbot. Anything that needs a real write path (a store, a token, a live-bot call) is a new owner decision routed through docs/question-router.md before it lands."
+      "value": "A new surface belongs to the service that renders it (app/ control-plane, botsite/, dashboard/, or review/): add its route + data helper there and a row to the table above \u2014 adding a whole new process is a deliberate, owner-directed service addition (review/ in 2026-07 is the precedent), never a per-page default. Cross-repo data for it must arrive as committed JSON over raw GitHub, keeping the new area read-only toward superbot. Anything that needs a real write path (a store, a token, a live-bot call) is a new owner decision routed through docs/question-router.md before it lands."
     },
     "owner_profile": {
       "question_id": "Q-008",
@@ -99,7 +102,7 @@
     "verify_command": {
       "question_id": "Q-005",
       "source": "user",
-      "value": "python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)"
+      "value": "python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q (all four service suites); python3 bootstrap.py check --strict (kit gate)"
     }
   },
   "slots": {

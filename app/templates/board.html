@@ -13,6 +13,46 @@
 {%- endmacro %}
 
 {% block content %}
+<div class="card" id="overview-dashboard">
+  <h2>superbot control plane <span class="dim small">— overview: fleet health at
+    a glance; every surface two clicks away via its category</span></h2>
+
+  {# what-needs-attention summary — derived from the SAME data the board
+     below and /fleet already fetch (readiness rows + heartbeat freshness);
+     an honest all-quiet line when nothing needs the owner. #}
+  <div class="attn">
+    {% if attention %}
+    <span class="dim small">needs attention:</span>
+    {% for a in attention %}
+    <a href="{{ a.href }}"><span class="b {{ a.state }}">{{ a.text }}</span></a>
+    {% endfor %}
+    {% else %}
+    <span class="b ok">all quiet</span>
+    <span class="dim small">— no broken checks, deploy drift, or stale
+      heartbeats among the tracked signals below</span>
+    {% endif %}
+  </div>
+
+  {# the category → subcategory map: the nav's 5 main categories, every
+     feature page one hop from here. Pages marked 🔒 expect the owner login. #}
+  <div class="secmap">
+    {%- for cat in NAV_CATEGORIES %}
+    <div class="sec">
+      <a class="sec-label" href="{{ cat.href }}">{{ cat.label }}</a>
+      <span class="sec-desc">{{ cat.desc }}</span>
+      <span class="sec-items">
+        {%- for it in cat['items'] %}
+        <a href="{{ it.href }}">{{ it.label }}</a>
+        {%- for sl in it.sublinks or () %}
+        <a href="{{ sl.href }}" class="dim">{{ sl.label }}</a>
+        {%- endfor %}
+        {%- endfor %}
+      </span>
+    </div>
+    {%- endfor %}
+  </div>
+</div>
+
 {% include "_autorefresh.html" %}
 <div id="live-content">
 {% for r in rows %}

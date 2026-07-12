@@ -1,58 +1,10 @@
 {% extends "base.html" %}
 {% block title %}fleet orders{% endblock %}
 {% block headright %}<a href="/orders?refresh=1">refresh now</a>{% endblock %}
-{% block content %}
-<div class="card">
-  <h2>fleet orders — every repo's inbox, cross-referenced with its heartbeat</h2>
-  <p class="dim small">The fleet protocol keeps every <code>control/inbox.md</code> order at
-    <code>status: new</code> forever — execution truth lives only in each lane's
-    <code>control/status*.md</code> <code>orders: acked=… done=…</code> line. This page does
-    that cross-reference: each order badges <span class="b warn">open</span> /
-    <span class="b design">claimed</span> / <span class="b ok">done</span> from the repo's own
-    heartbeat lines, or <span class="b unknown">unknown</span> when no status file is readable
-    (never guessed). Read-only; same live manifest lane set as
-    <a href="/fleet">/fleet</a>.</p>
 
-  {% if o.lane_source.source != 'manifest' %}
-  <div class="banner">⚠ lane set: <strong>cached fallback list</strong> —
-    ({{ o.lane_source.reason }}); repo SET may be stale until the manifest is reachable.</div>
-  {% endif %}
-
-  <p class="small">
-    <span class="b repo">{{ o.summary.repos }} repos</span>
-    <span class="b {{ 'warn' if o.summary.open else 'ok' }}">{{ o.summary.open }} open</span>
-    {% if o.summary.claimed %}<span class="b design">{{ o.summary.claimed }} claimed</span>{% endif %}
-    {% if o.summary.pickup %}<span class="b" title="filed→claimed pickup latency over {{ o.summary.pickup.count }} measurable claim(s)">pickup: median {{ o.summary.pickup.median_human | replace(' ago','') }} · slowest {{ o.summary.pickup.max_human | replace(' ago','') }}</span>{% endif %}
-    <span class="b ok">{{ o.summary.done }} done</span>
-    {% if o.summary.unknown %}<span class="b unknown">{{ o.summary.unknown }} state unknown</span>{% endif %}
-    {% if o.summary.stale_claims %}<span class="b warn">{{ o.summary.stale_claims }} stale claim{{ 's' if o.summary.stale_claims != 1 }}</span>{% endif %}
-    {% if o.summary.errored %}<span class="b bad">{{ o.summary.errored }} unreachable</span>{% endif %}
-  </p>
-</div>
-
-{% for c in o.cards %}
-<div class="card">
-  <h2>{{ c.repo }}
-    {% if c.open_count %}<span class="b warn">{{ c.open_count }} open</span>{% endif %}
-    {% if c.claimed_count %}<span class="b design">{{ c.claimed_count }} claimed</span>{% endif %}
-    {% if c.orders and not c.open_count and not c.claimed_count and not c.unknown_count %}<span class="b ok">all done</span>{% endif %}
-    {% if c.pickup_median_mins is not none %}<span class="b" title="this repo's median filed→claimed pickup">pickup ~{{ c.pickup_median_human | replace(' ago','') }}</span>{% endif %}
-    <span class="dim small">· <a href="{{ c.repo_url }}">{{ c.repo }}</a>
-      · <a href="{{ c.inbox_url }}">inbox ↗</a></span></h2>
-
-  {% if c.fetch_error %}
-  <div class="banner">⚠ could not fetch <code>control/inbox.md</code> — {{ c.fetch_error }}</div>
-  {% elif c.missing %}
-  <p class="dim small">no <code>control/inbox.md</code> in this repo — no orders bus here (an absence, not an error).</p>
-  {% elif not c.orders %}
-  <p class="dim small">inbox exists but carries no ORDER blocks yet.</p>
-  {% else %}
-  {% if not c.status_readable %}
-  <div class="banner">⚠ no readable <code>control/status*.md</code> — execution state of these
-    orders is <strong>unknown</strong>, not assumed.</div>
-  {% endif %}
-  <table>
-    {% for ord in c.orders %}
+{#- One order table-row, used by the live table and the collapsed done
+    section — one markup source, zero drift. -#}
+{% macro order_row(ord) %}
     <tr>
       <th>ORDER {{ ord.id }}
         {% if ord.state == 'open' %}<span class="b warn">open</span>
@@ -68,9 +20,113 @@
           <div class="md">{{ ord.body_html | safe }}</div></details>
       </td>
     </tr>
-    {% endfor %}
-  </table>
+{% endmacro %}
+
+{% block content %}
+{#- Sectioned default view vs flat explicit view: with no filter/search and
+    the default inbox sort, each card tucks its done orders into a collapsed
+    details (the live work stays on top); the moment the owner picks a
+    filter, search, or sort, the list renders flat exactly as asked. -#}
+{% set grouped = not o.filter.active and o.filter.sort == 'inbox' %}
+<div class="card">
+  <h2>fleet orders — every repo's inbox, cross-referenced with its heartbeat</h2>
+  <p class="small">
+    <span class="b repo">{{ o.summary.repos }} repos</span>
+    <a class="b {{ 'warn' if o.summary.open else 'ok' }}" href="/orders?state=open">{{ o.summary.open }} open</a>
+    {% if o.summary.claimed %}<a class="b design" href="/orders?state=claimed">{{ o.summary.claimed }} claimed</a>{% endif %}
+    {% if o.summary.pickup %}<span class="b" title="filed→claimed pickup latency over {{ o.summary.pickup.count }} measurable claim(s)">pickup: median {{ o.summary.pickup.median_human | replace(' ago','') }} · slowest {{ o.summary.pickup.max_human | replace(' ago','') }}</span>{% endif %}
+    <a class="b ok" href="/orders?state=done">{{ o.summary.done }} done</a>
+    {% if o.summary.unknown %}<a class="b unknown" href="/orders?state=unknown">{{ o.summary.unknown }} state unknown</a>{% endif %}
+    {% if o.summary.stale_claims %}<span class="b warn">{{ o.summary.stale_claims }} stale claim{{ 's' if o.summary.stale_claims != 1 }}</span>{% endif %}
+    {% if o.summary.errored %}<span class="b bad">{{ o.summary.errored }} unreachable</span>{% endif %}
+  </p>
+
+  {% set attn = o.cards | selectattr('open_count') | list %}
+  {% if attn or o.summary.errored %}
+  <div class="banner">⚑ needs attention:
+    {%- if attn %} open orders in
+    {%- for c in attn %} <a href="#repo-{{ c.repo }}">{{ c.repo }} ({{ c.open_count }})</a>{{ ',' if not loop.last }}{% endfor %}{% endif %}
+    {%- if attn and o.summary.errored %} · {% endif %}
+    {%- if o.summary.errored %}{{ o.summary.errored }} repo inbox{{ 'es' if o.summary.errored != 1 }} unreachable{% endif %}</div>
+  {% endif %}
+
+  {% set carded = o.cards | selectattr('orders') | list %}
+  {% if grouped and carded %}
+  <p class="small jump">jump to:
+    {%- for c in carded %}
+    <a class="b" href="#repo-{{ c.repo }}">{{ c.repo }} · {{ c.orders | length }}</a>
+    {%- endfor %}
+  </p>
+  {% endif %}
+
+  <details class="pagehelp">
+    <summary>how to read this page</summary>
+    <p class="dim small">The fleet protocol keeps every <code>control/inbox.md</code> order at
+      <code>status: new</code> forever — execution truth lives only in each lane's
+      <code>control/status*.md</code> <code>orders: acked=… done=…</code> line. This page does
+      that cross-reference: each order badges <span class="b warn">open</span> /
+      <span class="b design">claimed</span> / <span class="b ok">done</span> from the repo's own
+      heartbeat lines, or <span class="b unknown">unknown</span> when no status file is readable
+      (never guessed). Read-only; same live manifest lane set as
+      <a href="/fleet">/fleet</a>.</p>
+  </details>
+
+  {% if o.lane_source.source != 'manifest' %}
+  <div class="banner">⚠ lane set: <strong>cached fallback list</strong> —
+    ({{ o.lane_source.reason }}); repo SET may be stale until the manifest is reachable.</div>
   {% endif %}
 </div>
+
+{# ORDER 019: the same centralized filter widget /queue uses (reuse proof).
+   Filters/search/sort act on the flat order list; repo cards with no
+   matching orders hide while a filter is active (unreachable repos stay —
+   an error is never filtered away). #}
+{% set lf = o.filter %}
+{% include "_listfilter.html" %}
+
+{% for c in o.cards %}
+{% if not o.filter.active or c.shown_orders or c.fetch_error %}
+<div class="card" id="repo-{{ c.repo }}">
+  <div class="rowhead">
+    <h2>{{ c.repo }}
+      {% if c.open_count %}<span class="b warn">{{ c.open_count }} open</span>{% endif %}
+      {% if c.claimed_count %}<span class="b design">{{ c.claimed_count }} claimed</span>{% endif %}
+      {% if c.orders and not c.open_count and not c.claimed_count and not c.unknown_count %}<span class="b ok">all done</span>{% endif %}
+      {% if c.pickup_median_mins is not none %}<span class="b" title="this repo's median filed→claimed pickup">pickup ~{{ c.pickup_median_human | replace(' ago','') }}</span>{% endif %}
+      <span class="dim small">· <a href="{{ c.repo_url }}">{{ c.repo }}</a></span></h2>
+    <span class="cr-action"><a class="btn" href="{{ c.inbox_url }}">open inbox ↗</a></span>
+  </div>
+
+  {% if c.fetch_error %}
+  <div class="banner">⚠ could not fetch <code>control/inbox.md</code> — {{ c.fetch_error }}</div>
+  {% elif c.missing %}
+  <p class="dim small">no <code>control/inbox.md</code> in this repo — no orders bus here (an absence, not an error).</p>
+  {% elif not c.orders %}
+  <p class="dim small">inbox exists but carries no ORDER blocks yet.</p>
+  {% else %}
+  {% if not c.status_readable %}
+  <div class="banner">⚠ no readable <code>control/status*.md</code> — execution state of these
+    orders is <strong>unknown</strong>, not assumed.</div>
+  {% endif %}
+  {% set done_rows = (c.shown_orders | selectattr('state', 'equalto', 'done') | list) if grouped else [] %}
+  {% set live_rows = (c.shown_orders | rejectattr('state', 'equalto', 'done') | list) if grouped else c.shown_orders %}
+  {% if live_rows %}
+  <table>
+    {% for ord in live_rows %}{{ order_row(ord) }}{% endfor %}
+  </table>
+  {% elif done_rows %}
+  <p class="dim small">nothing live here — every order is done (collapsed below).</p>
+  {% endif %}
+  {% if done_rows %}
+  <details>
+    <summary class="dim small">{{ done_rows | length }} done order{{ 's' if done_rows | length != 1 }} — collapsed</summary>
+    <table>
+      {% for ord in done_rows %}{{ order_row(ord) }}{% endfor %}
+    </table>
+  </details>
+  {% endif %}
+  {% endif %}
+</div>
+{% endif %}
 {% endfor %}
 {% endblock %}

@@ -82,6 +82,15 @@
 .rv-problem-kv { margin: var(--sb-s-4) 0; }
 .rv-problem-kv p { margin: var(--sb-s-1) 0 0; font-size: var(--sb-text-sm); }
 
+/* incident sub-findings (a problem too big for one paragraph) */
+.rv-problem-details { display: grid; gap: var(--sb-s-3); margin: var(--sb-s-4) 0; }
+.rv-problem-detail {
+  border-left: 2px solid var(--sb-line-2);
+  padding-left: var(--sb-s-5);
+}
+.rv-problem-detail h3 { margin: 0 0 var(--sb-s-1); font-size: var(--sb-text-md); }
+.rv-problem-detail p { margin: 0 0 var(--sb-s-2); font-size: var(--sb-text-sm); }
+
 /* timeline */
 .rv-timeline {
   list-style: none;
@@ -171,3 +180,45 @@
 .rv-qa h2 { font-size: var(--sb-text-xl); }
 .rv-qa p { color: var(--sb-ink-2); line-height: 1.65; }
 .rv-evidence { font-size: var(--sb-text-sm); }
+
+/* homepage (ORDER 017 C) — the 30-second front door */
+.rv-home-stats { padding-top: var(--sb-s-6); }
+.rv-start-card h3 { font-size: var(--sb-text-lg); }
+.rv-start-card > p { font-size: var(--sb-text-sm); line-height: 1.6; }
+.rv-start-card .rv-evidence { margin: var(--sb-s-3) 0 0; }
+.rv-ai-panel {
+  border-color: color-mix(in srgb, var(--sb-brand-hi) 45%, var(--sb-line));
+  box-shadow: var(--sb-glow-soft);
+}
+.rv-ai-panel h2 { margin: var(--sb-s-1) 0 var(--sb-s-2); }
+.rv-ai-panel > p { color: var(--sb-ink-2); line-height: 1.6; }
+.rv-ai-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-s-3);
+  margin: var(--sb-s-4) 0 var(--sb-s-2);
+}
+.rv-map li { margin-bottom: var(--sb-s-1); }
+
+/* centralized list filter widget (vendored listfilter.py + _listfilter.html, ORDER 019).
+   The partial is byte-identical across services; these rules map its classes
+   onto this service's ds tokens. */
+.lf { border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); background: var(--sb-surface-soft);
+  padding: var(--sb-s-4) var(--sb-s-5); margin: var(--sb-s-5) 0; }
+.lf .lf-row { margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lf .dim { color: var(--sb-ink-4); font-family: var(--sb-font-mono); font-size: 12px; }
+.lf a.b, .lf .repo { display: inline-block; border: 1px solid var(--sb-line); border-radius: 999px;
+  padding: 2px 10px; font-size: 12px; color: var(--sb-ink-3); text-decoration: none; }
+.lf a.b:hover { border-color: var(--sb-brand); color: var(--sb-ink-1); }
+.lf a.b.on { background: var(--sb-brand); border-color: var(--sb-brand); color: var(--sb-on-brand); }
+.lf a.b.bad { color: var(--sb-danger); border-color: var(--sb-danger); background: transparent; }
+.lf .searchbox { display: flex; gap: 8px; margin-bottom: 8px; }
+.lf .searchbox input[type="search"] { flex: 1; min-width: 180px; border: 1px solid var(--sb-line);
+  border-radius: var(--sb-r-md); background: var(--sb-bg); color: var(--sb-ink-1);
+  padding: 6px 12px; font: inherit; font-size: 14px; }
+.lf .searchbox button { border: 1px solid var(--sb-line); border-radius: var(--sb-r-md);
+  background: var(--sb-bg); color: var(--sb-ink-2); padding: 6px 14px; font: inherit;
+  font-size: 13px; cursor: pointer; }
+.lf .searchbox button:hover { border-color: var(--sb-brand); color: var(--sb-ink-1); }
+.lf p.dim { color: var(--sb-ink-3); font-family: inherit; font-size: 13px; margin: 6px 0 0; }
+.lf .small a { color: var(--sb-ink-3); }

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Your test submission — SuperBot testing program{% endblock %}
+
+{% block content %}
+<div class="wrap" style="max-width:var(--sb-wrap-narrow)">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> your private page</span>
+    <div class="head-row"><h1>{{ task.title }}</h1></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+      <span class="sb-badge">{{ icon("coins", 11) }} ${{ task.payout_usd }}</span>
+      <span class="sb-badge">status: {{ claim.status }}</span>
+      <span class="sb-badge">{{ claim.email }}</span>
+    </div>
+    <p class="sb-hint" style="margin-top:8px">claimed → submitted → approved → paid. Rejections free the
+      task slot; approvals write the payout ledger.</p>
+  </section>
+
+  {% if error %}
+  <div class="sb-error section-sm" role="alert">{{ icon("alert", 16) }}<div>{{ error }}</div></div>
+  {% endif %}
+
+  {% if claim.status == 'claimed' %}
+  <div class="section-sm">
+    <h3>The brief, again</h3>
+    <p>{{ task.brief }}</p>
+    {% if task.product_url %}
+    <a class="sb-btn sb-btn-ghost sb-btn-sm" href="{{ task.product_url }}" target="_blank" rel="noopener">Open the product {{ icon("external", 15) }}</a>
+    {% endif %}
+  </div>
+
+  <form class="section-sm" method="post" action="/testing/s/{{ claim.token }}" enctype="multipart/form-data">
+    <h3>File your report</h3>
+    {% if not questionnaire %}
+    {% if task.steps %}
+    <div class="sb-lane-pending" style="margin-bottom:14px">
+      <div class="head">{{ icon("info", 16) }}<h4>This task is a guided walkthrough</h4></div>
+      <p>The best way to do it is the step-by-step guide: one screen at a time, with an optional
+        AI guide beside the steps. Finishing the guide submits your report automatically.</p>
+      <a class="sb-btn sb-btn-primary sb-btn-sm" href="/testing/s/{{ claim.token }}/guide">Start the guided walkthrough {{ icon("arrow", 15) }}</a>
+      <p class="sb-hint" style="margin-top:8px">Prefer plain text? The findings box below works too.</p>
+    </div>
+    {% else %}
+    <div class="sb-lane-pending" style="margin-bottom:14px">
+      <div class="head">{{ icon("info", 16) }}<h4>No step script on this task</h4></div>
+      <p>This walkthrough task has no written step script yet — write everything into the
+        findings box below.</p>
+    </div>
+    {% endif %}
+    {% endif %}
+    {% for field, label, kind in questionnaire %}
+    <div class="sb-field">
+      <label class="sb-label" for="{{ field }}">{{ label }}</label>
+      {% if kind == 'textarea' %}
+      <textarea class="sb-inp" id="{{ field }}" name="{{ field }}" rows="4" maxlength="5000"></textarea>
+      {% elif kind == 'severity' %}
+      <select class="sb-inp" id="{{ field }}" name="{{ field }}">
+        {% for s in severities %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+      </select>
+      {% else %}
+      <input class="sb-inp" id="{{ field }}" name="{{ field }}" maxlength="5000">
+      {% endif %}
+    </div>
+    {% endfor %}
+    <div class="sb-field">
+      <label class="sb-label" for="findings">Free-form findings</label>
+      <textarea class="sb-inp" id="findings" name="findings" rows="7" maxlength="5000" placeholder="Anything else — exact URLs, steps to reproduce, first impressions."></textarea>
+      <span class="sb-hint">Please don't include passwords or personal data.</span>
+    </div>
+    <div class="sb-field">
+      <label class="sb-label" for="screenshots">Screenshots (optional)</label>
+      <input class="sb-inp" id="screenshots" name="screenshots" type="file" multiple accept="image/png,image/jpeg">
+      <span class="sb-hint">Up to 3 images, PNG or JPEG, 2&nbsp;MB each. Only the program owner sees them.</span>
+    </div>
+    <button class="sb-btn sb-btn-primary" type="submit">Submit my report</button>
+    <p class="sb-hint" style="margin-top:8px">Submitting locks this claim for review — one report per claim.
+      An automated AI exit-review checks completeness right away and may ask a couple of follow-up
+      questions; the owner still approves every payout.</p>
+  </form>
+
+  {% else %}
+  <div class="sb-lane-pending section-sm">
+    <div class="head">{{ icon("check", 16) }}<h4>Report received — in review</h4></div>
+    <p>Your report is stored and your claim is <strong>{{ claim.status }}</strong>.
+      Approved work lands in the payout ledger and is paid via
+      PayPal{% if claim.paypal_email %} to <span class="sb-mono">{{ claim.paypal_email }}</span>{% endif %}.
+      The owner personally approves every payout.</p>
+    {% if submission %}
+    <span class="feed">submitted: {{ submission.created_at }}</span>
+    {% endif %}
+    {% if screenshots %}
+    <p class="sb-hint" style="margin-top:6px">{{ screenshots|length }} screenshot(s) attached — only the owner sees them.</p>
+    {% endif %}
+  </div>
+
+  {% if review and review.status == 'pending-followup' %}
+  <form class="section-sm" method="post" action="/testing/s/{{ claim.token }}/followups">
+    <h3>AI exit-review — a few follow-up questions</h3>
+    <p class="sb-hint">The automated review found gaps it couldn't assess. Answering gets your
+      report one final re-grade — then it goes to the owner.</p>
+    {% for f in review.followups %}
+    <div class="sb-field">
+      <label class="sb-label" for="followup_{{ loop.index0 }}">{{ f.question }}</label>
+      <textarea class="sb-inp" id="followup_{{ loop.index0 }}" name="followup_{{ loop.index0 }}" rows="3" maxlength="5000"></textarea>
+    </div>
+    {% endfor %}
+    <button class="sb-btn sb-btn-primary" type="submit">Send my answers</button>
+  </form>
+  {% elif review and review.status == 'reviewed' %}
+  <div class="section-sm">
+    <h3>AI exit-review — complete</h3>
+    <p>The automated review is done and your report is with the owner for the payout decision.</p>
+    {% if review.followups %}
+    <p class="sb-hint">Your follow-up answers, as stored:</p>
+    {% for f in review.followups %}
+    <p class="sb-hint" style="margin-top:6px"><strong>Q:</strong> {{ f.question }}<br><strong>A:</strong> {{ f.answer }}</p>
+    {% endfor %}
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="section-sm">
+    <h3>AI exit-review</h3>
+    <p>pending — automated review unavailable; the owner reviews your report manually.
+      Nothing is lost: your submission is stored in full.</p>
+  </div>
+  {% endif %}
+  {% if submission and submission.findings %}
+  <div class="section-sm">
+    <h3>Your findings, as stored</h3>
+    <p class="sb-mono" style="white-space:pre-wrap">{{ submission.findings }}</p>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

@@ -12,6 +12,12 @@ websites is built in Python 3.12 (FastAPI + Jinja2 + httpx, server-rendered; pin
 
 ## Orientation — read first, in order
 
+0. **Preflight — land on origin's HEAD before reading anything else:**
+   `git fetch origin main && git reset --hard origin/main` (or
+   `git checkout -B main origin/main`). A warm container clone can lag
+   origin by dozens of commits, and a stale clone reads stale orders.
+   Mechanics + safety notes: `docs/AGENT_ORIENTATION.md` § "Start every
+   session".
 1. This file — the working agreement.
 2. `HANDOFF.md` at repo root (when present) — the previous session's trail:
    newest session card + where to pick up. Regenerated at every session
@@ -21,11 +27,14 @@ websites is built in Python 3.12 (FastAPI + Jinja2 + httpx, server-rendered; pin
 
 That is the whole boot set. Everything else is routed, **not front-loaded**
 (reading every planted doc up front buys ceremony, not context — measured):
-open `docs/AGENT_ORIENTATION.md` when a task needs its reading route, and
+open `docs/AGENT_ORIENTATION.md` when a task needs its reading route,
+`docs/SKILLS.md` (the skill index) **before improvising a procedure for a
+recurring action**, and
 `docs/CAPABILITIES.md` (the verified can/cannot ledger) **before declaring
 any wall or missing credential** — its discovery rule: check the file →
 check the env → attempt once + capture the exact error → append the finding
-same session.
+same session — and `docs/ROUTINES.md` (the wake-chain/trigger doctrine)
+**before arming, deleting, or auditing any scheduled trigger/routine**.
 
 ## Kit machinery — search hygiene
 
@@ -37,14 +46,14 @@ Exclude them from repo-wide searches: `grep -r --exclude=bootstrap.py
 
 ## Architecture — layers & import rules
 
-Three independent server-rendered FastAPI services in one repo — control-plane (app/), botsite (botsite/), dashboard (dashboard/) — that share code, never a running process (each has its own Dockerfile + requirements.txt + Railway service). Inside a service the layers are: routes (app/main.py or app.py, plus app/owner.py) -> domain/data (readiness.py, journal.py, data_source.py) -> client (app/github.py: live GitHub REST + raw-content fetch behind a TTL cache) -> templates (Jinja2). Import rules: routes may import the domain, data, and client layers; lower layers never import routes or templates; no service imports another service's package; and no service ever imports superbot's disbot/ — cross-repo data arrives only as committed JSON read over raw.githubusercontent.com (read-only, forward-only).
+Four independent server-rendered FastAPI services in one repo — control-plane (app/), botsite (botsite/), dashboard (dashboard/), review (review/) — that share code, never a running process (each has its own Dockerfile + requirements.txt + Railway service). Inside a service the layers are: routes (app/main.py or app.py, plus app/owner.py; review/app.py) -> domain/data (readiness.py, journal.py, data_source.py; review's editions.py + fleetdata.py over committed review/data/*.json baked by gen_*.py) -> client (app/github.py: live GitHub REST + raw-content fetch behind a TTL cache) -> templates (Jinja2). Import rules: routes may import the domain, data, and client layers; lower layers never import routes or templates; no service imports another service's package; and no service ever imports superbot's disbot/ — cross-repo data arrives only as committed JSON read over raw.githubusercontent.com (read-only, forward-only).
 
 ## Verifying a change
 
 Run before every push:
 
 ```
-python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)
+python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q (all four service suites); python3 bootstrap.py check --strict (kit gate)
 ```
 
 ## How the maintainer works

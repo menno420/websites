@@ -2,12 +2,17 @@
 {% block title %}{{ d.name }} · dispatch{% endblock %}
 {% block headright %}<a href="/projects/{{ d.name }}?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
+{# Role-file bodies render through the shared prompt-artifact partial
+   (ORDER 015) — one fetch/render/copy path with /prompts, the canonical
+   page for FINDING prompts (linked below). #}
+{% from "_prompt_artifact.html" import prompt_block %}
 {% set pkg = d.package %}
 <div class="card">
   <h2>{{ d.name }} — dispatch screen
     {% if pkg and pkg.state %}<span class="b ok">{{ pkg.state }}</span>
     {% elif pkg and not pkg.error %}<span class="b unknown">state unknown</span>{% endif %}
     <span class="dim small">· <a href="/projects">← all projects</a>
+      · <a href="/prompts">browse all prompts →</a>
       {% if pkg %}· <a href="{{ pkg.github_url }}">package ↗</a>{% endif %}</span></h2>
   <p class="dim small">One seat's launch console: every recognized role file below is the
     FULL file, copy-ready — read-only from
@@ -68,11 +73,7 @@
   <h2>{{ f.label }}
     <span class="dim small">· <code>{{ f.name }}</code>
       · <a href="{{ f.github_url }}">view on GitHub ↗</a></span></h2>
-  {% if f.fetch_error %}
-  <div class="banner">⚠ could not fetch <code>{{ f.path }}</code> — {{ f.fetch_error }}</div>
-  {% elif f.text is not none %}
-  <pre>{{ f.text }}</pre>
-  {% endif %}
+  {% if f.artifact %}{{ prompt_block(f.artifact, d.ttl) }}{% endif %}
 </div>
 {% endfor %}
 

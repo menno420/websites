@@ -19,7 +19,9 @@ at build time (the deployed container ships only this folder, so runtime reads
 of git/.sessions/control are impossible by design — see that module's
 docstring). A missing or corrupt snapshot renders an honest banner, never
 invented numbers. Charts are server-rendered inline SVG; geometry is computed
-in the domain layer (``story.py``) so it stays unit-testable.
+in the domain layer (``story.py``) so it stays unit-testable. ORDER 017 added
+ONE deliberate exception to the network-free rule: the AI assistant's
+server-side Anthropic API call in ``ai.py`` (nothing else gained network).
 
 Deploy: a new Railway service in ``superbot-websites`` (Root Directory =
 ``review``), own Dockerfile, binds ``0.0.0.0:$PORT`` — queued as an
@@ -37,7 +39,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import editions, fleetdata, story
+from . import ai, editions, fleetdata, listfilter, story
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -48,6 +50,7 @@ NAV = [
     ("fleet", "Fleet", "/fleet"),
     ("reviews", "Reviews", "/reviews"),
     ("questionnaire", "Q&A", "/questionnaire"),
+    ("ask", "Ask AI", "/ask"),
     ("successes", "Successes", "/successes"),
     ("problems", "Problems", "/problems"),
 ]
@@ -55,6 +58,10 @@ NAV = [
 app = FastAPI(title="Program Review", docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# ORDER 017 workstream B: the AI assistant's POST endpoint (/ask/api) — the
+# service's one deliberate runtime-network exception; see review/ai.py.
+app.include_router(ai.router)
 
 
 def _deployed_sha() -> str:
@@ -65,6 +72,10 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
     snap = story.load_snapshot()
     git_head = snap["data"].get("git_head", "") if snap["ok"] else ""
     deployed = _deployed_sha()
+    # Footer "last refreshed" stamps — from the committed data files, never
+    # hardcoded. Each mirror stamps its own bake time; absence stays honest.
+    fl = fleetdata.load_fleet()
+    fleet_generated_at = fl["data"].get("generated_at", "") if fl["ok"] else ""
     return {
         "request": request,
         "active": active,
@@ -80,6 +91,7 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
         # commit, the repo has moved since the numbers were baked — say so.
         "snapshot_aged": bool(deployed and git_head and deployed[:8] != git_head[:8]),
         "deployed_sha": deployed,
+        "fleet_generated_at": fleet_generated_at,
         "repo_url": story.REPO_URL,
         # "Room to interact", read-only: a prefilled new-issue link per page.
         "ask_url": story.ask_url(f"{active or 'site'} page"),
@@ -115,11 +127,19 @@ async def story_json() -> JSONResponse:
 # ---------------------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def overview(request: Request):
+    """ORDER 017 C: the 30-second front door — what-this-is, the key-stats
+    row (snapshot + fleet mirror, never literals), the five start-here
+    findings, the AI panel, the site map, and the evidence links."""
     ctx = _base_ctx(request, "overview")
+    fl = fleetdata.load_fleet()
+    fleet_data = fl["data"] if fl["ok"] else {}
+    seats_count = len(fleet_data.get("seats") or []) or None
     ctx.update(
         {
-            "stats": story.overview_stats(ctx["snapshot"]),
-            "services": story.SERVICES,
+            "stats": story.homepage_stats(ctx["snapshot"], fleet_data),
+            "start_here": story.START_HERE,
+            "site_map": story.site_map(seats_count),
+            "evidence_links": story.EVIDENCE_LINKS,
             "days": ctx["snapshot"].get("days", []) if ctx["snap_ok"] else [],
         }
     )
@@ -165,16 +185,34 @@ async def problems(request: Request):
 # ---------------------------------------------------------------------------
 @app.get("/fleet", response_class=HTMLResponse)
 async def fleet(request: Request):
+    """ORDER 019 PR2: the lanes grid gains the centralized listfilter widget
+    (disposition / derived heartbeat-freshness / seat dimensions + lane/repo/
+    seat search, defined in fleetdata.py); the default sort keeps the
+    existing disposition order, so no params renders exactly as before."""
     ctx = _base_ctx(request, "fleet")
     fl = fleetdata.load_fleet()
     st = fleetdata.load_stats()
+    overview = fleetdata.fleet_overview(fl["data"], st["data"]) if fl["ok"] else {}
+    lanes_filter = None
+    if fl["ok"]:
+        lanes = fleetdata.annotate_lane_seats(
+            overview.get("lanes", []), fleetdata.seat_by_repo(fl["data"])
+        )
+        state = listfilter.parse(
+            fleetdata.LANES_FILTER_SPEC, request.query_params
+        )
+        lanes_filter = listfilter.apply(
+            fleetdata.LANES_FILTER_SPEC, lanes, state
+        )
     ctx.update(
         {
             "fleet_ok": fl["ok"],
             "fleet_error": fl["error"],
             "stats_ok": st["ok"],
             "stats_error": st["error"],
-            "overview": fleetdata.fleet_overview(fl["data"], st["data"]) if fl["ok"] else {},
+            "overview": overview,
+            "lanes_filter": lanes_filter,
+            "seats": fleetdata.seats_view(fl["data"]) if fl["ok"] else None,
             "fleet_age": fleetdata.freshness(fl["data"].get("generated_at", "")) if fl["ok"] else None,
             "stats_age": fleetdata.freshness(st["data"].get("generated_at", "")) if st["ok"] else None,
         }
@@ -222,8 +260,20 @@ async def fleet_repo(request: Request, repo: str):
 # ---------------------------------------------------------------------------
 @app.get("/reviews", response_class=HTMLResponse)
 async def reviews(request: Request):
+    """ORDER 019 PR2: filter/sort/search over the centralized listfilter core
+    (month dimension + title/summary search, defined in editions.py); no
+    params renders exactly the pre-filter page."""
     ctx = _base_ctx(request, "reviews")
-    ctx.update({"editions": editions.list_editions()})
+    all_editions = editions.list_editions()
+    state = listfilter.parse(editions.FILTER_SPEC, request.query_params)
+    ctx.update(
+        {
+            "editions": all_editions,
+            "editions_filter": listfilter.apply(
+                editions.FILTER_SPEC, all_editions, state
+            ),
+        }
+    )
     return templates.TemplateResponse(request, "reviews.html", ctx)
 
 
@@ -259,11 +309,34 @@ async def questionnaire(request: Request):
     return templates.TemplateResponse(request, "questionnaire.html", ctx)
 
 
+@app.get("/ask", response_class=HTMLResponse)
+async def ask(request: Request):
+    """The AI assistant page (ORDER 017 B): Ask/Review widget + the seeded
+    evidence-backed answers, honest about the degraded no-key state."""
+    ctx = _base_ctx(request, "ask")
+    ctx.update(ai.page_context())
+    return templates.TemplateResponse(request, "ask.html", ctx)
+
+
 @app.get("/questions", response_class=HTMLResponse)
 async def questions(request: Request):
+    """ORDER 019 PR2: filter/sort/search over the centralized listfilter core
+    (status / answered dimensions + title search, defined in story.py); no
+    params renders exactly the pre-filter page."""
     ctx = _base_ctx(request, "questionnaire")
     q = story.load_questions()
-    ctx.update({"q_ok": q["ok"], "q_error": q["error"], "ledger": q["data"]})
+    records = q["data"].get("questions") or [] if q["ok"] else []
+    state = listfilter.parse(story.QUESTIONS_FILTER_SPEC, request.query_params)
+    ctx.update(
+        {
+            "q_ok": q["ok"],
+            "q_error": q["error"],
+            "ledger": q["data"],
+            "q_filter": listfilter.apply(
+                story.QUESTIONS_FILTER_SPEC, records, state
+            ),
+        }
+    )
     return templates.TemplateResponse(request, "questions.html", ctx)
 
 

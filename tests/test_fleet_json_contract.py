@@ -25,8 +25,11 @@ from app.main import app  # noqa: E402
 TOP_KEYS = {"lanes", "summary", "stale_hours", "lane_source", "registry_url"}
 
 # lane_status() output minus body_html (the JSON route strips rendered HTML).
+# status_file_url / current_state_url added 2026-07-12 (console-home PR):
+# in-app /journal/{repo}/file deep-links, None outside the render allow-set.
 LANE_KEYS = {
     "lane", "repo", "status_path", "model", "note", "github_url", "repo_url",
+    "status_file_url", "current_state_url",
     "last_commit", "open_prs", "missing", "fetch_error", "unreadable",
     "project", "fields", "health", "freshness",
     "orders_info", "routine_info", "landing_info",

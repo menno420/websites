@@ -9,8 +9,110 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
-- **Seat role-coverage chips on the /projects dispatch index** · `captured`
-  — the dispatch screen (PR #158) renders whatever role files a package
+- **Manifest completeness diff — "what is missing to finish this
+  environment"** · `captured` — the ORDER 021 slice-2 manifest page
+  (`/owner/environments-hub/manifest/{group}`) renders the owner-executed
+  plan (names + placeholders); merging the slice-1 live variable-NAME read
+  (superbot-websites group, project-scoped `RAILWAY_TOKEN`) would badge
+  each schema row set-live / missing-live, turning the plan into a
+  run-down checklist. Worth having because the owner executes these plans
+  by hand and today must eyeball the console against the plan to know what
+  remains. Distinct from the estate-page drift-check bullet below (that
+  one is documented-vs-live on `/owner/environments`; this is
+  manifest-vs-live per project group). Source:
+  `.sessions/2026-07-12-environments-hub-slice2.md` 💡.
+
+- **/owner/environments drift check: documented vs live variable names** ·
+  `captured` — once the owner's project-scoped `RAILWAY_TOKEN` lands, the
+  page holds both halves of a diff it does not yet compute: the COMMITTED
+  documented env-var names per service (`app/railway.py` SERVICES) and the
+  LIVE names Railway reports. One comparison column (documented-but-unset /
+  set-but-undocumented badges per service) turns the page from two lists
+  into an actionable drift detector, exactly like the readiness board's
+  deploy-drift cell. Worth having because undocumented live variables are
+  invisible config debt and documented-but-missing ones are outage
+  foot-guns — today both hide in plain sight. Deduped against this backlog
+  + the queue-state NEXT list: nothing touches env-var drift. Source:
+  `.sessions/2026-07-12-order-015-owner-environments.md` 💡.
+
+- **Tester-task URL liveness guard** · `captured` — every `open` task in
+  `botsite/testing_tasks.json` points a paying tester at a `product_url`;
+  if that URL dies (service renamed, deploy broken) the program burns real
+  testers' time and its own credibility before anyone notices. A small
+  check — `scripts/healthcheck.py` growing a testing-catalog pass, or a
+  botsite startup/`/testing` render-time probe — that verifies each open
+  task's `product_url` answers 200 and visibly flags (or auto-treats as
+  `coming-soon`) the ones that don't, keeps the catalog honest by default;
+  same pattern would auto-open the seeded coming-soon game tasks the day
+  their games deploy. Worth having because the tester program's whole pitch
+  is "real products, honestly described" — a dead link is the fastest way
+  to break that promise. Deduped against this backlog + the queue-state
+  NEXT list: healthcheck ideas exist for fleet services, nothing touches
+  the testing catalog. Source:
+  `.sessions/2026-07-12-order-018-testing-platform-pr1.md` 💡.
+
+- **Guide chat transcript as exit-review evidence** · `captured` — the
+  guided-walkthrough side panel (ORDER 018 PR3) generates a per-step Q&A
+  between tester and AI guide, but it evaporates when the tab closes: the
+  exit reviewer grades the final answers blind to how the tester actually
+  engaged. Persisting the TEXT transcript only (bounded, per claim — screen
+  frames stay in-memory-only by the privacy contract) and appending it to
+  the submission as untrusted context would let the grader and the owner see
+  engagement, confusion points, and coached-vs-independent answers. Worth
+  having because the program pays on report quality and the guide already
+  produces first-hand evidence of it that is currently thrown away. Deduped
+  against this backlog + the queue-state NEXT list: nothing touches the
+  guide flow (it ships this PR). Source:
+  `.sessions/2026-07-12-order-018-testing-guided-mode-pr3.md` 💡.
+
+- **/prompts pinned-registry drift chip** · `captured` — the /prompts
+  artifact list is pinned in `app/prompts.py` (the raw host cannot list
+  directories), so a seat added or renamed in fleet-manager `projects/`
+  silently degrades to a 404 cell here until someone edits the constant.
+  One cheap cross-check: when the /projects registry listing is available
+  (same TTL cache, zero extra fetch on a warm cache), compare its directory
+  set against `prompts.SEATS` and render a "pinned list drifted: +X / −Y"
+  chip on /prompts. Worth having because the page's one honest weakness is
+  registry drift, and the site already fetches the ground truth elsewhere.
+  Deduped against this backlog + the queue-state NEXT list: nothing touches
+  the prompt library (it ships this PR). Source:
+  `.sessions/2026-07-12-prompt-library.md` 💡.
+
+- **Deep-link fleet lane files into the widened /journal/{repo}/file view**
+  · `built` (2026-07-12, console-home discoverability PR — every /fleet
+  lane card header now links the lane's status source and its
+  `docs/current-state.md` through the in-app `/journal/{repo}/file`
+  renderer (`fleet._file_view_url`); a lane outside the render allow-set
+  gets no dead link, and the GitHub ↗ links stay as fallback) — original
+  capture: PR #177 lets the file route render markdown from every
+  FLEET_LANES repo, but no page links there for lane repos: the capability
+  is reachable only by hand-typed URLs. Add per-lane deep-links from the
+  /fleet lane cards (e.g. the lane's `docs/current-state.md` and its
+  `control/status.md` source) through the in-app renderer. Worth having
+  because a shipped capability nothing navigates to is invisible to the
+  owner. Deduped against this backlog + queue-state NEXT: the lanes.json
+  and pickup ideas touch /fleet data, not file-view navigation. Source:
+  `.sessions/2026-07-12-journal-guard-fleet.md` 💡.
+
+- **Coverage-chip rollup on the /fleet board** · `captured` — the
+  per-seat instructions/coordinator/failsafe coverage now computed for the
+  /projects index (`projects.role_coverage`, ORDER 015 slice) could feed
+  one "packages incomplete: N" rollup cell on the `/fleet` monitoring
+  surface, so registry lint fires where the manager already looks instead
+  of only when the owner opens the dispatch index. Worth having because
+  the chips double as registry lint but today only surface on `/projects`.
+  Deduped against this backlog + the queue-state NEXT list: nothing rolls
+  coverage up to the monitoring surfaces. Source:
+  `.sessions/2026-07-12-projects-role-coverage-chips.md` 💡.
+
+- **Seat role-coverage chips on the /projects dispatch index** · `built`
+  (2026-07-12, ORDER 015 plans-sweep slice — `projects.role_coverage` chips
+  each seat card instructions / coordinator / failsafe ✓/✗ from the
+  already-fetched role-classified listing; `dispatch_ready` flag + "N of M
+  dispatch-ready" index summary; unlistable package = NO chips, honest
+  unknown; `/projects.json` carries `coverage` + `dispatch_ready`, contract
+  pins updated same PR) — original capture:
+  the dispatch screen (PR #158) renders whatever role files a package
   has, but the INDEX doesn't say which seats are dispatch-READY: a seat
   missing its coordinator prompt or failsafe looks identical to a complete
   one until the owner opens it mid-dispatch. One chip row per seat card
@@ -481,3 +583,30 @@
   set: live from manifest — N lanes parsed" vs the fallback banner), which is
   exactly the surfacing this capture asked for; verified in the template +
   covered by `test_fleet_overview_is_manifest_sourced`. Nothing to build.
+
+- **Harvest the AI-assistant question log into the /questions ledger** —
+  captured 2026-07-12 (ORDER 017 B session). `review/ai.py` logs every
+  visitor question as a structured JSON line on stdout (mode, truncated
+  text, outcome, salted IP hash); a harvest step (manual or baked) could
+  promote real reviewer questions into `review/data/questions.json` so the
+  ledger fills from real traffic instead of starting empty. Worth having
+  because the order itself says the question log "feeds the Q&A page" —
+  this closes that loop.
+
+- **Site-wide privacy lint for the review service** — captured 2026-07-12
+  (ORDER 017 D private-lane-filter session). Today's regression tests pin
+  `/`, `/fleet`, `/fleet.json` and the committed mirrors; a single test (or
+  bake-time lint) that walks EVERY GET route in `review/app.py` plus every
+  committed `review/data/**` file and asserts no private-lane token
+  (accent-aware: `pok[eé]mon…`) would catch the next leak on a page nobody
+  thought to pin — today's escapees were the accented "Pokémon" in a template
+  footnote and an evidence table that plain `grep -i pokemon` missed. Worth
+  having because privacy compliance shouldn't depend on remembering which
+  surface to grep.
+
+- **Arcade live-URL drift probe** — captured 2026-07-12 (ORDER 022 drift
+  session). A network-marked test or CI cron step that cold-fetches every
+  `availability: live` URL in `botsite/data/arcade.json` and flags when one
+  stops returning 200, so a dead game link never quietly outlives its card.
+  Worth having because the arcade honesty doctrine currently depends on
+  manual reconciles (ORDER 022 flipped mineverse by hand) to notice drift.

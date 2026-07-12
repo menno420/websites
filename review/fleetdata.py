@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from . import listfilter
+
 BASE_DIR = Path(__file__).resolve().parent
 FLEET_PATH = BASE_DIR / "data" / "fleet.json"
 STATS_PATH = BASE_DIR / "data" / "stats.json"
@@ -30,6 +32,74 @@ STATS_PATH = BASE_DIR / "data" / "stats.json"
 STALE_HOURS = 48
 
 _ISO_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?")
+
+# ---------------------------------------------------------------------------
+# ORDER 017 workstream D: "the Pokémon lane stays private". The bake
+# (gen_fleet.py / gen_stats.py) already excludes private lanes, but this
+# render-time filter is the defensive second layer: an OLDER, unfiltered
+# committed mirror still never renders the private lane — no card, no seat
+# member, no stats row, no name in mirrored free text. Registry counts are
+# decremented alongside the dropped lanes so the page's totals stay
+# consistent with what it actually shows.
+# ---------------------------------------------------------------------------
+PRIVATE_LANES = {"pokemon-mod-lab"}
+_PRIVATE_TEXT_RE = re.compile(r"pok[eé]mon[\w.-]*", re.IGNORECASE)
+_PRIVATE_TEXT_SUB = "[a private lane]"
+
+
+def _is_private(entry: dict[str, Any]) -> bool:
+    return (
+        str(entry.get("repo") or "") in PRIVATE_LANES
+        or str(entry.get("lane") or "") in PRIVATE_LANES
+    )
+
+
+def _scrub_text(obj: Any) -> Any:
+    """Recursively scrub private-lane mentions out of mirrored strings."""
+    if isinstance(obj, str):
+        return _PRIVATE_TEXT_RE.sub(_PRIVATE_TEXT_SUB, obj)
+    if isinstance(obj, list):
+        return [_scrub_text(v) for v in obj]
+    if isinstance(obj, dict):
+        return {k: _scrub_text(v) for k, v in obj.items()}
+    return obj
+
+
+def strip_private_fleet(data: dict[str, Any]) -> dict[str, Any]:
+    """Drop private lanes/seat-members from a fleet mirror, fix the counts,
+    and scrub any remaining textual mention. Pure — returns a new dict."""
+    out = dict(data)
+    lanes = [ln for ln in (data.get("lanes") or []) if isinstance(ln, dict)]
+    kept = [ln for ln in lanes if not _is_private(ln)]
+    dropped = [ln for ln in lanes if _is_private(ln)]
+    out["lanes"] = kept
+    registry = data.get("registry")
+    if dropped and isinstance(registry, dict):
+        registry = dict(registry)
+        dropped_repo_backed = sum(1 for ln in dropped if ln.get("repo"))
+        if isinstance(registry.get("total_seats"), int):
+            registry["total_seats"] = max(0, registry["total_seats"] - len(dropped))
+        if isinstance(registry.get("repo_seats"), int):
+            registry["repo_seats"] = max(0, registry["repo_seats"] - dropped_repo_backed)
+        out["registry"] = registry
+    seats = data.get("seats")
+    if isinstance(seats, list):
+        out["seats"] = [
+            {**s, "repos": [m for m in (s.get("repos") or [])
+                            if str(m.get("repo") or "") not in PRIVATE_LANES]}
+            if isinstance(s, dict) else s
+            for s in seats
+        ]
+    return _scrub_text(out)
+
+
+def strip_private_stats(data: dict[str, Any]) -> dict[str, Any]:
+    """Drop private lanes' rows from a stats mirror. Pure — returns a new dict."""
+    out = dict(data)
+    repos = data.get("repos")
+    if isinstance(repos, dict):
+        out["repos"] = {k: v for k, v in repos.items() if k not in PRIVATE_LANES}
+    return _scrub_text(out)
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +117,9 @@ def load_fleet(path: Path | None = None) -> dict[str, Any]:
         return {"ok": False, "error": f"fleet mirror unreadable: {exc}", "data": {}}
     if not isinstance(data, dict) or "lanes" not in data or "registry" not in data:
         return {"ok": False, "error": "fleet mirror malformed (missing lanes/registry)", "data": {}}
-    return {"ok": True, "error": "", "data": data}
+    # ORDER 017 D: the one load choke point every page and /fleet.json reads
+    # through — an unfiltered older mirror still never renders the private lane.
+    return {"ok": True, "error": "", "data": strip_private_fleet(data)}
 
 
 def load_stats(path: Path | None = None) -> dict[str, Any]:
@@ -68,7 +140,8 @@ def load_stats(path: Path | None = None) -> dict[str, Any]:
         return {"ok": False, "error": f"stats mirror unreadable: {exc}", "data": {}}
     if not isinstance(data, dict) or "repos" not in data:
         return {"ok": False, "error": "stats mirror malformed (missing repos)", "data": {}}
-    return {"ok": True, "error": "", "data": data}
+    # ORDER 017 D: same defensive filter as load_fleet (see strip_private_stats).
+    return {"ok": True, "error": "", "data": strip_private_stats(data)}
 
 
 # ---------------------------------------------------------------------------
@@ -224,8 +297,55 @@ def lane_view(
         "orders": orders_summary(fields.get("orders", "")),
         "kit": kit_version(fields.get("kit", "")),
         "stats": stats_repos.get(repo or "", {}) if repo else {},
+        # latest committed state, probed over anonymous git transport at
+        # bake time (absent in pre-probe mirrors — templates guard on it)
+        "head": lane.get("head") or {},
     }
     return view
+
+
+def seats_view(
+    fleet_data: dict[str, Any],
+    *,
+    now: Optional[datetime] = None,
+) -> dict[str, Any]:
+    """The 8-standing-seats view baked by ``gen_fleet.bake_seats`` — each
+    member repo's heartbeat stamp turned into a freshness reading, and a
+    seat-level "last heartbeat" = the freshest member. Mirrors without a
+    ``seats`` section (pre-consolidation bakes) yield ``ok=False`` and the
+    page skips the section rather than inventing a structure."""
+    seats_raw = (fleet_data or {}).get("seats") or []
+    if not seats_raw:
+        return {"ok": False, "seats": [], "consolidation": {}, "sources": []}
+    seats = []
+    for s in seats_raw:
+        members = []
+        best: Optional[dict[str, Any]] = None
+        for m in s.get("repos", []):
+            fr = freshness(m.get("updated", ""), now=now, stale_hours=12)
+            member = {
+                "repo": m.get("repo", "?"),
+                "repo_url": m.get("repo_url", ""),
+                "heartbeat_available": bool(m.get("heartbeat_available")),
+                "reason": m.get("reason", ""),
+                "freshness": fr,
+            }
+            members.append(member)
+            if fr["ok"] and (best is None or fr["age_hours"] < best["age_hours"]):
+                best = fr
+        seats.append({
+            "seat": s.get("seat", "?"),
+            "role": s.get("role", ""),
+            "repos": members,
+            # honest seat-level reading: freshest member heartbeat, or none
+            "last_heartbeat": best,
+        })
+    return {
+        "ok": True,
+        "seats": seats,
+        "consolidation": (fleet_data or {}).get("consolidation") or {},
+        "sources": (fleet_data or {}).get("seats_sources") or [],
+    }
 
 
 _DISPOSITION_ORDER = {"live": 0, "hub": 1, "registry-only": 2, "archived": 3}
@@ -270,3 +390,96 @@ def lane_detail(
         if ln.get("repo") == repo:
             return lane_view(ln, stats_repos, now=now)
     return None
+
+
+# --------------------------------------------------------------------------- #
+# ORDER 019 PR2 — /fleet lane filter/sort/search over the centralized
+# listfilter core (review/listfilter.py, a byte-identical vendored copy of
+# app/listfilter.py — the repo's sharing pattern, like static/ds/). The spec
+# filters the per-repo LANES grid; the seat dimension maps each lane onto its
+# standing seat via the mirror's own seats section (derived, never invented).
+# --------------------------------------------------------------------------- #
+
+FRESHNESS_BUCKETS = ("fresh", "stale", "age-unknown", "no-heartbeat")
+
+
+def lane_freshness_bucket(lane: dict[str, Any]) -> str:
+    """One lane view's heartbeat freshness bucket — honest states only:
+    ``fresh`` / ``stale`` (both measured), ``age-unknown`` (heartbeat exists
+    but its stamp is unparseable), ``no-heartbeat`` (nothing mirrored)."""
+    if not lane.get("heartbeat_available"):
+        return "no-heartbeat"
+    fr = lane.get("freshness") or {}
+    if not fr.get("ok"):
+        return "age-unknown"
+    return "stale" if fr.get("stale") else "fresh"
+
+
+def seat_by_repo(fleet_data: dict[str, Any]) -> dict[str, str]:
+    """``repo -> standing-seat name`` from the mirror's own seats section
+    (empty when the mirror predates seat consolidation — the dimension then
+    simply offers no options, never a guessed seat)."""
+    out: dict[str, str] = {}
+    for s in (fleet_data or {}).get("seats") or []:
+        for m in s.get("repos", []):
+            repo = str(m.get("repo") or "")
+            if repo:
+                out[repo] = str(s.get("seat") or "")
+    return out
+
+
+def annotate_lane_seats(
+    lanes: list[dict[str, Any]], seat_map: dict[str, str]
+) -> list[dict[str, Any]]:
+    """Stamp each lane view with its seat name ("" when unmapped) so the
+    filter dimension reads a real field. Mutates and returns ``lanes``."""
+    for lane in lanes:
+        lane["seat"] = seat_map.get(str(lane.get("repo") or ""), "")
+    return lanes
+
+
+def _lane_search_text(lane: dict[str, Any]) -> str:
+    return " ".join(
+        str(lane.get(k) or "") for k in ("lane", "repo", "seat")
+    )
+
+
+def _heartbeat_age_key(lane: dict[str, Any]) -> tuple:
+    fr = lane.get("freshness") or {}
+    if fr.get("ok"):
+        return (0, fr.get("age_hours") or 0.0)
+    return (1, 0.0)  # unmeasurable ages sort last — unknown, not infinite
+
+
+LANES_FILTER_SPEC = listfilter.ListSpec(
+    path="/fleet",
+    dimensions=(
+        listfilter.Dimension(
+            key="disposition", label="disposition",
+            values=("live", "hub", "registry-only", "archived"),
+            get=lambda ln: [ln.get("disposition") or ""],
+        ),
+        listfilter.Dimension(
+            key="freshness", label="heartbeat", derived=True,
+            values=FRESHNESS_BUCKETS,
+            get=lambda ln: [lane_freshness_bucket(ln)],
+        ),
+        listfilter.Dimension(
+            key="seat", label="seat",
+            get=lambda ln: [ln.get("seat") or ""],
+        ),
+    ),
+    sorts=(
+        # ``disposition`` keeps fleet_overview()'s own attention order — the
+        # default, so a no-param /fleet renders exactly as before.
+        listfilter.SortOption("disposition", "disposition"),
+        listfilter.SortOption(
+            "az", "lane A-Z",
+            sort_key=lambda ln: str(ln.get("lane") or "").casefold(),
+        ),
+        listfilter.SortOption(
+            "heartbeat", "freshest heartbeat", sort_key=_heartbeat_age_key,
+        ),
+    ),
+    search=_lane_search_text,
+)

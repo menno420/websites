@@ -19,8 +19,11 @@
 <section class="sb-section">
   <div class="sb-wrap-narrow">
     {% if editions %}
+    {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
+    {% set lf = editions_filter %}
+    {% include "_listfilter.html" %}
     <ol class="rv-editions">
-      {% for e in editions %}
+      {% for e in editions_filter['items'] %}
       <li class="sb-card rv-edition-card">
         <p class="sb-mono sb-muted">{{ e.date }}</p>
         <h2><a href="/reviews/{{ e.slug }}">{{ e.title }}</a></h2>
