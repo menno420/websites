@@ -1,7 +1,9 @@
 # 2026-07-12 — ORDER 017 workstream C: homepage rebuild (30-second front door)
 
-> **Status:** `in-progress` — branch `claude/order-017-homepage`; flips to
-> `complete` + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/order-017-homepage`, PR #180
+> (READY + targeting main, dependent on PRs #174/#175 which are merged into
+> this branch; merge order is the coordinator/owner's call — this worker
+> opens, never merges).
 
 - **📊 Model:** Fable (Claude, family-level) · worker (ORDER 017 dispatch, PR 3 of the review-site refresh) · homepage rebuild + wiring
 
