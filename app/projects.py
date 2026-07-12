@@ -49,9 +49,11 @@ import asyncio
 import re
 from typing import Any, Optional
 
-from . import config, github, journal
+from . import config, github, journal, prompt_artifacts
 
-REPO = "fleet-manager"
+# Shared with /prompts (ORDER 015): same registry repo, same blob deep-links.
+from .prompt_artifacts import REPO, blob_url as _blob_url  # noqa: F401
+
 ROOT = "projects"
 
 # Safety bounds — a registry of package folders, not an arbitrary tree.
@@ -130,10 +132,6 @@ _DISPATCH_ROLES: tuple[str, ...] = ("instructions", "coordinator", "failsafe")
 
 def _repo_url() -> str:
     return f"https://github.com/{config.OWNER}/{REPO}/tree/main/{ROOT}"
-
-
-def _blob_url(path: str) -> str:
-    return f"https://github.com/{config.OWNER}/{REPO}/blob/main/{path}"
 
 
 def classify_role(filename: str) -> tuple[str, str]:
@@ -385,7 +383,10 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
 
 async def detail(name: str, refresh: bool = False) -> dict[str, Any]:
     """One seat's dispatch screen: the package's recognized role files with
-    their FULL raw content (copy-ready), plus best-effort meta fields.
+    their FULL raw content (copy-ready), plus best-effort meta fields. Role
+    files carry the canonical shared prompt-artifact dict (``artifact`` key,
+    ORDER 015 — one fetch/render/copy path with /prompts); ``text`` /
+    ``fetch_error`` mirror it for meta extraction and existing consumers.
 
     ``state``: ``ok`` | ``not-found`` (the name is not a directory in the
     live registry listing — the route's ONLY 404; this doubles as the
@@ -405,6 +406,7 @@ async def detail(name: str, refresh: bool = False) -> dict[str, Any]:
         "env": "",
         "project_url": "",
         "failsafe": None,
+        "ttl": config.CACHE_TTL_SECONDS,
     }
     if not _SAFE_PKG_RE.match(name or "") or ".." in name:
         out["state"] = "not-found"
@@ -449,21 +451,25 @@ async def detail(name: str, refresh: bool = False) -> dict[str, Any]:
     if pkg["error"]:
         return out
 
-    # Full content for every recognized role file (the copy-ready blocks);
-    # "other" files stay link-only, listed honestly. meta.md re-uses the
-    # TTL cache warmed by _build_package.
+    # Full content for every recognized role file (the copy-ready blocks) via
+    # the shared prompt-artifact path (ORDER 015) — the SAME fetch+parse
+    # model /prompts renders through; "other" files stay link-only, listed
+    # honestly. meta.md re-uses the TTL cache warmed by _build_package.
     role_files = [f for f in pkg["files"] if f["role"] != "other"]
     fetched = await asyncio.gather(
-        *[github.fetch_file(REPO, f["path"], refresh=refresh) for f in role_files]
+        *[
+            prompt_artifacts.fetch_artifact(f["path"], f["label"], refresh=refresh)
+            for f in role_files
+        ]
     )
     for f in pkg["files"]:
+        f["artifact"] = None
         f["text"] = None
         f["fetch_error"] = None
-    for f, res in zip(role_files, fetched):
-        if res["ok"] and isinstance(res["data"], str):
-            f["text"] = res["data"]
-        else:
-            f["fetch_error"] = res.get("error") or f"HTTP {res.get('status')}"
+    for f, art in zip(role_files, fetched):
+        f["artifact"] = art
+        f["text"] = art["text"]
+        f["fetch_error"] = None if art["ok"] else art["error"]
     for i, f in enumerate(pkg["files"]):
         f["anchor"] = f"file-{i}"
 

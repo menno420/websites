@@ -29,25 +29,15 @@
   </p>
 </div>
 
+{# The block itself is the shared partial (ORDER 015) — one render path with
+   the /projects/{package} dispatch screen. #}
+{% from "_prompt_artifact.html" import prompt_block %}
 {% macro artifact_card(a) %}
 <div class="card" id="{{ a.anchor }}">
   <h2>{% if a.seat %}{{ a.seat }} · {% endif %}{{ a.label }}
     <span class="dim small">· <code>{{ a.path }}</code>
       · <a href="{{ a.github_url }}">view on GitHub ↗</a></span></h2>
-  {% if a.ok %}
-  <p class="small">
-    {% if a.provenance %}<span class="note">{{ a.provenance }}</span>
-    {% else %}<span class="b unknown">no version line found in the artifact</span>{% endif %}
-  </p>
-  <p class="dim small">fetched {{ a.fetched_at }}
-    {%- if a.cached %} · served from cache (TTL {{ p.ttl }}s — age ≤ TTL){% else %} · live fetch{% endif %}
-    · {{ a.chars }} chars</p>
-  <pre>{{ a.text }}</pre>
-  {% else %}
-  <div class="banner">⚠ could not fetch <code>{{ a.path }}</code> — {{ a.error }} ·
-    <a href="{{ a.github_url }}">view on GitHub ↗</a> (nothing shown rather than a stale
-    fabrication)</div>
-  {% endif %}
+  {{ prompt_block(a, p.ttl) }}
 </div>
 {% endmacro %}
 
