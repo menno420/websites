@@ -9,6 +9,22 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Tester-task URL liveness guard** · `captured` — every `open` task in
+  `botsite/testing_tasks.json` points a paying tester at a `product_url`;
+  if that URL dies (service renamed, deploy broken) the program burns real
+  testers' time and its own credibility before anyone notices. A small
+  check — `scripts/healthcheck.py` growing a testing-catalog pass, or a
+  botsite startup/`/testing` render-time probe — that verifies each open
+  task's `product_url` answers 200 and visibly flags (or auto-treats as
+  `coming-soon`) the ones that don't, keeps the catalog honest by default;
+  same pattern would auto-open the seeded coming-soon game tasks the day
+  their games deploy. Worth having because the tester program's whole pitch
+  is "real products, honestly described" — a dead link is the fastest way
+  to break that promise. Deduped against this backlog + the queue-state
+  NEXT list: healthcheck ideas exist for fleet services, nothing touches
+  the testing catalog. Source:
+  `.sessions/2026-07-12-order-018-testing-platform-pr1.md` 💡.
+
 - **/prompts pinned-registry drift chip** · `captured` — the /prompts
   artifact list is pinned in `app/prompts.py` (the raw host cannot list
   directories), so a seat added or renamed in fleet-manager `projects/`
