@@ -26,6 +26,15 @@ Payouts: PayPal Payouts is the owner-confirmed rail; v1 is DRY-RUN ONLY
 call exists). The tester's optional PayPal email on the claim form is the
 canonical payout address.
 
+Guided walkthroughs (PR3): tasks of type ``guided-walkthrough`` carry a
+``steps`` script in the catalog; ``/testing/s/{token}/guide`` walks the tester
+through it step by step (plain forms — works with JS disabled and with no API
+key) and the finished guide IS the submission, flowing into the same storage
+and exit-review as every other type. A side-panel AI guide (chat + optional,
+explicitly-consented screen sharing) rides on ``testing_ai.py`` with a
+per-claim message cap plus the shared daily cap; screen frames are analyzed
+IN MEMORY ONLY and never persisted (test-pinned).
+
 Anti-abuse on every state-changing route (re-implemented from the pattern in
 unmerged PR #159's ``app/owner.py``, independently — no cross-service import):
 same-origin check (Origin, falling back to Referer; both absent → 403) and an
@@ -48,7 +57,7 @@ from typing import Any, Optional
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from . import data_source as ds
@@ -71,8 +80,10 @@ _FIELD_MAX = 5000  # per-field input cap (bytes of honesty, not a novel)
 _UNAUTH_HEADERS = {"WWW-Authenticate": 'Basic realm="testing owner"'}
 
 # Per-type structured questionnaire: (field name, label, kind). Free-form
-# findings are appended for every type. guided-walkthrough is the labeled
-# placeholder until PR2 ships the step scripts.
+# findings are appended for every type. guided-walkthrough deliberately has
+# no questionnaire: its structured answers come from the task's `steps`
+# script via the /s/{token}/guide flow (ORDER 018 PR3), which ends in the
+# same submission storage + exit-review as every other type.
 QUESTIONNAIRES: dict[str, list[tuple[str, str, str]]] = {
     "site-review": [
         ("what_worked", "What worked well?", "textarea"),
@@ -88,7 +99,7 @@ QUESTIONNAIRES: dict[str, list[tuple[str, str, str]]] = {
         ("device_browser", "Device + browser", "input"),
         ("severity", "Worst issue you found", "severity"),
     ],
-    "guided-walkthrough": [],  # placeholder — step scripts + AI confirmation land in PR2
+    "guided-walkthrough": [],  # step scripts drive this type — see the guide flow
 }
 SEVERITIES = ["none", "minor", "major", "blocker"]
 
@@ -100,6 +111,10 @@ SCREENSHOT_MAX_BYTES = 2 * 1024 * 1024  # 2 MB each
 _SCREENSHOT_TYPES = {"image/png", "image/jpeg"}
 _MAGIC_PNG = b"\x89PNG\r\n\x1a\n"
 _MAGIC_JPEG = b"\xff\xd8\xff"
+
+# Screen-awareness frames (ORDER 018 PR3): hard server-side cap. The client
+# JPEG-encodes at capped quality/scale so real frames land well under this.
+FRAME_MAX_BYTES = 1_500_000  # ~1.5 MB
 
 
 def _screenshot_magic_ok(content_type: str, data: bytes) -> bool:
@@ -224,6 +239,13 @@ def task_by_id(task_id: str) -> Optional[dict[str, Any]]:
         if t["id"] == task_id:
             return t
     return None
+
+
+def task_steps(task: Optional[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The guided-walkthrough step script (empty for every other type)."""
+    if not task:
+        return []
+    return [s for s in (task.get("steps") or []) if isinstance(s, dict)]
 
 
 # --------------------------------------------------------------------------
@@ -599,6 +621,260 @@ async def testing_followups(
     ctx.update(_submission_ctx(refreshed))
     ctx.update({"error": None})
     return templates.TemplateResponse(request, "testing_submission.html", ctx)
+
+
+# --------------------------------------------------------------------------
+# guided walkthrough (ORDER 018 PR3) — step flow + AI side panel + screen
+# awareness v1. The step flow is plain forms (works with JS disabled and
+# with no API key); chat and frames are progressive enhancements that count
+# against the shared AI spend caps. Frames are processed IN MEMORY ONLY —
+# this path deliberately contains no store write (test-pinned).
+# --------------------------------------------------------------------------
+def _guide_claim_task(token: str) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+    """Resolve claim + guided task + steps or raise 404 (wrong token, or the
+    task is not a guided walkthrough with a step script)."""
+    claim = store.claim_by_token(token)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="unknown submission link")
+    task = task_by_id(claim["task_id"])
+    steps = task_steps(task)
+    if task is None or not steps:
+        raise HTTPException(
+            status_code=404, detail="this claim's task has no guided walkthrough"
+        )
+    return claim, task, steps
+
+
+def _guide_ctx(
+    request: Request,
+    claim: dict[str, Any],
+    task: dict[str, Any],
+    steps: list[dict[str, Any]],
+    step_index: int,
+    carried: dict[int, str],
+    findings: str,
+    error: Optional[str],
+) -> dict[str, Any]:
+    return {
+        "claim": claim,
+        "task": task,
+        "steps": steps,
+        "step_index": step_index,
+        "carried": carried,
+        "findings_carry": findings,
+        "error": error,
+        "ai_available": ai.available(),
+        "guide_cap": ai.guide_cap(),
+        "guide_used": ai.guide_calls_used(claim["id"]),
+        "frame_max_bytes": FRAME_MAX_BYTES,
+    }
+
+
+@router.get("/s/{token}/guide", response_class=HTMLResponse)
+async def testing_guide_page(request: Request, token: str):
+    claim, task, steps = _guide_claim_task(token)
+    if claim["status"] != "claimed":
+        # Already submitted — the status page owns the story from here.
+        return RedirectResponse(f"/testing/s/{token}", status_code=303)
+    ctx = await _ctx(request)
+    ctx.update(_guide_ctx(request, claim, task, steps, 0, {}, "", None))
+    return templates.TemplateResponse(request, "testing_guide.html", ctx)
+
+
+@router.post("/s/{token}/guide", response_class=HTMLResponse)
+async def testing_guide_step(
+    request: Request, token: str, _: None = Depends(guard_state_change)
+):
+    """Step advance / back / final submit. Answers ride hidden fields between
+    steps (stateless server — nothing is stored until the final submit, which
+    reuses the exact submission + exit-review path every other type takes)."""
+    claim, task, steps = _guide_claim_task(token)
+    ctx = await _ctx(request)
+    if claim["status"] != "claimed":
+        ctx.update(_submission_ctx(claim))
+        ctx.update({"error": "This claim already has a submission — it's in review."})
+        return templates.TemplateResponse(
+            request, "testing_submission.html", ctx, status_code=409
+        )
+    form = await request.form()
+    try:
+        step_index = int(str(form.get("step") or "0"))
+    except ValueError:
+        step_index = 0
+    step_index = max(0, min(step_index, len(steps) - 1))
+    carried = {i: _clean(form, f"answer_{i}") for i in range(len(steps))}
+    findings = _clean(form, "findings")
+    nav = str(form.get("nav") or "next")
+
+    if nav == "back":
+        back_to = max(0, step_index - 1)
+        ctx.update(_guide_ctx(request, claim, task, steps, back_to, carried, findings, None))
+        return templates.TemplateResponse(request, "testing_guide.html", ctx)
+
+    if not carried.get(step_index):
+        ctx.update(
+            _guide_ctx(
+                request, claim, task, steps, step_index, carried, findings,
+                "Answer this step's question before moving on — that answer is the report.",
+            )
+        )
+        return templates.TemplateResponse(
+            request, "testing_guide.html", ctx, status_code=400
+        )
+
+    if step_index < len(steps) - 1:
+        ctx.update(
+            _guide_ctx(request, claim, task, steps, step_index + 1, carried, findings, None)
+        )
+        return templates.TemplateResponse(request, "testing_guide.html", ctx)
+
+    # Final step answered → this IS the submission (same storage, same
+    # exit-review, same status flow as every other task type).
+    answers = {
+        f"step_{i + 1}: {steps[i].get('title') or ''}"[:200]: carried[i]
+        for i in range(len(steps))
+        if carried.get(i)
+    }
+    submission = store.create_submission(claim["id"], answers, findings)
+    store.set_claim_status(claim["id"], "submitted")
+    _run_exit_review(submission, claim, task)
+    refreshed = store.claim_by_token(token)
+    ctx.update(_submission_ctx(refreshed))
+    ctx.update({"error": None})
+    return templates.TemplateResponse(request, "testing_submission.html", ctx)
+
+
+def _guide_panel_json(
+    claim: dict[str, Any], *, ok: bool, reply: str, degraded: bool = False,
+    status_code: int = 200,
+) -> JSONResponse:
+    return JSONResponse(
+        {
+            "ok": ok,
+            "reply": reply,
+            "degraded": degraded,
+            "used": ai.guide_calls_used(claim["id"]),
+            "cap": ai.guide_cap(),
+        },
+        status_code=status_code,
+    )
+
+
+def _guide_step_index(raw: Any, steps: list[dict[str, Any]]) -> int:
+    try:
+        idx = int(str(raw))
+    except (ValueError, TypeError):
+        idx = 0
+    return max(0, min(idx, len(steps) - 1))
+
+
+@router.post("/s/{token}/guide/chat")
+async def testing_guide_chat(
+    request: Request, token: str, _: None = Depends(guard_state_change)
+):
+    """Side-panel chat. Guarded like every state change; per-claim guide cap
+    + shared daily cap; degrades to honest copy without a key."""
+    claim, task, steps = _guide_claim_task(token)
+    if claim["status"] != "claimed":
+        return _guide_panel_json(
+            claim, ok=False,
+            reply="This claim is already submitted — the guide session is over.",
+            status_code=409,
+        )
+    try:
+        body = await request.json()
+    except ValueError:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    message = str(body.get("message") or "").strip()[:_FIELD_MAX]
+    if not message:
+        return _guide_panel_json(
+            claim, ok=False, reply="Type a question first.", status_code=400
+        )
+    step_index = _guide_step_index(body.get("step"), steps)
+    if not ai.available():
+        return _guide_panel_json(
+            claim, ok=False, degraded=True,
+            reply=(
+                "The AI guide is offline (no API key is configured on the "
+                "server). The step-by-step walkthrough works fully without it."
+            ),
+        )
+    try:
+        ai.consume_guide_call(claim["id"])
+        reply = ai.guide_reply(task, steps, step_index, message)
+    except ai.AIReviewUnavailable as exc:
+        return _guide_panel_json(
+            claim, ok=False, degraded=True,
+            reply=f"The AI guide is unavailable right now ({exc}). "
+            "The steps keep working without it.",
+        )
+    return _guide_panel_json(claim, ok=True, reply=reply)
+
+
+@router.post("/s/{token}/guide/frame")
+async def testing_guide_frame(
+    request: Request, token: str, _: None = Depends(guard_state_change)
+):
+    """Screen-awareness v1: ONE shared-screen frame in, one guiding question
+    out. PRIVACY CONTRACT (test-pinned): the frame lives only in this
+    request's memory — it is sent to the vision model and discarded; this
+    handler performs NO store write, and nothing here logs the bytes."""
+    claim, task, steps = _guide_claim_task(token)
+    if claim["status"] != "claimed":
+        return _guide_panel_json(
+            claim, ok=False,
+            reply="This claim is already submitted — the guide session is over.",
+            status_code=409,
+        )
+    # Cheap early reject on the declared size before reading the body.
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > FRAME_MAX_BYTES + 4096:
+        return _guide_panel_json(
+            claim, ok=False,
+            reply="That frame is too large — the page sends smaller ones automatically.",
+            status_code=413,
+        )
+    form = await request.form()
+    frame = form.get("frame")
+    if frame is None or isinstance(frame, str):
+        return _guide_panel_json(
+            claim, ok=False, reply="No frame was attached.", status_code=400
+        )
+    data = await frame.read()
+    if len(data) > FRAME_MAX_BYTES:
+        return _guide_panel_json(
+            claim, ok=False,
+            reply="That frame is too large — the page sends smaller ones automatically.",
+            status_code=413,
+        )
+    if not data or not data.startswith(_MAGIC_JPEG):
+        return _guide_panel_json(
+            claim, ok=False,
+            reply="That frame doesn't look like a JPEG image.",
+            status_code=400,
+        )
+    step_index = _guide_step_index(form.get("step"), steps)
+    if not ai.available():
+        return _guide_panel_json(
+            claim, ok=False, degraded=True,
+            reply=(
+                "The AI guide is offline (no API key is configured on the "
+                "server), so screen sharing has nothing to talk to."
+            ),
+        )
+    try:
+        ai.consume_guide_call(claim["id"])
+        reply = ai.guide_screen_question(task, steps, step_index, data)
+    except ai.AIReviewUnavailable as exc:
+        return _guide_panel_json(
+            claim, ok=False, degraded=True,
+            reply=f"The AI guide is unavailable right now ({exc}). "
+            "The steps keep working without it.",
+        )
+    # `data` goes out of scope here — never persisted, by design.
+    return _guide_panel_json(claim, ok=True, reply=reply)
 
 
 # --------------------------------------------------------------------------

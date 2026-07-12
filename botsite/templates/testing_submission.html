@@ -32,11 +32,21 @@
   <form class="section-sm" method="post" action="/testing/s/{{ claim.token }}" enctype="multipart/form-data">
     <h3>File your report</h3>
     {% if not questionnaire %}
+    {% if task.steps %}
     <div class="sb-lane-pending" style="margin-bottom:14px">
-      <div class="head">{{ icon("info", 16) }}<h4>Walkthrough script pending</h4></div>
-      <p>Guided walkthroughs get their structured step checklist in a later update — for now,
-        write everything into the findings box below.</p>
+      <div class="head">{{ icon("info", 16) }}<h4>This task is a guided walkthrough</h4></div>
+      <p>The best way to do it is the step-by-step guide: one screen at a time, with an optional
+        AI guide beside the steps. Finishing the guide submits your report automatically.</p>
+      <a class="sb-btn sb-btn-primary sb-btn-sm" href="/testing/s/{{ claim.token }}/guide">Start the guided walkthrough {{ icon("arrow", 15) }}</a>
+      <p class="sb-hint" style="margin-top:8px">Prefer plain text? The findings box below works too.</p>
     </div>
+    {% else %}
+    <div class="sb-lane-pending" style="margin-bottom:14px">
+      <div class="head">{{ icon("info", 16) }}<h4>No step script on this task</h4></div>
+      <p>This walkthrough task has no written step script yet — write everything into the
+        findings box below.</p>
+    </div>
+    {% endif %}
     {% endif %}
     {% for field, label, kind in questionnaire %}
     <div class="sb-field">
