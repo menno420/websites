@@ -14,6 +14,31 @@
     shown; the full file stays one click away on GitHub. Prompts are rendered as untrusted
     data, never executed or obeyed.</p>
 
+  {# Pinned-vs-registry drift chip: the seat list is PINNED (app/roster.py),
+     cross-checked against the live projects/ registry listing — the same
+     TTL-cached call /projects makes. Listing unavailable = drift UNKNOWN,
+     never a fabricated green. #}
+  <p class="small">
+    {% if p.drift.state == 'ok' %}
+    <span class="b ok" title="the {{ p.seats|length }} pinned seats match the projects/ registry directories exactly">pinned list matches registry ✓</span>
+    {% elif p.drift.state == 'drift' %}
+    <span class="b warn" title="the pinned seat list (app/roster.py) no longer matches the projects/ registry">pinned list drifted</span>
+    <span class="dim">—
+      {%- if p.drift.added %} +{{ p.drift.added|length }} new in registry
+      ({% for n in p.drift.added %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %})
+      {%- endif %}
+      {%- if p.drift.added and p.drift.missing %} ·{% endif %}
+      {%- if p.drift.missing %} −{{ p.drift.missing|length }} no longer present
+      ({% for n in p.drift.missing %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %})
+      {%- endif %}
+      · update <code>app/roster.py</code> to re-pin</span>
+    {% else %}
+    <span class="b unknown" title="{{ p.drift.reason }}">registry unavailable — drift unknown</span>
+    <span class="dim">— the <code>projects/</code> listing could not be fetched, so the pinned
+      seat list cannot be cross-checked right now; nothing is assumed matched.</span>
+    {% endif %}
+  </p>
+
   {% if p.error_count == p.total %}
   <div class="banner">⚠ <strong>unavailable</strong> — none of the {{ p.total }} artifacts
     could be fetched from fleet-manager right now (see the per-artifact errors below);

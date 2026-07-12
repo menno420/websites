@@ -38,6 +38,15 @@ live (HTTP 200 on raw.githubusercontent.com) against fleet-manager@main on
 https://github.com/menno420/fleet-manager/tree/main/projects — if a seat is
 added or renamed upstream, its cell degrades to an honest 404 here until
 the shared roster (``app/roster.py``) is updated.
+
+Pinned-vs-registry drift chip (2026-07-12): a pinned list drifts SILENTLY —
+dead 404 cells, and a brand-new seat simply never appears. So the page
+cross-checks :data:`SEATS` against the live ``projects/`` registry listing
+(:func:`registry_drift`) — the SAME TTL-cached ``github.repo_api`` contents
+call /projects makes (identical URL = shared cache entry; one directory
+listing, never the per-package walk, zero new network surface) — and renders
+an honest chip: match / drifted (+new / −missing, named) / listing
+unavailable = drift UNKNOWN, never a fabricated green.
 """
 
 from __future__ import annotations
@@ -45,7 +54,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from . import config, prompt_artifacts
+from . import config, github, prompt_artifacts
 
 # Shared fetch+parse path (ORDER 015) — re-exported so consumers and tests
 # keep one import surface for the library's registry semantics.
@@ -56,6 +65,12 @@ from .prompt_artifacts import (  # noqa: F401
     extract_paste_body,
     extract_provenance,
 )
+
+# The registry root the /projects page lists (``projects/``) — imported so
+# the drift cross-check hits the EXACT contents-API URL /projects already
+# fetches (the github layer caches by URL, so within the TTL the two pages
+# share one listing; the constants cannot drift apart).
+from .projects import ROOT as _REGISTRY_ROOT
 
 # The 8 fleet seats (registry package directories under projects/), in the
 # owner's dispatch order — ONE roster shared with /projects
@@ -99,6 +114,58 @@ def _artifact_spec() -> list[dict[str, Any]]:
     return spec
 
 
+async def registry_drift(refresh: bool = False) -> dict[str, Any]:
+    """Cross-check the pinned :data:`SEATS` against the live ``projects/``
+    registry listing — the drift chip's data. Never raises.
+
+    Reuses the ONE contents-API directory listing /projects already fetches
+    (``github.repo_api`` on the same URL → same TTL cache entry): zero new
+    network surface, never the per-package walk this page deliberately avoids.
+
+    Returns::
+
+        {"state": "ok" | "drift" | "unknown",
+         "added": [names in the registry but not pinned, sorted],
+         "missing": [pinned names no longer in the registry, sorted],
+         "reason": why the check could not run (unknown only)}
+
+    Honesty ladder: a listing that cannot be fetched (network failure, or
+    the ``projects/`` directory 404ing because the registry has not landed)
+    is ``unknown`` — drift can NOT be declared matched without the listing,
+    so no green is ever fabricated. A listing that succeeds but holds no
+    package directories is a real (empty) registry: every pinned seat is
+    genuinely missing, and that renders as drift, not unknown. Retired-stub
+    directories count as ``added`` on purpose — they exist upstream and are
+    not pinned; the chip reports the raw set difference, never a guess.
+    """
+    out: dict[str, Any] = {"state": "ok", "added": [], "missing": [], "reason": ""}
+    listing = await github.repo_api(
+        REPO, f"/contents/{_REGISTRY_ROOT}", refresh=refresh
+    )
+    if not (listing["ok"] and isinstance(listing["data"], list)):
+        out["state"] = "unknown"
+        reason = listing.get("error") or f"HTTP {listing.get('status')}"
+        if listing.get("status") == 404:
+            reason = (
+                f"`{_REGISTRY_ROOT}/` does not exist upstream yet "
+                "(registry not landed)"
+            )
+        out["reason"] = reason
+        return out
+
+    registry = {
+        e.get("name", "")
+        for e in listing["data"]
+        if e.get("type") == "dir" and e.get("name")
+    }
+    pinned = set(SEATS)
+    out["added"] = sorted(registry - pinned)
+    out["missing"] = sorted(pinned - registry)
+    if out["added"] or out["missing"]:
+        out["state"] = "drift"
+    return out
+
+
 async def overview(refresh: bool = False) -> dict[str, Any]:
     """Every fleet paste artifact, fetched live (TTL-cached) — never raises
     for upstream failures; the route always renders 200.
@@ -109,6 +176,7 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
           "seats": [{"name", "anchor", "github_url", "artifacts": [...]}, ...],
           "fleet_wide": [ artifact, ... ],
           "total", "ok_count", "error_count",
+          "drift": registry_drift() result (pinned-vs-registry chip),
           "ttl": CACHE_TTL_SECONDS, "repo_url",
         }
 
@@ -123,15 +191,14 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
     ``cached``/``fetched_at``.
     """
     spec = _artifact_spec()
-    artifacts = list(
-        await asyncio.gather(
-            *[
-                prompt_artifacts.fetch_artifact(
-                    s["path"], s["label"], seat=s["seat"], refresh=refresh
-                )
-                for s in spec
-            ]
-        )
+    *artifacts, drift = await asyncio.gather(
+        *[
+            prompt_artifacts.fetch_artifact(
+                s["path"], s["label"], seat=s["seat"], refresh=refresh
+            )
+            for s in spec
+        ],
+        registry_drift(refresh=refresh),
     )
     for i, a in enumerate(artifacts):
         a["anchor"] = f"artifact-{i}"
@@ -155,6 +222,7 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
         "total": len(artifacts),
         "ok_count": ok_count,
         "error_count": len(artifacts) - ok_count,
+        "drift": drift,
         "ttl": config.CACHE_TTL_SECONDS,
         "repo_url": f"https://github.com/{config.OWNER}/{REPO}/tree/{REF}",
     }

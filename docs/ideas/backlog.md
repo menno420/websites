@@ -65,7 +65,28 @@
   guide flow (it ships this PR). Source:
   `.sessions/2026-07-12-order-018-testing-guided-mode-pr3.md` 💡.
 
-- **/prompts pinned-registry drift chip** · `captured` — the /prompts
+- **Shared contents-listing honesty classifier** · `captured` — three
+  surfaces now hand-roll the same degraded-listing ladder over a
+  `github.repo_api` contents result: `projects.overview`, `projects.detail`
+  (404 → empty / no-token → not-configured / else unavailable) and
+  `prompts.registry_drift` (any failure → unknown, 404 reworded). One
+  helper (e.g. `github.classify_listing(result) -> (state, reason)`) with
+  the 404 disposition as an explicit parameter would make the pages share
+  one ladder and make deliberate differences declared instead of
+  re-derived. Worth having because the honesty ladder is the site's core
+  UI promise and three hand-rolled copies have already begun to diverge —
+  the next copy forks it silently. Deduped against this backlog + the
+  queue-state NEXT list: nothing touches listing-degradation plumbing.
+  Source: `.sessions/2026-07-12-prompts-registry-drift-chip.md` 💡.
+
+- **/prompts pinned-registry drift chip** · `built` (2026-07-12, PR #213 —
+  `prompts.registry_drift` cross-checks the pinned `SEATS` against the live
+  `projects/` contents listing via the SAME TTL-cached `github.repo_api`
+  URL /projects fetches, zero new network surface; chip states: matched ✓ /
+  "pinned list drifted: +X new in registry / −Y no longer present" with the
+  actual seat names / listing unavailable = drift UNKNOWN, never a
+  fabricated green; empty-but-listed registry is real drift, not unknown) —
+  original capture: the /prompts
   artifact list is pinned in `app/prompts.py` (the raw host cannot list
   directories), so a seat added or renamed in fleet-manager `projects/`
   silently degrades to a 404 cell here until someone edits the constant.
