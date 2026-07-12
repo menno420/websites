@@ -22,7 +22,10 @@ from app.main import app  # noqa: E402
 
 # --- the pinned contract ---------------------------------------------------
 
-TOP_KEYS = {"lanes", "summary", "stale_hours", "lane_source", "registry_url"}
+# coverage added 2026-07-12 (fleet coverage-chip PR): seat-package
+# role-coverage rollup (projects.coverage_rollup) — the /fleet chip's data.
+TOP_KEYS = {"lanes", "summary", "stale_hours", "lane_source", "registry_url",
+            "coverage"}
 
 # lane_status() output minus body_html (the JSON route strips rendered HTML).
 # status_file_url / current_state_url added 2026-07-12 (console-home PR):
@@ -48,6 +51,11 @@ SUMMARY_KEYS = {
     "stranded", "silent_routines", "outstanding_orders", "kit_versions",
 }
 KIT_VERSION_ITEM_KEYS = {"version", "count"}
+
+COVERAGE_KEYS = {
+    "state", "reason", "seats", "complete", "incomplete",
+    "incomplete_names", "unlistable", "unlistable_names",
+}
 
 # ---------------------------------------------------------------------------
 
@@ -96,6 +104,12 @@ def test_top_level_and_summary_shape(monkeypatch):
     )
     for item in d["summary"]["kit_versions"]:
         assert set(item.keys()) == KIT_VERSION_ITEM_KEYS
+    assert set(d["coverage"].keys()) == COVERAGE_KEYS, (
+        f"coverage contract drift: {sorted(set(d['coverage']) ^ COVERAGE_KEYS)}"
+    )
+    # This fixture 404s every repo_api call, so the registry listing is
+    # unreadable — the rollup must be an honest unknown, never a zero.
+    assert d["coverage"]["state"] == "unknown"
 
 
 def test_lane_shape_including_parsed_structures(monkeypatch):

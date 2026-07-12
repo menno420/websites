@@ -41,6 +41,27 @@
     {% for kv in f.summary.kit_versions %}{{ kv.count }}×{{ kv.version }}{{ " · " if not loop.last }}{% endfor %}
     <span class="dim">— readable heartbeats only</span></p>
   {% endif %}
+  {# Seat-package coverage rollup: the /projects role-coverage chips
+     (instructions / coordinator / failsafe) reduced to one cell — same
+     TTL-cached registry data /projects fetches. Registry or per-seat
+     listing unreadable = coverage UNKNOWN, never a fabricated zero. #}
+  <p class="small">seat packages:
+    {% if cov.state != 'ok' %}
+    <span class="b unknown" title="{{ cov.reason }}">coverage unknown</span>
+    <span class="dim">— {{ cov.reason }}; nothing is assumed complete.</span>
+    {% elif cov.incomplete %}
+    <span class="b warn" title="seats missing a dispatch-critical role file (instructions / coordinator / failsafe)">packages incomplete: {{ cov.incomplete }}</span>
+    <span class="dim">—
+      {% for n in cov.incomplete_names %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      · chips per seat on <a href="/projects">/projects</a></span>
+    {% if cov.unlistable %}<span class="b unknown" title="{{ cov.unlistable_names | join(', ') }}">+{{ cov.unlistable }} unlistable — coverage unknown</span>{% endif %}
+    {% elif cov.unlistable %}
+    <span class="b unknown" title="{{ cov.unlistable_names | join(', ') }}">coverage unknown for {{ cov.unlistable }} seat{{ 's' if cov.unlistable != 1 }}</span>
+    <span class="dim">— the package listing{{ 's' if cov.unlistable != 1 }} could not be fetched; never assumed complete.</span>
+    {% else %}
+    <span class="b ok" title="every active seat package carries instructions + coordinator + failsafe">coverage: complete ({{ cov.seats }} seat{{ 's' if cov.seats != 1 }})</span>
+    {% endif %}
+  </p>
 </div>
 
 {% for l in f.lanes %}
