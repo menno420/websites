@@ -63,6 +63,14 @@ REGISTRY_URL = f"https://github.com/{OWNER}/{REGISTRY_REPO}/blob/main/{REGISTRY_
 OUT_PATH = Path(__file__).resolve().parent / "data" / "fleet.json"
 TIMEOUT = 20
 
+# ORDER 017 workstream D: "the Pokémon lane stays private" — private lanes
+# never enter the public mirror (no card, no seat member, no name in text).
+PRIVATE_LANES = {"pokemon-mod-lab"}
+# Mirrored free text (other lanes' heartbeat fields) may name the private
+# lane; scrub any pokemon-ish token so the committed mirror never carries it.
+_PRIVATE_TEXT_RE = re.compile(r"pok[eé]mon[\w.-]*", re.IGNORECASE)
+_PRIVATE_TEXT_SUB = "[a private lane]"
+
 # ---------------------------------------------------------------------------
 # The 8 standing seats — the fleet's owner-decided standing structure.
 #
@@ -268,7 +276,9 @@ def parse_heartbeat(text: str) -> dict[str, str]:
             fields[cur] = f"{fields[cur]} {stripped}".strip()
     for key, value in fields.items():
         if len(value) > FIELD_CAP:
-            fields[key] = value[:FIELD_CAP].rstrip() + _TRUNC_MARK
+            value = value[:FIELD_CAP].rstrip() + _TRUNC_MARK
+        # ORDER 017 D: mirrored text never names the private lane.
+        fields[key] = _PRIVATE_TEXT_RE.sub(_PRIVATE_TEXT_SUB, value)
     return fields
 
 
@@ -316,6 +326,8 @@ def bake_seats(lanes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for seat in SEATS:
         members: list[dict[str, Any]] = []
         for repo in seat["repos"]:
+            if repo in PRIVATE_LANES:  # ORDER 017 D: the Pokémon lane stays private
+                continue
             lane = by_repo.get(repo)
             if lane is None:
                 members.append({
@@ -345,6 +357,12 @@ def main() -> int:
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     reg_text, reg_err = _fetch(REGISTRY_RAW)
     entries = parse_registry(reg_text) if reg_text else []
+    # ORDER 017 workstream D: "the Pokémon lane stays private" — excluded at bake time.
+    entries = [
+        e for e in entries
+        if str(e.get("repo") or "") not in PRIVATE_LANES
+        and str(e.get("lane") or "") not in PRIVATE_LANES
+    ]
 
     if not entries:
         reason = reg_err or "registry parsed to zero seats"

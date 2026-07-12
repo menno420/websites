@@ -107,7 +107,8 @@
       ({% for src in seats.sources %}<a href="{{ src.url }}" target="_blank" rel="noopener">{{ src.label }}</a>{% if not loop.last %} · {% endif %}{% endfor %});
       heartbeat readings come from the same per-repo mirror as the lane cards below — baked
       {{ fleet_age.iso if fleet_age and fleet_age.ok else "at an unknown time" }}, never hand-written.
-      A member whose heartbeat can't be read says so (the Game Lab's Pokémon repo is private by design).
+      A member whose heartbeat can't be read says so. One Game Lab lane is private by design and
+      is deliberately not listed here at all.
     </p>
   </div>
 </section>

@@ -17,7 +17,7 @@
 | 3 | SuperBot World | superbot-games · superbot-idle · superbot-mineverse | The bot's games |
 | 4 | SuperBot 2.0 | superbot-next · superbot (prod) | Drive the rebuild to cutover; keep prod alive |
 | 5 | Ideas Lab | idea-engine · sim-lab | Generate → verify; honest nulls are the product |
-| 6 | Game Lab | gba-homebrew · pokemon-mod-lab | Standalone games; strict public/private isolation |
+| 6 | Game Lab | gba-homebrew · one private lane (unnamed by design) | Standalone games; strict public/private isolation |
 | 7 | Self Improvement | substrate-kit | Improve the workflow all seats run on |
 | 8 | Websites | websites | Control plane; merge = deploy |
 
@@ -54,7 +54,7 @@ Notable per-lane heartbeats at generation time: superbot-next FRESH
 (07:55Z), idea-engine FRESH (08:11Z), sim-lab 03:25Z, venture-lab 00:26Z
 (ACTIVE — money seat), websites 2026-07-11T19:49Z (CLOSING — parked by
 owner archive-prep order), trading-strategy ARCHIVE-READY,
-pokemon-mod-lab NOT MEASURED (auth wall — private repo).
+the private Game Lab lane NOT MEASURED (auth wall — private repo).
 
 Trigger evidence in the same roster: "783-record export, **15 enabled**:
 7 standing crons + 1 poke-only + 7 one-shots." The wake-state column

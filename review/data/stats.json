@@ -84,10 +84,6 @@
       "default_branch": "main",
       "total_prs": 42
     },
-    "pokemon-mod-lab": {
-      "ok": false,
-      "reason": "HTTP 404"
-    },
     "gba-homebrew": {
       "ok": true,
       "pushed_at": "2026-07-11T22:29:23Z",

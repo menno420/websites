@@ -64,8 +64,13 @@ def test_corpus_carries_provenance_and_fits_a_prompt():
 
 def test_system_prompt_mandates_grounding_and_citations():
     prompt = ai._system_prompt()
-    for needle in ("that's not in the evidence", "CITATIONS", "UNTRUSTED", "pokemon-mod-lab"):
+    for needle in ("that's not in the evidence", "CITATIONS", "UNTRUSTED", "PRIVACY"):
         assert needle in prompt
+    # ORDER 017 D ("the Pokémon lane stays private"): the private lane is
+    # never named — not in the rules, not in the embedded corpus — so a
+    # grounded answer cannot emit the name.
+    low = prompt.lower()
+    assert "pokemon" not in low and "pokémon" not in low
 
 
 # ---------------------------------------------------------------------------
