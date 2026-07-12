@@ -32,6 +32,7 @@ PRIMARY = [
 GROUPED = [
     {"href": "/environments", "label": "environments", "key": "environments"},
     {"href": "/projects", "label": "projects", "key": "projects"},
+    {"href": "/prompts", "label": "prompts", "key": "prompts"},
     {"href": "/reviews", "label": "reviews", "key": "reviews"},
     {"href": "/orders", "label": "orders", "key": "orders"},
     {"href": "/ideas", "label": "ideas", "key": "ideas"},

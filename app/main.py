@@ -32,6 +32,7 @@ from . import (
     owner,
     owner_queue,
     projects,
+    prompts,
     readiness,
     reviews,
 )
@@ -278,6 +279,20 @@ async def project_detail(request: Request, package: str):
         return HTMLResponse("unknown package", status_code=404)
     return templates.TemplateResponse(
         request, "project_detail.html", {"d": data, "active": "projects"}
+    )
+
+
+@app.get("/prompts", response_class=HTMLResponse)
+async def prompts_page(request: Request):
+    """ORDER 014: the fleet prompt library — all 26 registry paste artifacts
+    (8 seats x coordinator/instructions/failsafe + the fleet-wide
+    universal-startup and session-ender) rendered inline, verbatim, from
+    fleet-manager main over the raw-content read-only pattern (TTL-cached).
+    Per-artifact honest degradation on fetch failure — never a 500, never
+    fabricated content."""
+    data = await prompts.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request, "prompts.html", {"p": data, "active": "prompts"}
     )
 
 
