@@ -1,0 +1,1 @@
+- `claude/kit-upgrade-v1.15.0` · **kit upgrade v1.14.0 → v1.15.0** — distribution-only vendored bootstrap.py bump + planted-doc apply · expected files: `bootstrap.py`, `.substrate/**`, planted `docs/**`, `tests/test_born_red_session_gate.py` (version pin), `.sessions/` card · 2026-07-12
