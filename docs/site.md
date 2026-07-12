@@ -299,7 +299,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/journal/search?q=…` | public | cross-repo journal search (HTML) — [D-0014] |
 | `/journal/search.json?q=…` | public | same search as JSON (plain snippets) |
 | `/journal/{repo}` | public | per-repo sessions / ledgers / PRs / commits |
-| `/journal/{repo}/file?path=…&ref=main` | public | render a repo file (markdown → HTML) |
+| `/journal/{repo}/file?path=…&ref=main` | public | render a repo file (markdown → HTML) — accepts any fleet lane repo (`JOURNAL_RENDER_REPOS`), not just the four board repos |
 | `/static/*` | public | static assets (the live-monitoring auto-refresh JS) — [D-0023] |
 | `/healthz` | public | Railway healthcheck |
 | `/version` | public | deployed commit SHA (`{service, sha, short}`) — powers the deploy-state cell ([D-0018]) |

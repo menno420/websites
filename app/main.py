@@ -414,7 +414,8 @@ async def journal_repo(request: Request, repo: str):
 
 @app.get("/journal/{repo}/file", response_class=HTMLResponse)
 async def journal_file(request: Request, repo: str, path: str, ref: str = "main"):
-    if repo not in config.REPOS:
+    # Render allow-set is wider than REPOS: any fleet lane repo may render.
+    if repo not in config.JOURNAL_RENDER_REPOS:
         return HTMLResponse("unknown repo", status_code=404)
     if ".." in path or path.startswith("/"):
         return HTMLResponse("bad path", status_code=400)
