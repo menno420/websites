@@ -122,6 +122,28 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **2026-07-12 owner-directed: control-plane IA v2** (branch
+  `claude/control-plane-ia-v2`) — the flat ~12-item console became a
+  2-level hierarchy (owner: "a few MAIN CATEGORIES which feature
+  SUBCATEGORIES, and clear rows and better placed buttons").
+  `app/nav.py` now holds the whole IA as ONE `CATEGORIES` data structure
+  (overview · work · history · console · owner); the header nav renders
+  the 5 categories with current-category highlight; NEW landing pages
+  **`/work` / `/history` / `/console`** render each category's
+  subcategories as rows (name + purpose + fail-soft live count chip +
+  right-aligned primary-action button); **`/`** opens with an Overview
+  dashboard (what-needs-attention strip from data the board already
+  fetches + the category map) above the intact readiness board. Single
+  canonical homes: **/prompts** surfaces the relabeled **Universal
+  Startup / Universal Session-Ender** group FIRST (the session-ender was
+  buried below 24 per-seat artifacts); /projects links "browse all
+  prompts →"; the Environments console entry points at the ORDER 021
+  **/owner/environments-hub** with the public schemas + live-detail
+  sub-links. Every pre-existing route preserved (manifest-wide non-404
+  reachability pinned). Tests: `tests/test_category_ia.py` new;
+  nav/console-home suites rewritten for the category world; app suite
+  393 green.
+
 - **2026-07-12 ORDER 014: /prompts fleet prompt library** (branch
   `claude/order-014-prompt-library`) — every fleet paste artifact findable
   and always-current on the control site. NEW **`/prompts`** renders all 26

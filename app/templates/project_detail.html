@@ -12,7 +12,7 @@
     {% if pkg and pkg.state %}<span class="b ok">{{ pkg.state }}</span>
     {% elif pkg and not pkg.error %}<span class="b unknown">state unknown</span>{% endif %}
     <span class="dim small">· <a href="/projects">← all projects</a>
-      · <a href="/prompts">prompt library</a>
+      · <a href="/prompts">browse all prompts →</a>
       {% if pkg %}· <a href="{{ pkg.github_url }}">package ↗</a>{% endif %}</span></h2>
   <p class="dim small">One seat's launch console: every recognized role file below is the
     FULL file, copy-ready — read-only from

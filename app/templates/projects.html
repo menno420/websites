@@ -12,7 +12,10 @@
     environment setup script, failsafe, and a <code>meta.md</code> with the package's
     deployed state. The manager's repo stores; this site renders (read-only, secrets never
     present by design). Each seat card opens its
-    <strong>dispatch screen</strong> — full prompt text, copy-ready.</p>
+    <strong>dispatch screen</strong> — full prompt text, copy-ready.
+    Looking for a prompt? <a href="/prompts">Browse all prompts →</a> — /prompts is the
+    canonical library (universal + every seat's artifacts); the inline copies here are
+    conveniences that render the same upstream files.</p>
   {% if p.state == 'ok' %}
   {% set ready = seats | selectattr('dispatch_ready') | list %}
   <p class="dim small">{{ seats | length }} active seat{{ 's' if seats | length != 1 }}

@@ -1,6 +1,7 @@
-"""Offline unit tests for the console-home discoverability finish: the home
-page opens with a section map linking EVERY feature page (the long tail the
-short header nav deliberately does not carry), the gated owner console is
+"""Offline unit tests for the console-home discoverability finish (updated
+for IA v2): the home page opens with the Overview dashboard whose category
+map links EVERY feature page grouped under its category (the long tail the
+5-category header deliberately does not carry), the gated owner console is
 findable from the footer of every page, and the /fleet lane cards deep-link
 each lane's files through the in-app /journal/{repo}/file renderer.
 """
@@ -15,24 +16,30 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app import config, fleet, github, nav  # noqa: E402
 from app.main import app  # noqa: E402
 
-# Every feature page the console serves, pinned by hand ON PURPOSE: if a
-# route is removed or the section map loses a card, this list is the
-# tripwire (the manifest-derived loop below can't catch a page that falls
-# out of the manifest itself).
+# Every page the home map must link, pinned by hand ON PURPOSE: if a route
+# is removed or the category map loses an entry, this list is the tripwire
+# (the manifest-derived loop below can't catch a page that falls out of the
+# manifest itself).
 ALL_FEATURE_ROUTES = [
     "/",
     "/fleet",
+    "/work",
     "/queue",
-    "/activity",
-    "/journal",
-    "/environments",
-    "/projects",
-    "/prompts",
-    "/reviews",
     "/orders",
     "/ideas",
+    "/reviews",
+    "/history",
+    "/activity",
+    "/journal",
+    "/console",
+    "/projects",
+    "/prompts",
+    "/owner/environments-hub",
+    "/environments",
+    "/owner/environments",
     "/directory",
     "/owner",
+    "/owner/queue",
 ]
 
 
@@ -54,19 +61,22 @@ def _offline(monkeypatch):
     monkeypatch.setattr(github, "repo_api", fake_api)
 
 
-def test_home_section_map_links_every_feature_page(monkeypatch):
+def test_home_category_map_links_every_feature_page(monkeypatch):
     _offline(monkeypatch)
     with TestClient(app) as c:
         r = c.get("/")
     assert r.status_code == 200
     assert '<div class="secmap">' in r.text
-    # manifest-derived: every section-map card renders with its description
-    for item in nav.section_map():
-        assert f'href="{item["href"]}"' in r.text
-        assert item["desc"] in r.text
-    # hand-pinned: the full route list, including the gated owner console
+    # manifest-derived: every category cell renders with its description and
+    # every subcategory link inside it
+    for cat in nav.CATEGORIES:
+        assert f'href="{cat["href"]}"' in r.text
+        assert cat["desc"] in r.text
+        for it in cat["items"]:
+            assert f'href="{it["href"]}"' in r.text, it["label"]
+    # hand-pinned: the full route list, including the gated owner pages
     for href in ALL_FEATURE_ROUTES:
-        assert f'href="{href}"' in r.text
+        assert f'href="{href}"' in r.text, href
     # the readiness board itself still renders below the map (not replaced)
     assert 'id="live-content"' in r.text
 
@@ -76,31 +86,28 @@ def test_home_keeps_readiness_board_and_shows_console_framing(monkeypatch):
     with TestClient(app) as c:
         r = c.get("/")
     assert "superbot control plane" in r.text
-    # the board table copy survives (the map was ADDED, the board kept)
+    # the board table copy survives (the dashboard was ADDED, the board kept)
     assert "signals marked" in r.text
 
 
-def test_section_map_covers_every_nav_key():
-    """A page added to the nav manifest cannot silently miss the home map."""
-    assert set(nav.DESCRIPTIONS) == nav.keys()
-    hrefs = [s["href"] for s in nav.section_map()]
-    assert hrefs == [i["href"] for i in nav.PRIMARY + nav.GROUPED] + ["/owner"]
-    assert sorted(hrefs) == sorted(ALL_FEATURE_ROUTES)
+def test_map_covers_every_manifest_href():
+    """A page added to the nav manifest cannot silently miss the home map:
+    the map renders CATEGORIES directly, so covering the manifest covers the
+    map — this pins the manifest against the hand-kept tripwire list."""
+    manifest_hrefs = set(nav.all_hrefs())
+    assert manifest_hrefs == set(ALL_FEATURE_ROUTES)
 
 
-def test_projects_and_orders_are_primary_nav():
-    """The console-home PR promoted the dispatch + orders surfaces out of
-    the more ▾ dropdown; the header stays ~7 items (mobile overflow guard)."""
-    primary_hrefs = [i["href"] for i in nav.PRIMARY]
-    assert "/projects" in primary_hrefs
-    assert "/orders" in primary_hrefs
-    assert len(nav.PRIMARY) <= 7
+def test_header_stays_short():
+    """The mobile guard the old more-dropdown provided now comes from the
+    hierarchy itself: the header carries ONLY the ~5 categories."""
+    assert len(nav.CATEGORIES) <= 6
 
 
 def test_owner_console_linked_from_footer_on_every_page(monkeypatch):
     _offline(monkeypatch)
     with TestClient(app) as c:
-        for path in ("/", "/fleet", "/journal"):
+        for path in ("/", "/fleet", "/journal", "/work"):
             r = c.get(path)
             assert r.status_code == 200
             assert 'href="/owner"' in r.text, f"no owner link on {path}"

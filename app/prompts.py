@@ -69,10 +69,14 @@ SEAT_FILES: tuple[tuple[str, str], ...] = (
     ("failsafe-prompt.md", "failsafe prompt"),
 )
 
-# The two fleet-wide artifacts, as (path, human label) — 24 + 2 = 26 total.
+# The two fleet-wide UNIVERSAL artifacts, as (path, human label) — 24 + 2 =
+# 26 total. Labeled "Universal …" verbatim (owner feedback 2026-07-12: he
+# searches for "universal session-ender" and the bare "session ender" label
+# drowned among the per-seat prompts, which repeat that phrase in their
+# bodies); the /prompts page surfaces this group FIRST, above the seats.
 FLEET_WIDE: tuple[tuple[str, str], ...] = (
-    ("docs/prompts/v3/universal-startup.md", "universal startup"),
-    ("docs/prompts/v3/session-ender.md", "session ender"),
+    ("docs/prompts/v3/universal-startup.md", "Universal Startup"),
+    ("docs/prompts/v3/session-ender.md", "Universal Session-Ender"),
 )
 
 # How many artifacts the page promises (the order's done-when counts them).

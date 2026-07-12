@@ -171,8 +171,8 @@ def test_projects_route_empty_state_is_200_with_banner(monkeypatch):
     r = client.get("/projects")
     assert r.status_code == 200
     assert "registry not landed yet" in r.text
-    # nav carries the new link
-    assert 'href="/projects"' in r.text
+    # category nav carries the page's group (projects ∈ console)
+    assert 'href="/console"' in r.text
 
 
 def test_projects_route_happy_renders_cards_and_json(monkeypatch):

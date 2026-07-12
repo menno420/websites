@@ -385,12 +385,11 @@ def _basic(pw: str, user: str = "owner") -> dict:
 def test_owner_pages_render_the_header_nav(monkeypatch):
     """app/owner.py renders base.html through its OWN Jinja env; without the
     NAV_* globals registered there the /owner header nav was empty. Pin every
-    manifest link into the authed /owner response."""
+    category link into the authed /owner response."""
     _offline(monkeypatch)
     monkeypatch.setattr(config, "SITE_PASSWORD", "pw")
     with TestClient(app) as c:
         r = c.get("/owner", headers=_basic("pw"))
     assert r.status_code == 200
-    for item in nav.PRIMARY + nav.GROUPED:
-        assert f'href="{item["href"]}"' in r.text, item["key"]
-    assert "more ▾" in r.text  # the grouped dropdown renders too
+    for cat in nav.CATEGORIES:
+        assert f'href="{cat["href"]}"' in r.text, cat["key"]

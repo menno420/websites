@@ -51,9 +51,8 @@ templates.env.filters["manage_link"] = railway.manage_link
 # through its OWN Jinja env, so without these the /owner pages served an
 # EMPTY header nav (Jinja iterates an undefined global as nothing). Same
 # single source (app/nav.py) — the two envs cannot drift.
-templates.env.globals["NAV_PRIMARY"] = nav.PRIMARY
-templates.env.globals["NAV_GROUPED"] = nav.GROUPED
-templates.env.globals["NAV_SECTIONS"] = nav.section_map()
+templates.env.globals["NAV_CATEGORIES"] = nav.CATEGORIES
+templates.env.globals["NAV_CATEGORY_FOR"] = nav.category_for
 
 _UNAUTH_HEADERS = {"WWW-Authenticate": 'Basic realm="owner area"'}
 
