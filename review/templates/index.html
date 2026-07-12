@@ -6,9 +6,9 @@
     <h1>One human directs. Claude agents build, verify, and coordinate — through git alone.</h1>
     <p class="sb-lead">
       This site is the program reviewing itself. The owner designs and directs by conversation;
-      he does not code. Everything in this repo — three deployed services, the CI gates, the tests,
+      he does not code. Everything in this repo — four deployed services, the CI gates, the tests,
       the coordination protocol, and this review site — was built by Claude agent sessions,
-      cross-checked by other agent sessions, in three days. The pages here explain
+      cross-checked by other agent sessions, starting from an empty repo on 2026-07-09. The pages here explain
       <a href="/process">how that works</a>, <a href="/growth">how fast it grew</a>,
       <a href="/successes">what went right</a>, and — first-class, not a footnote —
       <a href="/problems">what went wrong</a>.
@@ -30,7 +30,7 @@
     </div>
     <p class="sb-chart-note sb-muted">
       Counted from the repo's own committed record ({{ days|length }} days,
-      {{ days[0].date if days else "" }} → {{ days[-1].date if days else "" }}{% if days and days[-1].get("partial") %}, last day still in progress at snapshot time{% endif %}).
+      {{ days[0].date if days else "" }} → {{ days[-1].date if days else "" }}{% if days and days[-1].get("partial") %}, last day still in progress at snapshot time{% endif %}){% if generated_at %} — as of {{ generated_at }}{% endif %}.
     </p>
   </div>
 </section>

@@ -19,6 +19,7 @@ DASHBOARD_FIXTURE = {
     "meta": {
         "generated_at": "2026-07-09T00:00:00Z",
         "build": {"commit": "abcdef1234", "subject": "test build", "committed_at": "2026-07-09T00:00:00Z"},
+        "schema_version": 1,  # the live producer stamps meta.schema_version (int 1)
         "counts": {
             "functions": 2, "commands": 3, "setting_keys": 2, "setting_domains": 1,
             "env_vars": 1, "ideas": 1, "bugs": 1, "updates": 1, "synonyms": 1,
@@ -389,6 +390,83 @@ def test_palette_index(client):
     labels = [i.get("label") for i in r.json()]
     assert "Overview" in labels
     assert "Economy" in labels  # subsystem indexed
+
+
+# --- dashboard.json schema version pin (cross-repo) ------------------------
+def _client_with_dashboard(data):
+    """A TestClient whose dashboard.json cache is primed with ``data`` (network-free)."""
+    ds.clear_cache()
+    ds.prime_cache(ds.DASHBOARD_JSON_URL, data)
+    ds.prime_cache(ds.CONSOLE_JSON_URL, CONSOLE_FIXTURE)
+    ds.set_client(ds.make_client())
+    return TestClient(app_module.app)
+
+
+def test_dashboard_matching_schema_version_renders_clean(client):
+    """The fixture carries the pinned version (int 1, as the live producer ships):
+    pages render normally with no drift banner."""
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "schema drift" not in r.text.lower()
+    assert ds.dashboard_schema_issue(DASHBOARD_FIXTURE) == ""
+
+
+def test_dashboard_string_schema_version_also_accepted():
+    """A producer shipping "1" (string) instead of 1 (int) still matches the pin."""
+    stringy = {**DASHBOARD_FIXTURE, "meta": {**DASHBOARD_FIXTURE["meta"], "schema_version": "1"}}
+    assert ds.dashboard_schema_issue(stringy) == ""
+    with _client_with_dashboard(stringy) as c:
+        r = c.get("/")
+        assert r.status_code == 200
+        assert "schema drift" not in r.text.lower()
+    ds.clear_cache()
+
+
+def test_dashboard_newer_schema_version_shows_banner():
+    """A version bump upstream degrades honestly: explicit banner, still 200."""
+    drifted = {**DASHBOARD_FIXTURE, "meta": {**DASHBOARD_FIXTURE["meta"], "schema_version": 99}}
+    with _client_with_dashboard(drifted) as c:
+        r = c.get("/")
+        assert r.status_code == 200
+        assert "schema drift" in r.text.lower()
+        assert "newer than this consumer" in r.text
+    ds.clear_cache()
+
+
+def test_dashboard_older_schema_version_shows_banner():
+    older = {**DASHBOARD_FIXTURE, "meta": {**DASHBOARD_FIXTURE["meta"], "schema_version": 0}}
+    with _client_with_dashboard(older) as c:
+        r = c.get("/")
+        assert r.status_code == 200
+        assert "schema drift" in r.text.lower()
+        assert "older than this consumer" in r.text
+    ds.clear_cache()
+
+
+def test_dashboard_missing_schema_version_shows_banner_never_crashes():
+    """No meta.schema_version at all = explicit unknown state on every page, no 500."""
+    meta_without = {k: v for k, v in DASHBOARD_FIXTURE["meta"].items() if k != "schema_version"}
+    stripped = {**DASHBOARD_FIXTURE, "meta": meta_without}
+    assert ds.dashboard_schema_issue(stripped) != ""
+    with _client_with_dashboard(stripped) as c:
+        for path in ("/", "/commands", "/status"):
+            r = c.get(path)
+            assert r.status_code == 200
+            assert "schema drift" in r.text.lower()
+            assert "no meta.schema_version" in r.text
+    ds.clear_cache()
+
+
+def test_dashboard_non_numeric_schema_version_degrades():
+    """Garbage versions never raise — they fold into the explicit unknown message."""
+    weird = {**DASHBOARD_FIXTURE, "meta": {**DASHBOARD_FIXTURE["meta"], "schema_version": "v2-beta"}}
+    issue = ds.dashboard_schema_issue(weird)
+    assert "not a version" in issue
+    with _client_with_dashboard(weird) as c:
+        r = c.get("/")
+        assert r.status_code == 200
+        assert "schema drift" in r.text.lower()
+    ds.clear_cache()
 
 
 # --- console feed shape contract (cross-repo pin) --------------------------
