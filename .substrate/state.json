@@ -29,10 +29,10 @@
   },
   "review_log": [],
   "session_anchor": {
-    "branch": "claude/kit-upgrade-v1.9.0",
-    "epoch": 1783745921.901527,
-    "head": "c0c78e4752b233e3920edd5ba7d704060dea88e2",
-    "ts": "2026-07-11T04:58:41+00:00"
+    "branch": null,
+    "epoch": 1783854839.117413,
+    "head": "b92507286ca2d067b8ec5a8d6a4f2d079246ac09",
+    "ts": "2026-07-12T11:13:59+00:00"
   },
   "session_count": 12,
   "slot_values": {
