@@ -45,7 +45,16 @@
   `.sessions/2026-07-12-envhub-completeness-diff.md` 💡.
 
 - **/owner/environments drift check: documented vs live variable names** ·
-  `captured` — once the owner's project-scoped `RAILWAY_TOKEN` lands, the
+  `built` (2026-07-12, PR #218 — `app/envdrift.py` `annotate()` diffs the
+  committed `railway.SERVICES` names against the slice-1 live NAME read per
+  service: documented-but-missing-live / live-but-undocumented chips + a
+  page-level rollup + per-variable "live (Railway)?" badges on
+  `/owner/environments`; Railway unreachable → honest drift-unknown with the
+  exact reason, never a fabricated match; Railway-provided `RAILWAY_*` names
+  and runtime-injected `PORT` classified informationally, not drift; a
+  documented service absent from a successful read = honest drift, the #216
+  semantics) — original capture: once the owner's project-scoped
+  `RAILWAY_TOKEN` lands, the
   page holds both halves of a diff it does not yet compute: the COMMITTED
   documented env-var names per service (`app/railway.py` SERVICES) and the
   LIVE names Railway reports. One comparison column (documented-but-unset /
@@ -56,6 +65,21 @@
   foot-guns — today both hide in plain sight. Deduped against this backlog
   + the queue-state NEXT list: nothing touches env-var drift. Source:
   `.sessions/2026-07-12-order-015-owner-environments.md` 💡.
+
+- **Committed-inventory consistency pin: `railway.SERVICES` vs the envhub
+  registry** · `captured` — the repo hand-keeps TWO committed inventories of
+  the same four services' variable names (`app/railway.py` SERVICES and
+  `app/data/environments.json`'s superbot-websites group) and they have
+  already drifted (the registry documents `ANTHROPIC_API_KEY` for botsite;
+  SERVICES does not — verified 2026-07-12). One zero-network suite test
+  asserting the two name sets agree per service (or a declared-exceptions
+  list) would catch repo-internal doc drift that the PR #218 live check
+  cannot see — the live diff compares each source against Railway, never
+  against each other. Worth having because both surfaces claim to document
+  the same truth and their silent divergence makes one of them lie to the
+  owner. Deduped against this backlog + the queue-state NEXT list: nothing
+  pins the two committed inventories to each other. Source:
+  `.sessions/2026-07-12-owner-envs-name-drift.md` 💡.
 
 - **Tester-task URL liveness guard** · `captured` — every `open` task in
   `botsite/testing_tasks.json` points a paying tester at a `product_url`;
