@@ -9,6 +9,17 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Coverage-chip rollup on the /fleet board** · `captured` — the
+  per-seat instructions/coordinator/failsafe coverage now computed for the
+  /projects index (`projects.role_coverage`, ORDER 015 slice) could feed
+  one "packages incomplete: N" rollup cell on the `/fleet` monitoring
+  surface, so registry lint fires where the manager already looks instead
+  of only when the owner opens the dispatch index. Worth having because
+  the chips double as registry lint but today only surface on `/projects`.
+  Deduped against this backlog + the queue-state NEXT list: nothing rolls
+  coverage up to the monitoring surfaces. Source:
+  `.sessions/2026-07-12-projects-role-coverage-chips.md` 💡.
+
 - **Seat role-coverage chips on the /projects dispatch index** · `built`
   (2026-07-12, ORDER 015 plans-sweep slice — `projects.role_coverage` chips
   each seat card instructions / coordinator / failsafe ✓/✗ from the
