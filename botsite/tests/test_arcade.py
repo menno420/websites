@@ -25,6 +25,9 @@ FIXTURE = {
 # games-web's documented (404) Pages URL — must never be rendered as a link.
 DEAD_PAGES_URL = "https://menno420.github.io/product-forge/"
 
+# mineverse's live Railway deployment (ORDER 022; cold-verified 200).
+MINEVERSE_URL = "https://web-production-97636.up.railway.app"
+
 
 @pytest.fixture()
 def client():
@@ -48,16 +51,24 @@ def test_arcade_lists_all_games_with_maturity_badges(client):
 
 
 def test_arcade_no_dead_links(client):
-    """All three games are unavailable today — no play/download anchor may render,
-    and the 404 games-web Pages URL must not appear as an href (or at all)."""
+    """Only really-reachable games get anchors: the 404 games-web Pages URL must
+    not appear as an href (or at all), and the two unavailable games render
+    honest status notes instead of links."""
     r = client.get("/arcade")
     assert r.status_code == 200
     assert f'href="{DEAD_PAGES_URL}' not in r.text
     assert DEAD_PAGES_URL not in r.text
-    assert "Play now" not in r.text
-    assert "ref=fleet-arcade" not in r.text  # no outbound game link means no attribution ref either
-    # honest status notes show instead
+    # honest status notes show for the two still-unavailable games
     assert "pending" in r.text.lower()
+
+
+def test_arcade_mineverse_live_link(client):
+    """mineverse is live (ORDER 022): the card renders a playable link to the
+    Railway deployment with the attribution ref appended."""
+    r = client.get("/arcade")
+    assert r.status_code == 200
+    assert f'href="{MINEVERSE_URL}?ref=fleet-arcade"' in r.text
+    assert "Play now" in r.text
 
 
 def test_arcade_source_repo_links(client):
@@ -133,10 +144,19 @@ def test_loader_adds_attribution_ref(tmp_path):
 
 
 def test_committed_registry_is_honest():
-    """The committed registry loads, has all three games, and (today) zero live links."""
+    """The committed registry loads, has all three games; mineverse is live
+    (ORDER 022) and the other two stay honestly unavailable with notes."""
     games = arcade.load_games()
     assert [g["slug"] for g in games] == ["lumen-drift", "mineverse", "games-web"]
-    for g in games:
+    by_slug = {g["slug"]: g for g in games}
+    mv = by_slug["mineverse"]
+    assert mv["availability"] == "live"
+    assert mv["url"] == MINEVERSE_URL
+    assert mv["is_live"] is True and mv["has_link"] is True
+    assert mv["link_url"] == f"{MINEVERSE_URL}?ref=fleet-arcade"
+    assert mv["status_note"]  # honest: read-only demo, sign-in launching
+    for slug in ("lumen-drift", "games-web"):
+        g = by_slug[slug]
         assert g["availability"] == "unavailable"
         assert g["url"] is None
         assert g["has_link"] is False

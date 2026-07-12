@@ -38,6 +38,7 @@ GROUPED = [
     {"href": "/prompts", "label": "prompts", "key": "prompts"},
     {"href": "/reviews", "label": "reviews", "key": "reviews"},
     {"href": "/ideas", "label": "ideas", "key": "ideas"},
+    {"href": "/directory", "label": "web directory", "key": "directory"},
 ]
 
 
@@ -64,6 +65,7 @@ DESCRIPTIONS = {
     "prompts": "the prompt library each fleet seat runs on",
     "reviews": "review verdicts collected over fleet PRs",
     "ideas": "idea conveyor per repo — captured → planned → built → retired",
+    "directory": "every web surface we own — our sites, external listings, live health",
 }
 
 # The owner console is deliberately OUTSIDE the header manifest (it is

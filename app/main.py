@@ -36,6 +36,7 @@ from . import (
     prompts,
     readiness,
     reviews,
+    web_presence,
 )
 
 
@@ -456,6 +457,24 @@ async def journal_search_json(request: Request, q: str = ""):
         for r in data["results"]
     ]
     return JSONResponse(payload)
+
+
+@app.get("/directory", response_class=HTMLResponse)
+async def web_directory(request: Request):
+    """ORDER 021: the web-presence directory — every web surface we own on one
+    read-only page. Rows come from the committed registry
+    app/data/web_presence.json (single source of truth; add rows by PR), read
+    at request time. Per-row liveness is probed through the same TTL-cached
+    raw fetch as the board's deploy-drift cell — a failed probe or a missing
+    URL renders its honest state, never a fabricated green badge. Public like
+    every other route in this module: the registry holds public-repo data
+    only (the repo itself is public), no secrets."""
+    data = await web_presence.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request,
+        "web_presence.html",
+        {"d": data, "ttl": config.CACHE_TTL_SECONDS, "active": "directory"},
+    )
 
 
 @app.get("/journal/{repo}", response_class=HTMLResponse)
