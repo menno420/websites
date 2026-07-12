@@ -19,7 +19,9 @@ at build time (the deployed container ships only this folder, so runtime reads
 of git/.sessions/control are impossible by design — see that module's
 docstring). A missing or corrupt snapshot renders an honest banner, never
 invented numbers. Charts are server-rendered inline SVG; geometry is computed
-in the domain layer (``story.py``) so it stays unit-testable.
+in the domain layer (``story.py``) so it stays unit-testable. ORDER 017 added
+ONE deliberate exception to the network-free rule: the AI assistant's
+server-side Anthropic API call in ``ai.py`` (nothing else gained network).
 
 Deploy: a new Railway service in ``superbot-websites`` (Root Directory =
 ``review``), own Dockerfile, binds ``0.0.0.0:$PORT`` — queued as an
@@ -37,7 +39,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import editions, fleetdata, story
+from . import ai, editions, fleetdata, story
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -55,6 +57,10 @@ NAV = [
 app = FastAPI(title="Program Review", docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# ORDER 017 workstream B: the AI assistant's POST endpoint (/ask/api) — the
+# service's one deliberate runtime-network exception; see review/ai.py.
+app.include_router(ai.router)
 
 
 def _deployed_sha() -> str:
@@ -257,6 +263,15 @@ async def questionnaire(request: Request):
     ctx = _base_ctx(request, "questionnaire")
     ctx.update({"items": story.QUESTIONNAIRE})
     return templates.TemplateResponse(request, "questionnaire.html", ctx)
+
+
+@app.get("/ask", response_class=HTMLResponse)
+async def ask(request: Request):
+    """The AI assistant page (ORDER 017 B): Ask/Review widget + the seeded
+    evidence-backed answers, honest about the degraded no-key state."""
+    ctx = _base_ctx(request, "questionnaire")
+    ctx.update(ai.page_context())
+    return templates.TemplateResponse(request, "ask.html", ctx)
 
 
 @app.get("/questions", response_class=HTMLResponse)
