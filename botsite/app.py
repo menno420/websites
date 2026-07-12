@@ -33,6 +33,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import arcade as arcade_registry
 from . import data_source as ds
+from . import testing
 
 BASE_DIR = Path(__file__).resolve().parent
 NAV = [
@@ -40,6 +41,7 @@ NAV = [
     ("commands", "Commands", "/commands"),
     ("games", "Games", "/games"),
     ("arcade", "Arcade", "/arcade"),
+    ("testing", "Testing", "/testing"),
     ("changelog", "Changelog", "/changelog"),
     ("status", "Status", "/status"),
 ]
@@ -60,6 +62,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="SuperBot", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+# Tester-recruitment program (ORDER 018): public claim/submit flow + gated
+# owner queue, all under /testing (see botsite/testing.py).
+app.include_router(testing.router)
 
 
 def _base_ctx(request: Request, active: str, site_res: dict[str, Any]) -> dict[str, Any]:

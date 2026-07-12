@@ -71,6 +71,21 @@
 </div>
 {% endif %}
 
+{% if data_ok and schema_warning %}
+<div class="sb-wrap" style="padding-top:16px">
+  <div class="sb-error" role="alert">
+    {{ icon("alert", 16) }}
+    <div>
+      <strong>Dashboard feed schema drift.</strong>
+      <span class="sb-mono">{{ schema_warning }}</span> —
+      superbot's committed <code>dashboard.json</code> was fetched, but its schema does not
+      match what this dashboard was built against. Nothing below is faked; parts may render
+      empty or wrong.
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <main id="main" class="sb-view">
   {% block content %}{% endblock %}
 </main>

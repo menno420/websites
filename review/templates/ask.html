@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Ask the project — Program Review{% endblock %}
+{% block description %}Ask the program's evidence-grounded AI assistant a question, or request a structured review — every answer cites its committed source.{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">Ask the project</p>
+    <h1>Talk to the record — grounded, cited, honest about its limits</h1>
+    <p class="sb-lead">
+      Two modes: <strong>Ask</strong> answers free-form questions about this program;
+      <strong>Review</strong> produces a structured assessment (strong / weak-or-risky /
+      what to verify / suggested probes) in the same honest register as the emails.
+      Answers draw only from the <a href="https://github.com/menno420/websites/tree/main/review/data/evidence"
+      target="_blank" rel="noopener">committed evidence corpus</a> — every substantive
+      claim cites a commit, and what isn't in the evidence gets an honest
+      "that's not in the evidence", never an invention.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+
+    {% if not ai_ready %}
+    <div class="sb-error" role="status" id="ai-status-banner">
+      <div>
+        <strong>Live assistant degraded:</strong> {{ degraded_message }}.
+        Nothing here is faked — the live model stays off until the key exists.
+      </div>
+    </div>
+    {% else %}
+    <div class="sb-card" role="status" id="ai-status-banner" style="margin-bottom:16px">
+      <span class="sb-badge sb-badge-ok">live</span>
+      The assistant is live, answering server-side via <span class="sb-mono">{{ ai_model }}</span>.
+      Limits (honesty over surprise): {{ limits.per_ip_hour }}/hour and {{ limits.per_ip_day }}/day
+      per visitor, {{ limits.global_day }}/day site-wide, and a hard
+      ${{ "%.0f"|format(limits.spend_cap_usd) }}/month spend cap — past any of these it
+      degrades to the seeded answers below.
+    </div>
+    {% endif %}
+
+    <div class="sb-card" id="ai-widget">
+      <div class="rv-ai-tabs" role="tablist" aria-label="Assistant mode">
+        <button class="sb-btn sb-btn-primary" id="tab-ask" role="tab" aria-selected="true" type="button">Ask</button>
+        <button class="sb-btn sb-btn-ghost" id="tab-review" role="tab" aria-selected="false" type="button">Review</button>
+      </div>
+
+      <div id="pane-ask" role="tabpanel" aria-labelledby="tab-ask">
+        <label class="sb-muted" for="ai-question" style="display:block;margin:12px 0 6px">
+          Your question about this program (max 1500 characters):
+        </label>
+        <textarea id="ai-question" class="rv-ai-input" rows="3" maxlength="1500"
+          placeholder="e.g. What actually failed during the 2026-07-12 scheduler incident?"></textarea>
+        <div class="rv-ai-actions">
+          <button class="sb-btn sb-btn-primary" id="btn-ask" type="button">Ask the evidence</button>
+          <span class="sb-muted" id="ai-hint">Common questions answer instantly from the seeded set below.</span>
+        </div>
+      </div>
+
+      <div id="pane-review" role="tabpanel" aria-labelledby="tab-review" hidden>
+        <p class="sb-muted" style="margin:12px 0 6px">
+          One click produces a structured reviewer's assessment — strong, weak-or-risky,
+          what to verify, suggested probes — each item cited. Optionally name a focus:
+        </p>
+        <textarea id="ai-focus" class="rv-ai-input" rows="2" maxlength="1500"
+          placeholder="optional focus, e.g. the unattended-operation story"></textarea>
+        <div class="rv-ai-actions">
+          <button class="sb-btn sb-btn-primary" id="btn-review" type="button">Review with the AI</button>
+        </div>
+      </div>
+
+      <div id="ai-output" aria-live="polite"></div>
+      <p class="sb-muted rv-ai-foot">
+        Server-side only — the model key never reaches this page. Questions are logged
+        (timestamp, mode, question; IPs only as salted hashes) to feed the Q&amp;A page.
+      </p>
+    </div>
+
+    <h2 style="margin-top:32px">Seeded answers — instant, consistent, key-free</h2>
+    <p class="sb-muted">
+      These evidence-backed answers are committed to the repo and served without any model
+      call — they work even while the live assistant is degraded. The live model handles
+      the long tail.
+    </p>
+    {% for item in seeds %}
+    <article class="rv-qa" id="seed-{{ item.id }}">
+      <h3>{{ item.q }}</h3>
+      <p>{{ item.a }}</p>
+      <p class="rv-evidence">
+        <span class="sb-muted">Evidence:</span>
+        {% for label, url in item.evidence %}
+        <a href="{{ url }}"{% if url.startswith("http") %} target="_blank" rel="noopener"{% endif %}>{{ label }}</a>{% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<style>
+  /* Page-scoped styles on the shared tokens — light+dark for free. */
+  .rv-ai-tabs { display: flex; gap: 8px; }
+  .rv-ai-input {
+    width: 100%; box-sizing: border-box; resize: vertical;
+    background: var(--sb-bg-2); color: var(--sb-ink-1);
+    border: 1px solid var(--sb-line-2); border-radius: 8px;
+    padding: 10px 12px; font: inherit; font-size: var(--sb-text-base);
+  }
+  .rv-ai-input:focus { outline: 2px solid var(--sb-indigo-400); outline-offset: 1px; }
+  .rv-ai-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+  .rv-ai-foot { margin-top: 14px; font-size: var(--sb-text-sm); }
+  .rv-ai-answer {
+    margin-top: 16px; border-top: 1px solid var(--sb-line); padding-top: 14px;
+    overflow-wrap: anywhere;
+  }
+  .rv-ai-answer h3 { margin: 14px 0 6px; }
+  .rv-ai-answer p, .rv-ai-answer li { color: var(--sb-ink-2); line-height: 1.55; }
+  .rv-ai-answer .rv-ai-src { font-size: var(--sb-text-sm); color: var(--sb-ink-3); margin-top: 10px; }
+  .rv-ai-notice { margin-top: 16px; }
+  @media (max-width: 640px) { .rv-ai-actions { align-items: flex-start; flex-direction: column; } }
+</style>
+
+<script>
+(function () {
+  "use strict";
+  var tabAsk = document.getElementById("tab-ask");
+  var tabReview = document.getElementById("tab-review");
+  var paneAsk = document.getElementById("pane-ask");
+  var paneReview = document.getElementById("pane-review");
+  var output = document.getElementById("ai-output");
+
+  function selectTab(which) {
+    var askOn = which === "ask";
+    tabAsk.className = "sb-btn " + (askOn ? "sb-btn-primary" : "sb-btn-ghost");
+    tabReview.className = "sb-btn " + (askOn ? "sb-btn-ghost" : "sb-btn-primary");
+    tabAsk.setAttribute("aria-selected", String(askOn));
+    tabReview.setAttribute("aria-selected", String(!askOn));
+    paneAsk.hidden = !askOn;
+    paneReview.hidden = askOn;
+  }
+  tabAsk.addEventListener("click", function () { selectTab("ask"); });
+  tabReview.addEventListener("click", function () { selectTab("review"); });
+
+  // Citation linkifier: "repo path @ sha" -> GitHub blob link. Built with DOM
+  // nodes (never innerHTML with model text) so the answer cannot inject markup.
+  var CITE = /(superbot|fleet-manager|websites)[\s]+([\w./-]+\.[\w]+)\s+@\s+([0-9a-f]{7,40})/g;
+  function linkifyInto(parent, text) {
+    var last = 0, m;
+    CITE.lastIndex = 0;
+    while ((m = CITE.exec(text)) !== null) {
+      parent.appendChild(document.createTextNode(text.slice(last, m.index)));
+      var a = document.createElement("a");
+      a.href = "https://github.com/menno420/" + m[1] + "/blob/" + m[3] + "/" + m[2];
+      a.target = "_blank"; a.rel = "noopener";
+      a.textContent = m[0];
+      parent.appendChild(a);
+      last = m.index + m[0].length;
+    }
+    parent.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  function renderAnswer(container, text) {
+    var blocks = text.split(/\n{2,}/);
+    blocks.forEach(function (block) {
+      var lines = block.split("\n");
+      var listItems = lines.filter(function (l) { return /^\s*[-*•]\s+/.test(l); });
+      var heading = /^#{1,4}\s+(.+)$|^(Strong|Weak or risky|What to verify|Suggested probes)\s*:?\s*$/i.exec(lines[0].trim());
+      if (heading) {
+        var h = document.createElement("h3");
+        h.textContent = heading[1] || heading[2];
+        container.appendChild(h);
+        lines = lines.slice(1);
+        listItems = lines.filter(function (l) { return /^\s*[-*•]\s+/.test(l); });
+      }
+      if (lines.length && listItems.length === lines.filter(function (l) { return l.trim(); }).length && listItems.length > 0) {
+        var ul = document.createElement("ul");
+        lines.forEach(function (l) {
+          if (!l.trim()) return;
+          var li = document.createElement("li");
+          linkifyInto(li, l.replace(/^\s*[-*•]\s+/, ""));
+          ul.appendChild(li);
+        });
+        container.appendChild(ul);
+      } else if (lines.join("").trim()) {
+        var p = document.createElement("p");
+        linkifyInto(p, lines.join("\n").trim());
+        container.appendChild(p);
+      }
+    });
+  }
+
+  function showNotice(kind, text) {
+    output.textContent = "";
+    var div = document.createElement("div");
+    div.className = "rv-ai-notice " + (kind === "error" ? "sb-error" : "sb-card");
+    div.setAttribute("role", "status");
+    div.textContent = text;
+    output.appendChild(div);
+  }
+
+  function submit(mode, question, btn) {
+    btn.disabled = true;
+    showNotice("info", mode === "review" ? "Reviewing against the evidence corpus…" : "Asking the evidence…");
+    fetch("/ask/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: mode, question: question })
+    }).then(function (r) {
+      return r.json().then(function (data) { return { status: r.status, data: data }; });
+    }).then(function (res) {
+      var d = res.data;
+      output.textContent = "";
+      if (!d.ok && d.error) { showNotice("error", d.error); return; }
+      var wrap = document.createElement("div");
+      wrap.className = "rv-ai-answer";
+      renderAnswer(wrap, d.answer || "(no answer)");
+      var src = document.createElement("p");
+      src.className = "rv-ai-src";
+      if (d.source === "seeded") {
+        src.textContent = "Source: seeded evidence-backed answer (no model call). ";
+        if (d.seed_id) {
+          var a = document.createElement("a");
+          a.href = "#seed-" + d.seed_id; a.textContent = "See it below with its evidence links.";
+          src.appendChild(a);
+        }
+      } else if (d.source === "model") {
+        src.textContent = "Source: live model (" + (d.model || "server-side") + "), grounded in the committed evidence corpus."
+          + (d.truncated ? " Note: the answer hit its length cap and may be cut short." : "");
+      } else if (d.source === "refused") {
+        src.textContent = "The assistant declined this request.";
+      }
+      wrap.appendChild(src);
+      output.appendChild(wrap);
+    }).catch(function () {
+      showNotice("error", "Request failed — network error. The seeded answers below still work.");
+    }).finally(function () { btn.disabled = false; });
+  }
+
+  var btnAsk = document.getElementById("btn-ask");
+  var btnReview = document.getElementById("btn-review");
+  btnAsk.addEventListener("click", function () {
+    var q = document.getElementById("ai-question").value.trim();
+    if (!q) { showNotice("error", "Type a question first."); return; }
+    submit("ask", q, btnAsk);
+  });
+  document.getElementById("ai-question").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); btnAsk.click(); }
+  });
+  btnReview.addEventListener("click", function () {
+    submit("review", document.getElementById("ai-focus").value.trim(), btnReview);
+  });
+})();
+</script>
+{% endblock %}

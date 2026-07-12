@@ -124,7 +124,7 @@ async def _service_deploy_state(
     """One service's deploy state: its DEPLOYED short-sha vs the repo HEAD short-sha.
 
     control-plane (``url is None``) is THIS app — it knows its own deployed sha
-    from the environment directly, no network. The other two are queried over
+    from the environment directly, no network. The others are queried over
     their public ``/version`` JSON through the shared TTL cache (raw client, no
     token). A failed fetch or an absent sha is reported as ``unknown`` honestly,
     never a crash or a faked value.
@@ -171,8 +171,9 @@ async def _service_deploy_state(
 async def _deploy_board(head_sha: str, refresh: bool) -> dict:
     """Deploy-state summary for every websites Railway service.
 
-    All three services deploy from this repo's ``main`` on merge (Railway
-    auto-deploy), so drift = a deploy in progress or a failed/stale deploy.
+    All four services (control-plane, botsite, dashboard, review) deploy from
+    this repo's ``main`` on merge (Railway auto-deploy), so drift = a deploy
+    in progress or a failed/stale deploy.
     """
     services = list(
         await asyncio.gather(

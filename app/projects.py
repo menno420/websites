@@ -32,6 +32,15 @@ screen rendering every recognized role file's FULL content copy-ready, plus
 best-effort meta fields (deployed state / environment / claude.ai Project
 URL — absent = "unknown"/"none recorded", never invented). Package names are
 validated against the live registry listing; anything else is 404.
+
+Seat role-coverage chips (backlog bullet, 2026-07-12): each seat card on the
+index carries a chip row over the dispatch-critical roles — instructions /
+coordinator / failsafe, present ✓ or missing ✗ (:func:`role_coverage`) —
+derived from the role-classified listing the page already fetches (zero
+extra API calls), so "which seat can't launch yet" is a glance instead of a
+mid-dispatch surprise. A package whose listing failed shows NO chips
+(``coverage`` = ``[]``, ``dispatch_ready`` = ``None``) — honest unknown,
+never a fabricated ✗.
 """
 
 from __future__ import annotations
@@ -109,6 +118,14 @@ _START_ORDER: list[tuple[str, ...]] = [
 # is membership in the live registry listing; this just refuses traversal
 # shapes (slashes, dots-only, leading dot) before any fetch happens.
 _SAFE_PKG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,100}$")
+
+# Dispatch-critical roles (seat role-coverage chips, backlog bullet
+# 2026-07-12): a seat launches from its Custom Instructions + coordinator
+# prompt and is guarded by its failsafe — a package missing any of the three
+# is not dispatch-READY, and until now looked identical to a complete one on
+# the index. Coverage is derived from the role-classified listing the page
+# already fetches: zero extra API calls.
+_DISPATCH_ROLES: tuple[str, ...] = ("instructions", "coordinator", "failsafe")
 
 
 def _repo_url() -> str:
@@ -191,6 +208,20 @@ def is_stub(state: str, meta_text: str) -> bool:
     return False
 
 
+def role_coverage(files: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The seat's role-coverage chip row: one entry per dispatch-critical
+    role (:data:`_DISPATCH_ROLES`) with ``present`` derived from the
+    package's already-role-classified file listing — never from an extra
+    fetch. ``label`` carries the human role name for chip tooltips.
+    """
+    have = {f.get("role") for f in files}
+    labels = {key: label for key, label, _ in _ROLE_PATTERNS}
+    return [
+        {"role": role, "label": labels[role], "present": role in have}
+        for role in _DISPATCH_ROLES
+    ]
+
+
 def start_rank(name: str) -> int:
     """The owner's dispatch-order slot for a package name (lowercased,
     ``_``→``-``); unmatched names rank after every matched one."""
@@ -221,6 +252,10 @@ async def _build_package(
         "meta_error": None,
         "state": "",
         "stub": False,
+        # Role-coverage chips: [] / None until the listing succeeds — an
+        # unlistable package renders NO chips, never a fabricated ✗.
+        "coverage": [],
+        "dispatch_ready": None,
     }
     listing = await _list_dir(path, refresh=refresh)
     if not (listing["ok"] and isinstance(listing["data"], list)):
@@ -250,6 +285,11 @@ async def _build_package(
     # routine, then other) so every card reads the same way.
     rank = {key: i for i, (key, _, _) in enumerate(_ROLE_PATTERNS)}
     out["files"].sort(key=lambda f: (rank.get(f["role"], 99), f["name"].lower()))
+
+    # Seat role-coverage chips (instructions / coordinator / failsafe) from
+    # the listing just classified — dispatch-READY only when all three exist.
+    out["coverage"] = role_coverage(out["files"])
+    out["dispatch_ready"] = all(c["present"] for c in out["coverage"])
 
     if meta_path:
         meta = await github.fetch_file(REPO, meta_path, refresh=refresh)

@@ -236,3 +236,82 @@ def test_committed_snapshot_is_current_shape():
     for day in data["days"]:
         assert set(day) >= {"date", "prs_merged", "commits", "session_cards"}
     assert data["totals"]["services"] == 4
+
+
+# ---------------------------------------------------------------------------
+# The 2026-07-12 scheduler incident — the problems page's lead item
+# ---------------------------------------------------------------------------
+def test_scheduler_incident_leads_the_problems_page():
+    """ORDER 017: the 2026-07-12 scheduler-degradation incident is the FIRST
+    problems entry, and its record is commit-pinned to the superbot night
+    review."""
+    lead = story.PROBLEMS[0]
+    assert lead["title"].startswith("2026-07-12")
+    assert "scheduler" in lead["title"]
+    r = client.get("/problems")
+    assert r.status_code == 200
+    # the page carries the incident and its commit-pinned primary source
+    assert "trigger scheduler silently degraded" in r.text
+    assert "8558179e6a90670ed18c778234d789c65c2b5789" in r.text
+    assert "night-review-2026-07-12.md" in r.text
+
+
+def test_scheduler_incident_details_render_and_are_evidence_linked():
+    """Every incident sub-finding renders with at least one commit-pinned
+    evidence link (no URL, no finding — the fleet's own review rule)."""
+    lead = story.PROBLEMS[0]
+    assert lead["details"], "the incident must carry structured sub-findings"
+    r = client.get("/problems")
+    for d in lead["details"]:
+        assert d["heading"].strip() and d["text"].strip()
+        assert d["evidence"], f"detail without evidence: {d['heading']}"
+        for label, url in d["evidence"]:
+            assert label.strip()
+            assert url.startswith("https://github.com/menno420/")
+        assert str(escape(d["heading"])) in r.text
+    # the load-bearing incident specifics are on the page
+    assert "Three self-wake mechanisms" in r.text
+    assert "dead-man" in r.text
+    assert "Serialization vs. real drop" in r.text
+    assert "zero-write stand-down" in r.text
+
+
+def test_incident_unverifiable_numbers_are_attributed_not_asserted():
+    """The 84/85 baseline is not machine-verifiable from git — the site must
+    attribute it to the night review's own registry evidence, never assert it
+    bare (the accuracy rule from the evidence digest)."""
+    lead = story.PROBLEMS[0]
+    assert "84 of 85" in lead["what"]
+    assert "registry evidence reported in" in lead["what"]
+
+
+# ---------------------------------------------------------------------------
+# Footer "last refreshed" stamp — from the data, never hardcoded
+# ---------------------------------------------------------------------------
+def test_footer_stamp_renders_from_snapshot_data():
+    snap = story.load_snapshot()
+    assert snap["ok"]
+    r = client.get("/process")  # any page — the footer is base-template
+    assert f"data last refreshed {snap['data']['generated_at']}" in r.text
+    assert f"snapshot @ {snap['data']['git_head'][:8]}" in r.text
+
+
+def test_footer_stamp_follows_the_data_file(monkeypatch, tmp_path: Path):
+    """Change the committed data → the footer stamp changes with it (proof
+    the stamp is read from the file, not templated in)."""
+    p = tmp_path / "snap.json"
+    p.write_text(
+        json.dumps(
+            {
+                "generated_at": "2031-05-06T07:08:09Z",
+                "git_head": "feedc0defeedc0defeedc0defeedc0defeedc0de",
+                "days": [],
+                "totals": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(story, "SNAPSHOT_PATH", p)
+    r = client.get("/process")
+    assert "data last refreshed 2031-05-06T07:08:09Z" in r.text
+    assert "snapshot @ feedc0de" in r.text
