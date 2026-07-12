@@ -585,3 +585,10 @@
   footnote and an evidence table that plain `grep -i pokemon` missed. Worth
   having because privacy compliance shouldn't depend on remembering which
   surface to grep.
+
+- **Arcade live-URL drift probe** — captured 2026-07-12 (ORDER 022 drift
+  session). A network-marked test or CI cron step that cold-fetches every
+  `availability: live` URL in `botsite/data/arcade.json` and flags when one
+  stops returning 200, so a dead game link never quietly outlives its card.
+  Worth having because the arcade honesty doctrine currently depends on
+  manual reconciles (ORDER 022 flipped mineverse by hand) to notice drift.

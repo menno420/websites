@@ -190,6 +190,100 @@ def test_live_fetch_failure_degrades_unavailable(client, monkeypatch):
     assert "ConnectError: boom" in r.text
 
 
+# --- verified live-API shapes (ORDER 022, checked 2026-07-12) ----------------
+#
+# The three query strings below were run verbatim against the live
+# backboard.railway.app/graphql/v2 schema on 2026-07-12; the fixture mirrors
+# the REAL response structure observed (structure only — fake ids/values):
+# ``projectToken`` → {projectId, environmentId}; ``project(id:)`` →
+# {name, services.edges[].node{id,name}} (four services);
+# ``variables(...)`` → a flat name→value JSON map that includes the
+# Railway-injected ``RAILWAY_*`` names alongside the owner-set ones.
+
+
+def _fake_graphql_real_shape(seen: list):
+    async def fake(query, variables=None):
+        seen.append((query, variables or {}))
+        if "projectToken" in query:
+            return {
+                "ok": True,
+                "data": {
+                    "projectToken": {
+                        "projectId": "proj-fake-1",
+                        "environmentId": "env-fake-1",
+                    }
+                },
+                "error": "",
+            }
+        if "services" in query:
+            return {
+                "ok": True,
+                "data": {
+                    "project": {
+                        "name": "superbot-websites",
+                        "services": {
+                            "edges": [
+                                {"node": {"id": "svc-1", "name": "control-plane"}},
+                                {"node": {"id": "svc-2", "name": "dashboard"}},
+                                {"node": {"id": "svc-3", "name": "botsite"}},
+                                {"node": {"id": "svc-4", "name": "review"}},
+                            ]
+                        },
+                    }
+                },
+                "error": "",
+            }
+        return {
+            "ok": True,
+            "data": {
+                "variables": {
+                    "GITHUB_TOKEN": "fake-value",
+                    "SITE_PASSWORD": "fake-value",
+                    "RAILWAY_PROJECT_ID": "fake-value",
+                    "RAILWAY_ENVIRONMENT_NAME": "fake-value",
+                }
+            },
+            "error": "",
+        }
+
+    return fake
+
+
+def test_query_shapes_match_verified_live_schema(monkeypatch):
+    """The exact queries issued match the shapes verified live on 2026-07-12,
+    and the parse handles the real four-service, RAILWAY_*-bearing response."""
+    import asyncio
+
+    monkeypatch.setattr(config, "RAILWAY_TOKEN", "test-project-token")
+    seen: list = []
+    monkeypatch.setattr(railway, "_graphql", _fake_graphql_real_shape(seen))
+    data = asyncio.run(railway.live_overview(refresh=True))
+
+    assert data["state"] == "ok"
+    queries = " || ".join(q for q, _ in seen)
+    # q1 — token scope (ProjectToken exposes projectId/environmentId).
+    assert "projectToken { projectId environmentId }" in queries
+    # q2 — project services (project(id: String!) → name + edges/node id,name).
+    assert "project(id: $id)" in queries
+    assert "services { edges { node { id name } } }" in queries
+    # q3 — variables(projectId:, environmentId:, serviceId:) with the ids
+    # threaded through from q1/q2, one call per service.
+    var_calls = [v for q, v in seen if "variables(" in q]
+    assert len(var_calls) == 4
+    assert {v["serviceId"] for v in var_calls} == {"svc-1", "svc-2", "svc-3", "svc-4"}
+    assert all(
+        v["projectId"] == "proj-fake-1" and v["environmentId"] == "env-fake-1"
+        for v in var_calls
+    )
+    # Parse: names only, sorted, values never kept.
+    names = {s["name"]: s["variable_names"] for s in data["services"]}
+    assert set(names) == {"control-plane", "dashboard", "botsite", "review"}
+    assert names["control-plane"] == sorted(
+        ["GITHUB_TOKEN", "SITE_PASSWORD", "RAILWAY_PROJECT_ID", "RAILWAY_ENVIRONMENT_NAME"]
+    )
+    assert "fake-value" not in repr(data)
+
+
 # --- manage-link mapping ------------------------------------------------------
 
 
