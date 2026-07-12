@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Post-deploy healthcheck: GET /healthz and / on the three live services, plus
-the `/fleet` registry live-parse smoke check and the arcade live-URL drift
-probe.
+the `/fleet` registry live-parse smoke check and the arcade URL drift probe
+(live+download).
 
 ──────────────────────────────────────────────────────────────────────────────
 PROVENANCE / KILL-SWITCH HEADER
@@ -28,20 +28,22 @@ to anyone not looking at the page. This check is what alerts a registry
 reformat/move instead of letting it degrade unnoticed (it caught the
 2026-07-11 manifest supersession live, on schedule run 2).
 
-The arcade pass (docs/ideas/backlog.md "Arcade live-URL drift probe", ORDER
-022 drift session) cold-fetches every `availability: "live"` URL in
-`botsite/data/arcade.json` via `botsite.arcade_probe` and FLAGS any that stop
-returning 200 (bad status / timeout / connection error / malformed or missing
-URL — each with its reason). The /arcade page itself only renders links it
-believes in; this pass is what notices when reality drifts out from under a
-committed "live". Fail-soft per URL: a dead link is a FLAGGED finding folded
+The arcade pass (docs/ideas/backlog.md "Arcade live-URL drift probe" + "Probe
+download-availability arcade URLs too", ORDER 022 drift session) cold-fetches
+every `availability: "live"` AND `availability: "download"` URL in
+`botsite/data/arcade.json` via `botsite.arcade_probe` and FLAGS any whose
+FINAL response stops being 200 (bad status / timeout / connection error /
+malformed or missing URL — each with its reason; redirect chains ending in
+200 count healthy). The /arcade page renders outbound links for both those
+availabilities; this pass is what notices when reality drifts out from under
+a committed card. Fail-soft per URL: a dead link is a FLAGGED finding folded
 into the exit code below, never a traceback. Live fetches run ONLY here (and
 the 6-hourly healthcheck.yml schedule) — the required `quality` gate tests the
 probe against `httpx.MockTransport`, network-free.
 
 Usage:  python3 scripts/healthcheck.py
 Exit 0 = every checked endpoint returned its expected status AND the registry
-parsed to a non-empty lane set AND no live arcade URL was flagged; exit 1 =
+parsed to a non-empty lane set AND no probed arcade URL was flagged; exit 1 =
 any of those fail.
 """
 
@@ -114,20 +116,25 @@ def check_fleet_registry() -> tuple[bool, str]:
 
 
 def check_arcade_urls() -> tuple[bool, list[str]]:
-    """Cold-fetch every live-availability arcade URL (botsite.arcade_probe)
-    and flag drift — a dead game link must never quietly outlive its card.
-    Returns (ok, printable lines). Never raises: per-URL failures are FLAGGED
-    findings inside the probe, and a probe bug itself degrades to a FAIL line
-    (defensive, same stance as check_fleet_registry's parse guard)."""
+    """Cold-fetch every live- and download-availability arcade URL
+    (botsite.arcade_probe) and flag drift — a dead game link must never
+    quietly outlive its card. Returns (ok, printable lines). Never raises:
+    per-URL failures are FLAGGED findings inside the probe, and a probe bug
+    itself degrades to a FAIL line (defensive, same stance as
+    check_fleet_registry's parse guard)."""
     try:
-        result = arcade_probe.probe_live_urls()
+        result = arcade_probe.probe_registry_urls()
     except Exception as exc:  # defensive: a probe bug shouldn't crash the check
         return False, [f"probe raised {type(exc).__name__}: {exc}"]
 
     lines: list[str] = []
     for row in result["rows"]:
         mark = "PASS" if row["ok"] else "FLAGGED"
-        lines.append(f"{row['slug']:12}  {mark:7}  {row['url'] or '<no url>'}  ({row['note']})")
+        availability = row.get("availability", "?")
+        lines.append(
+            f"{row['slug']:12}  {mark:7}  [{availability}]  "
+            f"{row['url'] or '<no url>'}  ({row['note']})"
+        )
     for entry in result["skipped"]:
         lines.append(f"{entry['slug']:12}  not probed (availability: {entry['availability']})")
     lines.append(result["note"])
@@ -161,7 +168,7 @@ def main() -> int:
     arcade_ok, arcade_lines = check_arcade_urls()
     ok_all = ok_all and arcade_ok
     print()
-    print(f"arcade live-URL drift probe: {'PASS' if arcade_ok else 'FAIL'}")
+    print(f"arcade URL drift probe (live+download): {'PASS' if arcade_ok else 'FAIL'}")
     for line in arcade_lines:
         print(f"  {line}")
 
