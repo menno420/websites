@@ -99,3 +99,19 @@ do: quick self-review of this lane covering roughly the last 24h (2026-07-10 ~20
 why: owner-requested fleet-wide self-review (2026-07-11), relayed by the fleet-manager coordinator on the owner's in-session instruction.
 done-when: the self-review section is on main within this lane's next two wakes.
 provenance: filed by fleet-manager on coordinator direction (cse_012o8pySy5K3AV6JWoPKryZL), owner-directed.
+
+## ORDER 012 · 2026-07-12T08:30Z · status: new
+priority: P1
+owner: Websites coordinator (executor)
+provenance: filed by the fleet manager — relocation of startup-prompt v3.1 orders 1/3/4 (prompts are STATELESS since v3.2, owner correction 2026-07-12; fleet-manager PR #108).
+do: Records reconcile, three parts: (1) status.md + docs/owner/OWNER-ACTIONS.md vs live GitHub — PR #141 MERGED 2026-07-11T20:24:48Z yet status at HEAD still lists it "awaiting owner squash-merge"; clear satisfied asks, fix the prune list, stamp the sha. (2) Re-render .claude/CLAUDE.md via the kit — :40 still reads "Three independent ... services" and :47 a two-suite verify while review/ ships at HEAD; the doc must carry the four-service layout + four-suite verify. (3) Review-bake truth: make the ⚑ ask match run history — 2 runs total, BOTH failed, including the FIRST schedule-event fire (run 29184552812, 2026-07-12T07:38Z; any earlier "cron never fired" claim is itself stale); verify BY EVENT TYPE, root-cause the failure or route the owner toggle.
+why: all three parts verified at 8f97654 on 2026-07-12 (evidence inline above).
+done-when: zero contradicted claims in status/OWNER-ACTIONS; CLAUDE.md matches the tree; the bake ask cites the real run history.
+
+## ORDER 013 · 2026-07-12T08:30Z · status: new
+priority: P1 (security)
+owner: Websites coordinator (executor)
+provenance: filed by the fleet manager — relocation of startup-prompt v3.1 order 2 (prompts are STATELESS since v3.2, owner correction 2026-07-12; fleet-manager PR #108).
+do: app/owner.py POST routes (refresh / rerun-ci) ride Basic auth alone — add a CSRF token or strict Origin check plus rate-limiting, with tests.
+why: verified at 8f97654 2026-07-12: zero csrf/origin hits in app/owner.py.
+done-when: merged green with tests; the routes reject cross-origin POSTs.
