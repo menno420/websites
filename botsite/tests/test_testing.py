@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from botsite import app as app_module
 from botsite import data_source as ds
-from botsite import testing, testing_payouts, testing_store
+from botsite import testing, testing_ai, testing_payouts, testing_store
 
 # Browsers send Origin on form POSTs; the same-origin guard requires it (or
 # Referer). TestClient's host is "testserver".
@@ -32,9 +32,14 @@ def client(tmp_path, monkeypatch):
         "PAYPAL_CLIENT_ID",
         "PAYPAL_CLIENT_SECRET",
         "TESTING_BOUNTY_CAP_USD",
+        "ANTHROPIC_API_KEY",  # no key in tests → degraded mode, zero network
+        "TESTING_AI_MODEL",
+        "TESTING_AI_DAILY_CAP",
+        "TESTING_AUTOPAY_MIN_SCORE",
     ):
         monkeypatch.delenv(var, raising=False)
     testing.reset_rate_limits()
+    testing_ai.reset_ai_state()
     ds.clear_cache()
     ds.prime_cache({})
     ds.set_client(ds.make_client())  # never actually hit (cache is warm)
@@ -371,7 +376,8 @@ def test_export_requires_auth(client, monkeypatch):
 
 def test_no_autopay_even_with_creds_and_kill_switch_on(client, monkeypatch):
     """The hard v1 guarantee: credentials + kill switch ON still cannot pay —
-    the AI-review gate and the DRY_RUN constant both queue everything."""
+    the AI-review gate (degraded here: no API key) and the DRY_RUN constant
+    both queue everything."""
     monkeypatch.setenv("SITE_PASSWORD", PW)
     monkeypatch.setenv("PAYPAL_CLIENT_ID", "test-id")
     monkeypatch.setenv("PAYPAL_CLIENT_SECRET", "test-secret")
@@ -382,7 +388,7 @@ def test_no_autopay_even_with_creds_and_kill_switch_on(client, monkeypatch):
     totals = testing_store.ledger_totals()
     assert totals["paid"] == 0.0 and totals["owed"] == 10.0
     entry = testing_store.ledger_entries()[0]
-    assert "AI exit-review not live yet" in entry["note"]
+    assert "no automated exit-review verdict" in entry["note"]
     assert "test-secret" not in entry["note"]  # values never logged
 
 
