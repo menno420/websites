@@ -31,6 +31,7 @@ ALL_FEATURE_ROUTES = [
     "/reviews",
     "/orders",
     "/ideas",
+    "/directory",
     "/owner",
 ]
 
