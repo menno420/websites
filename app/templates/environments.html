@@ -1,14 +1,18 @@
 {% extends "base.html" %}
 {% block title %}environments{% endblock %}
-{% block headright %}<a href="/environments?refresh=1">refresh now</a>{% endblock %}
+{% block headright %}<a href="/owner/environments-hub">🔒 fleet env hub (owner)</a> · <a href="/environments?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
 <div class="card">
-  <h2>environments — the fleet's claude.ai environment registry</h2>
+  <h2>environments — the fleet's claude.ai environment registry
+    <span class="dim small">(environments-hub sub-view: schemas)</span></h2>
   <p class="dim small">Read-only render of
     <a href="{{ e.repo_url }}">fleet-manager <code>environments/</code> ↗</a> — setup scripts,
     env-var schemas, and specs to view and <strong>copy</strong> when creating or editing a
     claude.ai environment. The manager's repo stores; this site renders. Secrets are never
-    present by design — the registry stores names/placeholders only.</p>
+    present by design — the registry stores names/placeholders only. The fleet-wide
+    environment inventory (every project group, variable names, manage deep links) lives on
+    the <a href="/owner/environments-hub">environments hub 🔒 (owner)</a> — this public page
+    stays the schemas sub-view.</p>
 
   {% if e.state == 'not-configured' %}
   <div class="banner">⚠ <strong>not configured</strong> — {{ e.reason }}. This page will render

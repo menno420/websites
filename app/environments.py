@@ -115,6 +115,33 @@ async def _fetch_one(path: str, refresh: bool = False) -> dict[str, Any]:
     return out
 
 
+def _base_result() -> dict[str, Any]:
+    return {
+        "state": "ok",
+        "reason": "",
+        "token_set": bool(config.GITHUB_TOKEN),
+        "repo_url": _repo_url(),
+        "files": [],
+        "listing_errors": [],
+    }
+
+
+def _degrade(out: dict[str, Any], reason: str) -> dict[str, Any]:
+    """The shared honest failure ladder: ``not-configured`` (token unset) or
+    ``unavailable`` (token present, fetch failed)."""
+    if not out["token_set"]:
+        out["state"] = "not-configured"
+        out["reason"] = (
+            "GITHUB_TOKEN is not set on this service, and "
+            f"{config.OWNER}/{REPO} is private — the environments "
+            f"registry cannot be read (fetch: {reason})"
+        )
+    else:
+        out["state"] = "unavailable"
+        out["reason"] = reason
+    return out
+
+
 async def overview(refresh: bool = False) -> dict[str, Any]:
     """The rendered registry, or an honest degraded state.
 
@@ -122,33 +149,41 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
     ``unavailable`` (token present, fetch failed). Never raises for upstream
     failures — the route always renders 200.
     """
-    token_set = bool(config.GITHUB_TOKEN)
-    out: dict[str, Any] = {
-        "state": "ok",
-        "reason": "",
-        "token_set": token_set,
-        "repo_url": _repo_url(),
-        "files": [],
-        "listing_errors": [],
-    }
+    out = _base_result()
     try:
         paths, errors = await _collect_paths(refresh=refresh)
     except LookupError as exc:
-        reason = str(exc)
-        if not token_set:
-            out["state"] = "not-configured"
-            out["reason"] = (
-                "GITHUB_TOKEN is not set on this service, and "
-                f"{config.OWNER}/{REPO} is private — the environments "
-                f"registry cannot be read (fetch: {reason})"
-            )
-        else:
-            out["state"] = "unavailable"
-            out["reason"] = reason
-        return out
+        return _degrade(out, str(exc))
 
     out["listing_errors"] = errors
     out["files"] = list(
         await asyncio.gather(*[_fetch_one(p, refresh=refresh) for p in paths])
     )
+    return out
+
+
+async def index(refresh: bool = False) -> dict[str, Any]:
+    """Light registry listing — file names + links, NO file bodies.
+
+    The environments hub (ORDER 021 consolidation) embeds this as its schema
+    section and links the full copyable render at ``/environments``; same
+    result shape and degradation ladder as ``overview``, one listing fetch,
+    zero per-file fetches."""
+    out = _base_result()
+    try:
+        paths, errors = await _collect_paths(refresh=refresh)
+    except LookupError as exc:
+        return _degrade(out, str(exc))
+
+    out["listing_errors"] = errors
+    out["files"] = [
+        {
+            "path": p,
+            "name": p[len(ROOT) + 1 :] if p.startswith(ROOT + "/") else p,
+            "github_url": (
+                f"https://github.com/{config.OWNER}/{REPO}/blob/main/{p}"
+            ),
+        }
+        for p in paths
+    ]
     return out

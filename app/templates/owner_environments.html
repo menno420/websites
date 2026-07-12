@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}owner · environments{% endblock %}
-{% block headright %}🔒 owner · <a href="/owner">board</a> · <a href="/owner/environments?refresh=1">refresh now</a>{% endblock %}
+{% block headright %}🔒 owner · <a href="/owner">board</a> · <a href="/owner/environments-hub">environments hub</a> · <a href="/owner/environments?refresh=1">refresh now</a>{% endblock %}
 
 {% macro badge(state, text) -%}
 <span class="b {{ state }}">{{ text }}</span>
@@ -9,12 +9,15 @@
 {% block content %}
 
 <div class="card" style="border-color:var(--purple);">
-  <h2>🔒 environments <span class="dim small">— what is configured where, per service</span></h2>
-  <p class="small dim">Gated like the rest of <a href="/owner">/owner</a>. Variable
+  <h2>🔒 live estate detail <span class="dim small">— environments-hub sub-view: what is configured where, per superbot-websites service</span></h2>
+  <p class="small dim">A sub-view of the
+  <a href="/owner/environments-hub">environments hub</a> (the fleet-wide front
+  door) — this page is the estate deep-dive: per-variable purpose + runtime
+  presence. Gated like the rest of <a href="/owner">/owner</a>. Variable
   <strong>names + presence only, never values</strong> (the plan's option A —
-  <code>{{ env.plan_doc }}</code>). The public
-  <a href="/environments">/environments</a> registry page (schemas from
-  fleet-manager) is unchanged and stays public.</p>
+  <code>{{ env.plan_doc }}</code>). The
+  <a href="/environments">schema registry sub-view</a> (fleet-manager
+  claude.ai schemas) stays public.</p>
 
   <h3>live railway data</h3>
   {% if env.live.state == 'not-configured' %}
@@ -76,8 +79,10 @@
 </div>
 {% endfor %}
 
-<p class="dim small">Service list = the three deployed Railway services in
-<a href="{{ env.project_url }}">{{ env.project_name }}</a>; the in-repo
-<code>review/</code> service has no Railway deployment yet (tracked as an owner
-ask). 🔒 values are never rendered here or anywhere — names and presence only.</p>
+<p class="dim small">Service list = the four deployed Railway services in
+<a href="{{ env.project_url }}">{{ env.project_name }}</a> (the review service
+went live 2026-07-12 — docs/owner/OWNER-ACTIONS.md row J). The fleet-wide
+inventory across ALL project groups lives on the
+<a href="/owner/environments-hub">environments hub</a>. 🔒 values are never
+rendered here or anywhere — names and presence only.</p>
 {% endblock %}

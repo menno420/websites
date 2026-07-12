@@ -10,6 +10,9 @@ already on the service.
 
 Fail closed: if `SITE_PASSWORD` is unset the /owner routes return 503 while the
 public site keeps working.
+
+Auth seam: `require_owner` is the single gate dependency — the planned Discord
+OAuth (ORDER 021) replaces it in one place, starting at /environments-hub.
 """
 
 from __future__ import annotations
@@ -27,7 +30,9 @@ from fastapi.templating import Jinja2Templates
 
 from . import (
     config,
+    envhub,
     github,
+    listfilter,
     nav,
     owner_assist,
     owner_queue,
@@ -221,6 +226,35 @@ async def owner_environments(request: Request, _: None = Depends(require_owner))
         request,
         "owner_environments.html",
         {"env": data, "ttl": config.CACHE_TTL_SECONDS},
+    )
+
+
+@router.get("/environments-hub", response_class=HTMLResponse)
+async def owner_environments_hub(request: Request, _: None = Depends(require_owner)):
+    """ORDER 021 slice 1 — the fleet-wide environments hub: every environment
+    surface (Railway projects/services, GitHub Actions secret stores,
+    claude.ai cloud envs) grouped per project-group, each row = name · the
+    variable NAMES it holds (never values) · a deep link to where it is
+    managed. Committed registry (app/data/environments.json) + a live
+    variable-NAME merge for the superbot-websites group via the existing
+    project-scoped RAILWAY_TOKEN read. Read-only GET — no state changes.
+
+    DISCORD-OAUTH SEAM (do not build yet — ORDER 021 stages it later):
+    auth is exactly this route's `require_owner` dependency (HTTP Basic on
+    SITE_PASSWORD, like all of /owner). When the Discord OAuth app the
+    dashboard/mineverse instances already use is provisioned, swap the
+    dependency here for the OAuth-session equivalent — the page itself
+    needs no other change (it is read-only and auth-agnostic; see
+    app/envhub.py's docstring).
+    """
+    data = await envhub.overview(refresh=_refresh(request))
+    state = listfilter.parse(envhub.FILTER_SPEC, request.query_params)
+    fl = listfilter.apply(envhub.FILTER_SPEC, data["rows"], state)
+    sections = envhub.group_sections(data["groups"], fl["items"])
+    return templates.TemplateResponse(
+        request,
+        "owner_environments_hub.html",
+        {"hub": data, "lf": fl, "sections": sections},
     )
 
 

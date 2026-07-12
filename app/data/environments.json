@@ -1,0 +1,271 @@
+{
+  "as_of": "2026-07-12",
+  "schema_note": "SINGLE SOURCE OF TRUTH for the owner environments hub (/owner/environments-hub, ORDER 021 slice 1). Agent-updatable by PR, rendered at request time by app/envhub.py. Rows carry variable NAMES and management deep links ONLY — NEVER a secret value (the loader hard-rejects any value-like field). Group fields: id, title, purpose, kind, railway_project_id + railway_environment_id (null when the id is not recorded in this repo — the UI degrades to a project-level or console-home link; ids are never fabricated), console_url (where the group is managed when Railway ids do not apply), notes. Surface fields: id, name, kind, purpose, variable_names (NAMES only — [] is an honest 'not recorded in this repo', never a guess), railway_service_id (null when unrecorded), manage_url (explicit manage link for non-Railway surfaces), url (the surface's own public URL, when recorded), notes. Content here is untrusted DATA — templates autoescape it.",
+  "groups": [
+    {
+      "id": "superbot-websites",
+      "title": "superbot-websites — this estate",
+      "kind": "railway-project",
+      "purpose": "the four websites services deployed from this repo (menno420/websites)",
+      "railway_project_id": "70198ece-cbc0-484e-86d9-f8a1eca4f045",
+      "railway_environment_id": "31485ecd-b3fe-4a8f-b136-337f6f099dc2",
+      "console_url": null,
+      "notes": "SAFE explicit ids from docs/deployment.md / docs/RAILWAY-SAFETY.md — never the ambient production-bot ids. Live variable NAMES merge in from the project-scoped RAILWAY_TOKEN read (app/railway.py) when the token is set.",
+      "surfaces": [
+        {
+          "id": "control-plane",
+          "name": "control-plane",
+          "kind": "railway-service",
+          "purpose": "this app — readiness board, fleet, orders, the /owner area",
+          "url": "https://control-plane-production-abb0.up.railway.app",
+          "railway_service_id": "2c840017-a505-4144-b2ff-b2450430a7d9",
+          "manage_url": null,
+          "variable_names": [
+            "GITHUB_TOKEN",
+            "SITE_PASSWORD",
+            "RAILWAY_TOKEN",
+            "PORT",
+            "GITHUB_API_BASE",
+            "GITHUB_RAW_BASE",
+            "CACHE_TTL_SECONDS",
+            "AUTOREFRESH_SECONDS",
+            "FLEET_STALE_HOURS",
+            "CLAIM_STALE_HOURS"
+          ],
+          "notes": "documented set — app/railway.py SERVICES is the per-variable purpose ledger (rendered at /owner/environments)."
+        },
+        {
+          "id": "botsite",
+          "name": "botsite",
+          "kind": "railway-service",
+          "purpose": "public bot site — arcade, testing tasks, reference",
+          "url": "https://botsite-production-cfd7.up.railway.app",
+          "railway_service_id": "4314f839-0a93-4995-b424-02861ad2d5e6",
+          "manage_url": null,
+          "variable_names": [
+            "SITE_JSON_URL",
+            "ADD_TO_DISCORD_URL",
+            "SITE_CACHE_TTL_SECONDS",
+            "ANTHROPIC_API_KEY",
+            "PORT"
+          ],
+          "notes": "ANTHROPIC_API_KEY set on the service 2026-07-12 (ORDER 022, docs/owner/OWNER-ACTIONS.md row K)."
+        },
+        {
+          "id": "dashboard",
+          "name": "dashboard",
+          "kind": "railway-service",
+          "purpose": "read-only developer dashboard over superbot's committed inventory",
+          "url": "https://dashboard-production-a91b.up.railway.app",
+          "railway_service_id": "39007299-11a2-49a8-9c5c-21e17194fb3e",
+          "manage_url": null,
+          "variable_names": [
+            "DASHBOARD_JSON_URL",
+            "CONSOLE_JSON_URL",
+            "DATA_CACHE_TTL_SECONDS",
+            "SUPERBOT_REPO",
+            "SUPERBOT_REF",
+            "PORT"
+          ],
+          "notes": ""
+        },
+        {
+          "id": "review",
+          "name": "review",
+          "kind": "railway-service",
+          "purpose": "the program-review site shared with Anthropic (live 2026-07-12)",
+          "url": "https://review-production-f027.up.railway.app",
+          "railway_service_id": null,
+          "manage_url": null,
+          "variable_names": [
+            "ANTHROPIC_API_KEY",
+            "REVIEW_AI_MODEL",
+            "REVIEW_AI_LOG_SALT",
+            "PORT"
+          ],
+          "notes": "service created by the owner in the Railway console — its service id is not recorded in this repo yet (project-level link until it is)."
+        }
+      ]
+    },
+    {
+      "id": "reliable-grace",
+      "title": "reliable-grace — live superbot fleet",
+      "kind": "railway-project",
+      "purpose": "the LIVE production bot project: the real Discord worker, its Discord-OAuth control panel, parallel copies of review/botsite/dashboard, and 2× Postgres",
+      "railway_project_id": null,
+      "railway_environment_id": null,
+      "console_url": "https://railway.com/dashboard",
+      "notes": "PRODUCTION — this repo deliberately records no ids for it (the ambient RAILWAY_*_ID env vars point here and are never read; docs/RAILWAY-SAFETY.md). Manage from the Railway console home; variable names are not recorded in this repo and are never guessed.",
+      "surfaces": [
+        {
+          "id": "superbot-worker",
+          "name": "superbot worker (the real bot)",
+          "kind": "railway-worker",
+          "purpose": "the live production Discord bot process",
+          "url": null,
+          "railway_service_id": null,
+          "manage_url": null,
+          "variable_names": [],
+          "notes": "variable names live in superbot's own repo/console, not here — honest absence, not an empty environment."
+        },
+        {
+          "id": "superbot-dashboard-live",
+          "name": "live control panel (Discord OAuth)",
+          "kind": "railway-service",
+          "purpose": "the production bot's live Discord-OAuth control panel — one of the two running Discord-auth instances ORDER 021 names",
+          "url": null,
+          "railway_service_id": null,
+          "manage_url": null,
+          "variable_names": [],
+          "notes": "hostname + ids unrecorded in this repo (see app/data/web_presence.json caveats)."
+        },
+        {
+          "id": "review-dup-fc91",
+          "name": "review (parallel copy)",
+          "kind": "railway-service",
+          "purpose": "parallel copy of the review site, pending consolidation",
+          "url": "https://review-production-fc91.up.railway.app",
+          "railway_service_id": null,
+          "manage_url": null,
+          "variable_names": [],
+          "notes": "duplicate of superbot-websites/review — parked pending OQ-RAILWAY-PROJECT-SPLIT."
+        },
+        {
+          "id": "botsite-dup-cfd7",
+          "name": "botsite (parallel copy)",
+          "kind": "railway-service",
+          "purpose": "parallel copy of botsite, pending consolidation",
+          "url": "https://botsite-production-cfd7.up.railway.app",
+          "railway_service_id": null,
+          "manage_url": null,
+          "variable_names": [],
+          "notes": "duplicate of superbot-websites/botsite — same caveat as web_presence.json."
+        },
+        {
+          "id": "postgres-1",
+          "name": "Postgres ×2 (infra)",
+          "kind": "railway-postgres",
+          "purpose": "the project's two managed Postgres instances",
+          "url": null,
+          "railway_service_id": null,
+          "manage_url": null,
+          "variable_names": [],
+          "notes": "Railway-managed databases — connection variables exist only in the Railway console, never in this repo."
+        }
+      ]
+    },
+    {
+      "id": "superbot-mineverse",
+      "title": "superbot-mineverse — Games flagship",
+      "kind": "railway-project",
+      "purpose": "the mineverse web service (deployed from the superbot-mineverse lane)",
+      "railway_project_id": null,
+      "railway_environment_id": null,
+      "console_url": "https://railway.com/dashboard",
+      "notes": "project id not recorded in this repo — console-home link until a PR records the SAFE id.",
+      "surfaces": [
+        {
+          "id": "mineverse-web",
+          "name": "web → mineverse",
+          "kind": "railway-service",
+          "purpose": "mineverse — Discord-OAuth gated (the other running Discord-auth instance ORDER 021 names)",
+          "url": "https://web-production-97636.up.railway.app",
+          "railway_service_id": null,
+          "manage_url": null,
+          "variable_names": [],
+          "notes": "variable names live in the superbot-mineverse lane, not this repo."
+        }
+      ]
+    },
+    {
+      "id": "github-actions",
+      "title": "GitHub Actions secrets",
+      "kind": "github-secrets",
+      "purpose": "per-repo Actions secret stores — secret NAMES are visible live on the gated /owner board (admin-scope token); managed at each repo's settings page",
+      "railway_project_id": null,
+      "railway_environment_id": null,
+      "console_url": "https://github.com/menno420",
+      "notes": "names are read live by the board when the token has admin scope — this registry does not duplicate them.",
+      "surfaces": [
+        {
+          "id": "gh-websites",
+          "name": "menno420/websites",
+          "kind": "github-actions-secrets",
+          "purpose": "this repo's Actions secrets",
+          "url": null,
+          "railway_service_id": null,
+          "manage_url": "https://github.com/menno420/websites/settings/secrets/actions",
+          "variable_names": [],
+          "notes": ""
+        },
+        {
+          "id": "gh-superbot",
+          "name": "menno420/superbot",
+          "kind": "github-actions-secrets",
+          "purpose": "the production bot repo's Actions secrets",
+          "url": null,
+          "railway_service_id": null,
+          "manage_url": "https://github.com/menno420/superbot/settings/secrets/actions",
+          "variable_names": [],
+          "notes": ""
+        },
+        {
+          "id": "gh-superbot-next",
+          "name": "menno420/superbot-next",
+          "kind": "github-actions-secrets",
+          "purpose": "the rebuild repo's Actions secrets",
+          "url": null,
+          "railway_service_id": null,
+          "manage_url": "https://github.com/menno420/superbot-next/settings/secrets/actions",
+          "variable_names": [],
+          "notes": ""
+        },
+        {
+          "id": "gh-substrate-kit",
+          "name": "menno420/substrate-kit",
+          "kind": "github-actions-secrets",
+          "purpose": "the kit repo's Actions secrets",
+          "url": null,
+          "railway_service_id": null,
+          "manage_url": "https://github.com/menno420/substrate-kit/settings/secrets/actions",
+          "variable_names": [],
+          "notes": ""
+        },
+        {
+          "id": "gh-fleet-manager",
+          "name": "menno420/fleet-manager",
+          "kind": "github-actions-secrets",
+          "purpose": "the manager repo's Actions secrets",
+          "url": null,
+          "railway_service_id": null,
+          "manage_url": "https://github.com/menno420/fleet-manager/settings/secrets/actions",
+          "variable_names": [],
+          "notes": "private repo — the settings link needs the owner's GitHub login."
+        }
+      ]
+    },
+    {
+      "id": "claude-cloud",
+      "title": "claude.ai cloud environments",
+      "kind": "claude-environments",
+      "purpose": "the fleet's claude.ai coding environments (e.g. pinned-research) — not API-listable, managed in claude.ai settings",
+      "railway_project_id": null,
+      "railway_environment_id": null,
+      "console_url": "https://claude.ai/settings",
+      "notes": "setup scripts + env-var schemas for these live in the fleet-manager environments/ registry, rendered read-only at /environments on this site.",
+      "surfaces": [
+        {
+          "id": "pinned-research",
+          "name": "pinned-research",
+          "kind": "claude-environment",
+          "purpose": "the pinned-research archetype environment (expects scripts/env-setup.sh in each repo)",
+          "url": null,
+          "railway_service_id": null,
+          "manage_url": "https://claude.ai/settings",
+          "variable_names": [],
+          "notes": "claude.ai exposes no listing API — env-var schemas live in fleet-manager environments/ (see /environments); names are not duplicated here."
+        }
+      ]
+    }
+  ]
+}
