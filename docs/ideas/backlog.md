@@ -49,8 +49,25 @@
   and pickup ideas touch /fleet data, not file-view navigation. Source:
   `.sessions/2026-07-12-journal-guard-fleet.md` 💡.
 
-- **Seat role-coverage chips on the /projects dispatch index** · `captured`
-  — the dispatch screen (PR #158) renders whatever role files a package
+- **Coverage-chip rollup on the /fleet board** · `captured` — the
+  per-seat instructions/coordinator/failsafe coverage now computed for the
+  /projects index (`projects.role_coverage`, ORDER 015 slice) could feed
+  one "packages incomplete: N" rollup cell on the `/fleet` monitoring
+  surface, so registry lint fires where the manager already looks instead
+  of only when the owner opens the dispatch index. Worth having because
+  the chips double as registry lint but today only surface on `/projects`.
+  Deduped against this backlog + the queue-state NEXT list: nothing rolls
+  coverage up to the monitoring surfaces. Source:
+  `.sessions/2026-07-12-projects-role-coverage-chips.md` 💡.
+
+- **Seat role-coverage chips on the /projects dispatch index** · `built`
+  (2026-07-12, ORDER 015 plans-sweep slice — `projects.role_coverage` chips
+  each seat card instructions / coordinator / failsafe ✓/✗ from the
+  already-fetched role-classified listing; `dispatch_ready` flag + "N of M
+  dispatch-ready" index summary; unlistable package = NO chips, honest
+  unknown; `/projects.json` carries `coverage` + `dispatch_ready`, contract
+  pins updated same PR) — original capture:
+  the dispatch screen (PR #158) renders whatever role files a package
   has, but the INDEX doesn't say which seats are dispatch-READY: a seat
   missing its coordinator prompt or failsafe looks identical to a complete
   one until the owner opens it mid-dispatch. One chip row per seat card

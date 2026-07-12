@@ -14,8 +14,11 @@
     present by design). Each seat card opens its
     <strong>dispatch screen</strong> — full prompt text, copy-ready.</p>
   {% if p.state == 'ok' %}
+  {% set ready = seats | selectattr('dispatch_ready') | list %}
   <p class="dim small">{{ seats | length }} active seat{{ 's' if seats | length != 1 }}
-    in dispatch order{% if stubs %} · {{ stubs | length }} retired / merged
+    in dispatch order · {{ ready | length }} of {{ seats | length }}
+    dispatch-ready (chips per card — a missing role file blocks
+    launch){% if stubs %} · {{ stubs | length }} retired / merged
     stub{{ 's' if stubs | length != 1 }} collapsed below{% endif %}.</p>
   {% endif %}
 
@@ -54,6 +57,16 @@
   {% if pkg.error %}
   <div class="banner">⚠ could not list <code>{{ pkg.path }}</code> — {{ pkg.error }}</div>
   {% else %}
+  <p class="small">
+    {% for c in pkg.coverage %}
+    <span class="b {{ 'ok' if c.present else 'bad' }}"
+          title="{{ c.label }}{{ '' if c.present else ' — missing from the package' }}">{{
+      c.role }} {{ '✓' if c.present else '✗' }}</span>
+    {% endfor %}
+    {% if pkg.dispatch_ready %}<span class="dim">· dispatch-ready</span>
+    {% else %}<span class="dim">· NOT dispatch-ready — a ✗ role file is
+      missing upstream; the seat can't launch until it lands</span>{% endif %}
+  </p>
   <table>
     {% for f in pkg.files %}
     <tr><th>{{ f.label }}</th>
