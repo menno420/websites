@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #177 (`claude/journal-guard-fleet`).
 
-- **📊 Model:** claude-fable-5 · worker seat · guard-widening + tests
+- **📊 Model:** Fable (Claude, family-level) · worker seat · guard-widening + tests
 
 **What this session was about:** Grounded-skills slice 7 (rung: order —
 coordinator-directed slice from substrate-kit
