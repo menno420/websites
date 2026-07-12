@@ -268,17 +268,29 @@ async def owner_envhub_manifest(
     the env-var SCHEMA (variable NAMES + placeholders, never values), and
     copyable setup commands the OWNER executes by hand.
 
+    Completeness diff (the slice-2 card's captured idea, promoted): every
+    schema row is additionally badged set-live / missing-live against the
+    slice-1 live variable-NAME read (railway.live_overview — project-scoped
+    RAILWAY_TOKEN, values dropped at the client boundary, never rendered),
+    with the honest unknown state whenever the live truth is not knowable —
+    the manifest doubles as the owner's "what's left to finish this
+    environment" checklist.
+
     Read-only GET behind the exact same gate as the hub (same Discord-OAuth
     seam: swap the dependency, nothing else). It performs NO provisioning —
     per docs/RAILWAY-SAFETY.md agents make no Railway mutations and
-    RAILWAY_API_KEY never lives on an app service; this route makes no
-    Railway (or any network) call at all.
+    RAILWAY_API_KEY never lives on an app service; the ONLY network call is
+    the existing read-only names query in app/railway.py (queries only — no
+    mutation strings exist in that module).
     """
     data = envhub.manifest(group_id)
     if data is None:
         raise HTTPException(
             status_code=404, detail=f"unknown project group {group_id!r}"
         )
+    envhub.annotate_completeness(
+        data, await railway.live_overview(refresh=_refresh(request))
+    )
     return templates.TemplateResponse(
         request, "owner_envhub_manifest.html", {"m": data}
     )

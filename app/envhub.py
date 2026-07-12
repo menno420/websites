@@ -439,6 +439,167 @@ def manifest(group_id: str) -> dict[str, Any] | None:
         "boundary": BOUNDARY_NOTICE,
         "commands_text": "\n".join(command_lines).rstrip() + "\n",
         "manifest_json": json.dumps(json_doc, indent=2),
+        # Filled by annotate_completeness (the route always calls it);
+        # None = pure plan generation, no live comparison attached.
+        "completeness": None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Completeness diff — "what is left to finish this environment".
+#
+# Merges the slice-1 live variable-NAME read (railway.live_overview: the
+# project-scoped RAILWAY_TOKEN, names dropped to a list at the client
+# boundary — never values) into the slice-2 manifest so every schema row is
+# badged set-live / missing-live, turning the owner-executed plan into a
+# run-down checklist. Read-only annotation over the existing read path: no
+# new Railway call shape, no mutation, and the copyable plan blocks
+# (commands_text / manifest_json) stay the pure committed-registry artifact.
+# ---------------------------------------------------------------------------
+
+LIVE_SET = "set-live"
+LIVE_MISSING = "missing-live"
+LIVE_UNKNOWN = "unknown"
+
+# The one group the project-scoped RAILWAY_TOKEN can see (its own scope pins
+# it — docs/RAILWAY-SAFETY.md). Every other group's live truth is unknowable
+# from here and is badged so, never assumed.
+LIVE_GROUP_ID = "superbot-websites"
+
+
+def annotate_completeness(
+    manifest_data: dict[str, Any], live: dict[str, Any] | None
+) -> None:
+    """Badge every env-var schema row of a generated manifest against the
+    live Railway variable-NAME snapshot: ``set-live`` / ``missing-live``,
+    or the honest ``unknown`` whenever the live truth is not knowable.
+    Mutates ``manifest_data`` in place — each service gains a ``live``
+    annotation (``by_name`` status map + note), the manifest gains a
+    group-level ``completeness`` summary.
+
+    Honesty rules — a green/red badge is never fabricated:
+
+    - no live snapshot / token unset / read failed → every row ``unknown``
+      with the exact reason;
+    - a group outside the token's scope (only ``superbot-websites`` is
+      readable) → ``unknown``;
+    - a per-service variables fetch error → that service's rows ``unknown``;
+    - the live project read SUCCEEDED but the service is absent from it →
+      the service is not created yet, so every recorded name is honestly
+      ``missing-live`` (exactly the checklist's job);
+    - otherwise: name in the live set → ``set-live``, else ``missing-live``.
+
+    NAMES ONLY: the live snapshot's ``variable_names`` lists are all this
+    function reads — the values were dropped at the client boundary
+    (``railway._names_only``) and do not exist here to leak.
+    """
+    group = manifest_data["group"]
+    services = manifest_data["services"]
+    total = sum(len(svc["schema"]) for svc in services)
+
+    def _all_unknown(reason: str, state: str) -> None:
+        for svc in services:
+            svc["live"] = {
+                "known": False,
+                "note": "",
+                "by_name": {row["name"]: LIVE_UNKNOWN for row in svc["schema"]},
+                "set_count": 0,
+            }
+        manifest_data["completeness"] = {
+            "comparable": False,
+            "state": state,
+            "reason": reason,
+            "set_count": 0,
+            "known_total": 0,
+            "unknown_count": total,
+            "total": total,
+        }
+
+    if live is None:
+        _all_unknown("live comparison not performed", "not-read")
+        return
+    if group["id"] != LIVE_GROUP_ID:
+        _all_unknown(
+            "no live read exists for this group — the project-scoped "
+            f"RAILWAY_TOKEN reads {LIVE_GROUP_ID} only "
+            "(docs/RAILWAY-SAFETY.md); live status is unknown here, "
+            "never assumed",
+            "out-of-scope",
+        )
+        return
+    if live.get("state") != "ok":
+        _all_unknown(
+            live.get("reason")
+            or f"live Railway read state: {live.get('state', '?')}",
+            str(live.get("state", "?")),
+        )
+        return
+
+    by_service = {s.get("name"): s for s in live.get("services", [])}
+    set_count = 0
+    known_total = 0
+    for svc in services:
+        rows = svc["schema"]
+        lsvc = by_service.get(svc["surface"]["name"])
+        if lsvc is None:
+            # The authoritative live service list came back without this
+            # service: it is not created yet — every recorded name is
+            # honestly missing live.
+            svc["live"] = {
+                "known": True,
+                "note": (
+                    "service not found in the live project — the live read "
+                    "succeeded, so this service (and every variable below) "
+                    "is not created yet"
+                ),
+                "by_name": {row["name"]: LIVE_MISSING for row in rows},
+                "set_count": 0,
+            }
+            known_total += len(rows)
+            continue
+        if lsvc.get("error"):
+            svc["live"] = {
+                "known": False,
+                "note": (
+                    "live variables read failed for this service: "
+                    f"{lsvc['error']} — its rows stay unknown, not guessed"
+                ),
+                "by_name": {row["name"]: LIVE_UNKNOWN for row in rows},
+                "set_count": 0,
+            }
+            continue
+        live_names = set(lsvc.get("variable_names", []))
+        by_name = {
+            row["name"]: (
+                LIVE_SET if row["name"] in live_names else LIVE_MISSING
+            )
+            for row in rows
+        }
+        n_set = sum(1 for status in by_name.values() if status == LIVE_SET)
+        svc["live"] = {
+            "known": True,
+            "note": "",
+            "by_name": by_name,
+            "set_count": n_set,
+        }
+        set_count += n_set
+        known_total += len(rows)
+
+    manifest_data["completeness"] = {
+        "comparable": known_total > 0,
+        "state": "ok",
+        "reason": (
+            ""
+            if known_total == total
+            else "some services' live variables could not be read"
+        ),
+        "set_count": set_count,
+        "known_total": known_total,
+        "unknown_count": total - known_total,
+        "total": total,
+        "fetched_at": live.get("fetched_at", ""),
+        "cached": bool(live.get("cached")),
+        "project_name": live.get("project_name", ""),
     }
 
 
