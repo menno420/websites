@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Your test submission — SuperBot testing program{% endblock %}
+
+{% block content %}
+<div class="wrap" style="max-width:var(--sb-wrap-narrow)">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> your private page</span>
+    <div class="head-row"><h1>{{ task.title }}</h1></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+      <span class="sb-badge">{{ icon("coins", 11) }} ${{ task.payout_usd }}</span>
+      <span class="sb-badge">status: {{ claim.status }}</span>
+      <span class="sb-badge">{{ claim.email }}</span>
+    </div>
+    <p class="sb-hint" style="margin-top:8px">claimed → submitted → approved → paid. Rejections free the
+      task slot; approvals write the payout ledger.</p>
+  </section>
+
+  {% if error %}
+  <div class="sb-error section-sm" role="alert">{{ icon("alert", 16) }}<div>{{ error }}</div></div>
+  {% endif %}
+
+  {% if claim.status == 'claimed' %}
+  <div class="section-sm">
+    <h3>The brief, again</h3>
+    <p>{{ task.brief }}</p>
+    {% if task.product_url %}
+    <a class="sb-btn sb-btn-ghost sb-btn-sm" href="{{ task.product_url }}" target="_blank" rel="noopener">Open the product {{ icon("external", 15) }}</a>
+    {% endif %}
+  </div>
+
+  <form class="section-sm" method="post" action="/testing/s/{{ claim.token }}">
+    <h3>File your report</h3>
+    {% if not questionnaire %}
+    <div class="sb-lane-pending" style="margin-bottom:14px">
+      <div class="head">{{ icon("info", 16) }}<h4>Walkthrough script pending</h4></div>
+      <p>Guided walkthroughs get their structured step checklist in a later update — for now,
+        write everything into the findings box below.</p>
+    </div>
+    {% endif %}
+    {% for field, label, kind in questionnaire %}
+    <div class="sb-field">
+      <label class="sb-label" for="{{ field }}">{{ label }}</label>
+      {% if kind == 'textarea' %}
+      <textarea class="sb-inp" id="{{ field }}" name="{{ field }}" rows="4" maxlength="5000"></textarea>
+      {% elif kind == 'severity' %}
+      <select class="sb-inp" id="{{ field }}" name="{{ field }}">
+        {% for s in severities %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+      </select>
+      {% else %}
+      <input class="sb-inp" id="{{ field }}" name="{{ field }}" maxlength="5000">
+      {% endif %}
+    </div>
+    {% endfor %}
+    <div class="sb-field">
+      <label class="sb-label" for="findings">Free-form findings</label>
+      <textarea class="sb-inp" id="findings" name="findings" rows="7" maxlength="5000" placeholder="Anything else — exact URLs, steps to reproduce, first impressions."></textarea>
+      <span class="sb-hint">Screenshot upload isn't wired yet (a later update) — describe what you saw,
+        or paste a link to an image host. Please don't include passwords or personal data.</span>
+    </div>
+    <button class="sb-btn sb-btn-primary" type="submit">Submit my report</button>
+    <p class="sb-hint" style="margin-top:8px">Submitting locks this claim for review — one report per claim.</p>
+  </form>
+
+  {% else %}
+  <div class="sb-lane-pending section-sm">
+    <div class="head">{{ icon("check", 16) }}<h4>Report received — in review</h4></div>
+    <p>Your report is stored and your claim is <strong>{{ claim.status }}</strong>.
+      Reviews are <strong>manual</strong> right now — the AI exit-review that will confirm your
+      steps automatically arrives in a later update, so this honestly takes as long as a human
+      takes. Approved work lands in the payout ledger and is paid via
+      PayPal{% if claim.paypal_email %} to <span class="sb-mono">{{ claim.paypal_email }}</span>{% endif %}.</p>
+    {% if submission %}
+    <span class="feed">submitted: {{ submission.created_at }}</span>
+    {% endif %}
+  </div>
+  {% if submission and submission.findings %}
+  <div class="section-sm">
+    <h3>Your findings, as stored</h3>
+    <p class="sb-mono" style="white-space:pre-wrap">{{ submission.findings }}</p>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

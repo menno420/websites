@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Testing owner queue — SuperBot{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> owner queue</span>
+    <div class="head-row"><h1>Tester program — review queue</h1></div>
+    <p class="sb-lead">Claims, submissions, and the payout ledger. Approve writes an OWED ledger
+      row; mark-paid records the manual PayPal send.</p>
+  </section>
+
+  <div class="sb-error section-sm" role="alert">
+    {{ icon("alert", 16) }}
+    <div>
+      <strong>⚠ Ephemeral storage — export before every redeploy.</strong>
+      All data below lives in SQLite at <span class="sb-mono">{{ db_path }}</span> on Railway's
+      ephemeral disk: <strong>a redeploy wipes it</strong>. This holds until the open
+      Postgres/DATABASE_URL owner ask lands.
+      <a href="/testing/owner/export.json">Download the full JSON export</a> — that file is the backup.
+    </div>
+  </div>
+
+  {% if banner %}
+  <div class="{{ 'sb-lane-pending' if banner.ok else 'sb-error' }} section-sm" role="status">
+    <div class="head">{{ icon("check" if banner.ok else "alert", 16) }}<h4>{{ 'Done' if banner.ok else 'Not done' }}</h4></div>
+    <p>{{ banner.text }}</p>
+  </div>
+  {% endif %}
+
+  <div class="section-sm">
+    <h3>Payout machinery — state</h3>
+    <div style="display:flex; gap:8px; flex-wrap:wrap">
+      <span class="sb-badge {{ 'sb-badge-warn' if payout_config.dry_run else '' }}">{{ 'DRY-RUN (v1: no real payment path exists)' if payout_config.dry_run else 'armed' }}</span>
+      <span class="sb-badge {{ '' if payout_config.autopay_enabled else 'sb-badge-warn' }}">kill switch: auto-pay {{ 'ON' if payout_config.autopay_enabled else 'OFF' }} ({{ payout_config.kill_switch_env }})</span>
+      <span class="sb-badge">provider: {{ payout_config.provider }} (owner-confirmed rail)</span>
+      <span class="sb-badge {{ '' if payout_config.adapter_configured else 'sb-badge-warn' }}">credentials ({{ payout_config.credential_env_names|join(' / ') }}): {{ 'set' if payout_config.adapter_configured else 'not set' }}</span>
+      <span class="sb-badge">caps: ${{ "%.0f"|format(payout_config.max_payout_usd) }}/payout · ${{ "%.0f"|format(payout_config.daily_cap_usd) }}/day · ${{ "%.0f"|format(payout_config.monthly_cap_usd) }}/month</span>
+      <span class="sb-badge">open bounty: ${{ "%.0f"|format(bounty.committed) }} / ${{ "%.0f"|format(bounty.cap) }}</span>
+    </div>
+    <p class="sb-hint" style="margin-top:8px">Auto-payout eligibility (AI review passed + not
+      first-time/flagged) always resolves to “queue for owner” in v1 — the AI exit-review lands
+      in PR2, the live PayPal Payouts call in PR3. Credential names only; values never appear here.</p>
+  </div>
+
+  <div class="section-sm">
+    <h3>Ledger — {{ "%.2f"|format(ledger_totals.owed) }} owed · {{ "%.2f"|format(ledger_totals.held) }} held · {{ "%.2f"|format(ledger_totals.paid) }} paid · {{ "%.2f"|format(ledger_totals['dry-run']) }} dry-run</h3>
+    {% if ledger %}
+    <table class="sb-table">
+      <thead><tr><th>#</th><th>claim</th><th>task</th><th>email</th><th>amount</th><th>state</th><th>note</th><th>at</th></tr></thead>
+      <tbody>
+      {% for e in ledger %}
+      <tr>
+        <td>{{ e.id }}</td><td>#{{ e.claim_id }}</td><td class="sb-mono">{{ e.task_id }}</td>
+        <td>{{ e.email }}</td><td>${{ "%.2f"|format(e.amount_usd) }}</td>
+        <td><span class="sb-badge {{ 'sb-badge-warn' if e.state != 'paid' else '' }}">{{ e.state }}</span></td>
+        <td class="sb-hint">{{ e.note }}</td><td class="sb-mono">{{ e.created_at }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="sb-hint">No ledger entries yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="section-sm">
+    <h3>Submissions ({{ submissions|length }})</h3>
+    {% if not submissions %}<p class="sb-hint">No submissions yet.</p>{% endif %}
+    {% for s in submissions %}
+    <div class="sb-card" style="margin-bottom:14px; padding:16px">
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+        <strong>submission #{{ s.id }}</strong>
+        <span class="sb-badge">claim #{{ s.claim_id }} · {{ s.claim_status }}</span>
+        <span class="sb-badge sb-mono">{{ s.task_id }}</span>
+        <span class="sb-badge">{{ s.name }} · {{ s.email }}</span>
+        {% if s.paypal_email %}<span class="sb-badge">PayPal: {{ s.paypal_email }}</span>{% endif %}
+        <span class="sb-mono sb-hint">{{ s.created_at }}</span>
+      </div>
+      {% for key, value in s.answers.items() %}
+      {% if value %}<p style="margin-top:8px"><strong>{{ key.replace('_', ' ') }}:</strong> {{ value }}</p>{% endif %}
+      {% endfor %}
+      {% if s.findings %}<p style="margin-top:8px"><strong>findings:</strong></p>
+      <p class="sb-mono" style="white-space:pre-wrap">{{ s.findings }}</p>{% endif %}
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px">
+        {% if s.claim_status == 'submitted' %}
+        <form method="post" action="/testing/owner/submissions/{{ s.id }}/approve">
+          <button class="sb-btn sb-btn-primary sb-btn-sm" type="submit">Approve → ledger OWED</button>
+        </form>
+        <form method="post" action="/testing/owner/submissions/{{ s.id }}/reject">
+          <button class="sb-btn sb-btn-ghost sb-btn-sm" type="submit">Reject (frees the slot)</button>
+        </form>
+        {% elif s.claim_status == 'approved' %}
+        <form method="post" action="/testing/owner/submissions/{{ s.id }}/mark-paid">
+          <button class="sb-btn sb-btn-primary sb-btn-sm" type="submit">Mark paid (manual PayPal send done)</button>
+        </form>
+        <form method="post" action="/testing/owner/submissions/{{ s.id }}/reject">
+          <button class="sb-btn sb-btn-ghost sb-btn-sm" type="submit">Reject instead</button>
+        </form>
+        {% else %}
+        <span class="sb-hint">no actions — claim is {{ s.claim_status }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="section-sm">
+    <h3>Claims ({{ claims|length }})</h3>
+    {% if claims %}
+    <table class="sb-table">
+      <thead><tr><th>#</th><th>task</th><th>name</th><th>email</th><th>PayPal</th><th>status</th><th>at</th></tr></thead>
+      <tbody>
+      {% for c in claims %}
+      <tr>
+        <td>{{ c.id }}</td><td class="sb-mono">{{ c.task_id }}</td><td>{{ c.name }}</td>
+        <td>{{ c.email }}</td><td>{{ c.paypal_email or '—' }}</td>
+        <td><span class="sb-badge">{{ c.status }}</span></td><td class="sb-mono">{{ c.created_at }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="sb-hint">No claims yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="section-sm">
+    <h3>Tasks — live slot state</h3>
+    <table class="sb-table">
+      <thead><tr><th>task</th><th>type</th><th>payout</th><th>slots left</th><th>status</th></tr></thead>
+      <tbody>
+      {% for t in tasks %}
+      <tr>
+        <td class="sb-mono">{{ t.id }}</td><td>{{ t.type }}</td><td>${{ t.payout_usd }}</td>
+        <td>{{ t.slots_left }}/{{ t.slots_total }}</td>
+        <td><span class="sb-badge {{ 'sb-badge-warn' if t.effective_status != 'open' else '' }}">{{ t.effective_status }}</span></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
