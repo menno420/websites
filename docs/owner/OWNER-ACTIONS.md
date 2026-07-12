@@ -124,6 +124,51 @@ UNBLOCKS: reliable live fleet surfaces on the control-plane; per the PAT side-no
 VERIFIED-NEEDED: wall recorded in `docs/CAPABILITIES.md` (2026-07-09: `GITHUB_TOKEN` unset/limited on the live service; anonymous rate-limit 403 captured) — the token is owner-held; no agent path exists.
 ```
 
+### ⚑ Asks added by ORDER 018 PR1 (2026-07-12 — tester program `/testing` on botsite)
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Set up PayPal Payouts — the payout rail you confirmed for the tester program (relayed live 2026-07-12) — and put its two credentials on the botsite service.
+WHERE: paypal.com (business account) → developer.paypal.com → Apps & Credentials; then railway.app → project superbot-websites → service botsite → Variables.
+HOW: (a) upgrade/create a PayPal BUSINESS account at paypal.com; (b) developer.paypal.com → Apps & Credentials → Live → Create App → copy the Client ID + Secret; (c) request/enable Payouts on that live app (PayPal gates Payouts approval on business accounts — this step can take days, start it early); (d) railway.app → superbot-websites → botsite → Variables → add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET with those values (names exactly as written; the values never go in the repo); (e) auto-pay STAYS OFF even then — it additionally requires TESTING_AUTOPAY_ENABLED=true, which you only set once PR3 ships the live call and you want it armed. Context for the record: a regular credit card can pay IN but cannot PUSH money OUT to testers — an outbound rail (PayPal Payouts / Stripe Connect / Wise / gift-card API) is structurally required, and PayPal Payouts is the confirmed choice.
+RISK: ↩️ reversible — delete the two variables to disarm; independently, the shipped v1 payout module is DRY-RUN-only (no provider HTTP call exists in the code) and the kill switch defaults OFF, so no money can move even with credentials present.
+WHY-IT-MATTERS: testers are promised real money ($10–20/task); until the rail is armed every payout is a manual PayPal send you do by hand from the owner queue's ledger.
+UNBLOCKS: PR3 wiring the real PayPal Payouts call behind the existing dry-run adapter, caps, and kill switch — the "automatic payout once steps are confirmed" flow you asked about.
+VERIFIED-NEEDED: PayPal business-account/app creation is owner-held (no agent credential exists), and Railway variable mutations are policy-walled for agents (docs/RAILWAY-SAFETY.md — same wall as the standing Postgres/GITHUB_TOKEN asks; deliberately not attempted).
+```
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Set SITE_PASSWORD on the botsite Railway service so the tester-program owner queue becomes reachable.
+WHERE: railway.app → project superbot-websites → service botsite → Variables → New Variable.
+HOW: name SITE_PASSWORD, value = a password only you know (same pattern as the control-plane owner area; any username works at the Basic-auth prompt). One paste, Save. The queue then lives at <botsite-url>/testing/owner.
+RISK: ↩️ reversible — change or delete the variable any time; while unset the queue fails closed (503) and the public /testing pages keep working.
+WHY-IT-MATTERS: every tester claim and submission waits in /testing/owner for your review — without the password the queue is deliberately unreachable (503, never an open door).
+UNBLOCKS: reviewing submissions, the approve/reject/mark-paid buttons, and the JSON export backup valve (the mitigation for tester data living in SQLite on the ephemeral disk).
+VERIFIED-NEEDED: Railway variable mutations are policy-walled for agents (docs/RAILWAY-SAFETY.md — deliberately not attempted; same wall as the asks above).
+```
+
+**Durable-storage side-note (extends the standing Postgres ask above — not a
+new ask):** the tester program's claims/submissions/payout-ledger live in
+SQLite on the botsite service's **ephemeral** disk — every redeploy wipes
+them (the owner queue banner + `/testing/owner/export.json` export valve are
+the shipped mitigations). The SAME one-paste `DATABASE_URL` errand in the
+existing "botsite submissions PostgreSQL" ask unblocks durable storage for
+BOTH `/submit` and `/testing` — one database, two payoffs.
+
+### ⚑ Ask added by ORDER 018 PR2 (2026-07-12 — AI exit-review on `/testing`) — **reported wired 2026-07-12, no owner click expected**
+
+```markdown
+⚑ OWNER-ACTION — reported RESOLVED 2026-07-12 (kept for the record; verify after merge, no click needed unless degraded)
+WHAT: ~~Set ANTHROPIC_API_KEY on the botsite Railway service so the tester program's AI exit-review runs.~~ Reported wired 2026-07-12: the coordinator session copied the key from the Railway "worker" service via the Railway API onto BOTH the botsite and review services (verified present by name; services auto-redeployed).
+WHERE: was: console.anthropic.com → API Keys; railway.app → superbot-websites → botsite → Variables. Now: nothing — the variable is reportedly already on botsite (and review).
+HOW: no action. Optional tuning knobs remain available (defaults are sensible): TESTING_AI_MODEL (default claude-haiku-4-5-20251001 — cheap grading), TESTING_AI_DAILY_CAP (default 50 calls/day), TESTING_AUTOPAY_MIN_SCORE (default 80).
+RISK: ↩️ reversible — delete the variable any time; while unset the program degrades honestly (submissions accepted exactly as before, pages say the review is manual) and no call is ever made. Spend is bounded even with the key set: ~1500 max output tokens/call, 50 calls/day default, 4 calls/submission, one retry max.
+WHY-IT-MATTERS: with the key present each tester submission arrives in the owner queue pre-graded (0–100 score, low-effort flag, findings by severity, follow-up Q&A) and the auto-pay gate computes real eligibility for PR3.
+UNBLOCKS: the AI exit-review shipping in ORDER 018 PR2 goes live on merge with no owner errand; the same integration pattern is the template for ORDER 017's review-site assistant.
+VERIFIED-NEEDED: the wiring report is relayed from the coordinator session and is NOT independently verifiable from this repo (no agent credential here can read Railway variables — docs/RAILWAY-SAFETY.md still walls agent-initiated Railway reads/mutations from repo sessions). Verify after #176/#179 merge via the owner queue's AI-state panel at <botsite-url>/testing/owner (it shows whether the key is present at runtime). Only if that panel shows degraded does the original one-paste ask above come back into force.
+```
+
 ## 🟢 Decided / resolved
 
 | # | Item | Decision | Provenance |
@@ -133,6 +178,7 @@ VERIFIED-NEEDED: wall recorded in `docs/CAPABILITIES.md` (2026-07-09: `GITHUB_TO
 | C | **superbot kickoff doc (was PR #1876) → README link** | **Resolved** — the doc is merged on superbot `main`; the README link now returns HTTP 200 (verified 2026-07-09). Was a 404 while the PR was unmerged. | `README.md` → `superbot/docs/planning/websites-project-kickoff-2026-07-09.md`. |
 | D | **Leaky born-red session gate** (PR #19 auto-merged empty on an `in-progress` card) | **Resolved — no owner action** — adopted upstream kit **v1.0.0** `bootstrap.py` (fails born-red cards under `--strict`) + folded diff-aware `--session-log` into the `quality` gate. Both directions proven + regression-tested. Upstream substrate-kit repo fix handled by a **separate** session. | Decision stamped in `docs/decisions.md` (born-red-gate entry); `.github/workflows/quality.yml`; `tests/test_born_red_session_gate.py`. |
 | E | **Lane wake routine** (was Open row 7 — external owner-armed trigger) | **Self-armed and CONFIRMED working — no owner click needed.** Fleet ORDER 008 (2026-07-10) verified sessions can create routines; this lane armed trigger `trig_017H9Qb9oxtLgUy6sw2gnSHg` (cron `0 */4 * * *`, fresh-session-per-fire, prompt = the standing inbox ritual). First fire confirmed 2026-07-10T16:01:32Z (`list_triggers` `last_fired_at`; this session is that fire) — the conditional fallback ask has been withdrawn. | `control/inbox.md` ORDER 008; claim PR #56; `docs/CAPABILITIES.md` append log 2026-07-10; `.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`; `control/status.md`. |
+| F | **Tester payout rail (ORDER 018)** | **PayPal Payouts confirmed** as the v1 rail — no longer a decision ask; only the setup remains (the ⚑ ask above). Dry-run payout module + kill switch + caps shipped in ORDER 018 PR1. | Owner live via the coordinator session, relayed 2026-07-12; `.sessions/2026-07-12-order-018-testing-platform-pr1.md`. |
 
 ## How to use this doc
 

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Task claimed — SuperBot testing program{% endblock %}
+
+{% block content %}
+<div class="wrap" style="max-width:var(--sb-wrap-narrow)">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> claimed</span>
+    <div class="head-row"><h1>You claimed “{{ task.title }}”</h1></div>
+    <p class="sb-lead">The task is yours, {{ claim.name }}. Do the brief, then file your report
+      on your private submission link below.</p>
+  </section>
+
+  <div class="sb-error section-sm" role="alert">
+    {{ icon("alert", 16) }}
+    <div>
+      <strong>Save this link now — it is shown only once and no email is sent.</strong>
+      This site has no mail provider yet, so this page is the only copy of your private
+      submission link. Bookmark it or copy it somewhere safe:
+      <p style="margin-top:10px"><a class="sb-mono" href="{{ submission_path }}">{{ submission_path }}</a></p>
+    </div>
+  </div>
+
+  <div class="section-sm">
+    <h3>What happens next</h3>
+    <p>1. Follow the brief on the task page (also linked from your submission page).</p>
+    <p>2. File your report on your private link — a short questionnaire plus free-form findings.</p>
+    <p>3. Your submission is reviewed <strong>manually</strong> (an AI-assisted exit review is a
+      planned later update). Approved work is recorded in the payout ledger and paid
+      via <strong>PayPal</strong>{% if claim.paypal_email %} to <span class="sb-mono">{{ claim.paypal_email }}</span>{% endif %}.</p>
+    <a class="sb-btn sb-btn-primary sb-btn-sm" href="{{ submission_path }}">Go to my submission page {{ icon("arrow", 15) }}</a>
+  </div>
+</div>
+{% endblock %}
