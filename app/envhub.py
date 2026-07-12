@@ -640,6 +640,77 @@ def group_summary(
     return stub["completeness"]
 
 
+async def board_rollup(refresh: bool = False) -> dict[str, Any]:
+    """Board-facing rollup of the groups' environment completeness (the #219
+    session's captured idea, promoted): :func:`group_summary` across ALL
+    registry groups reduced to the one "environments: …" chip on the /owner
+    readiness board — the owner's habit path — same promotion ladder as the
+    /fleet coverage rollup (#217). Fed by the SAME TTL-cached
+    ``railway.live_overview`` read the environments-hub makes (zero new
+    network surface, zero new routes). Never raises.
+
+    Returns::
+
+        {"state": "ok" | "unknown",
+         "reason": why the rollup could not run (unknown only),
+         "groups": registry groups considered,
+         "complete": groups with every expected variable set live,
+         "complete_names": [their ids, registry order],
+         "incomplete": groups with at least one expected variable not set,
+         "incomplete_names": [their ids, registry order],
+         "unknown": groups whose live truth is not knowable,
+         "unknown_names": [their ids, registry order]}
+
+    Honesty ladder (all inherited from ``group_summary`` →
+    ``annotate_completeness``, one ladder, zero forked semantics): a broken
+    or empty registry, an unset RAILWAY_TOKEN, or a failed live read is
+    ``unknown`` WITH the exact reason — never a fabricated green or
+    "incomplete: 0". Under an ok read, a group outside the project-scoped
+    token's scope (only ``superbot-websites`` is readable —
+    docs/RAILWAY-SAFETY.md) counts as ``unknown``, never as complete OR
+    incomplete, and green means strictly complete (``set_count == total``,
+    the #219 chip rule). NAMES ONLY: group ids and counts — the live
+    values were dropped at the client boundary and do not exist here.
+    """
+    out: dict[str, Any] = {
+        "state": "unknown",
+        "reason": "",
+        "groups": 0,
+        "complete": 0,
+        "complete_names": [],
+        "incomplete": 0,
+        "incomplete_names": [],
+        "unknown": 0,
+        "unknown_names": [],
+    }
+    try:
+        registry = load_registry()
+    except (OSError, ValueError) as exc:
+        out["reason"] = f"environments registry unreadable: {exc}"
+        return out
+    out["groups"] = len(registry["groups"])
+    live = await railway.live_overview(refresh=refresh)
+    if live.get("state") != "ok":
+        out["reason"] = (
+            live.get("reason")
+            or f"live Railway read state: {live.get('state', '?')}"
+        )
+        return out
+    out["state"] = "ok"
+    for group in registry["groups"]:
+        cs = group_summary(group, live)
+        if not cs["comparable"]:
+            out["unknown"] += 1
+            out["unknown_names"].append(group["id"])
+        elif cs["set_count"] == cs["total"]:
+            out["complete"] += 1
+            out["complete_names"].append(group["id"])
+        else:
+            out["incomplete"] += 1
+            out["incomplete_names"].append(group["id"])
+    return out
+
+
 # ORDER 019 reuse: each project group is a separately reviewable filter; the
 # kind dimension cuts across groups (e.g. all railway-services at once).
 FILTER_SPEC = listfilter.ListSpec(

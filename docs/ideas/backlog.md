@@ -52,6 +52,28 @@
   is a different page and data source). Source:
   `.sessions/2026-07-12-envhub-completeness-diff.md` 💡.
 
+- **Environments-completeness rollup chip on the /owner board** · `built`
+  (2026-07-12, PR #223 — `envhub.board_rollup` runs the UNCHANGED PR #219
+  `group_summary` across ALL registry groups and reduces it to ONE chip on
+  the gated /owner readiness board, fed by the SAME cached
+  `railway.live_overview` read the environments-hub makes, zero new
+  network surface, zero new routes: green "environments: all complete"
+  when every readable group is strictly complete (out-of-scope groups
+  counted honestly as `+M unknown`, never assumed), amber "environments:
+  N groups incomplete" with the groups NAMED + the hub deep link, honest
+  "live status unknown" WITH the exact reason (token unset / read failed /
+  broken registry) — never a fabricated green or 0/Y) — original capture
+  (recorded on the #219 card but never appended here; backfilled by the
+  building session): the group completeness summary exists as a cheap pure
+  function (`envhub.group_summary`) over the cached live read, but it only
+  renders on the hub index; the /owner readiness board — the owner's
+  actual habit path — says nothing about unfinished environments; one chip
+  there repeats the promotion ladder that paid off twice (#213's /prompts
+  drift chip → #217's /fleet coverage rollup). Worth having because the
+  hub is a click the owner must remember to make, while the board is where
+  he already looks every session. Source:
+  `.sessions/2026-07-12-envhub-group-chips.md` 💡.
+
 - **/owner/environments drift check: documented vs live variable names** ·
   `built` (2026-07-12, PR #218 — `app/envdrift.py` `annotate()` diffs the
   committed `railway.SERVICES` names against the slice-1 live NAME read per
@@ -777,3 +799,19 @@
   `railway.SERVICES` vs the envhub registry (that bullet covers env-var
   NAMES, not hosts — deduped against it, this backlog, and the queue-state
   NEXT list). Source: `.sessions/2026-07-12-tester-task-url-guard.md` 💡.
+
+- **Environments rollup in the authed /owner readiness JSON** · `captured`
+  (2026-07-12, owner-board env-chip session 💡) — the board chip's rollup
+  (`envhub.board_rollup`, PR #223) renders on the `/owner` HTML only;
+  `/owner/api/readiness.json` (the authed machine view of the same board)
+  does not carry it, so a script or agent wanting the "N groups
+  incomplete" signal must scrape HTML. Attach the same rollup dict to that
+  JSON — the exact #217 precedent, where `/fleet.json` carries the
+  coverage rollup with its key set pinned in
+  `tests/test_fleet_json_contract.py`. Worth having because the board chip
+  only helps while the owner is looking; the JSON makes the same honesty
+  ladder consumable by the machinery (scheduled healthcheck, fleet-manager
+  sessions) that watches when he is not. Deduped against this backlog +
+  the queue-state NEXT list: nothing touches the owner JSON contract or a
+  machine-readable environments rollup. Source:
+  `.sessions/2026-07-12-owner-readiness-env-chip.md` 💡.
