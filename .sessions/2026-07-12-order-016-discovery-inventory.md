@@ -1,8 +1,8 @@
 # 2026-07-12 — ORDER 016 cross-repo website-plans discovery inventory
 
-> **Status:** `in-progress` — PR branch `claude/order-016-discovery-inventory`,
-> opened READY; this card is born-red by design and flips to complete last,
-> after the inventory lands and is verified.
+> **Status:** `complete` — PR branch `claude/order-016-discovery-inventory`,
+> opened READY; this card was born-red by design and flipped complete last,
+> after the inventory landed and was verified.
 
 - **📊 Model:** Claude (frontier family) · build worker · order
 
