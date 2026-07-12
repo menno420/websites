@@ -50,6 +50,7 @@ NAV = [
     ("fleet", "Fleet", "/fleet"),
     ("reviews", "Reviews", "/reviews"),
     ("questionnaire", "Q&A", "/questionnaire"),
+    ("ask", "Ask AI", "/ask"),
     ("successes", "Successes", "/successes"),
     ("problems", "Problems", "/problems"),
 ]
@@ -126,11 +127,19 @@ async def story_json() -> JSONResponse:
 # ---------------------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def overview(request: Request):
+    """ORDER 017 C: the 30-second front door — what-this-is, the key-stats
+    row (snapshot + fleet mirror, never literals), the five start-here
+    findings, the AI panel, the site map, and the evidence links."""
     ctx = _base_ctx(request, "overview")
+    fl = fleetdata.load_fleet()
+    fleet_data = fl["data"] if fl["ok"] else {}
+    seats_count = len(fleet_data.get("seats") or []) or None
     ctx.update(
         {
-            "stats": story.overview_stats(ctx["snapshot"]),
-            "services": story.SERVICES,
+            "stats": story.homepage_stats(ctx["snapshot"], fleet_data),
+            "start_here": story.START_HERE,
+            "site_map": story.site_map(seats_count),
+            "evidence_links": story.EVIDENCE_LINKS,
             "days": ctx["snapshot"].get("days", []) if ctx["snap_ok"] else [],
         }
     )
@@ -275,7 +284,7 @@ async def questionnaire(request: Request):
 async def ask(request: Request):
     """The AI assistant page (ORDER 017 B): Ask/Review widget + the seeded
     evidence-backed answers, honest about the degraded no-key state."""
-    ctx = _base_ctx(request, "questionnaire")
+    ctx = _base_ctx(request, "ask")
     ctx.update(ai.page_context())
     return templates.TemplateResponse(request, "ask.html", ctx)
 

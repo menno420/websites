@@ -18,7 +18,7 @@
   <div class="sb-wrap">
     <div class="sb-stack">
       {% for item in items %}
-      <article class="sb-card rv-story-card">
+      <article class="sb-card rv-story-card"{% if item.id %} id="{{ item.id }}"{% endif %}>
         <h2>{{ item.title }}</h2>
         <p>{{ item.what }}</p>
         {% if item.details %}

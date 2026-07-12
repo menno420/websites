@@ -180,3 +180,22 @@
 .rv-qa h2 { font-size: var(--sb-text-xl); }
 .rv-qa p { color: var(--sb-ink-2); line-height: 1.65; }
 .rv-evidence { font-size: var(--sb-text-sm); }
+
+/* homepage (ORDER 017 C) — the 30-second front door */
+.rv-home-stats { padding-top: var(--sb-s-6); }
+.rv-start-card h3 { font-size: var(--sb-text-lg); }
+.rv-start-card > p { font-size: var(--sb-text-sm); line-height: 1.6; }
+.rv-start-card .rv-evidence { margin: var(--sb-s-3) 0 0; }
+.rv-ai-panel {
+  border-color: color-mix(in srgb, var(--sb-brand-hi) 45%, var(--sb-line));
+  box-shadow: var(--sb-glow-soft);
+}
+.rv-ai-panel h2 { margin: var(--sb-s-1) 0 var(--sb-s-2); }
+.rv-ai-panel > p { color: var(--sb-ink-2); line-height: 1.6; }
+.rv-ai-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-s-3);
+  margin: var(--sb-s-4) 0 var(--sb-s-2);
+}
+.rv-map li { margin-bottom: var(--sb-s-1); }

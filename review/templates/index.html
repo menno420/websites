@@ -2,69 +2,52 @@
 {% block content %}
 <section class="sb-page-hero">
   <div class="sb-wrap-narrow">
-    <p class="sb-ey">For Anthropic reviewers</p>
-    <h1>One human directs. Claude agents build, verify, and coordinate — through git alone.</h1>
+    <p class="sb-ey">For the Anthropic Claude Code team</p>
+    <h1>The public, evidence-backed review of running Claude Code Projects as an autonomous software fleet.</h1>
     <p class="sb-lead">
-      This site is the program reviewing itself. The owner designs and directs by conversation;
-      he does not code. Everything in this repo — four deployed services, the CI gates, the tests,
-      the coordination protocol, and this review site — was built by Claude agent sessions,
-      cross-checked by other agent sessions, starting from an empty repo on 2026-07-09. The pages here explain
-      <a href="/process">how that works</a>, <a href="/growth">how fast it grew</a>,
-      <a href="/successes">what went right</a>, and — first-class, not a footnote —
-      <a href="/problems">what went wrong</a>.
+      One human directs; Claude agents build, verify, and coordinate — through git alone.
+      This site is the program reviewing itself for the Claude Code team, and every claim on it
+      links to a public commit. It pairs with the July&nbsp;8 and July&nbsp;12 emails: the findings
+      those emails report are the cards below, each with its evidence.
     </p>
   </div>
 </section>
 
 {% if stats %}
-<section class="sb-section">
+<section class="sb-section rv-home-stats">
   <div class="sb-wrap">
-    <div class="sb-statrow sb-statrow-4">
+    <div class="sb-statrow">
       {% for s in stats %}
       <div class="sb-stat">
-        <div class="rv-stat-value">{{ "{:,}".format(s.value) }}</div>
+        <div class="rv-stat-value">{% if s.value is number %}{{ "{:,}".format(s.value) }}{% else %}{{ s.value }}{% endif %}</div>
         <div class="sb-label">{{ s.label }}</div>
         <div class="sb-muted rv-stat-sub">{{ s.sub }}</div>
       </div>
       {% endfor %}
     </div>
     <p class="sb-chart-note sb-muted">
-      Counted from the repo's own committed record ({{ days|length }} days,
-      {{ days[0].date if days else "" }} → {{ days[-1].date if days else "" }}{% if days and days[-1].get("partial") %}, last day still in progress at snapshot time{% endif %}){% if generated_at %} — as of {{ generated_at }}{% endif %}.
+      Counted from the committed record, never typed in{% if generated_at %} — snapshot as of {{ generated_at }}{% endif %}{% if fleet_generated_at %}, fleet mirror as of {{ fleet_generated_at }}{% endif %}{% if git_head %} (<a href="{{ repo_url }}/commit/{{ git_head }}" target="_blank" rel="noopener" class="sb-mono">{{ git_head[:8] }}</a>){% endif %}.
     </p>
   </div>
 </section>
 {% endif %}
 
 <section class="sb-section">
-  <div class="sb-wrap-narrow">
-    <h2>The shape of the program, in one paragraph</h2>
-    <p>
-      A fleet of Claude Projects ("lanes"), one per repo, coordinated by a manager lane — with
-      <strong>committed git files as the only channel between them</strong>: orders arrive in
-      <code>control/inbox.md</code>, state goes out in <code>control/status.md</code>, and one
-      writer per file makes the whole thing conflict-free. Every working session logs itself in a
-      committed card that CI holds red until the session finishes its write-up. Merging to
-      <code>main</code> is the deploy, so a required quality gate — workflow checker plus every
-      service's test suite — stands in front of every merge. Sessions are amnesiac by nature, so
-      anything worth knowing is written down: verified capabilities and walls (with exact error
-      text), decisions, ideas, retrospectives. The result is a program whose entire operating
-      history is inspectable — which is what this site renders.
-    </p>
-  </div>
-</section>
-
-<section class="sb-section">
   <div class="sb-wrap">
-    <div class="sb-sec-head"><h2>What this repo ships</h2></div>
-    <div class="sb-grid-2">
-      {% for svc in services %}
-      <div class="sb-card">
-        <h3 class="sb-mono">{{ svc.name }} <span class="sb-muted">({{ svc.dir }})</span></h3>
-        <p>{{ svc.desc }}</p>
-        {% if svc.url %}<p><a href="{{ svc.url }}" target="_blank" rel="noopener">{{ svc.url }}</a></p>
-        {% else %}<p class="sb-muted">Deployment queued as an owner action — this service, reviewing the others.</p>{% endif %}
-      </div>
+    <div class="sb-sec-head">
+      <h2>Start here — five findings worth your first five minutes</h2>
+    </div>
+    <div class="sb-grid-3 rv-start-grid">
+      {% for card in start_here %}
+      <article class="sb-card rv-start-card" id="start-{{ card.id }}">
+        <h3>{{ card.title }}</h3>
+        <p>{{ card.text }}</p>
+        <p class="rv-evidence">
+          {% for label, url in card.links %}
+          <a href="{{ url }}"{% if url.startswith("http") %} target="_blank" rel="noopener"{% endif %}>{{ label }}</a>{% if not loop.last %} · {% endif %}
+          {% endfor %}
+        </p>
+      </article>
       {% endfor %}
     </div>
   </div>
@@ -72,21 +55,52 @@
 
 <section class="sb-section">
   <div class="sb-wrap-narrow">
-    <h2>How to read this site</h2>
-    <ul class="sb-bullets">
-      <li><strong><a href="/process">Process</a></strong> — the substrate workflow: the orders bus, born-red session cards, the landing path a change walks from wake to verified deploy, and a glossary for the jargon.</li>
-      <li><strong><a href="/growth">Growth</a></strong> — per-day charts (PR merges, agent sessions, test count) derived from git history, with the milestone timeline under them.</li>
-      <li><strong><a href="/successes">Successes</a></strong> — what worked, each with links into the committed evidence.</li>
-      <li><strong><a href="/problems">Problems</a></strong> — what failed or nearly failed, what it cost, and what changed. Written with the same specificity as the successes, on purpose.</li>
-      <li><strong><a href="/fleet">Fleet</a></strong> — every seat in the manager's registry, per-repo: heartbeat freshness, orders done, kit version, activity — with unreadable gaps labeled, never filled in.</li>
-      <li><strong><a href="/reviews">Reviews</a></strong> — dated review editions, published continuously by agent sessions and subscribable as an <a href="/reviews/feed.xml">Atom feed</a>.</li>
-      <li><strong><a href="/questionnaire">Q&amp;A</a></strong> — the questions a reviewer would ask, answered from repo evidence with citations; the <a href="/questions">questions ledger</a> tracks real questions asked and where each answer landed.</li>
+    <div class="sb-card rv-ai-panel">
+      <p class="sb-ey">Interactive</p>
+      <h2>Ask the project / Review with an AI</h2>
+      <p>
+        Talk to the record: a live, evidence-grounded assistant answers free-form questions
+        about this program, or produces a one-click structured review (strong / weak-or-risky /
+        what to verify / suggested probes) in the same honest register as the emails. Answers
+        draw only from the committed evidence corpus and cite their commits — what isn't in the
+        evidence gets an honest "that's not in the evidence", never an invention.
+      </p>
+      <p class="rv-ai-panel-actions">
+        <a class="sb-btn sb-btn-primary" href="/ask">Ask the project</a>
+        <a class="sb-btn sb-btn-ghost" href="/ask">Run a structured review</a>
+      </p>
+      <p class="sb-muted rv-stat-sub">
+        Server-side only — no key ever reaches the browser. Seeded answers to the common
+        questions work instantly even while the live model is degraded.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <h2>How this site is organized</h2>
+    <ul class="sb-bullets rv-map">
+      {% for label, href, line in site_map %}
+      <li><strong><a href="{{ href }}">{{ label }}</a></strong> — {{ line }}</li>
+      {% endfor %}
     </ul>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <h2>The evidence itself</h2>
+    <p>
+      The repos are the record — this site only renders it. Verify anything here at the source:
+      {% for label, url in evidence_links %}
+      <a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a>{% if not loop.last %} · {% endif %}{% endfor %}.
+    </p>
     <p class="sb-muted">
-      A note on honesty: this program's own retro doctrine is that a review hiding failures is
-      worthless. This site was built by the same kind of agent session it describes, and its
-      numbers come from a committed snapshot of the real history — see the footer for the exact
-      commit, or fetch <a href="/story.json"><code>/story.json</code></a>.
+      This site pairs with the July 8 and July 12 emails to the Claude Code team — the July 12
+      email links here twice, and its findings are the "Start here" cards above. Numbers come
+      from the committed snapshot (see the footer for the exact commit, or fetch
+      <a href="/story.json"><code>/story.json</code></a>); where data is missing the pages say so.
     </p>
   </div>
 </section>

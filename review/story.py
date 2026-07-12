@@ -225,6 +225,7 @@ _SWEEP_8SEAT = "https://github.com/menno420/fleet-manager/blob/4111da44ae218bb37
 
 PROBLEMS: list[dict[str, Any]] = [
     {
+        "id": "incident-2026-07-12",
         "title": "2026-07-12: the platform's trigger scheduler silently degraded — the fleet's dead-man failsafes brought it back",
         "what": (
             "Between ~02:30Z and ~08:00Z on 2026-07-12, the scheduler behind the fleet's "
@@ -431,6 +432,161 @@ STAT_TILES: list[tuple[str, str, str]] = [
     ("session_cards", "agent sessions on record", "one committed card per session"),
     ("test_functions", "test functions", "grown from zero, all green at HEAD"),
     ("services", "live services in this repo", "independently deployed from one main"),
+]
+
+
+# ---------------------------------------------------------------------------
+# Homepage (ORDER 017 C) — the 30-second front door. Every NUMBER on the
+# homepage comes from the committed data files (snapshot + fleet mirror),
+# never a template literal; the curated narrative below carries its
+# commit-pinned evidence like every other narrative block in this module.
+# ---------------------------------------------------------------------------
+
+# The 2026-07-11 figure set (the model-mismatch screenshots live here).
+_FIGS_0711 = f"{_SB}/e3eb0eb2bf3683794dd0d8c40bbf3988832c31ea/docs/eap/screenshots-2026-07-11/index.md"
+
+# "Start here" — the five findings a busy reviewer should read first, one
+# line each. Phrasing follows the sent July 12 email (commit-pinned below);
+# the first link on each card is the deep link, the rest are evidence.
+START_HERE: list[dict[str, Any]] = [
+    {
+        "id": "merge-permission",
+        "title": "The merge-permission root cause was partly ours",
+        "text": (
+            "Three sessions were denied merging a PR metadata-identical to ten "
+            "agent-merged ones around it. The email's diagnosis: the classifier was "
+            "tracking the session, not the PR — and the fleet's own shared "
+            "instructions coached every seat to trip it. One instruction fix "
+            "propagated to all lanes."
+        ),
+        "links": [
+            ("the finding, commit-pinned (July 12 email)", _EMAIL2_DRAFT),
+            ("how merges are gated here", "/questionnaire#gates"),
+        ],
+    },
+    {
+        "id": "model-mismatch",
+        "title": "The Routine said Opus 4.8; the session said Sonnet 5",
+        "text": (
+            "A Routine configured for one model woke a session that reported "
+            "running another — config Opus 4.8, session self-reporting Sonnet 5. "
+            "With the recorded 07-12 fairness update: newly created Routines now "
+            "display the running model correctly."
+        ),
+        "links": [
+            ("the finding (July 12 email)", _EMAIL2_DRAFT),
+            ("figs 15a–15c, commit-pinned", _FIGS_0711),
+        ],
+    },
+    {
+        "id": "two-vantage",
+        "title": "One tool call, two truths",
+        "text": (
+            "In auto mode, the identical tool call can raise a Deny/Allow prompt "
+            "on the operator's screen while returning a clean success to the agent "
+            "— the two-vantage permission split, and why 'nothing tells a session "
+            "what it is allowed to do except trying and reading the refusal'."
+        ),
+        "links": [
+            ("the finding (July 12 email)", _EMAIL2_DRAFT),
+        ],
+    },
+    {
+        "id": "scheduler-incident",
+        "title": "2026-07-12: the scheduler degraded; the failsafes held",
+        "text": (
+            "The platform's trigger scheduler silently dropped and froze self-wake "
+            "firings for roughly five and a half hours — no error, no retry. Every "
+            "seat whose dead-man cron stayed alive self-revived; the full incident "
+            "record leads the Problems page."
+        ),
+        "links": [
+            ("the incident on this site", "/problems#incident-2026-07-12"),
+            ("the incident record, commit-pinned", _NIGHT_REVIEW_0712),
+        ],
+    },
+    {
+        "id": "earned-trust",
+        "title": "What earned trust: shared memory + durable state",
+        "text": (
+            "The standouts, per the email: shared memory across the fleet's repos "
+            "('the cold-start tax is gone') and durable state that outlives any "
+            "session — any single agent is replaceable because the record lives in "
+            "git, not in a chat."
+        ),
+        "links": [
+            ("how knowledge survives, on this site", "/questionnaire#memory"),
+            ("the 'what earned trust' section (July 12 email)", _EMAIL2_DRAFT),
+        ],
+    },
+]
+
+# Generations — the program's own committed narrative (the July 12 email @
+# 8558179 tells the arc: gen-1's one-day scale test → gen-2's overnight
+# relaunch → gen-3, the standing program). A TEXT tile, deliberately: there
+# is no machine-counted generations metric in the data files, so the tile
+# renders the era's name rather than inventing a number.
+GENERATIONS_TILE: dict[str, Any] = {
+    "key": "generations",
+    "value": "gen-3",
+    "label": "generation now running",
+    "sub": "1-day scale test → overnight relaunch → the standing program",
+}
+
+
+def homepage_stats(
+    snapshot_data: dict[str, Any], fleet_data: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """The homepage key-stats row: the snapshot tiles (``overview_stats``),
+    a seats tile counted from the committed fleet mirror (peak from its own
+    ``consolidation`` block — never a template literal), and the generations
+    text tile. Missing data means a missing tile, never a guessed one."""
+    tiles = overview_stats(snapshot_data)
+    seats = (fleet_data or {}).get("seats") or []
+    if seats:
+        peak = ((fleet_data or {}).get("consolidation") or {}).get("peak") or ""
+        tiles.append(
+            {
+                "key": "seats",
+                "value": len(seats),
+                "label": "standing fleet seats",
+                "sub": (
+                    f"peaked {peak} Projects → {len(seats)} standing"
+                    if peak
+                    else "from the committed fleet mirror"
+                ),
+            }
+        )
+    tiles.append(dict(GENERATIONS_TILE))
+    return tiles
+
+
+def site_map(seats_count: int | None = None) -> list[tuple[str, str, str]]:
+    """The "how this site is organized" map — one honest line per section.
+    The fleet line carries the seat count only when the committed mirror
+    actually provides one."""
+    fleet_line = (
+        f"the {seats_count} standing seats, their heartbeats, and the consolidation story"
+        if seats_count
+        else "the standing seats, their heartbeats, and the consolidation story"
+    )
+    return [
+        ("Overview", "/", "the story in brief — this page"),
+        ("Process", "/process", "how the human + agent workflow works, wake to verified deploy"),
+        ("Growth", "/growth", "the metrics over time, derived from git history"),
+        ("Fleet", "/fleet", fleet_line),
+        ("Reviews", "/reviews", "dated review editions, subscribable as an Atom feed"),
+        ("Q&A", "/questionnaire", "evidence-backed answers — plus the live AI assistant on /ask"),
+        ("Successes", "/successes", "what went right, each win linked to commits"),
+        ("Problems", "/problems", "what failed and what it cost — including the 07-12 incident"),
+    ]
+
+
+# The homepage's "evidence itself" links — the same entry points the sent
+# email names, at stable public locations.
+EVIDENCE_LINKS: list[tuple[str, str]] = [
+    ("the fleet's review record: superbot docs/eap", "https://github.com/menno420/superbot/tree/main/docs/eap"),
+    ("this repo — every PR, card, and gate", REPO_URL),
 ]
 
 
