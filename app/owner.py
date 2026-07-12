@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from . import config, github, railway, readiness
+from . import config, github, owner_assist, owner_queue, railway, readiness, writeback
 
 router = APIRouter(prefix="/owner")
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -221,6 +221,167 @@ async def _render_with_banner(request: Request, banner: dict) -> HTMLResponse:
             "banner": banner,
             "repos": list(config.REPOS),
         },
+    )
+
+
+# ---------------------------------------------------------------------------
+# ORDER 020 — owner writeback console (/owner/queue).
+#
+# The PUBLIC /queue stays read-only for anonymous visitors; this gated twin
+# adds the write half: per owner-action MARK COMPLETE / REQUEST ASSISTANCE /
+# ADD NOTE-CORRECTION-IDEA forms (server-rendered, no JS), the AI drafting
+# assist (draft only — the owner approves before anything is stored), and
+# the local audit log with retry. Every state change goes through
+# require_owner_action (auth → same-origin → rate limit), exactly like the
+# ORDER 013 actions above.
+# ---------------------------------------------------------------------------
+
+
+async def _render_owner_queue(
+    request: Request,
+    banner: dict | None = None,
+    draft: dict | None = None,
+) -> HTMLResponse:
+    data = await owner_queue.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request,
+        "owner_queue.html",
+        {
+            "q": data,
+            "entries": writeback.list_entries(),
+            "wb": writeback.state_summary(),
+            "assist": owner_assist.state_summary(),
+            "banner": banner,
+            "draft": draft,
+        },
+    )
+
+
+@router.get("/queue", response_class=HTMLResponse)
+async def owner_queue_console(
+    request: Request, _: None = Depends(require_owner)
+):
+    return await _render_owner_queue(request)
+
+
+def _entry_banner(entry: dict) -> dict:
+    """One honest line per submission outcome — a SHA link only for a
+    commit that verifiably landed; the exact error class otherwise."""
+    if entry["status"] == "committed":
+        return {
+            "ok": True,
+            "text": (
+                f"{entry['action']} committed to {entry['path']} — "
+                f"commit {entry['commit_sha'][:8]}"
+            ),
+            "url": entry["commit_url"],
+        }
+    return {
+        "ok": False,
+        "text": (
+            f"{entry['action']} stored locally as entry #{entry['id']} "
+            f"({entry['status']}) — {entry['error']}"
+        ),
+    }
+
+
+async def _handle_writeback(request: Request, action: str, target: str, text: str):
+    try:
+        entry = await writeback.submit(action, target, text)
+    except ValueError as exc:
+        return await _render_owner_queue(
+            request, banner={"ok": False, "text": f"rejected: {exc}"}
+        )
+    return await _render_owner_queue(request, banner=_entry_banner(entry))
+
+
+@router.post("/queue/actions/complete", response_class=HTMLResponse)
+async def action_queue_complete(
+    request: Request,
+    target: str = Form(...),
+    text: str = Form(""),
+    _: None = Depends(require_owner_action),
+):
+    return await _handle_writeback(request, "complete", target, text)
+
+
+@router.post("/queue/actions/assist", response_class=HTMLResponse)
+async def action_queue_assist(
+    request: Request,
+    target: str = Form(""),
+    text: str = Form(""),
+    _: None = Depends(require_owner_action),
+):
+    return await _handle_writeback(request, "assist", target, text)
+
+
+@router.post("/queue/actions/note", response_class=HTMLResponse)
+async def action_queue_note(
+    request: Request,
+    target: str = Form(""),
+    text: str = Form(""),
+    _: None = Depends(require_owner_action),
+):
+    return await _handle_writeback(request, "note", target, text)
+
+
+@router.post("/queue/actions/retry", response_class=HTMLResponse)
+async def action_queue_retry(
+    request: Request,
+    entry_id: int = Form(...),
+    _: None = Depends(require_owner_action),
+):
+    entry = writeback.get_entry(entry_id)
+    if entry is None:
+        return await _render_owner_queue(
+            request,
+            banner={"ok": False, "text": f"unknown writeback entry #{entry_id}"},
+        )
+    entry = await writeback.attempt_commit(entry_id)
+    return await _render_owner_queue(request, banner=_entry_banner(entry))
+
+
+@router.post("/queue/actions/draft", response_class=HTMLResponse)
+async def action_queue_draft(
+    request: Request,
+    action: str = Form(...),
+    target: str = Form(""),
+    text: str = Form(""),
+    _: None = Depends(require_owner_action),
+):
+    """AI drafting assist: returns the page with a pre-filled, editable
+    draft form. NOTHING is stored or committed here — the AI never writes
+    back; only the owner's explicit submit on the draft form does."""
+    target = target.strip()[: writeback.TARGET_MAX_CHARS]
+    text = text.strip()[: writeback.TEXT_MAX_CHARS]
+    if action not in writeback.ACTIONS:
+        return await _render_owner_queue(
+            request, banner={"ok": False, "text": f"unknown action {action!r}"}
+        )
+    # Grounding: the item's own details, found server-side by headline —
+    # never client-supplied context beyond the target name itself.
+    data = await owner_queue.overview(refresh=False)
+    item = next(
+        (it for it in data["items"] if owner_queue.headline(it) == target),
+        None,
+    )
+    try:
+        drafted = owner_assist.draft(action, item, text)
+    except owner_assist.AssistUnavailable as exc:
+        return await _render_owner_queue(
+            request,
+            banner={"ok": False, "text": f"AI draft unavailable: {exc}"},
+        )
+    return await _render_owner_queue(
+        request,
+        banner={
+            "ok": True,
+            "text": (
+                "draft ready below — edit it, then submit; nothing is "
+                "stored until you do"
+            ),
+        },
+        draft={"action": action, "target": target, "text": drafted},
     )
 
 

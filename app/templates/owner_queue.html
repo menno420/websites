@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}owner writeback{% endblock %}
+{% block headright %}🔒 owner · <a href="/queue">public queue</a> · <a href="/owner/queue?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+
+<div class="card" style="border-color:var(--purple);">
+  <h2>🔒 owner writeback — act on the queue, straight into git</h2>
+  <p class="small dim">Mark an owner-action complete, request assistance, or add a
+    note/correction/idea. Each submission is stored in the local audit log below, then
+    committed to <code>{{ wb.repo }}</code>@<code>{{ wb.branch }}</code>:
+    assistance requests append an ORDER to <code>{{ wb.inbox_path }}</code>;
+    completions and notes append to <code>{{ wb.notes_path }}</code>.
+    A commit is only ever claimed with its verified SHA.</p>
+  <p class="small">
+    {% if wb.token_set %}<span class="b ok">{{ wb.token_env }} present</span>
+    {% else %}<span class="b warn">{{ wb.token_env }} not set — submissions queue locally</span>{% endif %}
+    {% if assist.available %}<span class="b ok">AI drafting on · {{ assist.model }}</span>
+    {% else %}<span class="b warn">AI drafting off ({{ assist.key_env }} not set)</span>{% endif %}
+    <span class="b unknown">AI drafts used today {{ assist.daily_used }}/{{ assist.daily_cap }}</span>
+  </p>
+  <p class="small dim">⚠ The audit log lives in SQLite on this service's <strong>ephemeral</strong> disk —
+    committed entries are safe in git, but entries still <em>queued</em> here are lost on the next
+    redeploy. Retry them once the write token is pasted.</p>
+
+  {% if banner %}
+  <p class="b {{ 'ok' if banner.ok else 'bad' }}" style="display:block;padding:.5rem .8rem;white-space:normal;">
+    {{ '✓' if banner.ok else '✗' }} {{ banner.text }}
+    {% if banner.url %}· <a href="{{ banner.url }}">view commit ↗</a>{% endif %}
+  </p>
+  {% endif %}
+</div>
+
+{% if draft %}
+<div class="card" style="border-color:var(--blue);">
+  <h2>AI draft — edit, then submit ({{ draft.action }})</h2>
+  <p class="small dim">The AI never writes back on its own: this draft is only a pre-filled form.
+    Nothing is stored or committed until you press submit.</p>
+  <form method="post" action="/owner/queue/actions/{{ draft.action }}">
+    <input type="hidden" name="target" value="{{ draft.target }}">
+    <textarea name="text" rows="10" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.5rem;font:inherit;">{{ draft.text }}</textarea>
+    <p><button type="submit">submit {{ draft.action }}</button></p>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>general writeback <span class="dim small">— not tied to a queue item</span></h2>
+  <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+    <form method="post" action="/owner/queue/actions/note" style="flex:1 1 320px;">
+      <input type="hidden" name="action" value="note">
+      <h3>note / correction / idea</h3>
+      <input name="target" placeholder="about (optional)" maxlength="300" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;font:inherit;">
+      <textarea name="text" rows="4" maxlength="4000" placeholder="your note, correction or idea…" style="width:100%;margin-top:.3rem;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.5rem;font:inherit;"></textarea>
+      <p>
+        <button type="submit">add note</button>
+        <button type="submit" formaction="/owner/queue/actions/draft">✨ draft with AI</button>
+      </p>
+    </form>
+    <form method="post" action="/owner/queue/actions/assist" style="flex:1 1 320px;">
+      <input type="hidden" name="action" value="assist">
+      <h3>request assistance</h3>
+      <input name="target" placeholder="about (optional)" maxlength="300" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;font:inherit;">
+      <textarea name="text" rows="4" maxlength="4000" placeholder="what do you need from the fleet?" style="width:100%;margin-top:.3rem;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.5rem;font:inherit;"></textarea>
+      <p>
+        <button type="submit">file assistance ORDER</button>
+        <button type="submit" formaction="/owner/queue/actions/draft">✨ draft with AI</button>
+      </p>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>audit log <span class="dim small">— every submission, whatever its fate ({{ entries|length }} shown)</span></h2>
+  {% if not entries %}
+  <p class="dim small">Nothing written back yet — submissions land here first, then commit to git.</p>
+  {% else %}
+  <table>
+    <tr><th>#</th><th>when (UTC)</th><th>action</th><th>target</th><th>status</th><th>detail</th><th></th></tr>
+    {% for e in entries %}
+    <tr>
+      <td>{{ e.id }}</td>
+      <td class="small dim">{{ e.created_at }}</td>
+      <td>{{ e.action }}</td>
+      <td class="small">{{ e.target[:80] }}{% if e.target|length > 80 %}…{% endif %}</td>
+      <td>
+        {% if e.status == 'committed' %}<span class="b ok">committed</span>
+        {% elif e.status == 'failed' %}<span class="b bad">failed</span>
+        {% else %}<span class="b warn">queued</span>{% endif %}
+      </td>
+      <td class="small">
+        {% if e.status == 'committed' %}
+          <a href="{{ e.commit_url }}">{{ e.commit_sha[:8] }} ↗</a> → <code>{{ e.path }}</code>
+        {% else %}<span class="dim">{{ e.error }}</span>{% endif %}
+      </td>
+      <td>
+        {% if e.status != 'committed' %}
+        <form method="post" action="/owner/queue/actions/retry">
+          <input type="hidden" name="entry_id" value="{{ e.id }}">
+          <button type="submit">retry</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+
+<h2 class="dim" style="font-size:14px;margin:.8rem 0 .4rem;">owner-action queue — {{ q.summary.total }} ask{{ 's' if q.summary.total != 1 }}</h2>
+
+{% if not q['items'] %}
+<div class="card"><p class="dim">No owner asks found in the readable sources right now.</p></div>
+{% endif %}
+
+{% for it in q['items'] %}
+{% set headline = it.what or it.text %}
+<div class="card">
+  <h2>{{ headline }}</h2>
+  <p class="small">
+    {% for s in it.sources %}
+    <span class="b repo">{{ s.label }}</span>
+    <span class="dim small">{% if s.kind == 'lane' %}heartbeat {{ s.age_human }}{% else %}{{ s.age_human }}{% endif %}
+      · <a href="{{ s.url }}">source ↗</a></span>
+    {% endfor %}
+  </p>
+  {% if it.fields %}
+  <table>
+    {% for key, label in q.field_order %}
+    {% if it.fields[key] %}<tr><th>{{ label }}</th><td>{{ it.fields[key] }}</td></tr>{% endif %}
+    {% endfor %}
+  </table>
+  {% endif %}
+  <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:.6rem;">
+    <form method="post" action="/owner/queue/actions/complete" style="flex:1 1 260px;">
+      <input type="hidden" name="target" value="{{ headline }}">
+      <input type="hidden" name="action" value="complete">
+      <input name="text" placeholder="optional note (how/when you did it)" maxlength="4000" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;font:inherit;">
+      <p><button type="submit">✓ mark complete</button></p>
+    </form>
+    <form method="post" action="/owner/queue/actions/assist" style="flex:1 1 260px;">
+      <input type="hidden" name="target" value="{{ headline }}">
+      <input type="hidden" name="action" value="assist">
+      <textarea name="text" rows="2" maxlength="4000" placeholder="what help do you need with this?" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font:inherit;"></textarea>
+      <p>
+        <button type="submit">🆘 request assistance</button>
+        <button type="submit" formaction="/owner/queue/actions/draft">✨ draft with AI</button>
+      </p>
+    </form>
+    <form method="post" action="/owner/queue/actions/note" style="flex:1 1 260px;">
+      <input type="hidden" name="target" value="{{ headline }}">
+      <input type="hidden" name="action" value="note">
+      <textarea name="text" rows="2" maxlength="4000" placeholder="correction / idea / note on this item…" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font:inherit;"></textarea>
+      <p>
+        <button type="submit">✎ add note</button>
+        <button type="submit" formaction="/owner/queue/actions/draft">✨ draft with AI</button>
+      </p>
+    </form>
+  </div>
+</div>
+{% endfor %}
+
+<p class="dim small">🔒 owner writeback — gated by <code>SITE_PASSWORD</code>; every submit also passes the
+same-origin + rate-limit guards. The public <a href="/queue">/queue</a> stays read-only.</p>
+{% endblock %}

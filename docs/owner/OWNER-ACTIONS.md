@@ -178,6 +178,18 @@ UNBLOCKS: the AI exit-review shipping in ORDER 018 PR2 goes live on merge with n
 VERIFIED-NEEDED: the wiring report is relayed from the coordinator session and is NOT independently verifiable from this repo (no agent credential here can read Railway variables — docs/RAILWAY-SAFETY.md still walls agent-initiated Railway reads/mutations from repo sessions). Verify after #176/#179 merge via the owner queue's AI-state panel at <botsite-url>/testing/owner (it shows whether the key is present at runtime). Only if that panel shows degraded does the original one-paste ask above come back into force.
 ```
 
+### ⚑ Ask added by ORDER 020 (2026-07-12 — owner writeback on the launch console)
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Mint a fine-grained GitHub PAT with Contents read AND write scoped to menno420/websites ONLY, and paste it as GITHUB_TOKEN on the control-plane + botsite Railway services.
+WHERE: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token (Repository access: Only select repositories → menno420/websites; Permissions → Contents: Read and write); then railway.app → project superbot-websites → services control-plane and botsite → Variables → GITHUB_TOKEN.
+HOW: generate the token, copy it once, replace the GITHUB_TOKEN value on both services (the value never goes in the repo). The writeback engine reads the env at REQUEST time, so the capability lights up on the next submit/retry with no redeploy needed beyond Railway's automatic one.
+WHY-IT-MATTERS: the owner writeback console (/owner/queue, ORDER 020) currently QUEUES submissions instead of committing them — the deployed token is read-scoped, so every mark-complete / request-assistance / note is stored locally with an honest "write token not available — queued" error, and Railway's ephemeral disk loses queued entries on redeploy.
+UNBLOCKS: console writeback commits land in git — assistance requests append real ORDERs to control/inbox.md and completions/notes append to docs/owner/owner-notes.md — so the fleet actually sees and acts on what you write on the site.
+VERIFIED-NEEDED: submit a note on /owner/queue (reachable from /queue) and see a commit SHA link in the banner and audit log instead of "queued". Deliberately not attempted by agents: PAT minting is owner-held (no agent credential exists) and Railway variable mutations are policy-walled (docs/RAILWAY-SAFETY.md — same wall as the standing asks above).
+```
+
 ## 🟢 Decided / resolved
 
 | # | Item | Decision | Provenance |
@@ -195,6 +207,9 @@ VERIFIED-NEEDED: the wiring report is relayed from the coordinator session and i
 ## How to use this doc
 
 - New owner-gated fork → add a row to **Open** with where it lives.
+- The owner also writes back directly from the site (ORDER 020): completion
+  assertions and notes land in [owner-notes.md](owner-notes.md) — read it
+  each session and reconcile completions into this ledger.
 - Owner decides → move it to **Decided / resolved** with the decision + a
   provenance pointer (a `[D-NNNN]`, a `Q-NNNN`, or a dated verification).
 - Keep it short. Detail belongs in the linked decision/plan/router, not here.
