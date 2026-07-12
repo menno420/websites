@@ -211,6 +211,67 @@ def role_coverage(files: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+async def coverage_rollup(refresh: bool = False) -> dict[str, Any]:
+    """Fleet-facing rollup of the seats' role coverage (backlog bullet,
+    2026-07-12): the one "packages incomplete: N" cell for the `/fleet`
+    monitoring surface, reduced from the SAME :func:`overview` data
+    /projects renders (same TTL-cached ``github`` layer, same URLs — zero
+    new network surface). Never raises.
+
+    Returns::
+
+        {"state": "ok" | "unknown",
+         "reason": why the rollup could not run (unknown only),
+         "seats": active (non-stub) packages considered,
+         "complete": seats carrying all dispatch-critical roles,
+         "incomplete": seats missing at least one,
+         "incomplete_names": [their names, index order],
+         "unlistable": seats whose own listing failed (coverage unknown),
+         "unlistable_names": [their names, index order]}
+
+    Honesty ladder: a degraded registry (``empty`` / ``not-configured`` /
+    ``unavailable``) or a registry with no active seats is ``unknown`` with
+    the reason — never a fabricated "incomplete: 0". A seat whose own
+    listing failed (``dispatch_ready`` is ``None``) counts as ``unlistable``,
+    never as complete OR incomplete, so "coverage: complete" is only ever
+    claimable when EVERY active seat was actually listed and carries all of
+    :data:`_DISPATCH_ROLES`. Retired stubs are excluded — same population
+    as the /projects "N of M dispatch-ready" index summary.
+    """
+    out: dict[str, Any] = {
+        "state": "unknown",
+        "reason": "",
+        "seats": 0,
+        "complete": 0,
+        "incomplete": 0,
+        "incomplete_names": [],
+        "unlistable": 0,
+        "unlistable_names": [],
+    }
+    data = await overview(refresh=refresh)
+    if data["state"] != "ok":
+        out["reason"] = data["reason"] or f"registry {data['state']}"
+        return out
+    seats = [p for p in data["packages"] if not p["stub"]]
+    if not seats:
+        out["reason"] = (
+            "the registry listing has no active seat packages to check"
+        )
+        return out
+    out["state"] = "ok"
+    out["seats"] = len(seats)
+    for pkg in seats:
+        if pkg["dispatch_ready"] is None:
+            out["unlistable"] += 1
+            out["unlistable_names"].append(pkg["name"])
+        elif pkg["dispatch_ready"]:
+            out["complete"] += 1
+        else:
+            out["incomplete"] += 1
+            out["incomplete_names"].append(pkg["name"])
+    return out
+
+
 def start_rank(name: str) -> int:
     """The owner's dispatch-order slot for a package name (lowercased,
     ``_``→``-``); unmatched names rank after every matched one."""

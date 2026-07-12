@@ -352,12 +352,20 @@ async def activity_feed(request: Request):
 
 @app.get("/fleet", response_class=HTMLResponse)
 async def fleet_heartbeat(request: Request):
-    data = await fleet.overview(refresh=_refresh(request))
+    refresh = _refresh(request)
+    # Seat-package coverage rollup (backlog bullet): the SAME projects-registry
+    # data /projects renders, reduced to one "packages incomplete: N" chip —
+    # same TTL-cached github layer, zero new network surface.
+    data, cov = await asyncio.gather(
+        fleet.overview(refresh=refresh),
+        projects.coverage_rollup(refresh=refresh),
+    )
     return templates.TemplateResponse(
         request,
         "fleet.html",
         {
             "f": data,
+            "cov": cov,
             "active": "fleet",
             "autorefresh_seconds": config.AUTOREFRESH_SECONDS,
         },
@@ -366,7 +374,11 @@ async def fleet_heartbeat(request: Request):
 
 @app.get("/fleet.json")
 async def fleet_heartbeat_json(request: Request):
-    data = await fleet.overview(refresh=_refresh(request))
+    refresh = _refresh(request)
+    data, cov = await asyncio.gather(
+        fleet.overview(refresh=refresh),
+        projects.coverage_rollup(refresh=refresh),
+    )
     # Drop the rendered markdown body from the JSON payload — callers get the
     # parsed fields + freshness + repo signals and the GitHub deep-link; the
     # rendered HTML is an HTML-view concern only (mirrors /journal/search.json).
@@ -374,6 +386,10 @@ async def fleet_heartbeat_json(request: Request):
     payload["lanes"] = [
         {k: v for k, v in lane.items() if k != "body_html"} for lane in data["lanes"]
     ]
+    # Seat-package coverage rollup — same data the /fleet chip renders, so
+    # machine consumers get the registry-lint signal too (contract pinned in
+    # tests/test_fleet_json_contract.py).
+    payload["coverage"] = cov
     return JSONResponse(payload)
 
 

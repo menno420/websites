@@ -137,7 +137,16 @@
   and pickup ideas touch /fleet data, not file-view navigation. Source:
   `.sessions/2026-07-12-journal-guard-fleet.md` 💡.
 
-- **Coverage-chip rollup on the /fleet board** · `captured` — the
+- **Coverage-chip rollup on the /fleet board** · `built` (2026-07-12,
+  PR #217 — `projects.coverage_rollup` reduces the seats' role coverage
+  over the SAME TTL-cached registry data /projects renders, zero new
+  network surface; /fleet header chip: green "coverage: complete (N
+  seats)" / amber "packages incomplete: N" with the incomplete seats named
+  inline + a /projects link / honest unknown when the registry or a seat's
+  own listing is unreadable — never a fabricated zero; retired stubs
+  excluded, same population as the /projects dispatch-ready summary;
+  `/fleet.json` carries `coverage`, contract pinned same PR) — original
+  capture: the
   per-seat instructions/coordinator/failsafe coverage now computed for the
   /projects index (`projects.role_coverage`, ORDER 015 slice) could feed
   one "packages incomplete: N" rollup cell on the `/fleet` monitoring
