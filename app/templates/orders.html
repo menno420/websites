@@ -30,7 +30,15 @@
   </p>
 </div>
 
+{# ORDER 019: the same centralized filter widget /queue uses (reuse proof).
+   Filters/search/sort act on the flat order list; repo cards with no
+   matching orders hide while a filter is active (unreachable repos stay —
+   an error is never filtered away). #}
+{% set lf = o.filter %}
+{% include "_listfilter.html" %}
+
 {% for c in o.cards %}
+{% if not o.filter.active or c.shown_orders or c.fetch_error %}
 <div class="card">
   <h2>{{ c.repo }}
     {% if c.open_count %}<span class="b warn">{{ c.open_count }} open</span>{% endif %}
@@ -52,7 +60,7 @@
     orders is <strong>unknown</strong>, not assumed.</div>
   {% endif %}
   <table>
-    {% for ord in c.orders %}
+    {% for ord in c.shown_orders %}
     <tr>
       <th>ORDER {{ ord.id }}
         {% if ord.state == 'open' %}<span class="b warn">open</span>
@@ -72,5 +80,6 @@
   </table>
   {% endif %}
 </div>
+{% endif %}
 {% endfor %}
 {% endblock %}

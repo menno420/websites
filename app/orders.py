@@ -34,7 +34,7 @@ import statistics
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from . import clock, config, fleet, github, journal
+from . import clock, config, fleet, github, journal, listfilter
 
 INBOX_PATH = "control/inbox.md"
 
@@ -353,6 +353,72 @@ def pickup_latency(issued: str, claimed_at: Optional[str]) -> dict[str, Any]:
     if mins < 0:
         return {"mins": None, "human": ""}
     return {"mins": round(mins, 1), "human": fleet._human_age(mins / 60)}
+
+
+# --------------------------------------------------------------------------- #
+# ORDER 019 — /orders filters over the centralized listfilter core (the reuse
+# proof for the /queue widget). Items are the FLATTENED per-order dicts (the
+# route stamps each with its card's ``repo`` before applying); the card
+# grouping stays — the route regroups the filtered flat list per repo.
+# --------------------------------------------------------------------------- #
+
+ORDER_STATES = ("open", "claimed", "done", "unknown")
+_STATE_RANK = {s: i for i, s in enumerate(ORDER_STATES)}
+
+
+def order_priority(order: dict[str, Any]) -> str:
+    """The order's normalized priority (``P0``/``P1``/…) or the honest
+    ``unset`` — never an invented default priority."""
+    p = (order.get("fields", {}).get("priority") or "").strip().upper()
+    return p or "unset"
+
+
+def _issued_ts(order: dict[str, Any]) -> Optional[float]:
+    dt = fleet._parse_iso(order.get("issued", ""))
+    return dt.timestamp() if dt is not None else None
+
+
+def _sort_newest(order: dict[str, Any]) -> tuple:
+    ts = _issued_ts(order)
+    return (0, -ts) if ts is not None else (1, 0.0)
+
+
+def _sort_oldest(order: dict[str, Any]) -> tuple:
+    ts = _issued_ts(order)
+    return (0, ts) if ts is not None else (1, 0.0)
+
+
+FILTER_SPEC = listfilter.ListSpec(
+    path="/orders",
+    dimensions=(
+        listfilter.Dimension(
+            key="repo", label="repo",
+            get=lambda o: [o.get("repo", "")],
+        ),
+        listfilter.Dimension(
+            key="state", label="status", values=ORDER_STATES,
+            get=lambda o: [o.get("state", "unknown")],
+        ),
+        listfilter.Dimension(
+            key="priority", label="priority",
+            get=lambda o: [order_priority(o)],
+        ),
+    ),
+    sorts=(
+        # Default keeps the incoming order (attention-sorted cards, inbox
+        # order within each card) — no params renders identically to before.
+        listfilter.SortOption("inbox", "inbox order"),
+        listfilter.SortOption("newest", "newest", sort_key=_sort_newest),
+        listfilter.SortOption("oldest", "oldest", sort_key=_sort_oldest),
+        listfilter.SortOption(
+            "status", "status",
+            sort_key=lambda o: _STATE_RANK.get(o.get("state", "unknown"), 9)),
+    ),
+    search=lambda o: (
+        f"{o.get('repo', '')} ORDER {o.get('id', '')} "
+        f"{o.get('state', '')} {order_priority(o)} {o.get('body', '')}"
+    ),
+)
 
 
 def _sort_key(card: dict[str, Any]) -> tuple:

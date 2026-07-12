@@ -42,7 +42,9 @@ ORDERS_SUMMARY = {
 QUEUE_TOP = {
     "items", "lane_notes", "fleet_manager", "field_order", "summary",
     "unreadable_lanes", "lane_source",
+    "filter",  # ORDER 019: echo of the applied filter state (q/sort/selected…)
 }
+QUEUE_FILTER = {"q", "sort", "selected", "active", "shown", "total"}
 QUEUE_ITEM = {"what", "text", "fields", "sources"}
 QUEUE_SOURCE = {"kind", "label", "url", "updated_iso", "age_hours", "age_human"}
 QUEUE_SUMMARY = {"total", "deduped", "lanes_with_asks", "lanes_total"}
@@ -160,6 +162,8 @@ def test_queue_json_shape(monkeypatch):
     assert set(d) == QUEUE_TOP, _drift(set(d), QUEUE_TOP)
     assert set(d["summary"]) == QUEUE_SUMMARY, _drift(set(d["summary"]), QUEUE_SUMMARY)
     assert set(d["fleet_manager"]) == QUEUE_FM, _drift(set(d["fleet_manager"]), QUEUE_FM)
+    assert set(d["filter"]) == QUEUE_FILTER, _drift(set(d["filter"]), QUEUE_FILTER)
+    assert d["filter"]["active"] is False  # no params -> nothing applied
     assert "body_html" not in d["fleet_manager"]
     assert d["items"], "happy path must surface the filed ask"
     for item in d["items"]:

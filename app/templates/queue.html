@@ -31,6 +31,10 @@
   {% endif %}
 </div>
 
+{# ORDER 019: the centralized filter/sort/search widget (app/listfilter.py) #}
+{% set lf = q.filter %}
+{% include "_listfilter.html" %}
+
 {% if not q['items'] %}
 <div class="card">
   <p class="dim">No owner asks found in the readable sources — either the fleet genuinely needs
@@ -38,7 +42,7 @@
 </div>
 {% endif %}
 
-{% for it in q['items'] %}
+{% for it in q.filter['items'] %}
 <div class="card">
   <h2>{% if it.what %}{{ it.what }}{% else %}{{ it.text }}{% endif %}</h2>
   <p class="small">
