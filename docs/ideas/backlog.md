@@ -30,8 +30,16 @@
   manifest-vs-live per project group). Source:
   `.sessions/2026-07-12-environments-hub-slice2.md` 💡.
 
-- **Completeness chip on the environments-hub group headers** · `captured`
-  — the hub (`/owner/environments-hub`) links each group's manifest but
+- **Completeness chip on the environments-hub group headers** · `built`
+  (2026-07-12, PR #219 — `envhub.group_summary` runs a minimal
+  manifest-shaped stub per group through the UNCHANGED PR #216
+  `annotate_completeness`, fed from the SAME cached `railway.live_overview`
+  read the hub index already makes, zero new network surface; chip beside
+  each group's manifest link: green "X/Y set live" when complete, amber
+  when unfinished, honest "live status unknown" WITH the exact reason
+  (token unset / read failed / out-of-scope group) — never a fabricated
+  0/Y) — original capture:
+  the hub (`/owner/environments-hub`) links each group's manifest but
   gives no hint which environment is unfinished; reusing PR #216's
   `envhub.annotate_completeness` to render the group summary ("18/25 set
   live" / "live status unknown") as a chip next to each group's

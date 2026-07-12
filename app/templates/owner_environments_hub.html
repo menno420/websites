@@ -47,7 +47,18 @@
   <summary>{{ s.group.title }} <span class="b">{{ s.rows | length }}</span>
     <span class="dim small">{{ s.group.purpose }}</span></summary>
   {% if s.group.notes %}<p class="dim small">{{ s.group.notes }}</p>{% endif %}
+  {% set cs = hub.summaries[s.group.id] %}
   <p class="small"><a class="b" href="/owner/environments-hub/manifest/{{ s.group.id }}">create-complete-environment manifest →</a>
+    {#- Completeness chip (reuses PR #216's annotate over the SAME cached
+        live read): green = every expected variable set live, amber =
+        unfinished, honest unknown WITH the reason — never a fake 0/Y. #}
+    {% if cs.comparable %}
+    <span class="b {{ 'ok' if cs.set_count == cs.total else 'warn' }}">{{ cs.set_count }}/{{ cs.total }} set live</span>
+    {%- if cs.reason %} <span class="dim">{{ cs.reason }}</span>{% endif %}
+    {% else %}
+    <span class="b unknown">live status unknown</span>
+    <span class="dim">{{ cs.reason }}</span>
+    {% endif %}
     <span class="dim">names + placeholders + owner-executed setup commands — never values, never provisioning</span></p>
   <table>
     <tr><th>surface</th><th>holds (variable names)</th><th>managed at</th></tr>

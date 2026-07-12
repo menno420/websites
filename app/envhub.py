@@ -207,6 +207,12 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
         "groups": registry["groups"],
         "rows": rows,
         "live": live,
+        # Per-group completeness summaries for the index chips — computed
+        # from the SAME cached live read above (zero extra network calls).
+        "summaries": {
+            group["id"]: group_summary(group, live)
+            for group in registry["groups"]
+        },
         "schemas": await environments.index(refresh=refresh),
     }
 
@@ -601,6 +607,37 @@ def annotate_completeness(
         "cached": bool(live.get("cached")),
         "project_name": live.get("project_name", ""),
     }
+
+
+def group_summary(
+    group: dict[str, Any], live: dict[str, Any] | None
+) -> dict[str, Any]:
+    """The group-level completeness summary for the hub INDEX chip —
+    "which environment needs finishing", surfaced on the front door itself
+    instead of one click deep in the group's manifest checklist.
+
+    Pure reuse of :func:`annotate_completeness` (PR #216): a minimal
+    manifest-shaped stub (the group + one schema row per recorded variable
+    name) is run through the exact same annotate pass, so every honesty
+    rule holds here by construction — no live truth (token unset / read
+    failed / out-of-scope group / per-service error) yields the honest
+    ``comparable: False`` summary WITH the reason, never a fabricated 0/Y.
+    No network: the caller passes the one cached ``railway.live_overview``
+    snapshot the page already holds.
+    """
+    stub: dict[str, Any] = {
+        "group": group,
+        "services": [
+            {
+                "surface": surface,
+                "schema": [{"name": n} for n in surface["variable_names"]],
+            }
+            for surface in group["surfaces"]
+        ],
+        "completeness": None,
+    }
+    annotate_completeness(stub, live)
+    return stub["completeness"]
 
 
 # ORDER 019 reuse: each project group is a separately reviewable filter; the
