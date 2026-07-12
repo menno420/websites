@@ -25,7 +25,7 @@ orient -> claim -> born-red card -> build -> verify -> close
 3. **Born-red card** — open the session record first, marked in-progress, so
    the work is visible while it is still incomplete.
 4. **Build** — the goal, end-to-end.
-5. **Verify** — run `python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)` before shipping.
+5. **Verify** — run `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q (all four service suites); python3 bootstrap.py check --strict (kit gate)` before shipping.
 6. **Close** — flip the card complete; log the session, groom one idea, hand
    off.
 

@@ -155,3 +155,11 @@ do: Refresh and upgrade the public program-review site (review-production-f027) 
   REPORT BACK: the live URL(s); confirmation the 07-12 incident + 8-seat consolidation are visible; which model the AI assistant uses and whether the API key was present or is being requested; the rate-limit + spend-cap set; and anything you got stuck on or worked around.
 why: the Anthropic Claude Code team reviews the public program-review site this week (through Tue 2026-07-14).
 done-when: all four workstreams live on the deployed review service, refreshed to 2026-07-12, and the report with live URL delivered.
+
+## ORDER 016 · 2026-07-12T10:50Z · status: new
+priority: P1
+owner: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (landed into the inbox by the coordinator seat with the ORDER 012 reconcile PR — deviation from the one-writer convention on the owner's direct live instruction; renumbered 014→015→016 in the same PR as fleet-manager orders reached main first holding those numbers — prompt-library ORDER 014 via PR #162, consolidate-prompt-surfaces ORDER 015 via PR #169; earlier-at-HEAD holds the number). Appended at end-of-file (not numeric position) to satisfy the inbox append-only gate — the order number stays 016; file order is landing order, as with ORDER 018 preceding ORDER 017 on main.
+do: find all website related plans across the multiple repos and execute all the important ones
+why: owner live directive 2026-07-12 — website-related plans are scattered across the fleet's repos (planning docs, ideas backlogs, inbox orders, review findings) and nothing sweeps them into execution.
+done-when: a committed discovery inventory lists the website-related plans found across the repos, each important one is executed or explicitly ledgered with a reason (owner-gated / superseded / deferred), and status.md reports done=016.

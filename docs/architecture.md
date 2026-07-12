@@ -7,12 +7,12 @@
 
 ## Layers & import rules
 
-Three independent server-rendered FastAPI services in one repo — control-plane (app/), botsite (botsite/), dashboard (dashboard/) — that share code, never a running process (each has its own Dockerfile + requirements.txt + Railway service). Inside a service the layers are: routes (app/main.py or app.py, plus app/owner.py) -> domain/data (readiness.py, journal.py, data_source.py) -> client (app/github.py: live GitHub REST + raw-content fetch behind a TTL cache) -> templates (Jinja2). Import rules: routes may import the domain, data, and client layers; lower layers never import routes or templates; no service imports another service's package; and no service ever imports superbot's disbot/ — cross-repo data arrives only as committed JSON read over raw.githubusercontent.com (read-only, forward-only).
+Four independent server-rendered FastAPI services in one repo — control-plane (app/), botsite (botsite/), dashboard (dashboard/), review (review/) — that share code, never a running process (each has its own Dockerfile + requirements.txt + Railway service). Inside a service the layers are: routes (app/main.py or app.py, plus app/owner.py; review/app.py) -> domain/data (readiness.py, journal.py, data_source.py; review's editions.py + fleetdata.py over committed review/data/*.json baked by gen_*.py) -> client (app/github.py: live GitHub REST + raw-content fetch behind a TTL cache) -> templates (Jinja2). Import rules: routes may import the domain, data, and client layers; lower layers never import routes or templates; no service imports another service's package; and no service ever imports superbot's disbot/ — cross-repo data arrives only as committed JSON read over raw.githubusercontent.com (read-only, forward-only).
 
 | Layer | May import | Must NOT import |
 |---|---|---|
-| routes (`app/main.py`, `app/owner.py`, `botsite/app.py`, `dashboard/app.py`) | domain, data, client, templates | another service's package; `disbot/` |
-| domain / data (`readiness.py`, `journal.py`, `data_source.py`) | client, stdlib | routes; templates; another service's package |
+| routes (`app/main.py`, `app/owner.py`, `botsite/app.py`, `dashboard/app.py`, `review/app.py`) | domain, data, client, templates | another service's package; `disbot/` |
+| domain / data (`readiness.py`, `journal.py`, `data_source.py`, `review/editions.py`, `review/fleetdata.py`) | client, stdlib | routes; templates; another service's package |
 | client (`app/github.py` and per-service data sources) | stdlib, httpx | routes; domain (stays a leaf) |
 | templates (Jinja2 under each `templates/`) | — (rendered by routes) | any Python module directly |
 
@@ -21,10 +21,10 @@ Three independent server-rendered FastAPI services in one repo — control-plane
 - **No service imports `disbot/`** (superbot's bot code). Cross-repo data
   arrives only as committed JSON read over `raw.githubusercontent.com`. This
   keeps websites read-only and forward-only toward superbot.
-- **No service imports another service's package.** `app/`, `botsite/`, and
-  `dashboard/` share *code* (via a future in-repo shared package), never a
-  running process — each is its own Dockerfile + `requirements.txt` + Railway
-  service.
+- **No service imports another service's package.** `app/`, `botsite/`,
+  `dashboard/`, and `review/` share *code* (via a future in-repo shared
+  package), never a running process — each is its own Dockerfile +
+  `requirements.txt` + Railway service.
 - **The public surface is credential-free and byte-identical** whether or not
   `SITE_PASSWORD` is set. Secrets never reach public HTML or the public
   `/api/readiness.json` (the Actions-secrets cell is masked to a count);
@@ -51,5 +51,5 @@ believing the other covers it.
 ## Verifying a change
 
 ```
-python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)
+python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q (all four service suites); python3 bootstrap.py check --strict (kit gate)
 ```

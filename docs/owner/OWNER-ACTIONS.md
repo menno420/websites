@@ -20,6 +20,16 @@
 
 ### ⚑ Active six-field asks
 
+> **Re-verified 2026-07-12 (ORDER 012 reconcile, main @ b925072):** every
+> ask below was re-checked against live state and REMAINS OPEN — review
+> Railway service: the live deploy board still tracks exactly three
+> services (control-plane/botsite/dashboard, all `in_sync` at
+> `b9250728`; no review row); Q-0004: `docs/question-router.md`
+> "Maintainer answer: (unanswered)"; Discord OAuth + armed service:
+> both gated on Q-0004, no OAuth app or fourth-write-service evidence
+> exists; botsite DATABASE_URL: `/submit` still the labeled stub, the
+> Railway-mutation policy wall stands (`docs/RAILWAY-SAFETY.md`).
+
 ```markdown
 ⚑ OWNER-ACTION
 WHAT: Create the fourth Railway service so the new program-review site (built for Anthropic reviewers) goes live.
@@ -30,14 +40,13 @@ UNBLOCKS: a shareable live URL for Anthropic reviewers (including /reviews/feed.
 VERIFIED-NEEDED: service creation is a Railway account mutation — the Railway-safety policy (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger) forbids agent-initiated Railway mutations without your explicit go, so this was deliberately not attempted (the same policy wall as the Postgres ask; no new attempt/error needed).
 ```
 
-**PAT side-note (extends the standing GITHUB_TOKEN ask in
-`control/status.md` + `docs/deployment.md`):** a durable fine-grained PAT
-would ALSO unlock richer live stats for the review site's daily
-`review-bake` workflow — today `review/gen_stats.py` runs on the Actions
-token (fine for public repos) and cannot see private fleet repos, whose
-fleet cards honestly say "no data mirrored yet"; a PAT with read access to
-the private repos, set as a repo Actions secret passed to the bake, would
-fill those gaps. Same token errand, one more payoff.
+**PAT side-note (updated 2026-07-12 — the control-plane GITHUB_TOKEN ask
+itself is RESOLVED, Decided row H):** the remaining optional payoff is a
+PAT with private-repo read set as a **websites repo Actions secret** for
+the `review-bake` workflow — `review/gen_stats.py` runs on the ambient
+Actions token (fine for public repos: "17/18 repos with live stats" in
+run 29184552812) and cannot see private fleet repos, whose fleet cards
+honestly say "no data mirrored yet". Optional, not blocking.
 
 ```markdown
 ⚑ OWNER-ACTION
@@ -84,24 +93,21 @@ scheduler primitive (`docs/CAPABILITIES.md` append log, 2026-07-10).
 
 ### ⚑ Asks consolidated at project-chat archive (2026-07-11 — see `docs/retro/archive-ready-2026-07-11.md`)
 
-```markdown
-⚑ OWNER-ACTION
-WHAT: Squash-merge PR #141 (the review-site expansion) — the one open PR agents cannot merge for you.
-WHERE: github.com/menno420/websites/pull/141.
-HOW: click only — if GitHub says the branch is out of date, click "Update branch", wait for the `quality` check to go green (an agent drift-watchdog also keeps re-greening it), then "Squash and merge".
-WHY-IT-MATTERS: the review site's whole expansion — fleet coverage, the daily stats bake, continuous review editions + Atom feed, the questionnaire, interaction hooks — is finished and green but invisible until this click.
-UNBLOCKS: the full review-site content on main; the review-bake workflow; the ask below.
-VERIFIED-NEEDED: agent merge attempts on this PR are platform-denied because its diff adds a workflow file (`.github/workflows/review-bake.yml`) — recorded on the 2026-07-11 heartbeat; you ruled in chat that you personally merge workflow-file PRs (durable record: `docs/retro/archive-ready-2026-07-11.md` §2c).
-```
+**STRUCK 2026-07-12 (ORDER 012 reconcile — both satisfied, moved to
+Decided rows F/G below):** the "squash-merge PR #141" ask (merged by you
+2026-07-11T20:24:48Z as squash `0545906`) and the "run review-bake once
+manually" ask (you ran it 2026-07-11T20:26:33Z — run `29167034060`,
+`event: workflow_dispatch`; it failed on a repo setting, NOT for lack of
+the click — the follow-up is the single ask below).
 
 ```markdown
 ⚑ OWNER-ACTION
-WHAT: Run the review-bake workflow once, manually, right after merging PR #141.
-WHERE: github.com/menno420/websites → Actions → "review-bake" → "Run workflow" (branch: main).
-HOW: click only.
-WHY-IT-MATTERS: `review/data/stats.json` is deliberately absent until the first successful CI bake — one manual run seeds the live fleet stats immediately instead of waiting for the daily cron, and proves the Action end-to-end while attention is on it.
-UNBLOCKS: real fleet/stats data on the review site's pages from day one.
-VERIFIED-NEEDED: not an agent wall (agents can trigger workflow_dispatch — `docs/CAPABILITIES.md`) but a sequencing ask: the workflow only exists on main after YOUR merge above, and with the project chat archived no agent session is guaranteed to be running at that moment. Any future session may do this instead — then strike this ask.
+WHAT: Allow GitHub Actions to create pull requests on menno420/websites, so the daily review-bake can land its data refresh.
+WHERE: github.com/menno420/websites → Settings → Actions → General → "Workflow permissions" → check "Allow GitHub Actions to create and approve pull requests" → Save.
+HOW: one checkbox + Save. Optionally afterwards: Actions → review-bake → "Run workflow" (branch main) to land the first bake immediately instead of waiting for the daily cron.
+WHY-IT-MATTERS: the review-bake workflow has now run TWICE and failed BOTH times at the same wall — run 29167034060 (event: workflow_dispatch, 2026-07-11T20:26:33Z, your manual run) and run 29184552812 (event: schedule, 2026-07-12T07:38:28Z — the daily cron IS firing). Each run baked the data fine (snapshot + fleet + stats: "17/18 repos with live stats"), was correctly ruleset-blocked from pushing to main, pushed its fallback branch, then died at `gh pr create` with: "GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)". Until the toggle flips, every daily bake fails and review/data/stats.json stays absent from main.
+UNBLOCKS: the self-updating review-site data loop (snapshot/fleet/stats refreshed daily via [bake] PRs that auto-merge on green); also makes the two orphan branches the failed runs pushed (bake/review-data-20260711-202653, bake/review-data-20260712-073843 — stale, safe to delete) stop accumulating.
+VERIFIED-NEEDED: the "Allow GitHub Actions to create and approve pull requests" setting is repo-console-only (Settings → Actions), owner-held; agents hold no path to it. Failure verified by event type from both runs' logs 2026-07-12 (ORDER 012); exact error string quoted above.
 ```
 
 ```markdown
@@ -114,15 +120,18 @@ UNBLOCKS: the submissions pipeline (rework Q5 — Open row 2 above); the moderat
 VERIFIED-NEEDED: Railway mutations are policy-walled for agents (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger — deliberately not attempted; same wall as the review-service ask). Click steps first recorded in `docs/retro/self-review-2026-07-11.md` §2.
 ```
 
-```markdown
-⚑ OWNER-ACTION
-WHAT: Mint a durable fine-grained GitHub token and set it on the control-plane service as GITHUB_TOKEN.
-WHERE: github.com → Settings → Developer settings → Fine-grained tokens; then railway.app → superbot-websites → control-plane → Variables.
-HOW: scope the token to your repos with Contents + Actions read (Actions write only if you want the CI re-run button); paste it as GITHUB_TOKEN. Exact steps: `docs/deployment.md` § owner TODO.
-WHY-IT-MATTERS: every fleet page (/fleet /orders /queue /projects /reviews) runs on the anonymous 60-requests/hour GitHub ceiling today.
-UNBLOCKS: reliable live fleet surfaces on the control-plane; per the PAT side-note above, the SAME token errand (added as a repo Actions secret) also unlocks live + private-repo stats for the review site's daily bake.
-VERIFIED-NEEDED: wall recorded in `docs/CAPABILITIES.md` (2026-07-09: `GITHUB_TOKEN` unset/limited on the live service; anonymous rate-limit 403 captured) — the token is owner-held; no agent path exists.
-```
+**STRUCK 2026-07-12 (ORDER 012 reconcile — SATISFIED, moved to Decided
+row H below):** the "mint a GITHUB_TOKEN for the control-plane service"
+ask. Live verification 2026-07-12: `/api/readiness.json` now returns
+authenticated-only cells — Actions-secret counts read `status 200,
+known: true` across repos (e.g. superbot "5 secret(s)"; anonymous callers
+cannot list Actions secrets at all) and `auto_merge.allowed` is known —
+so a working token IS set on the live control-plane. Residual option
+(NOT re-filed as an ask): adding a PAT as a **websites repo Actions
+secret** would let the review-bake see private fleet repos too (today it
+runs on the ambient Actions token and still reached "17/18 repos with
+live stats" — run 29184552812 log); websites' own Actions-secret count
+is 0 at last check.
 
 ### ⚑ Asks added by ORDER 018 PR1 (2026-07-12 — tester program `/testing` on botsite)
 
@@ -177,8 +186,11 @@ VERIFIED-NEEDED: the wiring report is relayed from the coordinator session and i
 | B | **Basic-auth gate on control-plane + dashboard** | **Dropped** — both sites are fully public; the readiness board masks Actions-secret names to a count. | Owner verbatim "Yes drop the auth"; decision stamped in `docs/decisions.md`. |
 | C | **superbot kickoff doc (was PR #1876) → README link** | **Resolved** — the doc is merged on superbot `main`; the README link now returns HTTP 200 (verified 2026-07-09). Was a 404 while the PR was unmerged. | `README.md` → `superbot/docs/planning/websites-project-kickoff-2026-07-09.md`. |
 | D | **Leaky born-red session gate** (PR #19 auto-merged empty on an `in-progress` card) | **Resolved — no owner action** — adopted upstream kit **v1.0.0** `bootstrap.py` (fails born-red cards under `--strict`) + folded diff-aware `--session-log` into the `quality` gate. Both directions proven + regression-tested. Upstream substrate-kit repo fix handled by a **separate** session. | Decision stamped in `docs/decisions.md` (born-red-gate entry); `.github/workflows/quality.yml`; `tests/test_born_red_session_gate.py`. |
-| E | **Lane wake routine** (was Open row 7 — external owner-armed trigger) | **Self-armed and CONFIRMED working — no owner click needed.** Fleet ORDER 008 (2026-07-10) verified sessions can create routines; this lane armed trigger `trig_017H9Qb9oxtLgUy6sw2gnSHg` (cron `0 */4 * * *`, fresh-session-per-fire, prompt = the standing inbox ritual). First fire confirmed 2026-07-10T16:01:32Z (`list_triggers` `last_fired_at`; this session is that fire) — the conditional fallback ask has been withdrawn. | `control/inbox.md` ORDER 008; claim PR #56; `docs/CAPABILITIES.md` append log 2026-07-10; `.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`; `control/status.md`. |
-| F | **Tester payout rail (ORDER 018)** | **PayPal Payouts confirmed** as the v1 rail — no longer a decision ask; only the setup remains (the ⚑ ask above). Dry-run payout module + kill switch + caps shipped in ORDER 018 PR1. | Owner live via the coordinator session, relayed 2026-07-12; `.sessions/2026-07-12-order-018-testing-platform-pr1.md`. |
+| E | **Lane wake routine** (was Open row 7 — external owner-armed trigger) | **Self-armed and CONFIRMED working — no owner click needed.** Fleet ORDER 008 (2026-07-10) verified sessions can create routines; this lane armed trigger `trig_017H9Qb9oxtLgUy6sw2gnSHg` (cron `0 */4 * * *`, fresh-session-per-fire, prompt = the standing inbox ritual). First fire confirmed 2026-07-10T16:01:32Z (`list_triggers` `last_fired_at`; this session is that fire) — the conditional fallback ask has been withdrawn. **Ground-truth update 2026-07-12 (ORDER 012):** that trigger NO LONGER EXISTS live — an exhaustive `list_triggers` sweep (823 triggers, full account history back to 2026-06-12) does not contain `trig_017H9Qb9oxtLgUy6sw2gnSHg`; not deleted by this lane (already absent). The lane's wake now rides the coordinator-session failsafe `trig_01Aak59jvQQdimDgy5K1yAGQ` (cron `45 */2 * * *`) — see `control/status.md` ROUTINE. | `control/inbox.md` ORDER 008; claim PR #56; `docs/CAPABILITIES.md` append log 2026-07-10; `.sessions/2026-07-10-order008-first-fire-manifest-smoke.md`; `control/status.md`. |
+| F | **PR #141 squash-merge** (was the archive-consolidated merge-click ask) | **DONE by owner** — merged 2026-07-11T20:24:48Z (`merged_by: menno420`, squash commit `0545906`); the review/ expansion is on main. | github.com/menno420/websites/pull/141 (`merged: true`); verified via GitHub API 2026-07-12 (ORDER 012). |
+| G | **One manual review-bake dispatch** (was the archive-consolidated run-once ask) | **DONE by owner — but the run failed on a repo setting.** Run `29167034060` (`event: workflow_dispatch`) fired 2026-07-11T20:26:33Z; the first `schedule` fire `29184552812` followed 2026-07-12T07:38:28Z (the cron works). Both failed at `gh pr create`: "GitHub Actions is not permitted to create or approve pull requests". Follow-up = the single toggle ask above. | Both run logs, read 2026-07-12 (ORDER 012); run history: 2 runs total, both failed. |
+| H | **Control-plane GITHUB_TOKEN** (was the standing PAT ask) | **DONE by owner** — the live board now returns authenticated-only cells (Actions-secret counts `known: true`, `auto_merge.allowed` known), impossible anonymously; deploy-drift row reads all three services `in_sync`. | Live `/api/readiness.json` verified 2026-07-12 (ORDER 012); wall history in `docs/CAPABILITIES.md` (2026-07-09 entry + 2026-07-12 resolution). |
+| I | **Tester payout rail (ORDER 018)** | **PayPal Payouts confirmed** as the v1 rail — no longer a decision ask; only the setup remains (the ⚑ ask above). Dry-run payout module + kill switch + caps shipped in ORDER 018 PR1. | Owner live via the coordinator session, relayed 2026-07-12; `.sessions/2026-07-12-order-018-testing-platform-pr1.md`. |
 
 ## How to use this doc
 
