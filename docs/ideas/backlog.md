@@ -89,7 +89,21 @@
   pins the two committed inventories to each other. Source:
   `.sessions/2026-07-12-owner-envs-name-drift.md` 💡.
 
-- **Tester-task URL liveness guard** · `captured` — every `open` task in
+- **Tester-task URL liveness guard** · `built` (2026-07-12, PR #221 —
+  `botsite/testing_probe.py` cold-fetches every `status: "open"` task's
+  `product_url` via a new `check_testing_urls` pass in
+  `scripts/healthcheck.py` (the 6-hourly healthcheck.yml schedule); reuses
+  the arcade probe's `probe_url` verdicts (final-200, redirects followed),
+  flags non-200 / timeout / connection error / malformed or missing URL,
+  prints explicit "not probed" lines for `coming-soon`/`closed` tasks,
+  fail-soft per URL plus a zero-task catalog alert, folds into the script's
+  exit-1-on-failure idiom; catalog loader extracted to
+  `botsite/testing_catalog.py` so the probe and `/testing` read the SAME
+  loader; the required `quality` gate stays network-free —
+  `httpx.MockTransport` throughout. The bullet's render-time-probe and
+  auto-flip-to-`coming-soon` variants were NOT taken: the healthcheck-pass
+  variant alerts without adding request-path network calls or data
+  writes) — original capture: every `open` task in
   `botsite/testing_tasks.json` points a paying tester at a `product_url`;
   if that URL dies (service renamed, deploy broken) the program burns real
   testers' time and its own credibility before anyone notices. A small
@@ -745,3 +759,21 @@
   remove the owner errand entirely. Worth having because branch deletion is
   403-walled for agent sessions (`docs/CAPABILITIES.md`) — the workflow is
   the one actor that can keep its own house clean.
+
+- **Pin open tester-task `product_url` hosts to the healthcheck `SERVICES`
+  table** · `captured` (2026-07-12, tester-task URL guard session 💡) — the
+  repo now hand-keeps the fleet's public hosts in TWO committed places:
+  `scripts/healthcheck.py` `SERVICES` and the `product_url`s of the open
+  tasks in `botsite/testing_tasks.json` (today all four open-task URLs sit
+  on the three SERVICES hosts). A service rename that updates one file but
+  not the other leaves testers pointed at a dead host for up to 6 hours
+  until the cron probe fires; one zero-network suite test asserting every
+  open task's `product_url` host is a `SERVICES` host (or on a
+  declared-exceptions list, for the day a task points at a non-fleet
+  product) would catch that drift in CI at PR time. Worth having because
+  the liveness guard just shipped is a RUNTIME net — this pin is the
+  cheaper compile-time net for the most likely way those URLs die, the
+  same committed-inventory-consistency move already captured for
+  `railway.SERVICES` vs the envhub registry (that bullet covers env-var
+  NAMES, not hosts — deduped against it, this backlog, and the queue-state
+  NEXT list). Source: `.sessions/2026-07-12-tester-task-url-guard.md` 💡.
