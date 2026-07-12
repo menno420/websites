@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import github, projects, prompt_artifacts, prompts  # noqa: E402
+from app import github, projects, prompt_artifacts, prompts, roster  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -89,6 +89,28 @@ def test_single_source_of_truth_no_forked_helpers():
     assert prompts.REPO is prompt_artifacts.REPO
     assert projects.REPO is prompt_artifacts.REPO
     assert projects._blob_url is prompt_artifacts.blob_url
+
+
+def test_seat_roster_single_source_and_order():
+    """The seat roster lives ONCE (``app/roster.py``) — the /prompts library
+    and the /projects dispatch order both derive from it, pinned to the
+    owner's 8 seats so the two surfaces can never drift."""
+    assert prompts.SEATS is roster.SEATS
+    assert projects._START_ORDER is roster.START_ORDER
+    assert prompts.SEATS == (
+        "fleet-manager",
+        "venture-lab",
+        "superbot-world",
+        "superbot-2.0",
+        "ideas-lab",
+        "game-lab",
+        "self-improvement",
+        "websites",
+    )
+    assert prompts.SEATS == tuple(a[0] for a in projects._START_ORDER)
+    assert [projects.start_rank(s) for s in prompts.SEATS] == list(
+        range(len(prompts.SEATS))
+    )
 
 
 # --------------------------------------------------------------------------- #
