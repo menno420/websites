@@ -26,6 +26,7 @@ from app import (  # noqa: E402
     github,
     ideas,
     journal,
+    owner,
     readiness,
 )
 from app.main import app  # noqa: E402
@@ -498,20 +499,27 @@ def test_owner_reveal_secrets_flag_threads_names():
     asyncio.run(run())
 
 
+def _owner_action_headers(pw: str = OWNER_PW) -> dict:
+    """Basic auth + same-origin Origin header for the CSRF-guarded POST actions."""
+    return {**_basic(pw), "Origin": "http://testserver"}
+
+
 def test_owner_refresh_action(secrets_client, monkeypatch):
-    """POST /owner/actions/refresh (authed) clears the cache and 200s."""
+    """POST /owner/actions/refresh (authed, same-origin) clears the cache and 200s."""
+    owner.reset_rate_limits()
     monkeypatch.setattr(config, "SITE_PASSWORD", OWNER_PW)
     monkeypatch.setattr(github, "clear_cache", lambda: 7)
     c, _ = secrets_client
-    # unauthed POST rejected
+    # unauthed POST rejected (auth precedes the CSRF check)
     assert c.post("/owner/actions/refresh").status_code == 401
-    r = c.post("/owner/actions/refresh", headers=_basic(OWNER_PW))
+    r = c.post("/owner/actions/refresh", headers=_owner_action_headers())
     assert r.status_code == 200
     assert "cache cleared" in r.text and "7 entries" in r.text
 
 
 def test_owner_rerun_ci_action(secrets_client, monkeypatch):
-    """POST /owner/actions/rerun-ci (authed) is reachable; external call mocked."""
+    """POST /owner/actions/rerun-ci (authed, same-origin) is reachable; external call mocked."""
+    owner.reset_rate_limits()
     monkeypatch.setattr(config, "SITE_PASSWORD", OWNER_PW)
 
     async def fake_rerun(repo, branch="main"):
@@ -528,7 +536,7 @@ def test_owner_rerun_ci_action(secrets_client, monkeypatch):
     r = c.post(
         "/owner/actions/rerun-ci",
         data={"repo": "superbot"},
-        headers=_basic(OWNER_PW),
+        headers=_owner_action_headers(),
     )
     assert r.status_code == 200
     assert "re-ran failed jobs of run #42" in r.text
@@ -536,7 +544,7 @@ def test_owner_rerun_ci_action(secrets_client, monkeypatch):
     r2 = c.post(
         "/owner/actions/rerun-ci",
         data={"repo": "not-a-repo"},
-        headers=_basic(OWNER_PW),
+        headers=_owner_action_headers(),
     )
     assert r2.status_code == 200 and "unknown repo" in r2.text
 

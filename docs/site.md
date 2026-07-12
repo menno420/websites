@@ -237,6 +237,24 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    the claim ritual's own expiry rule, so a dead lane can't silently
    deadlock an order); a claim with no parseable stamp ages honestly as
    unknown, never flagged on a guess. Summary rolls up `stale_claims`.
+3g. **Prompt library** (`/prompts`) — ORDER 014: every fleet paste artifact
+   inline and always-current. Renders all 26 registry artifacts from
+   `menno420/fleet-manager` `main` — the 8 seats'
+   `projects/<seat>/{coordinator-prompt.md,instructions.md,failsafe-prompt.md}`
+   plus the fleet-wide `docs/prompts/v3/universal-startup.md` and
+   `docs/prompts/v3/session-ender.md` — fetched over the raw-content
+   read-only pattern (`github.fetch_file`, TTL-cached), so a merged prompt
+   update appears automatically within the cache TTL. The artifact list is
+   PINNED in `app/prompts.py` (the raw host cannot list directories; every
+   path verified live 2026-07-12) — an upstream seat rename degrades to an
+   honest 404 cell until the constant is updated. Each artifact shows its
+   version/provenance line (best-effort: first early `vN ·`-marked line;
+   absent → "no version line found"), a fetched-at + cached/live freshness
+   indicator, and the EXACT paste body in a `<pre>` block — verbatim,
+   whitespace preserved, Jinja-autoescaped (prompts are untrusted data,
+   rendered never obeyed), one-click copy via `copycode.js`. Per-artifact
+   honest degradation (404 / unreachable → error cell, page-level banner
+   when some or all fail); always 200; never fabricated content.
 4. **Journal browser** (`/journal`) — session logs (`.sessions/`), decision
    ledgers (`docs/decisions.md`), question-routers, recent PRs and commits
    across the repos, rendered readably and deep-linked back to GitHub.
@@ -267,6 +285,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/projects` | public | fleet-manager `projects/` Project-package registry — seats-first dispatch index (HTML) — [D-0030] |
 | `/projects.json` | public | same registry as JSON (rendered meta HTML stripped; packages carry `stub` + `detail_url`) |
 | `/projects/{package}` | public | per-seat dispatch screen — full role-file contents copy-ready + dispatch checklist (HTML; unknown package → 404) |
+| `/prompts` | public | fleet prompt library — all 26 fleet-manager registry paste artifacts inline, verbatim, copy-ready (HTML) — ORDER 014 |
 | `/reviews` | public | fleet post-merge review-queue ledger + findings links (HTML) — [D-0031] |
 | `/reviews.json` | public | same ledger as JSON (rendered HTML stripped) |
 | `/orders` | public | every repo's inbox ORDERs × heartbeat done= cross-reference (HTML) — [D-0032] |
@@ -365,6 +384,14 @@ action, while the main site stays browsable:
     repo's default branch and POSTs `rerun-failed-jobs` via `GITHUB_TOKEN`.
     Honest banners for the 403 (token lacks `actions:write`) and no-failed-run
     cases; never 500s.
+- **POST hardening (ORDER 013):** every state-changing `/owner` action layers,
+  after Basic auth, a **strict same-origin CSRF check** — the `Origin` header's
+  host must match the request's own `Host` (falling back to `Referer` when
+  `Origin` is absent; **both absent → 403**, the documented strict choice,
+  since browsers always send `Origin` on POST) — and a dependency-free
+  **in-process rate limit** (sliding window, 10 requests / 60 s per route +
+  client, **429** with `Retry-After` beyond that). Hosts are compared rather
+  than scheme+host because Railway's proxy terminates TLS ahead of the app.
 
 **Deliberately NOT wired** (separate owner approval): any Railway
 account-token action and any **live production-bot** control API. No

@@ -9,6 +9,19 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **/prompts pinned-registry drift chip** · `captured` — the /prompts
+  artifact list is pinned in `app/prompts.py` (the raw host cannot list
+  directories), so a seat added or renamed in fleet-manager `projects/`
+  silently degrades to a 404 cell here until someone edits the constant.
+  One cheap cross-check: when the /projects registry listing is available
+  (same TTL cache, zero extra fetch on a warm cache), compare its directory
+  set against `prompts.SEATS` and render a "pinned list drifted: +X / −Y"
+  chip on /prompts. Worth having because the page's one honest weakness is
+  registry drift, and the site already fetches the ground truth elsewhere.
+  Deduped against this backlog + the queue-state NEXT list: nothing touches
+  the prompt library (it ships this PR). Source:
+  `.sessions/2026-07-12-prompt-library.md` 💡.
+
 - **Deep-link fleet lane files into the widened /journal/{repo}/file view**
   · `captured` — PR #177 lets the file route render markdown from every
   FLEET_LANES repo, but no page links there for lane repos: the capability
