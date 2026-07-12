@@ -2,6 +2,8 @@
 {% block title %}projects{% endblock %}
 {% block headright %}<a href="/projects?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
+{% set seats = p.packages | rejectattr('stub') | list %}
+{% set stubs = p.packages | selectattr('stub') | list %}
 <div class="card">
   <h2>projects — the fleet's Project-package registry</h2>
   <p class="dim small">Read-only render of
@@ -9,7 +11,13 @@
     repo carrying what its Project runs on: Custom Instructions, coordinator prompt,
     environment setup script, failsafe, and a <code>meta.md</code> with the package's
     deployed state. The manager's repo stores; this site renders (read-only, secrets never
-    present by design).</p>
+    present by design). Each seat card opens its
+    <strong>dispatch screen</strong> — full prompt text, copy-ready.</p>
+  {% if p.state == 'ok' %}
+  <p class="dim small">{{ seats | length }} active seat{{ 's' if seats | length != 1 }}
+    in dispatch order{% if stubs %} · {{ stubs | length }} retired / merged
+    stub{{ 's' if stubs | length != 1 }} collapsed below{% endif %}.</p>
+  {% endif %}
 
   {% if p.state == 'empty' %}
   <div class="banner">◌ <strong>registry not landed yet</strong> — {{ p.reason }}
@@ -35,12 +43,13 @@
 </div>
 {% endif %}
 
-{% for pkg in p.packages %}
+{% for pkg in seats %}
 <div class="card">
-  <h2>{{ pkg.name }}
+  <h2><a href="{{ pkg.detail_url }}">{{ pkg.name }}</a>
     {% if pkg.state %}<span class="b ok">{{ pkg.state }}</span>
     {% elif not pkg.error %}<span class="b unknown">state unknown</span>{% endif %}
-    <span class="dim small">· <a href="{{ pkg.github_url }}">package ↗</a></span></h2>
+    <span class="dim small">· <a href="{{ pkg.detail_url }}">open dispatch →</a>
+      · <a href="{{ pkg.github_url }}">package ↗</a></span></h2>
 
   {% if pkg.error %}
   <div class="banner">⚠ could not list <code>{{ pkg.path }}</code> — {{ pkg.error }}</div>
@@ -64,4 +73,24 @@
   {% endif %}
 </div>
 {% endfor %}
+
+{% if stubs %}
+<div class="card">
+  <details>
+    <summary class="dim">Retired / merged stubs ({{ stubs | length }}) — collapsed;
+      meta.md declares these retired / merged / stub</summary>
+    <table>
+      {% for pkg in stubs %}
+      <tr>
+        <th><a href="{{ pkg.detail_url }}">{{ pkg.name }}</a></th>
+        <td>{% if pkg.state %}<span class="b unknown">{{ pkg.state }}</span>
+            {% else %}<span class="b unknown">state unknown</span>{% endif %}</td>
+        <td class="small"><a href="{{ pkg.detail_url }}">dispatch screen</a>
+          · <a href="{{ pkg.github_url }}">package ↗</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </details>
+</div>
+{% endif %}
 {% endblock %}

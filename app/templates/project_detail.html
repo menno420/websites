@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ d.name }} · dispatch{% endblock %}
+{% block headright %}<a href="/projects/{{ d.name }}?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+{% set pkg = d.package %}
+<div class="card">
+  <h2>{{ d.name }} — dispatch screen
+    {% if pkg and pkg.state %}<span class="b ok">{{ pkg.state }}</span>
+    {% elif pkg and not pkg.error %}<span class="b unknown">state unknown</span>{% endif %}
+    <span class="dim small">· <a href="/projects">← all projects</a>
+      {% if pkg %}· <a href="{{ pkg.github_url }}">package ↗</a>{% endif %}</span></h2>
+  <p class="dim small">One seat's launch console: every recognized role file below is the
+    FULL file, copy-ready — read-only from
+    <a href="{{ d.repo_url }}">fleet-manager <code>projects/</code> ↗</a>, secrets never
+    present by design.</p>
+
+  {% if d.state == 'empty' %}
+  <div class="banner">◌ <strong>registry not landed yet</strong> — {{ d.reason }}
+    · <a href="{{ d.repo_url }}">watch on GitHub ↗</a></div>
+  {% elif d.state == 'not-configured' %}
+  <div class="banner">⚠ <strong>not configured</strong> — {{ d.reason }}. This page renders
+    the package the moment the token is set (the ask is filed in
+    <code>docs/owner/OWNER-ACTIONS.md</code>).</div>
+  {% elif d.state == 'unavailable' %}
+  <div class="banner">⚠ <strong>unavailable</strong> — could not list
+    <code>projects/</code> ({{ d.reason }}) · <a href="{{ d.repo_url }}">view on GitHub ↗</a></div>
+  {% endif %}
+  {% if pkg and pkg.error %}
+  <div class="banner">⚠ could not list <code>{{ pkg.path }}</code> — {{ pkg.error }}</div>
+  {% endif %}
+
+  {% if d.state == 'ok' and pkg and not pkg.error %}
+  <table>
+    <tr><th>deployed state</th>
+        <td>{% if pkg.state %}<span class="b ok">{{ pkg.state }}</span>
+            {% else %}<span class="b unknown">unknown</span>{% endif %}</td></tr>
+    <tr><th>environment</th>
+        <td>{% if d.env %}<code>{{ d.env }}</code>
+            {% else %}<span class="b unknown">unknown</span>{% endif %}</td></tr>
+    <tr><th>claude.ai Project</th>
+        <td>{% if d.project_url %}<a href="{{ d.project_url }}">open Project ↗</a>
+            {% else %}<span class="dim">none recorded in meta.md</span>{% endif %}</td></tr>
+  </table>
+  {% if pkg.meta_error %}
+  <div class="banner">⚠ meta.md could not be fetched — {{ pkg.meta_error }}</div>
+  {% endif %}
+  {% endif %}
+</div>
+
+{% if d.state == 'ok' and pkg and not pkg.error %}
+<div class="card">
+  <h2>dispatch checklist</h2>
+  <ol class="small">
+    <li>Copy the <strong>Custom Instructions</strong> below → paste into the Project's
+      instructions (claude.ai → Project → Custom Instructions).</li>
+    <li>Copy the <strong>coordinator / startup prompt</strong> → send it as the first
+      message in the Project.</li>
+    <li>Verify the <strong>failsafe cron is armed</strong> —
+      {% if d.failsafe %}<a href="#{{ d.failsafe.anchor }}">failsafe file ↓</a>
+      · <a href="{{ d.failsafe.github_url }}">on GitHub ↗</a>
+      {% else %}<span class="dim">no failsafe file recognized in this package</span>
+      {% endif %}.</li>
+  </ol>
+</div>
+
+{% for f in pkg.files if f.role != 'other' %}
+<div class="card" id="{{ f.anchor }}">
+  <h2>{{ f.label }}
+    <span class="dim small">· <code>{{ f.name }}</code>
+      · <a href="{{ f.github_url }}">view on GitHub ↗</a></span></h2>
+  {% if f.fetch_error %}
+  <div class="banner">⚠ could not fetch <code>{{ f.path }}</code> — {{ f.fetch_error }}</div>
+  {% elif f.text is not none %}
+  <pre>{{ f.text }}</pre>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% set others = pkg.files | selectattr('role', 'equalto', 'other') | list %}
+{% if others %}
+<div class="card">
+  <h2>other files <span class="dim small">· listed honestly, link-only</span></h2>
+  <p class="small">
+    {% for f in others %}
+    <a href="{{ f.github_url }}"><code>{{ f.name }}</code> ↗</a>{{ " · " if not loop.last }}
+    {% endfor %}
+  </p>
+</div>
+{% endif %}
+
+{% if not pkg.files %}
+<div class="card"><p class="dim">no files in this package yet</p></div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}<script src="/static/copycode.js" defer></script>{% endblock %}

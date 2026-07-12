@@ -265,6 +265,22 @@ async def projects_json(request: Request):
     return JSONResponse(payload)
 
 
+@app.get("/projects/{package}", response_class=HTMLResponse)
+async def project_detail(request: Request, package: str):
+    """Owner Launch Console (single-screen dispatch, 2026-07-12): one seat's
+    dispatch screen — every recognized role file's FULL content copy-ready,
+    deployed-state / environment / Project-link meta fields, and the static
+    dispatch checklist. The package name is validated against the live
+    registry listing (unknown or traversal-shaped → 404); registry-fetch
+    failures degrade honestly on a 200 page, mirroring /projects."""
+    data = await projects.detail(package, refresh=_refresh(request))
+    if data["state"] == "not-found":
+        return HTMLResponse("unknown package", status_code=404)
+    return templates.TemplateResponse(
+        request, "project_detail.html", {"d": data, "active": "projects"}
+    )
+
+
 @app.get("/reviews", response_class=HTMLResponse)
 async def reviews_page(request: Request):
     """ORDER 009 increment (3): the fleet's post-merge review queue
