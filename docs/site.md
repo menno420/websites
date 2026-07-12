@@ -275,7 +275,10 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 
 | Route | Auth | What |
 |---|---|---|
-| `/` | public | readiness board (secrets masked to a count) |
+| `/` | public | Overview dashboard — what-needs-attention summary + category map, readiness board below (secrets masked to a count) |
+| `/work` | public | category landing — queue / orders / ideas / reviews as rows with live count chips (IA v2, 2026-07-12) |
+| `/history` | public | category landing — activity / journal rows (IA v2) |
+| `/console` | public | category landing — projects / prompts / environments hub / directory rows (IA v2) |
 | `/api/readiness.json` | public | board data as JSON (no secret names) |
 | `/fleet` | public | fleet heartbeat — every lane's `control/status*.md` (HTML) — [D-0021] |
 | `/fleet.json` | public | same fleet heartbeat as JSON (rendered body stripped) |

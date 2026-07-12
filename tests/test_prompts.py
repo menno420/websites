@@ -158,8 +158,29 @@ def test_prompts_route_happy_renders_everything(monkeypatch):
     assert 'src="/static/copycode.js"' in r.text
     assert "<pre>" in r.text
     assert "live fetch" in r.text
-    # nav carries the new link
-    assert 'href="/prompts"' in r.text
+    # category nav carries the page's group (prompts ∈ console)
+    assert 'href="/console"' in r.text
+
+
+def test_universal_prompts_group_renders_first(monkeypatch):
+    """Owner feedback 2026-07-12: the session-ender was buried at the bottom
+    of ~26 artifacts and labeled just 'session ender' (a phrase the per-seat
+    coordinator prompts repeat in their bodies). Pin the fix: the two
+    fleet-wide prompts are labeled Universal … and their group renders at
+    the TOP of the page, before any per-seat section."""
+    _happy(monkeypatch)
+    client = TestClient(app)
+    r = client.get("/prompts")
+    assert r.status_code == 200
+    assert 'id="universal"' in r.text
+    assert "Universal Startup" in r.text
+    assert "Universal Session-Ender" in r.text
+    universal_pos = r.text.find('id="universal"')
+    ender_body_pos = r.text.find("BODY OF docs/prompts/v3/session-ender.md")
+    first_seat_pos = r.text.find('id="seat-')
+    assert universal_pos != -1 and ender_body_pos != -1 and first_seat_pos != -1
+    assert universal_pos < first_seat_pos
+    assert ender_body_pos < first_seat_pos
 
 
 def test_prompts_route_cache_indicator(monkeypatch):

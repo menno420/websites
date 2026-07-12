@@ -115,7 +115,7 @@ CATEGORIES: list[dict[str, Any]] = [
         "key": "history",
         "label": "history",
         "href": "/history",
-        "desc": "what happened — the fleet's timeline and committed journals",
+        "desc": "what happened — the fleet timeline and committed journals",
         "landing": True,
         "gated": False,
         "items": [
@@ -143,7 +143,7 @@ CATEGORIES: list[dict[str, Any]] = [
         "label": "console",
         "href": "/console",
         "desc": (
-            "the fleet's operating assets — seats, prompts, environments, "
+            "the fleet operating assets — seats, prompts, environments, "
             "web surfaces"
         ),
         "landing": True,
@@ -170,14 +170,28 @@ CATEGORIES: list[dict[str, Any]] = [
                 "action": {"label": "browse prompts", "href": "/prompts"},
             },
             {
+                # Canonical home = the owner environments hub (ORDER 021
+                # slice 1, landed 2026-07-12): /owner/environments-hub
+                # unifies the committed fleet registry + live Railway var
+                # names + the claude.ai schema index. The public schema
+                # registry (/environments, which passes this active key)
+                # and the live estate detail (/owner/environments) are its
+                # labeled sub-views — linked here, never forked.
                 "key": "environments",
-                "label": "environments",
-                "href": "/environments",
+                "label": "environments 🔒",
+                "href": "/owner/environments-hub",
                 "desc": (
-                    "THE environments home — registry, setup commands, and "
-                    "the gated live view"
+                    "THE environments home — fleet-wide inventory: Railway, "
+                    "Actions secrets, claude.ai schemas (owner-gated)"
                 ),
-                "action": {"label": "open environments", "href": "/environments"},
+                "action": {
+                    "label": "open env hub",
+                    "href": "/owner/environments-hub",
+                },
+                "sublinks": [
+                    {"label": "claude.ai schemas (public)", "href": "/environments"},
+                    {"label": "live estate detail 🔒", "href": "/owner/environments"},
+                ],
             },
             {
                 "key": "directory",
@@ -227,13 +241,16 @@ CATEGORIES: list[dict[str, Any]] = [
             },
             {
                 "key": None,
-                "label": "live environments (Railway)",
-                "href": "/owner/environments",
+                "label": "environments hub",
+                "href": "/owner/environments-hub",
                 "desc": (
-                    "live Railway variable NAMES per service — linked from "
-                    "the /environments home"
+                    "THE environments home — also listed under console; its "
+                    "sub-views link back"
                 ),
-                "action": {"label": "open live view", "href": "/owner/environments"},
+                "action": {
+                    "label": "open env hub",
+                    "href": "/owner/environments-hub",
+                },
             },
         ],
     },
@@ -281,11 +298,16 @@ def category_for(active: Optional[str]) -> Optional[str]:
 
 
 def all_hrefs() -> list[str]:
-    """Every distinct href the manifest carries (categories + items), in
-    manifest order — the reachability test's parametrization source."""
+    """Every distinct href the manifest carries (categories + items +
+    sub-view links), in manifest order — the reachability test's
+    parametrization source: nothing in the IA may 404."""
     seen: list[str] = []
     for cat in CATEGORIES:
-        for href in [cat["href"], *(it["href"] for it in cat["items"])]:
+        hrefs = [cat["href"]]
+        for it in cat["items"]:
+            hrefs.append(it["href"])
+            hrefs.extend(sl["href"] for sl in it.get("sublinks", ()))
+        for href in hrefs:
             if href not in seen:
                 seen.append(href)
     return seen

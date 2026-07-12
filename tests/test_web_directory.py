@@ -202,7 +202,7 @@ def test_home_section_map_links_the_directory(monkeypatch):
         r = c.get("/")
     assert r.status_code == 200
     assert 'href="/directory"' in r.text
-    assert nav.DESCRIPTIONS["directory"] in r.text
+    assert nav.item("directory")["label"] in r.text
     # single source of truth: the home page LINKS the directory, it does not
     # duplicate the site list (no directory tables on the board)
     assert 'id="our-sites"' not in r.text
@@ -211,7 +211,8 @@ def test_home_section_map_links_the_directory(monkeypatch):
 
 def test_directory_is_in_the_nav_manifest():
     assert "directory" in nav.keys()
-    assert any(i["href"] == "/directory" for i in nav.section_map())
+    assert nav.category_for("directory") == "console"
+    assert "/directory" in nav.all_hrefs()
 
 
 # --- registry contract (other seats add rows by PR) -----------------------

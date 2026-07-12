@@ -271,27 +271,31 @@ async def _category_rows(cat: dict, refresh: bool) -> list[dict]:
     return list(await asyncio.gather(*[one(it) for it in cat["items"]]))
 
 
-async def _category_page(request: Request, key: str) -> HTMLResponse:
-    cat = nav.category(key)
+async def _category_page(request: Request, active: str) -> HTMLResponse:
+    cat = nav.category(active)
     rows = await _category_rows(cat, _refresh(request))
     return templates.TemplateResponse(
-        request, "category.html", {"cat": cat, "rows": rows, "active": key}
+        request, "category.html", {"cat": cat, "rows": rows, "active": active}
     )
 
 
 @app.get("/work", response_class=HTMLResponse)
 async def work_landing(request: Request):
-    return await _category_page(request, "work")
+    """Category landing: the Work rows (queue / orders / ideas / reviews)."""
+    return await _category_page(request, active="work")
 
 
 @app.get("/history", response_class=HTMLResponse)
 async def history_landing(request: Request):
-    return await _category_page(request, "history")
+    """Category landing: the History rows (activity / journal)."""
+    return await _category_page(request, active="history")
 
 
 @app.get("/console", response_class=HTMLResponse)
 async def console_landing(request: Request):
-    return await _category_page(request, "console")
+    """Category landing: the Console rows (projects / prompts /
+    environments hub / directory)."""
+    return await _category_page(request, active="console")
 
 
 def _repo_param(request: Request) -> str | None:

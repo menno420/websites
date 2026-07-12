@@ -43,6 +43,9 @@
       <span class="sec-items">
         {%- for it in cat['items'] %}
         <a href="{{ it.href }}">{{ it.label }}</a>
+        {%- for sl in it.sublinks or () %}
+        <a href="{{ sl.href }}" class="dim">{{ sl.label }}</a>
+        {%- endfor %}
         {%- endfor %}
       </span>
     </div>

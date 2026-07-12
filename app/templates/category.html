@@ -12,7 +12,12 @@
   <div class="catrow">
     <div class="cr-main">
       <a class="cr-name" href="{{ row.href }}">{{ row.label }}</a>
-      <span class="cr-desc">{{ row.desc }}</span>
+      <span class="cr-desc">{{ row.desc }}
+        {%- if row.sublinks %} ·
+        {%- for sl in row.sublinks %}
+        <a href="{{ sl.href }}">{{ sl.label }}</a>{{ ' ·' if not loop.last }}
+        {%- endfor %}
+        {%- endif %}</span>
     </div>
     {% if row.counted %}
     <span class="cr-chip">
@@ -30,9 +35,10 @@
   {% if cat.key == 'console' %}
   <p class="dim small" style="margin-top:.8rem">Single canonical homes:
     <a href="/prompts">/prompts</a> is THE place to find any fleet prompt
-    (universal + per-seat) and <a href="/environments">/environments</a> is THE
-    place for anything environment-shaped — other pages link there rather than
-    keeping their own copies.</p>
+    (universal + per-seat) and the
+    <a href="/owner/environments-hub">environments hub 🔒</a> is THE place for
+    anything environment-shaped — other pages link there rather than keeping
+    their own copies.</p>
   {% endif %}
 </div>
 {% endblock %}
