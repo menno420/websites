@@ -38,7 +38,7 @@ tree, never a registry line or a PR read.
    and `diverged` docs are LOCAL MODIFICATIONS the upgrade must not
    clobber; list them verbatim in the PR body. `template-improved` applies
    only under `--apply-docs` and only to consumer-untouched docs.
-7. Verify + flip — `python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)` and
+7. Verify + flip — `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q (all four service suites); python3 bootstrap.py check --strict (kit gate)` and
    `python3 bootstrap.py check --strict` green (own card's designed hold
    excepted); flip the card `complete`, delete the claim, push.
 8. Verify merged main afterward — TREE over registries:

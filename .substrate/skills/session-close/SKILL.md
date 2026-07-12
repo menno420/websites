@@ -47,7 +47,7 @@ checks). Everything else is ordered steps.
    wall; see `control/README.md`) — Withdraw stale asks; groom one idea
    forward; add one new 💡 idea you genuinely believe in; write the ⟲
    previous-session review.
-6. Verify — `python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)` and `python3 bootstrap.py check --strict`.
+6. Verify — `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q (all four service suites); python3 bootstrap.py check --strict (kit gate)` and `python3 bootstrap.py check --strict`.
    The only acceptable pre-flip red is the designed born-red hold naming
    this session's own card.
 7. Flip as the deliberate LAST step — flip the card badge to `complete`,

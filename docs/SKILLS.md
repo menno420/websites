@@ -19,11 +19,11 @@ deriving the procedure from scratch.
 
 | Skill | When to reach for it | Capabilities | Grounds (exact commands) |
 |---|---|---|---|
-| `session-close` | Land the session — claim, born-red card first, READY PR, batched work, close-out docs, flip complete last; never self-merge. | `read`, `edit`, `run` | `python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)`<br>`python3 bootstrap.py check --strict` |
-| `upgrade-distribution` | Roll a kit release out to one adopter repo — download, sha256 three-way, banked rollback, carve-out scan, born-red PR, tree-verified merge. | `read`, `edit`, `run` | `git fetch origin main && git reset --hard origin/main`<br>`gh release download vX.Y.Z --repo menno420/substrate-kit --pattern 'bootstrap.py*' --pattern 'release.json'`<br>`sha256sum bootstrap.py.new`<br>`python3 bootstrap.py.new upgrade`<br>`python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)`<br>`python3 bootstrap.py check --strict`<br>`git fetch origin main && git log -1 --oneline origin/main`<br>`git commit --allow-empty` |
+| `session-close` | Land the session — claim, born-red card first, READY PR, batched work, close-out docs, flip complete last; never self-merge. | `read`, `edit`, `run` | `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q (all four service suites); python3 bootstrap.py check --strict (kit gate)`<br>`python3 bootstrap.py check --strict` |
+| `upgrade-distribution` | Roll a kit release out to one adopter repo — download, sha256 three-way, banked rollback, carve-out scan, born-red PR, tree-verified merge. | `read`, `edit`, `run` | `git fetch origin main && git reset --hard origin/main`<br>`gh release download vX.Y.Z --repo menno420/substrate-kit --pattern 'bootstrap.py*' --pattern 'release.json'`<br>`sha256sum bootstrap.py.new`<br>`python3 bootstrap.py.new upgrade`<br>`python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q (all four service suites); python3 bootstrap.py check --strict (kit gate)`<br>`python3 bootstrap.py check --strict`<br>`git fetch origin main && git log -1 --oneline origin/main`<br>`git commit --allow-empty` |
 | `release` | Cut + publish a substrate-kit release — version bump PR, workflow_dispatch publish, three-way asset verification, adopter distribution wave. | `read`, `edit`, `run` | `python3 src/build_bootstrap.py`<br>`git diff --exit-code dist/bootstrap.py`<br>`python3 -m pytest tests/ -q`<br>`python3 -m ruff check src/engine/`<br>`python3 src/build_release_json.py --version X.Y.Z --verify-only`<br>`python3 dist/bootstrap.py check --strict`<br>`gh workflow run release.yml -f version=X.Y.Z`<br>`git fetch --tags && git tag -l vX.Y.Z`<br>`gh release view vX.Y.Z`<br>`python3 dist/bootstrap.py currency` |
 | `intake` | Turn a fragmented owner ask into main ideas, a restated fuller picture, a skill-index map, and structured-choice owner questions — before building (understand-and-reflect, executable). | `read` | — |
-| `quality-gate` | Run the project's full verification before pushing and report what must be fixed. | `read`, `run` | `python3 -m pytest tests/ -q (app tests); python3 bootstrap.py check --strict (kit gate)`<br>`python3 bootstrap.py check --strict` |
+| `quality-gate` | Run the project's full verification before pushing and report what must be fixed. | `read`, `run` | `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q (all four service suites); python3 bootstrap.py check --strict (kit gate)`<br>`python3 bootstrap.py check --strict` |
 | `review` | Review the branch diff against the binding contracts; comment with a verdict and fixes, no edits. | `read`, `comment` | — |
 | `repo-health` | Audit doc + session-log hygiene (bootstrap check) and summarize drift. | `read`, `run` | `python3 bootstrap.py check` |
 | `deep-research` | Fan out web research, adversarially verify sources, and synthesize a cited report. | `read`, `run` | — |
@@ -42,10 +42,28 @@ deriving the procedure from scratch.
   a `review` stance); stances stay advisory for anything a skill has not
   declared.
 
+## Machine consumption — the seat digest
+
+`docs/seat-digest.md` is the machine-extractable DERIVED RENDER of this
+index plus the capability ledger's venue-relevant walls — two fence-marked
+blocks sized for seat-prompt budgets, consumed by fleet-manager's
+seat-prompt regen via fence-prefix extraction + byte match. Never edit it;
+regenerate with `python3 bootstrap.py seat-digest` (adopt/upgrade refresh
+it too). The extraction contract and the no-third-copy deferral chain are
+documented in that file itself.
+
 ## Growing the set
 
 The skill set is kit-owned (the `SKILLS` list in the kit's
 `src/engine/skills/skills.py`) and this index regenerates from it — never
-hand-edit the table. A recurring action without a row here is a candidate
-skill: capture it as an idea (`docs/ideas/README.md`) or propose it
-upstream to the kit, and it reaches every adopter at the next release.
+hand-edit the table. A recurring action without a row here — or a row
+whose body doesn't actually cover it — is the registration reflex firing:
+the standard move is to **add or extend the skill**, as a registry entry,
+not ad-hoc prose. The growth loop is prose workflow → index row → promoted
+skill: capture the procedure as an idea (`docs/ideas/README.md`) or
+propose it upstream to the kit, and it reaches every adopter at the next
+release. Skill bodies, grounds, and index rows are free to ship directly —
+flag them self-initiated on the run report; binding working-agreement text
+is proposed through `docs/question-router.md`, never self-applied — the
+full clause and its provenance live in the working agreement
+(`.claude/CLAUDE.md`, superbot Q-0194 · Q-0106 · Q-0172).
