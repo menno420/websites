@@ -122,6 +122,14 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **2026-07-12 ORDER 016: cross-repo website-plans discovery inventory**
+  (branch `claude/order-016-discovery-inventory`) — the order's done-when
+  artifact: **`docs/plans/discovery-inventory.md`** inventories every
+  website-related plan found across websites@0101b93,
+  fleet-manager@8724b29, substrate-kit@bf1fc80 and superbot@85a2ec0, with
+  each important one executed or explicitly ledgered (owner-gated /
+  superseded / deferred) with a cited reason.
+
 - **2026-07-12 owner-directed: control-plane IA v2** (branch
   `claude/control-plane-ia-v2`) — the flat ~12-item console became a
   2-level hierarchy (owner: "a few MAIN CATEGORIES which feature
