@@ -121,4 +121,5 @@ priority: P1
 owner: Websites coordinator
 provenance: owner live in the coordinator session 2026-07-12 (landed into the inbox by the coordinator seat with the ORDER 012 reconcile PR — deviation from the one-writer convention on the owner's direct live instruction).
 do: find all website related plans across the multiple repos and execute all the important ones
-status: new
+why: owner live directive 2026-07-12 — website-related plans are scattered across the fleet's repos (planning docs, ideas backlogs, inbox orders, review findings) and nothing sweeps them into execution.
+done-when: a committed discovery inventory lists the website-related plans found across the repos, each important one is executed or explicitly ledgered with a reason (owner-gated / superseded / deferred), and status.md reports done=014.
