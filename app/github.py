@@ -139,6 +139,42 @@ async def api_post(path: str, json_body: Any = None) -> dict:
         return _result(url, 0, None, f"{type(exc).__name__}: {exc}")
 
 
+async def api_request(
+    method: str, path: str, json_body: Any = None, token: str = ""
+) -> dict:
+    """Uncached api.github.com request with an optional PER-REQUEST token.
+
+    Backs the ORDER 020 owner-writeback engine (app/writeback.py), which
+    reads ``GITHUB_TOKEN`` from the environment at REQUEST time — so a
+    write-scoped token pasted into Railway lights up on the next submit
+    without a redeploy. A supplied ``token`` overrides the client-level
+    Authorization header for this one request (httpx merges per-request
+    headers over client headers); empty ``token`` leaves the client header
+    (config-time token or none) in force. Same honest result envelope as
+    every other call here — callers degrade, never raise.
+    """
+    url = config.GITHUB_API_BASE + path
+    headers = {"Authorization": f"Bearer {token}"} if token else None
+    try:
+        resp = await get_client().request(
+            method, url, json=json_body, headers=headers
+        )
+        try:
+            data = resp.json()
+        except ValueError:
+            data = resp.text
+        err = ""
+        if resp.status_code >= 300:
+            err = (
+                data.get("message", "")
+                if isinstance(data, dict)
+                else str(data)[:200]
+            )
+        return _result(url, resp.status_code, data, err)
+    except httpx.HTTPError as exc:
+        return _result(url, 0, None, f"{type(exc).__name__}: {exc}")
+
+
 async def rerun_latest_failed(repo: str, branch: str = "main") -> dict:
     """Re-run the latest FAILED Actions run on ``branch`` for ``repo``.
 
