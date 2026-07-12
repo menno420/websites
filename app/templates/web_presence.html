@@ -50,7 +50,7 @@
         <div class="idea-sum">{{ r.description }} <span class="dim">· {{ r.kind }}</span></div>
       </td>
       <td>
-        {% if r.url %}<a href="{{ r.url }}">{{ r.url | replace('https://', '') }} ↗</a>
+        {% if r.url %}<a class="btn" href="{{ r.url }}">{{ r.url | replace('https://', '') }} ↗</a>
         {% else %}<span class="dim">—</span>{% endif %}
       </td>
       <td>{{ health_badge(r.health) }}
@@ -78,7 +78,7 @@
         <div class="idea-sum">{{ r.description }}</div></td>
       <td class="small">{{ r.kind }}</td>
       <td>{{ health_badge(r.health) }}
-        {% if r.url %}<div class="small"><a href="{{ r.url }}">{{ r.url | replace('https://', '') }} ↗</a></div>{% endif %}</td>
+        {% if r.url %}<div class="small" style="margin-top:.25rem"><a class="btn" href="{{ r.url }}">{{ r.url | replace('https://', '') }} ↗</a></div>{% endif %}</td>
       <td class="small dim">{{ r.unblocked_by or '—' }}
         {% if r.notes %}<div>{{ r.notes }}</div>{% endif %}</td>
     </tr>

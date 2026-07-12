@@ -51,11 +51,13 @@
 
 {% for pkg in seats %}
 <div class="card">
-  <h2><a href="{{ pkg.detail_url }}">{{ pkg.name }}</a>
-    {% if pkg.state %}<span class="b ok">{{ pkg.state }}</span>
-    {% elif not pkg.error %}<span class="b unknown">state unknown</span>{% endif %}
-    <span class="dim small">· <a href="{{ pkg.detail_url }}">open dispatch →</a>
-      · <a href="{{ pkg.github_url }}">package ↗</a></span></h2>
+  <div class="rowhead">
+    <h2><a href="{{ pkg.detail_url }}">{{ pkg.name }}</a>
+      {% if pkg.state %}<span class="b ok">{{ pkg.state }}</span>
+      {% elif not pkg.error %}<span class="b unknown">state unknown</span>{% endif %}
+      <span class="dim small">· <a href="{{ pkg.github_url }}">package ↗</a></span></h2>
+    <span class="cr-action"><a class="btn" href="{{ pkg.detail_url }}">open dispatch →</a></span>
+  </div>
 
   {% if pkg.error %}
   <div class="banner">⚠ could not list <code>{{ pkg.path }}</code> — {{ pkg.error }}</div>
