@@ -20,6 +20,34 @@
   datum the public <a href="/">readiness board</a> hides behind a count) and exposes privileged
   actions using the service's own credentials. Everything here is reversible.</p>
 
+  {# Environments-completeness rollup: envhub.group_summary (#219) across
+     ALL registry groups reduced to one cell — the same TTL-cached
+     railway.live_overview read the environments-hub makes, the same
+     honesty ladder. No live truth = the honest unknown chip WITH the
+     reason, never a fabricated green/0-of-Y. Group NAMES and counts only —
+     never variable values. #}
+  <p class="small">
+    {% if envcov.state != 'ok' %}
+    <span class="b unknown" title="{{ envcov.reason }}">environments: live status unknown</span>
+    <span class="dim">— {{ envcov.reason }}; nothing is assumed complete
+      · <a href="/owner/environments-hub">environments hub</a></span>
+    {% elif envcov.incomplete %}
+    <span class="b warn" title="project groups whose expected variables are not all set live">environments: {{ envcov.incomplete }} group{{ 's' if envcov.incomplete != 1 }} incomplete</span>
+    <span class="dim">—
+      {% for n in envcov.incomplete_names %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      · checklist per group on the <a href="/owner/environments-hub">environments hub</a></span>
+    {% if envcov.unknown %}<span class="b unknown" title="{{ envcov.unknown_names | join(', ') }}">+{{ envcov.unknown }} unknown</span>{% endif %}
+    {% elif envcov.complete %}
+    <span class="b ok" title="every readable group's expected variables are set live">environments: all complete ({{ envcov.complete }} group{{ 's' if envcov.complete != 1 }})</span>
+    {% if envcov.unknown %}<span class="b unknown" title="{{ envcov.unknown_names | join(', ') }}">+{{ envcov.unknown }} unknown — outside the token's scope, never assumed</span>{% endif %}
+    <span class="dim">· <a href="/owner/environments-hub">environments hub</a></span>
+    {% else %}
+    <span class="b unknown" title="{{ envcov.unknown_names | join(', ') }}">environments: live status unknown</span>
+    <span class="dim">— no group was comparable; nothing is assumed complete
+      · <a href="/owner/environments-hub">environments hub</a></span>
+    {% endif %}
+  </p>
+
   {% if banner %}
   <p class="b {{ 'ok' if banner.ok else 'bad' }}" style="display:block;padding:.5rem .8rem;">
     {{ '✓' if banner.ok else '✗' }} {{ banner.text }}

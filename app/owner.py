@@ -17,6 +17,7 @@ OAuth (ORDER 021) replaces it in one place, starting at /environments-hub.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import secrets
 import time
@@ -191,12 +192,20 @@ def _refresh(request: Request) -> bool:
 async def owner_board(request: Request, _: None = Depends(require_owner)):
     # reveal_secrets=True: the authed path un-masks the secret NAMES the public
     # board only counts. This flag never reaches the public board() call.
-    rows = await readiness.board(refresh=_refresh(request), reveal_secrets=True)
+    # Environments rollup (the #219 session's captured idea, promoted):
+    # envhub.group_summary across all groups reduced to one board chip —
+    # same TTL-cached railway.live_overview read the environments-hub makes,
+    # zero new network surface.
+    rows, envcov = await asyncio.gather(
+        readiness.board(refresh=_refresh(request), reveal_secrets=True),
+        envhub.board_rollup(refresh=_refresh(request)),
+    )
     return templates.TemplateResponse(
         request,
         "owner.html",
         {
             "rows": rows,
+            "envcov": envcov,
             "ttl": config.CACHE_TTL_SECONDS,
             "cache_entries": github.cache_size(),
             "banner": None,
@@ -307,12 +316,16 @@ async def owner_envhub_manifest(
 
 
 async def _render_with_banner(request: Request, banner: dict) -> HTMLResponse:
-    rows = await readiness.board(reveal_secrets=True)
+    rows, envcov = await asyncio.gather(
+        readiness.board(reveal_secrets=True),
+        envhub.board_rollup(),
+    )
     return templates.TemplateResponse(
         request,
         "owner.html",
         {
             "rows": rows,
+            "envcov": envcov,
             "ttl": config.CACHE_TTL_SECONDS,
             "cache_entries": github.cache_size(),
             "banner": banner,
