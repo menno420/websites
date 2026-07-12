@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}owner · environment manifest · {{ m.group.id }}{% endblock %}
-{% block headright %}🔒 owner · <a href="/owner/environments-hub">environments hub</a> · <a href="/owner">board</a>{% endblock %}
+{% block headright %}🔒 owner · <a href="/owner/environments-hub">environments hub</a> · <a href="/owner">board</a> · <a href="?refresh=1">refresh live</a>{% endblock %}
 
 {% block content %}
 
@@ -31,9 +31,22 @@
 </div>
 
 <div class="card">
-  <h2>env-var schema <span class="dim small">— variable NAMES + placeholders; the owner fills each placeholder by hand at the console it names</span></h2>
+  <h2>env-var schema <span class="dim small">— variable NAMES + placeholders; the owner fills each placeholder by hand at the console it names. Each row is checked against the live Railway variable NAMES (never values)</span></h2>
+  {% if m.completeness and m.completeness.total %}
+  {% if m.completeness.comparable %}
+  <p class="small">live completeness:
+    <strong>{{ m.completeness.set_count }}/{{ m.completeness.total }} set live</strong>
+    {%- if m.completeness.unknown_count %} · {{ m.completeness.unknown_count }} unknown{% endif %}
+    {% if m.completeness.fetched_at %}<span class="dim">· {{ m.completeness.project_name }} fetched {{ m.completeness.fetched_at }}{{ ' (cached)' if m.completeness.cached }}</span>{% endif %}
+    <span class="dim">— the missing-live rows are what's left to finish this environment.</span></p>
+  {% else %}
+  <p class="small"><span class="b unknown">live status unknown</span>
+    <span class="dim">— {{ m.completeness.reason }}. Badges below stay an
+    honest unknown — never a fabricated set/missing.</span></p>
+  {% endif %}
+  {% endif %}
   <table>
-    <tr><th>service / surface</th><th>variable name</th><th>placeholder (never a value)</th></tr>
+    <tr><th>service / surface</th><th>variable name</th><th>placeholder (never a value)</th><th>live</th></tr>
     {% for svc in m.services %}
     {% if svc.schema %}
     {% for row in svc.schema %}
@@ -41,12 +54,21 @@
       <td class="small">{{ svc.surface.name }}</td>
       <td><code>{{ row.name }}</code></td>
       <td class="small"><code>{{ row.placeholder }}</code></td>
+      <td class="small">
+        {%- set st = svc.live.by_name.get(row.name) if svc.live else none -%}
+        {% if st == 'set-live' %}<span class="b ok">set live</span>
+        {% elif st == 'missing-live' %}<span class="b bad">missing live</span>
+        {% else %}<span class="b unknown">unknown</span>{% endif %}
+      </td>
     </tr>
     {% endfor %}
+    {% if svc.live and svc.live.note %}
+    <tr><td class="dim small" colspan="4">⚠ {{ svc.surface.name }}: {{ svc.live.note }}</td></tr>
+    {% endif %}
     {% else %}
     <tr>
       <td class="small">{{ svc.surface.name }}</td>
-      <td class="dim small" colspan="2">variable names not recorded in this
+      <td class="dim small" colspan="3">variable names not recorded in this
         repo — record them by PR before provisioning; never guessed here.</td>
     </tr>
     {% endif %}
