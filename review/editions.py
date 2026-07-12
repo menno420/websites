@@ -32,6 +32,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Optional
 
+from . import listfilter
+
 BASE_DIR = Path(__file__).resolve().parent
 REVIEWS_DIR = BASE_DIR / "data" / "reviews"
 REPO_URL = "https://github.com/menno420/websites"
@@ -154,3 +156,45 @@ def atom_feed(editions: list[dict[str, Any]], base_url: str) -> str:
     return '<?xml version="1.0" encoding="utf-8"?>\n' + ET.tostring(
         feed, encoding="unicode"
     )
+
+
+# --------------------------------------------------------------------------- #
+# ORDER 019 PR2 — /reviews filter/sort/search over the centralized listfilter
+# core (review/listfilter.py, a byte-identical vendored copy of
+# app/listfilter.py — the repo's sharing pattern, like static/ds/).
+# --------------------------------------------------------------------------- #
+
+
+def edition_month(edition: dict[str, Any]) -> str:
+    """The dated edition's ``YYYY-MM`` bucket (dates are format-validated by
+    ``parse_edition``, so this never invents a month)."""
+    return str(edition.get("date") or "")[:7]
+
+
+def _newest_key(edition: dict[str, Any]) -> tuple:
+    return (edition.get("date", ""), edition.get("slug", ""))
+
+
+FILTER_SPEC = listfilter.ListSpec(
+    path="/reviews",
+    dimensions=(
+        listfilter.Dimension(
+            key="month", label="month",
+            get=lambda e: [edition_month(e)],
+        ),
+    ),
+    sorts=(
+        # ``newest`` reproduces list_editions()' own order exactly (same
+        # date-desc, slug-desc key) — no params renders identically to before.
+        listfilter.SortOption("newest", "newest", sort_key=_newest_key,
+                              reverse=True),
+        listfilter.SortOption("oldest", "oldest", sort_key=_newest_key),
+        listfilter.SortOption(
+            "title", "title A-Z",
+            sort_key=lambda e: str(e.get("title") or "").casefold(),
+        ),
+    ),
+    search=lambda e: " ".join(
+        str(e.get(k) or "") for k in ("title", "summary")
+    ),
+)

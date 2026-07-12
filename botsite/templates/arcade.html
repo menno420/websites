@@ -13,8 +13,11 @@
   </section>
 
   {% if arcade_games %}
+  {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
+  {% set lf = arcade_filter %}
+  {% include "_listfilter.html" %}
   <div class="card-grid section-sm">
-    {% for g in arcade_games %}
+    {% for g in arcade_filter['items'] %}
     <article class="sb-card sb-feat">
       <div class="sb-feat-top">
         <span class="sb-tile sb-tile-emoji">{{ icon("gamepad", 22) }}</span>

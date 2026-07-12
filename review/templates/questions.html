@@ -20,11 +20,15 @@
     {% if not q_ok %}
     <div class="sb-error" role="alert"><strong>Ledger unavailable.</strong> <span class="sb-mono">{{ q_error }}</span></div>
     {% elif ledger.questions %}
+    {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
+    {% set lf = q_filter %}
+    {% include "_listfilter.html" %}
+    {% if q_filter['items'] %}
     <div class="sb-table-scroll">
       <table class="sb-table">
         <thead><tr><th>Asked</th><th>Question</th><th>Status</th><th>Answered where</th></tr></thead>
         <tbody>
-          {% for q in ledger.questions %}
+          {% for q in q_filter['items'] %}
           <tr>
             <td class="sb-mono">{{ q.asked or "?" }}</td>
             <td>{% if q.url %}<a href="{{ q.url }}" target="_blank" rel="noopener">{{ q.title }}</a>{% else %}{{ q.title }}{% endif %}</td>
@@ -35,6 +39,7 @@
         </tbody>
       </table>
     </div>
+    {% endif %}
     {% else %}
     <div class="sb-card">
       <p class="sb-empty">No external reviewer questions on record yet.</p>

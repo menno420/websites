@@ -34,8 +34,12 @@
     <span class="sb-hint">When the cap is reached, new claims pause until open work is reviewed.</span>
   </div>
 
+  {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
+  {% set lf = tasks_filter %}
+  {% include "_listfilter.html" %}
+
   <div class="card-grid section-sm">
-    {% for t in tasks %}
+    {% for t in tasks_filter['items'] %}
     <a class="sb-card sb-card-hover sb-feat feat-link" href="/testing/tasks/{{ t.id }}" style="--c:{{ 'var(--sb-brand)' if t.type == 'game-test' else 'var(--sb-sky)' if t.type == 'site-review' else 'var(--sb-amber)' }}">
       <span class="corner" aria-hidden="true"></span>
       <div class="sb-feat-top">

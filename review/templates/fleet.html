@@ -117,8 +117,11 @@
 <section class="sb-section">
   <div class="sb-wrap">
     <div class="sb-sec-head"><h2>The per-repo lanes under the seats</h2></div>
+    {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
+    {% set lf = lanes_filter %}
+    {% include "_listfilter.html" %}
     <div class="sb-grid-2">
-      {% for l in overview.lanes %}
+      {% for l in lanes_filter['items'] %}
       <div class="sb-card rv-lane-card">
         <h3>
           {% if l.repo %}<a href="/fleet/{{ l.repo }}">{{ l.lane }}</a>{% else %}{{ l.lane }}{% endif %}

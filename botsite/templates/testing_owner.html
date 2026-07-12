@@ -87,8 +87,13 @@
 
   <div class="section-sm">
     <h3>Submissions ({{ submissions|length }})</h3>
+    {% if submissions %}
+    {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
+    {% set lf = submissions_filter %}
+    {% include "_listfilter.html" %}
+    {% endif %}
     {% if not submissions %}<p class="sb-hint">No submissions yet.</p>{% endif %}
-    {% for s in submissions %}
+    {% for s in submissions_filter['items'] %}
     <div class="sb-card" style="margin-bottom:14px; padding:16px">
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
         <strong>submission #{{ s.id }}</strong>

@@ -199,3 +199,26 @@
   margin: var(--sb-s-4) 0 var(--sb-s-2);
 }
 .rv-map li { margin-bottom: var(--sb-s-1); }
+
+/* centralized list filter widget (vendored listfilter.py + _listfilter.html, ORDER 019).
+   The partial is byte-identical across services; these rules map its classes
+   onto this service's ds tokens. */
+.lf { border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); background: var(--sb-surface-soft);
+  padding: var(--sb-s-4) var(--sb-s-5); margin: var(--sb-s-5) 0; }
+.lf .lf-row { margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lf .dim { color: var(--sb-ink-4); font-family: var(--sb-font-mono); font-size: 12px; }
+.lf a.b, .lf .repo { display: inline-block; border: 1px solid var(--sb-line); border-radius: 999px;
+  padding: 2px 10px; font-size: 12px; color: var(--sb-ink-3); text-decoration: none; }
+.lf a.b:hover { border-color: var(--sb-brand); color: var(--sb-ink-1); }
+.lf a.b.on { background: var(--sb-brand); border-color: var(--sb-brand); color: var(--sb-on-brand); }
+.lf a.b.bad { color: var(--sb-danger); border-color: var(--sb-danger); background: transparent; }
+.lf .searchbox { display: flex; gap: 8px; margin-bottom: 8px; }
+.lf .searchbox input[type="search"] { flex: 1; min-width: 180px; border: 1px solid var(--sb-line);
+  border-radius: var(--sb-r-md); background: var(--sb-bg); color: var(--sb-ink-1);
+  padding: 6px 12px; font: inherit; font-size: 14px; }
+.lf .searchbox button { border: 1px solid var(--sb-line); border-radius: var(--sb-r-md);
+  background: var(--sb-bg); color: var(--sb-ink-2); padding: 6px 14px; font: inherit;
+  font-size: 13px; cursor: pointer; }
+.lf .searchbox button:hover { border-color: var(--sb-brand); color: var(--sb-ink-1); }
+.lf p.dim { color: var(--sb-ink-3); font-family: inherit; font-size: 13px; margin: 6px 0 0; }
+.lf .small a { color: var(--sb-ink-3); }
