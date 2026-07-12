@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-12T14:15:32Z",
+  "generated_at": "2026-07-12T14:59:44Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -99,7 +99,7 @@
           "repo": "idea-engine",
           "repo_url": "https://github.com/menno420/idea-engine",
           "heartbeat_available": true,
-          "updated": "2026-07-12T12:11:02Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-12T10:49:12Z overwrite; committed by the coordinator's scribe worker with dictated content \u2014 the coordinator session has no file tools)",
+          "updated": "2026-07-12T14:23:57Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-12T12:11:02Z overwrite; committed by the coordinator's scribe worker with dictated content \u2014 the coordinator session has no file tools)",
           "reason": ""
         },
         {
@@ -139,7 +139,7 @@
           "repo": "substrate-kit",
           "repo_url": "https://github.com/menno420/substrate-kit",
           "heartbeat_available": true,
-          "updated": "2026-07-12T14:10:00Z",
+          "updated": "2026-07-12T15:02:00Z",
           "reason": ""
         }
       ]
@@ -202,6 +202,12 @@
       "repo": "superbot",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/superbot",
+      "head": {
+        "ok": true,
+        "sha": "b7d017d9eece6969e4c90193fb12f0631e2bb919",
+        "committed_at": "2026-07-12T16:17:51+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -221,6 +227,12 @@
       "repo": "superbot-next",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/superbot-next",
+      "head": {
+        "ok": true,
+        "sha": "dd76427b90684b6c532cde7ba7c9adbddc7a5057",
+        "committed_at": "2026-07-12T16:55:19+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -242,14 +254,20 @@
       "repo": "substrate-kit",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/substrate-kit",
+      "head": {
+        "ok": true,
+        "sha": "65dd85062c4cda307ae49c465286e3ee9dc7f6d9",
+        "committed_at": "2026-07-12T14:59:46+00:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-12T14:10:00Z",
-          "phase": "GROUNDED-SKILLS SLICE 6 KIT SIDE DONE (this session): the single-source seat-digest render shipped per plan \u00a77.6 (docs/planning/2026-07-12-grounded-skills-program.md, \u00a78 Q3=A \u2014 the LEAST-confirmed default, so the design is strictly additive/reversible: new module, new planted doc, advisory-only checker, nothing existing changes behavior) \u2014 src/engine/grammar.py gains the seat-digest section (the `substrate-kit:skills-digest` / `substrate-kit:walls-digest` prefix-matched fence pairs which, with the slice-5 `substrate-kit:capability-seed` pair, are THE machine extraction contract for fleet-manag \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "health": "green \u2014 verified this session (2026-07-12, slice 6, post-rebase onto #280): `python3 -m pytest tests/ -q` \u2192 **1174 passed**; `python3 -m ruff check src/engine/` \u2192 All checks passed; dist byte-pin clean (builder print 813101 B == on-disk, `git diff --exit-code dist/bootstrap.py` clean); check_idea_index / check_program_law / bench-integrity OK; `python3 dist/bootstrap.py check --strict` exit 0 with the designed born-red hold banner naming this session's card pre-flip; zero seat-digest advisories on a fresh dist adopt (live e2e in scratch). Prior health chains: git history of this file.",
+          "updated": "2026-07-12T15:02:00Z",
+          "phase": "MODEL-LINE FAMILY-LEVEL FIX DONE (this session, coordinator-directed slice, PR #286) \u2014 the planted `.sessions/README.md` model doctrine (src/engine/adopt.py _model_doctrine_text, the one home for both the fresh plant and the retroactive merge) banned only a \"full DATED model ID\", but exact model IDs are not always dated, so cards following the letter of the instruction still recorded exact model-ID tokens (the websites #178 cleanup class). Fixed: doctrine now bans ANY exact model ID \u2014 family-level names only, never an exact model-ID token (dated or not); idempotency detection phrase untouched \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "health": "green \u2014 verified this session (2026-07-12, model-line fix, pre-flip): `python3 -m pytest tests/ -q` \u2192 **1187 passed** (1184 \u2192 1187); `python3 -m ruff check src/engine/` \u2192 All checks passed; dist byte-pin clean (builder print 818119 B == on-disk); `python3 dist/bootstrap.py check --strict` \u2192 red only with the designed born-red hold naming this session's card (cleared by the flip commit). Prior health chains: git history of this file.",
           "kit": "v1.14.0 \u00b7 check: green \u00b7 engaged: yes ROUTINE STATE (final record at archive, live-verified this session): \u2014 **ARMED (RE-ARMED 2026-07-11T23:26:20Z, replacing a vanished predecessor): the daily kit-lab loop** \u2014 trigger **trig_01Jm57GAjNCFrYJn1oLMiYGE** \"kit-lab loop\" \u00b7 cron `0 6 * * *` (UTC) \u00b7 fresh session per fire (create_new_session_on_fire=true; post-create list_triggers confirms no persistent_session_id) \u00b7 environment env_01R1G1wsWsEMShxECRsFnVor \u00b7 prompt = docs/operations/lab-loop.md fenced block (byte-identical) \u00b7 verified post-create: enabled=true, next fire 2026-07-12T06:06:34Z, exact \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "last-shipped": "**GROUNDED-SKILLS SLICE 6 KIT SIDE (PR #279, 2026-07-12)** \u2014 the single-source seat-digest render: grammar fence pairs (skills-digest + walls-digest; with capability-seed, the machine extraction contract), seatdigest.py render surface (venue-filtered, budget-enforced, digest + pointer), generated planted docs/seat-digest.md (extraction contract + no-third-copy chain stated in-file), adopt plant + upgrade refresh_seat_digest (+post-hoc mirror) + `bootstrap.py seat-digest` CLI, advisory check_seat_digest drift guard (PL-008), suite 1147 \u2192 1174, dist rebuilt (card .sessions/2026-07-12-grounded-sk \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "last-shipped": "**MODEL-LINE FAMILY-LEVEL FIX (PR #286, 2026-07-12)** \u2014 planted-README model doctrine widened from \"never a full dated model ID\" to \"never an exact model ID \u2014 family-level names only, never an exact model-ID token (dated or not)\" (adopt.py one-home text; kit's own README aligned; harvest_model_usage exact-ID advisory; suite 1184 \u2192 1187; dist rebuilt; adopters inherit at next release + --apply-docs, no retro-edits; card .sessions/2026-07-12-model-line-family-level.md). Before it: **GROUNDED-SKILLS SLICE 8 (PR #282, squash da1b4b3, 2026-07-12)** \u2014 the self-propagation doctrine: CONSTITUTION.md.t \u2026 [truncated for the mirror \u2014 full text at the source]",
           "blockers": "none. Coordination notes: pin PRs #220 + #238 park OPEN by design (owner ratification, \u2691 14/15 below \u2014 do NOT arm auto-merge on them); the `wave-a-v1130` \"wave A v1.13.0 distribution\" claim was DELETED at its close-out (lane terminal at #268), and the `wave-b-v1130` claim is DELETED by THIS close-out (lane terminal at #269) \u2014 control/claims/ back to README-only (the slice-4 claim `claude/grounded-skills-slice4-owner-assist` was created and deleted within its own lane, #272); ~48 stale merged-PR branches await the owner's auto-delete checkbox (\u2691 10; agent branch-deletion is a verified 403 wall) \u2026 [truncated for the mirror \u2014 full text at the source]",
           "orders": "acked=001,002,003,004,005,006,007,008,009,010,011,012,013,014,015 done=001,002,003,004,005,006,007,008,009,010,011,012,013,014,015",
           "needs-owner": "thirteen open items (items 2\u201312 carried verbatim \u2014 ordinals kept stable so cross-references hold \u2014 plus 14 + 15, the two parked pin PRs; item 13 RESOLVED 2026-07-11: the owner merged #181 @ f7aa633 \u2014 full resolution record in the retro \u00a72 postscript + git history of this file). The two HOT ones are one click each: \u2691 OWNER-ACTION 15 \u2014 T5 v3 probe re-shape \u2014 pin PR #238 awaits your ratification (do-not-automerge by design; PAIRS with OWNER-ACTION 14 / PR #220) WHAT: Ratify (merge) or reject (close with a word) the T5 task-text re-shape that restores the probe's discriminating tension. WHERE: htt \u2026 [truncated for the mirror \u2014 full text at the source]",
@@ -263,6 +281,12 @@
       "repo": "websites",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/websites",
+      "head": {
+        "ok": true,
+        "sha": "4279cb66ff7c4e0a461d338b71d85d78ab5beffa",
+        "committed_at": "2026-07-12T14:58:49+00:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -289,6 +313,12 @@
       "repo": "trading-strategy",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/trading-strategy",
+      "head": {
+        "ok": true,
+        "sha": "dfd46bb8c662c4b745a2e7853a5229365a67254e",
+        "committed_at": "2026-07-12T13:46:22+00:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -308,6 +338,12 @@
       "repo": "venture-lab",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/venture-lab",
+      "head": {
+        "ok": true,
+        "sha": "d7896f0285b34ef72a81699050cce5f7df35868b",
+        "committed_at": "2026-07-12T14:07:45+00:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -321,6 +357,12 @@
       "repo": "superbot-games",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/superbot-games",
+      "head": {
+        "ok": true,
+        "sha": "bdc4cd165cfcccba69f41a793b329cf0f01b53d3",
+        "committed_at": "2026-07-12T15:49:38+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -341,6 +383,12 @@
       "repo": "superbot-idle",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/superbot-idle",
+      "head": {
+        "ok": true,
+        "sha": "45ff2bfc12c0b1fe7712f3645e3606d135adcbde",
+        "committed_at": "2026-07-12T10:34:43+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -362,6 +410,12 @@
       "repo": "superbot-mineverse",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/superbot-mineverse",
+      "head": {
+        "ok": true,
+        "sha": "3591c7745ebba822db5ada7ab9f5f957d0096c82",
+        "committed_at": "2026-07-12T15:54:21+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -390,6 +444,10 @@
       "repo": "pokemon-mod-lab",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/pokemon-mod-lab",
+      "head": {
+        "ok": false,
+        "reason": "unreadable over git transport (fatal: could not read Username for 'https://github.com': terminal prompts disabled)"
+      },
       "heartbeat": {
         "available": false,
         "reason": "HTTP 404 \u2014 no control/status.md on main (or repo not public)"
@@ -400,6 +458,12 @@
       "repo": "gba-homebrew",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/gba-homebrew",
+      "head": {
+        "ok": true,
+        "sha": "f16e4047ddd6225af7c229174f2b67edf3061cc9",
+        "committed_at": "2026-07-12T15:50:06+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -413,6 +477,12 @@
       "repo": "product-forge",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/product-forge",
+      "head": {
+        "ok": true,
+        "sha": "4fdfa8a857ffc50259743421fee7d2f3d9ac6b98",
+        "committed_at": "2026-07-11T21:49:47+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -430,18 +500,24 @@
       "repo": "idea-engine",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/idea-engine",
+      "head": {
+        "ok": true,
+        "sha": "ff48c2fad809ce7704bb66aafee42335efd5c3fd",
+        "committed_at": "2026-07-12T16:26:26+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-12T12:11:02Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-12T10:49:12Z overwrite; committed by the coordinator's scribe worker with dictated content \u2014 the coordinator session has no file tools)",
-          "phase": "ACTIVE-IDLE re-declared after ORDER 003 completion \u2014 work loop drained again. ROUTINES: failsafe cron \"Ideas Lab failsafe wake\" trig_01T83UuVthszGBcENYwrTrm7 (0 */2 * * * \u2014 even hours :00) = the standing deadman wake. Pacemaker send_later chain: PAUSED after the ~10:32Z fire per the honesty guard \u2014 re-arms when work resumes.",
+          "updated": "2026-07-12T14:23:57Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-12T12:11:02Z overwrite; committed by the coordinator's scribe worker with dictated content \u2014 the coordinator session has no file tools)",
+          "phase": "ACTIVE \u2014 slice running: cadence-sim capture\u2192probe\u2192PROPOSAL same day. ROUTINES: failsafe cron \"Ideas Lab failsafe wake\" trig_01T83UuVthszGBcENYwrTrm7 (0 */2 * * * \u2014 even hours :00) = the standing deadman wake. Pacemaker send_later chain: PAUSED after the ~10:32Z fire per the honesty guard \u2014 re-arms when work resumes.",
           "health": "green \u2014 python3 bootstrap.py check --strict green on this tree immediately before push.",
           "kit": "v1.10.0 \u00b7 check: green \u00b7 engaged: yes",
           "last-shipped": "today \u2014 #220/fc0bab6 (first-wake heartbeat), #221/329547d (check_sections: tolerate roster gen #9 `\u21b3` sub-rows \u2014 LIVE BREAK closed, preflight green repo-wide), #222/80f5384 (fleet-program-pulse-feed probe \u2192 parked(build-direct)), #223/0d24afd (rebuild-navigation-completeness-check probe \u2192 parked(half-built-at-target); merge 5e50274-parent), #225/a660bc9 (contract-driven-explorer-facets probe \u2192 parked(build-direct); first-commit constraint folded into the P002 phase-2 ORDER; corrected the fourth-mint's \"blocked on 012/013\" framing \u2014 columns+search are generatable from contract v1 TODAY, superbo \u2026 [truncated for the mirror \u2014 full text at the source]",
           "blockers": "none.",
           "orders": "acked=001-002 done=001-002 (inbox read FIRST this session at wake HEAD c71710e \u2014 no new orders, none beyond 002; ORDER 001's standing per-session rule re-satisfied by this slice's card: \ud83d\udcca Model: fable-5 \u2014 a standing order's per-wake execution needs no fresh claim per control/README \u00a7 Claiming an order; ORDER 002 done by #158, its Self-review section preserved verbatim at docs/retro/self-review-2026-07-11.md).",
           "needs-owner": "ARCHIVE HANDOFF (this slice, wrap-up \u2014 read FIRST at next wake): (1) STANDING RULING Q-0265, CONTINUOUS-CHAINING MODE \u2014 restored DURABLY here this slice (it previously lived only in session cards, grep of this file was negative): the coordinator chains bounded slices CONTINUOUSLY via child sessions, the next slice dispatching as each one reports; the 2-hourly cron trigger is a FAILSAFE DEADMAN WAKE, not the work cadence (README \u00a7 Coordination; first recorded live in this file @ 139932e). The archiving coordinator's failsafe cron trigger AND its 15-minute send_later chain are being DISMANTLED w \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "notes": "10:00Z FAILSAFE SWEEP + RESUME: sim-lab ORDER 003 received (first inbound ORDER to the merged seat, fm-filed 08:30Z) and EXECUTED same wake \u2014 enabler live (sim-lab #50 e11ed40), done-when evidence #51 merged by github-actions[bot] zero agent calls @ 10:31:24Z. Other sweep results: roster gen #13 still pre-cutover lanes (no reconcile); fm registry drift RESOLVED LIVE (old per-repo failsafes trig_0178q9Je2xRFJgthwamrg9Br / trig_01SHfnLv6EqZesr4tC3T9kUU deleted; merged-seat trigger trig_01T83UuVthszGBcENYwrTrm7 stands) though fm docs lag; RESIDUAL FLAG: v3.2 failsafe-prompt spec says cron 30 1-23 \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "notes": "14:00Z FAILSAFE SWEEP: all watched triggers quiet (idea-engine/sim-lab at pins, no new ORDERs, roster gen #14 still pre-cutover Lane rows, seat never pasted/armed, websites moved to 869cb76 with ORDER 015 + kit v1.14.0 but NO P002/story-page commit, \u2691 bundle STILL unexecuted \u2014 deadline TOMORROW \u22642026-07-13). KIT WATCH escalation: fleet now on v1.14.0 (fm #115, websites #171) while idea-engine sits at v1.10.0 and sim-lab v1.7.0 with no upgrade PR arrived in either \u2014 flag for kit-lane/manager attention (not self-upgrading uninvited). NEW: routine-cadence-economics-sim captured+probed sim-ready s \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/idea-engine/blob/main/control/status.md"
       }
@@ -451,6 +527,12 @@
       "repo": "sim-lab",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/sim-lab",
+      "head": {
+        "ok": true,
+        "sha": "055245e9c5a694fac07eb51681eb67728dd91429",
+        "committed_at": "2026-07-12T10:36:15+00:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -471,6 +553,12 @@
       "repo": "codetool-lab-fable5",
       "disposition": "archived",
       "repo_url": "https://github.com/menno420/codetool-lab-fable5",
+      "head": {
+        "ok": true,
+        "sha": "a6cf1a9d5e8b1082025e8a4c9abce9febd2aea92",
+        "committed_at": "2026-07-10T14:07:20+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -491,6 +579,12 @@
       "repo": "codetool-lab-opus4.8",
       "disposition": "archived",
       "repo_url": "https://github.com/menno420/codetool-lab-opus4.8",
+      "head": {
+        "ok": true,
+        "sha": "80f6cd102ef6850ca0570c3cd5cf5ec000c2264c",
+        "committed_at": "2026-07-09T22:13:54+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -511,6 +605,12 @@
       "repo": "codetool-lab-sonnet5",
       "disposition": "archived",
       "repo_url": "https://github.com/menno420/codetool-lab-sonnet5",
+      "head": {
+        "ok": true,
+        "sha": "66c3dfc79735db55dc777854eda6087ff9c45e02",
+        "committed_at": "2026-07-09T22:09:52+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {
@@ -531,6 +631,12 @@
       "repo": "fleet-manager",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/fleet-manager",
+      "head": {
+        "ok": true,
+        "sha": "5e404fdd5195c68e55c2784bc6e70541395aa5d4",
+        "committed_at": "2026-07-12T16:26:07+02:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)"
+      },
       "heartbeat": {
         "available": true,
         "fields": {

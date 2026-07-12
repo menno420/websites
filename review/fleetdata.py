@@ -224,6 +224,9 @@ def lane_view(
         "orders": orders_summary(fields.get("orders", "")),
         "kit": kit_version(fields.get("kit", "")),
         "stats": stats_repos.get(repo or "", {}) if repo else {},
+        # latest committed state, probed over anonymous git transport at
+        # bake time (absent in pre-probe mirrors — templates guard on it)
+        "head": lane.get("head") or {},
     }
     return view
 

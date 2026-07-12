@@ -325,3 +325,40 @@ def test_fleet_page_renders_eight_seats_and_consolidation():
     assert "639b0f09d7e99056cb8be83abc733edc198f1728" in r.text
     # the private Game Lab member is an honest labeled gap
     assert "not measurable" in r.text
+
+
+# ---------------------------------------------------------------------------
+# Latest-commit head records (git-transport probe, ORDER 017 comprehensive
+# refresh: every repo's latest committed state in the mirror)
+# ---------------------------------------------------------------------------
+def test_committed_mirror_heads_cover_every_repo_backed_lane():
+    """Every repo-backed lane carries a head record: ok=True with a real
+    40-hex sha, or ok=False with the honest reason. Values regenerate at
+    every bake and are never pinned here."""
+    res = fleetdata.load_fleet()
+    assert res["ok"], res["error"]
+    for ln in res["data"]["lanes"]:
+        if not ln.get("repo"):
+            continue
+        head = ln.get("head")
+        assert head is not None, f"lane {ln['lane']} missing its head probe"
+        if head["ok"]:
+            assert len(head["sha"]) == 40 and int(head["sha"], 16) >= 0
+        else:
+            assert head["reason"].strip()
+
+
+def test_lane_view_passes_head_through_and_page_renders_it():
+    fleet = _fixture_fleet()
+    fleet["lanes"][0]["head"] = {
+        "ok": True, "sha": "a" * 40, "committed_at": "2026-07-12T10:00:00+00:00",
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)",
+    }
+    lane = fleetdata.lane_view(fleet["lanes"][0], {}, now=NOW)
+    assert lane["head"]["sha"] == "a" * 40
+    # a pre-probe mirror (no head key) stays an empty dict, not a KeyError
+    assert fleetdata.lane_view(fleet["lanes"][1], {}, now=NOW)["head"] == {}
+    # and the real page renders the probe line from the committed mirror
+    r = client.get("/fleet")
+    assert "latest commit" in r.text
+    assert "git transport, at bake time" in r.text

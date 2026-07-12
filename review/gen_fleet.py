@@ -21,13 +21,18 @@ it writes ``review/data/fleet.json``:
   from ``app/`` — services never import each other's packages, and a bake
   script honors the same seam). A repo whose heartbeat cannot be fetched is
   recorded with the exact reason — never guessed, never dropped.
+- **Every repo-backed lane's latest committed state** — a ``head`` record
+  (HEAD sha + committer date) read over ANONYMOUS GIT TRANSPORT
+  (``ls-remote`` + a depth-1 treeless fetch), which works in environments
+  where the GitHub REST API is walled (session proxies) and needs no token.
+  A repo git can't reach (private, gone) records the honest reason.
 
 Fail-soft by design (this runs unattended on a cron): if the REGISTRY fetch
 fails and a previously committed ``fleet.json`` exists, the old file is left
 in place untouched (its ``generated_at`` ages honestly and the site's
 staleness banner does the telling) and the script exits 0. Network calls are
-few (1 registry + ~18 raw heartbeat fetches, no REST API) and each is
-bounded by a timeout.
+few (1 registry + ~18 raw heartbeat fetches + ~18 git-transport probes, no
+REST API) and each is bounded by a timeout.
 
     python3 review/gen_fleet.py
 """
@@ -37,8 +42,11 @@ from __future__ import annotations
 import ast
 import datetime as dt
 import json
+import os
 import re
+import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -166,6 +174,57 @@ def _fetch(url: str) -> tuple[str | None, str]:
         return None, f"{type(exc).__name__}: {exc}"
 
 
+def head_probe(repo: str) -> dict[str, Any]:
+    """Latest committed state of one repo over anonymous git transport.
+
+    ``git ls-remote`` advertises the default-branch HEAD sha without auth;
+    a depth-1 ``--filter=tree:0`` bare fetch of HEAD then yields the commit
+    date at near-zero transfer cost. Chosen over the REST API on purpose:
+    git transport is reachable from session containers whose proxy walls
+    api.github.com, and from the Actions runner alike. Fail-soft: any
+    failure records its reason (private wall, empty repo, timeout) —
+    a latest-commit is never invented.
+    """
+    url = f"https://github.com/{OWNER}/{repo}"
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
+    try:
+        out = subprocess.run(
+            ["git", "ls-remote", url, "HEAD"],
+            capture_output=True, text=True, timeout=TIMEOUT * 2, env=env,
+        )
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "ls-remote timed out"}
+    if out.returncode != 0:
+        reason = (out.stderr or "").strip().splitlines()
+        return {"ok": False, "reason": f"unreadable over git transport ({reason[-1] if reason else 'ls-remote failed'})"}
+    first = out.stdout.strip().splitlines()
+    sha = first[0].split("\t")[0].strip() if first else ""
+    if not re.fullmatch(r"[0-9a-f]{40}", sha or ""):
+        return {"ok": False, "reason": "no HEAD advertised (empty repo?)"}
+    committed_at = ""
+    with tempfile.TemporaryDirectory() as td:
+        try:
+            subprocess.run(["git", "init", "-q", "--bare", td],
+                           check=True, timeout=30, capture_output=True, env=env)
+            subprocess.run(
+                ["git", "-C", td, "fetch", "-q", "--depth", "1",
+                 "--filter=tree:0", url, "HEAD"],
+                check=True, timeout=TIMEOUT * 3, capture_output=True, env=env,
+            )
+            committed_at = subprocess.run(
+                ["git", "-C", td, "log", "-1", "--format=%cI", "FETCH_HEAD"],
+                check=True, timeout=30, capture_output=True, text=True, env=env,
+            ).stdout.strip()
+        except (subprocess.SubprocessError, OSError):
+            committed_at = ""  # the sha is still real; the date degrades honestly
+    return {
+        "ok": True,
+        "sha": sha,
+        "committed_at": committed_at,
+        "source": "anonymous git transport (ls-remote + depth-1 fetch)",
+    }
+
+
 def parse_registry(text: str) -> list[dict[str, Any]]:
     """The ``LANES`` literal out of gen_roster.py source — pure data via
     ``ast.literal_eval``, never executed. [] when absent/malformed."""
@@ -228,6 +287,7 @@ def bake_lane(entry: dict[str, Any]) -> dict[str, Any]:
         }
         return lane
     lane["repo_url"] = f"https://github.com/{OWNER}/{repo}"
+    lane["head"] = head_probe(repo)
     hb_url = f"https://raw.githubusercontent.com/{OWNER}/{repo}/main/control/status.md"
     body, err = _fetch(hb_url)
     if body is None or not body.strip():
@@ -339,10 +399,12 @@ def main() -> int:
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUT_PATH.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
     mirrored = sum(1 for ln in lanes if ln.get("heartbeat", {}).get("available"))
+    heads = sum(1 for ln in lanes if ln.get("head", {}).get("ok"))
     print(
         f"wrote {OUT_PATH.name}: {len(lanes)} seats "
         f"({len(lanes) - len(registry_only)} repo-backed, "
-        f"{len(registry_only)} registry-only), {mirrored} heartbeats mirrored"
+        f"{len(registry_only)} registry-only), {mirrored} heartbeats mirrored, "
+        f"{heads} repo HEADs probed"
     )
     return 0
 
