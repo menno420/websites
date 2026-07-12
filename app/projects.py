@@ -54,6 +54,11 @@ from . import config, github, journal, prompt_artifacts
 # Shared with /prompts (ORDER 015): same registry repo, same blob deep-links.
 from .prompt_artifacts import REPO, blob_url as _blob_url  # noqa: F401
 
+# The owner's seat start order (dispatch order, 2026-07-12 ask) — ONE roster
+# shared with /prompts (``app/roster.py``); unmatched packages sort after
+# every matched slot, alphabetically (:func:`start_rank`).
+from .roster import START_ORDER as _START_ORDER
+
 ROOT = "projects"
 
 # Safety bounds — a registry of package folders, not an arbitrary tree.
@@ -101,20 +106,6 @@ _PROJECT_URL_RE = re.compile(r"https://claude\.ai/projects?/[^\s)\]>`\"',]+")
 _STUB_STATE_RE = re.compile(r"\b(retired|merged|stub|archived)\b", re.IGNORECASE)
 _STUB_BODY_RE = re.compile(r"\b(retired|stub|merged[- ]into)\b", re.IGNORECASE)
 _STUB_BODY_SCAN_LINES = 10
-
-# The owner's seat start order (dispatch order, 2026-07-12 ask). Each entry
-# is the set of package names (lowercased, "_"→"-") that map to that slot;
-# unmatched packages sort after every matched one, alphabetically.
-_START_ORDER: list[tuple[str, ...]] = [
-    ("fleet-manager", "project-manager"),
-    ("venture-lab",),
-    ("superbot-world",),
-    ("superbot-2.0", "superbot-next", "superbot-2", "superbot2.0", "superbot2"),
-    ("ideas-lab",),
-    ("game-lab",),
-    ("self-improvement",),
-    ("websites",),
-]
 
 # Detail-page package names: plain directory-name shape only. The real gate
 # is membership in the live registry listing; this just refuses traversal

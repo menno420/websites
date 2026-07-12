@@ -35,7 +35,7 @@ live (HTTP 200 on raw.githubusercontent.com) against fleet-manager@main on
 2026-07-12; source of truth for the seat set is
 https://github.com/menno420/fleet-manager/tree/main/projects — if a seat is
 added or renamed upstream, its cell degrades to an honest 404 here until
-this registry constant is updated.
+the shared roster (``app/roster.py``) is updated.
 """
 
 from __future__ import annotations
@@ -55,19 +55,11 @@ from .prompt_artifacts import (  # noqa: F401
 )
 
 # The 8 fleet seats (registry package directories under projects/), in the
-# owner's dispatch order (same order /projects uses). Verified live
-# 2026-07-12: projects/<seat>/{coordinator-prompt.md,instructions.md,
-# failsafe-prompt.md} all 200 on raw.githubusercontent.com for every seat.
-SEATS: tuple[str, ...] = (
-    "fleet-manager",
-    "venture-lab",
-    "superbot-world",
-    "superbot-2.0",
-    "ideas-lab",
-    "game-lab",
-    "self-improvement",
-    "websites",
-)
+# owner's dispatch order — ONE roster shared with /projects
+# (``app/roster.py``). Verified live 2026-07-12: projects/<seat>/
+# {coordinator-prompt.md,instructions.md,failsafe-prompt.md} all 200 on
+# raw.githubusercontent.com for every seat.
+from .roster import SEATS  # noqa: F401
 
 # The three per-seat registry artifacts ORDER 014 names, as
 # (filename, human label) — 8 seats x 3 files = 24 artifacts.
