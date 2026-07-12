@@ -4,12 +4,6 @@
 {% block content %}
 <div class="card">
   <h2>review queue — the fleet's post-merge second-eyes ledger</h2>
-  <p class="dim small">Read-only render of
-    <a href="{{ r.doc_url }}">fleet-manager <code>docs/review-queue.md</code> ↗</a> —
-    the gen-2 merge-authority policy says <strong>no PR waits for review before
-    landing</strong>: a PR that deserves second eyes merges anyway and gets a row here
-    (post-merge review; veto = revert, forward-only git). The manager's repo stores;
-    this site renders.</p>
 
   {% if r.state == 'empty' %}
   <div class="banner">◌ <strong>ledger not landed yet</strong> — {{ r.reason }}
@@ -22,11 +16,22 @@
   <div class="banner">⚠ <strong>unavailable</strong> — could not fetch the ledger
     ({{ r.reason }}) · <a href="{{ r.doc_url }}">view on GitHub ↗</a></div>
   {% else %}
-  <p class="small">
-    <span class="b {{ 'warn' if r.open_count else 'ok' }}">{{ r.open_count }} open</span>
-    {% if r.reviewed_count %}<span class="b ok">{{ r.reviewed_count }} reviewed</span>{% endif %}
+  <p class="small jump">
+    <a class="b {{ 'warn' if r.open_count else 'ok' }}" href="#open-reviews">{{ r.open_count }} open</a>
+    {% if r.reviewed_count %}<a class="b ok" href="#reviewed">{{ r.reviewed_count }} reviewed</a>{% endif %}
+    {% if r.body_html %}<a class="b" href="#ledger">full ledger</a>{% endif %}
   </p>
   {% endif %}
+
+  <details class="pagehelp">
+    <summary>what this page is</summary>
+    <p class="dim small">Read-only render of
+      <a href="{{ r.doc_url }}">fleet-manager <code>docs/review-queue.md</code> ↗</a> —
+      the gen-2 merge-authority policy says <strong>no PR waits for review before
+      landing</strong>: a PR that deserves second eyes merges anyway and gets a row here
+      (post-merge review; veto = revert, forward-only git). The manager's repo stores;
+      this site renders.</p>
+  </details>
 
   {% if r.findings_links %}
   <p class="small"><strong>findings &amp; records cited by the ledger:</strong>
@@ -42,6 +47,7 @@
   either nothing needs second eyes, or rows are pending their sessions' appends.</p></div>
 {% endif %}
 
+<section id="open-reviews">
 {% for row in r.rows if not row.reviewed %}
 <div class="card">
   <h2>{% if row.pr_url %}<a href="{{ row.pr_url }}">{{ row.pr_label }} ↗</a>
@@ -54,9 +60,10 @@
   </table>
 </div>
 {% endfor %}
+</section>
 
 {% if r.reviewed_count %}
-<div class="card">
+<div class="card" id="reviewed">
   <h2>reviewed <span class="dim small">· struck rows</span></h2>
   <table>
     {% for row in r.rows if row.reviewed %}
@@ -68,9 +75,12 @@
 {% endif %}
 
 {% if r.body_html %}
-<div class="card">
+<div class="card" id="ledger">
   <h2>the full ledger <span class="dim small">· as committed — nothing hidden by the parse</span></h2>
-  <div class="md">{{ r.body_html | safe }}</div>
+  <details>
+    <summary class="dim small">show the full document (collapsed — the parsed rows above cover it)</summary>
+    <div class="md">{{ r.body_html | safe }}</div>
+  </details>
 </div>
 {% endif %}
 {% endblock %}

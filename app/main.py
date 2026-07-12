@@ -152,8 +152,18 @@ async def activity_timeline(request: Request):
     data = await activity.timeline(
         refresh=_refresh(request), repo=_repo_param(request)
     )
+    # List-IA (2026-07-12): date sections + state counts for the HTML view
+    # only — computed from the already-fetched items, so /activity.json and
+    # the Atom feed keep their exact payloads.
     return templates.TemplateResponse(
-        request, "activity.html", {"a": data, "active": "activity"}
+        request,
+        "activity.html",
+        {
+            "a": data,
+            "groups": activity.date_groups(data["items"]),
+            "state_counts": activity.state_counts(data["items"]),
+            "active": "activity",
+        },
     )
 
 
@@ -221,6 +231,14 @@ async def owner_queue_page(request: Request):
     state = listfilter.parse(owner_queue.FILTER_SPEC, request.query_params)
     data["filter"] = listfilter.apply(
         owner_queue.FILTER_SPEC, data["items"], state
+    )
+    # List-IA (2026-07-12): the untouched default view renders in age
+    # sections with jump anchors; any active filter/sort/search shows the
+    # flat list exactly as before (an explicit ordering beats sections).
+    data["groups"] = (
+        owner_queue.group_by_age(data["filter"]["items"])
+        if not data["filter"]["active"] and state.sort == "newest"
+        else None
     )
     return templates.TemplateResponse(
         request, "queue.html", {"q": data, "active": "queue"}
@@ -395,8 +413,12 @@ async def ideas_backlog(request: Request):
     repos = await ideas.overview(
         refresh=_refresh(request), state=_state_param(request)
     )
+    # List-IA (2026-07-12): fleet-wide rollup for the summary header — pure
+    # aggregation over the same per-repo dicts; /ideas.json is untouched.
     return templates.TemplateResponse(
-        request, "ideas.html", {"repos": repos, "active": "ideas"}
+        request,
+        "ideas.html",
+        {"repos": repos, "t": ideas.totals(repos), "active": "ideas"},
     )
 
 

@@ -2,8 +2,18 @@
 {% block title %}journal browser{% endblock %}
 {% block headright %}<a href="/journal?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
-{% for j in repos %}
 <div class="card">
+  <h2>journal browser — session logs, PRs &amp; ledgers per repo</h2>
+  <p class="small jump">jump to:
+    {%- for j in repos %}
+    <a class="b" href="#repo-{{ j.repo }}">{{ j.repo }} · {{ j.sessions | length }} session{{ 's' if j.sessions | length != 1 }} · {{ j.pulls | length }} PR{{ 's' if j.pulls | length != 1 }}</a>
+    {%- endfor %}
+  </p>
+  <p class="dim small">One card per repo below; the header search box greps the committed
+    journal files across every repo at once.</p>
+</div>
+{% for j in repos %}
+<div class="card" id="repo-{{ j.repo }}">
   <h2><a href="/journal/{{ j.repo }}">{{ j.repo }}</a>
       <span class="dim small">· <a href="{{ j.github_url }}">github</a></span></h2>
   <p class="dim small">{{ j.note }}</p>

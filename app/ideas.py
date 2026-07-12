@@ -193,6 +193,26 @@ async def repo_ideas(repo: str, refresh: bool = False) -> dict[str, Any]:
     }
 
 
+def totals(repos: list[dict]) -> dict:
+    """Fleet-wide rollup for the /ideas summary header (list-IA, 2026-07-12).
+
+    Pure aggregation over overview()'s per-repo dicts — no fetch, no new
+    truth: ``ideas`` counts every listed file, ``state_counts`` sums the
+    per-repo counts (which cover each repo's newest enriched files only —
+    the same honest scope the page already labels), ``errors`` counts
+    unreadable listings so the header can flag them."""
+    state_counts: dict[str, int] = {}
+    for r in repos:
+        for s, n in (r.get("state_counts") or {}).items():
+            state_counts[s] = state_counts.get(s, 0) + n
+    return {
+        "ideas": sum(r.get("total") or 0 for r in repos),
+        "repos_with_ideas": sum(1 for r in repos if r.get("total")),
+        "errors": sum(1 for r in repos if r.get("listing_error")),
+        "state_counts": state_counts,
+    }
+
+
 async def overview(
     refresh: bool = False, state: str | None = None
 ) -> list[dict]:
