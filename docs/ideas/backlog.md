@@ -9,8 +9,14 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
-- **Seat role-coverage chips on the /projects dispatch index** · `captured`
-  — the dispatch screen (PR #158) renders whatever role files a package
+- **Seat role-coverage chips on the /projects dispatch index** · `built`
+  (2026-07-12, ORDER 015 plans-sweep slice — `projects.role_coverage` chips
+  each seat card instructions / coordinator / failsafe ✓/✗ from the
+  already-fetched role-classified listing; `dispatch_ready` flag + "N of M
+  dispatch-ready" index summary; unlistable package = NO chips, honest
+  unknown; `/projects.json` carries `coverage` + `dispatch_ready`, contract
+  pins updated same PR) — original capture:
+  the dispatch screen (PR #158) renders whatever role files a package
   has, but the INDEX doesn't say which seats are dispatch-READY: a seat
   missing its coordinator prompt or failsafe looks identical to a complete
   one until the owner opens it mid-dispatch. One chip row per seat card
