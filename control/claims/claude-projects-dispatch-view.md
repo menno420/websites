@@ -1,0 +1,1 @@
+- `claude/projects-dispatch-view` · **/projects dispatch view** — seat-first index split + NEW /projects/{package} copy-ready dispatch screen · app/projects.py, app/main.py, app/templates/projects.html, app/templates/project_detail.html, tests/test_projects.py, tests/test_json_contracts.py · 2026-07-12
