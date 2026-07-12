@@ -574,3 +574,14 @@
   ledger fills from real traffic instead of starting empty. Worth having
   because the order itself says the question log "feeds the Q&A page" —
   this closes that loop.
+
+- **Site-wide privacy lint for the review service** — captured 2026-07-12
+  (ORDER 017 D private-lane-filter session). Today's regression tests pin
+  `/`, `/fleet`, `/fleet.json` and the committed mirrors; a single test (or
+  bake-time lint) that walks EVERY GET route in `review/app.py` plus every
+  committed `review/data/**` file and asserts no private-lane token
+  (accent-aware: `pok[eé]mon…`) would catch the next leak on a page nobody
+  thought to pin — today's escapees were the accented "Pokémon" in a template
+  footnote and an evidence table that plain `grep -i pokemon` missed. Worth
+  having because privacy compliance shouldn't depend on remembering which
+  surface to grep.
