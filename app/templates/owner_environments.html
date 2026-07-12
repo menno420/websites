@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}owner · environments{% endblock %}
+{% block headright %}🔒 owner · <a href="/owner">board</a> · <a href="/owner/environments?refresh=1">refresh now</a>{% endblock %}
+
+{% macro badge(state, text) -%}
+<span class="b {{ state }}">{{ text }}</span>
+{%- endmacro %}
+
+{% block content %}
+
+<div class="card" style="border-color:var(--purple);">
+  <h2>🔒 environments <span class="dim small">— what is configured where, per service</span></h2>
+  <p class="small dim">Gated like the rest of <a href="/owner">/owner</a>. Variable
+  <strong>names + presence only, never values</strong> (the plan's option A —
+  <code>{{ env.plan_doc }}</code>). The public
+  <a href="/environments">/environments</a> registry page (schemas from
+  fleet-manager) is unchanged and stays public.</p>
+
+  <h3>live railway data</h3>
+  {% if env.live.state == 'not-configured' %}
+  <p class="banner">⚑ live Railway data unavailable — <strong>owner errand pending</strong>:
+    {{ env.live.reason }}</p>
+  {% elif env.live.state == 'unavailable' %}
+  <p class="banner">live Railway read failed (token is set): {{ env.live.reason }} —
+    showing committed facts below; nothing here is fabricated.</p>
+  {% else %}
+  <p class="small dim">project <strong>{{ env.live.project_name }}</strong>
+    · fetched {{ env.live.fetched_at }}{{ ' (cached)' if env.live.cached }}</p>
+  <table>
+    <tr><th>service</th><th>variables set</th><th>names</th></tr>
+    {% for s in env.live.services %}
+    <tr>
+      <td>{{ s.name }}</td>
+      <td>
+        {% if s.error %}{{ badge('unknown', 'unknown') }}
+        {% else %}{{ badge('ok', s.count ~ ' set') }}{% endif %}
+      </td>
+      <td class="small">
+        {% if s.error %}<span class="dim">{{ s.error }}</span>
+        {% else %}
+          {% for name in s.variable_names %}<span class="b design">{{ name }}</span>
+          <a class="small" href="{{ (name | manage_link).url }}">manage →</a> {% endfor %}
+          {% if not s.variable_names %}<span class="dim">none</span>{% endif %}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+
+{% for svc in env.services %}
+<div class="card">
+  <h2>{{ svc.name }}
+    <span class="dim small">{{ svc.package }} · <a href="{{ svc.url }}">{{ svc.url }}</a></span>
+    <span class="refresh"><a href="{{ svc.url }}/version">/version</a></span>
+  </h2>
+  <p class="small dim">Dockerfile <code>{{ svc.dockerfile }}</code> ·
+    requirements <code>{{ svc.requirements }}</code> · committed facts — these
+    come from the repo, not from Railway.</p>
+  <table>
+    <tr><th>documented variable</th><th>what it is for</th><th>set?</th><th>manage</th></tr>
+    {% for var in svc.env_vars %}
+    <tr>
+      <td><code>{{ var.name }}</code></td>
+      <td class="small">{{ var.purpose }}</td>
+      <td>
+        {% if var.set_here is true %}{{ badge('ok', 'set (this runtime)') }}
+        {% elif var.set_here is false %}{{ badge('warn', 'unset (this runtime)') }}
+        {% else %}{{ badge('unknown', 'needs live Railway read') }}{% endif %}
+      </td>
+      <td class="small"><a href="{{ var.manage.url }}">{{ var.manage.label }} →</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endfor %}
+
+<p class="dim small">Service list = the three deployed Railway services in
+<a href="{{ env.project_url }}">{{ env.project_name }}</a>; the in-repo
+<code>review/</code> service has no Railway deployment yet (tracked as an owner
+ask). 🔒 values are never rendered here or anywhere — names and presence only.</p>
+{% endblock %}

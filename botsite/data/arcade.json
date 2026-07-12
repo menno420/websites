@@ -1,0 +1,35 @@
+[
+  {
+    "slug": "lumen-drift",
+    "name": "Lumen Drift",
+    "tagline": "An original Game Boy Advance game — finished, publish-safe, 100% original assets.",
+    "description": "A finished homebrew GBA ROM (v1.3) built entirely from original assets. Play it by loading the ROM into any GBA emulator once the download release is published.",
+    "maturity": "playable",
+    "availability": "unavailable",
+    "url": null,
+    "source_repo": "menno420/gba-homebrew",
+    "status_note": "Download release pending: the GitHub Release (lumen-drift-v1.3) needs one owner click before the ROM can be offered here."
+  },
+  {
+    "slug": "mineverse",
+    "name": "mineverse",
+    "tagline": "A staged web mining-world game — the fleet's games flagship.",
+    "description": "A staged web game with stages 0, a, b and c complete. It runs today as a read-only demo on localhost only; the live deployment is blocked on provisioning environment variables.",
+    "maturity": "beta",
+    "availability": "unavailable",
+    "url": null,
+    "source_repo": "menno420/superbot-mineverse",
+    "status_note": "Not deployed yet: runs as a localhost demo only; going live is blocked on env-var provisioning for a production host."
+  },
+  {
+    "slug": "games-web",
+    "name": "games-web",
+    "tagline": "A zero-dependency web app: an RPG mining character sheet in the browser.",
+    "description": "A zero-dependency web app showing an RPG mining character sheet. The GitHub Pages deploy workflow exists, but the site is not reachable yet — its documented URL currently returns 404.",
+    "maturity": "beta",
+    "availability": "unavailable",
+    "url": null,
+    "source_repo": "menno420/product-forge",
+    "status_note": "GitHub Pages deployment pending an owner settings click (Settings → Pages → Source: GitHub Actions); no reachable URL until then."
+  }
+]

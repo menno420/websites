@@ -9,6 +9,19 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **/owner/environments drift check: documented vs live variable names** ·
+  `captured` — once the owner's project-scoped `RAILWAY_TOKEN` lands, the
+  page holds both halves of a diff it does not yet compute: the COMMITTED
+  documented env-var names per service (`app/railway.py` SERVICES) and the
+  LIVE names Railway reports. One comparison column (documented-but-unset /
+  set-but-undocumented badges per service) turns the page from two lists
+  into an actionable drift detector, exactly like the readiness board's
+  deploy-drift cell. Worth having because undocumented live variables are
+  invisible config debt and documented-but-missing ones are outage
+  foot-guns — today both hide in plain sight. Deduped against this backlog
+  + the queue-state NEXT list: nothing touches env-var drift. Source:
+  `.sessions/2026-07-12-order-015-owner-environments.md` 💡.
+
 - **Tester-task URL liveness guard** · `captured` — every `open` task in
   `botsite/testing_tasks.json` points a paying tester at a `product_url`;
   if that URL dies (service renamed, deploy broken) the program burns real
@@ -24,6 +37,20 @@
   NEXT list: healthcheck ideas exist for fleet services, nothing touches
   the testing catalog. Source:
   `.sessions/2026-07-12-order-018-testing-platform-pr1.md` 💡.
+
+- **Guide chat transcript as exit-review evidence** · `captured` — the
+  guided-walkthrough side panel (ORDER 018 PR3) generates a per-step Q&A
+  between tester and AI guide, but it evaporates when the tab closes: the
+  exit reviewer grades the final answers blind to how the tester actually
+  engaged. Persisting the TEXT transcript only (bounded, per claim — screen
+  frames stay in-memory-only by the privacy contract) and appending it to
+  the submission as untrusted context would let the grader and the owner see
+  engagement, confusion points, and coached-vs-independent answers. Worth
+  having because the program pays on report quality and the guide already
+  produces first-hand evidence of it that is currently thrown away. Deduped
+  against this backlog + the queue-state NEXT list: nothing touches the
+  guide flow (it ships this PR). Source:
+  `.sessions/2026-07-12-order-018-testing-guided-mode-pr3.md` 💡.
 
 - **/prompts pinned-registry drift chip** · `captured` — the /prompts
   artifact list is pinned in `app/prompts.py` (the raw host cannot list
@@ -49,8 +76,25 @@
   and pickup ideas touch /fleet data, not file-view navigation. Source:
   `.sessions/2026-07-12-journal-guard-fleet.md` 💡.
 
-- **Seat role-coverage chips on the /projects dispatch index** · `captured`
-  — the dispatch screen (PR #158) renders whatever role files a package
+- **Coverage-chip rollup on the /fleet board** · `captured` — the
+  per-seat instructions/coordinator/failsafe coverage now computed for the
+  /projects index (`projects.role_coverage`, ORDER 015 slice) could feed
+  one "packages incomplete: N" rollup cell on the `/fleet` monitoring
+  surface, so registry lint fires where the manager already looks instead
+  of only when the owner opens the dispatch index. Worth having because
+  the chips double as registry lint but today only surface on `/projects`.
+  Deduped against this backlog + the queue-state NEXT list: nothing rolls
+  coverage up to the monitoring surfaces. Source:
+  `.sessions/2026-07-12-projects-role-coverage-chips.md` 💡.
+
+- **Seat role-coverage chips on the /projects dispatch index** · `built`
+  (2026-07-12, ORDER 015 plans-sweep slice — `projects.role_coverage` chips
+  each seat card instructions / coordinator / failsafe ✓/✗ from the
+  already-fetched role-classified listing; `dispatch_ready` flag + "N of M
+  dispatch-ready" index summary; unlistable package = NO chips, honest
+  unknown; `/projects.json` carries `coverage` + `dispatch_ready`, contract
+  pins updated same PR) — original capture:
+  the dispatch screen (PR #158) renders whatever role files a package
   has, but the INDEX doesn't say which seats are dispatch-READY: a seat
   missing its coordinator prompt or failsafe looks identical to a complete
   one until the owner opens it mid-dispatch. One chip row per seat card

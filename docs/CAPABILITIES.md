@@ -71,6 +71,20 @@ Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 (Hand-filled by sessions, per the discovery rule. Seed walls/capabilities
 above came from the fleet's lived 2026-07 findings; local ones go here.)
 
+- 2026-07-12 · wall · **`RAILWAY_TOKEN` is NOT provisioned** — neither in
+  this agent session's environment (`printenv | grep -i railway` shows only
+  the ambient production trio + `RAILWAY_API_KEY`, none of which
+  `/owner/environments` may use per `docs/RAILWAY-SAFETY.md` and the plan
+  doc) nor on the deployed control-plane service (the owner decided
+  2026-07-11 to mint a **project-scoped** token for `superbot-websites` but
+  it has not landed) · evidence: env check during the ORDER 015
+  `/owner/environments` build session; nothing to attempt — with the token
+  unset the read layer's only honest state is `not-configured`, which is
+  exactly what `app/railway.py` renders · workaround: none agent-side — the
+  token is an owner-click Railway errand; the page degrades honestly (an
+  explicit owner-errand banner + committed facts) until it lands, and the
+  live GraphQL path stays UNVERIFIED against the real API until then.
+
 - 2026-07-10 · wall · **The 16:01Z routine-fired session's `git push` never
   landed, despite its session card recording the branch as pushed** — at
   ~19:15Z the remote had no `claude/order008-manifest-smoke-2026-07-10`
@@ -194,3 +208,27 @@ above came from the fleet's lived 2026-07 findings; local ones go here.)
   gen_roster.py` LANES + generated `docs/roster.md`) · consequence: treat
   cron timing as ±hours, never gate anything on a cron slot; the lane-source
   repoint shipped the same wake.
+- 2026-07-12 · capability (RESOLVES the 2026-07-09 GITHUB_TOKEN wall) ·
+  **The live control-plane now runs with a working `GITHUB_TOKEN`** — the
+  deployed board returns authenticated-only cells: Actions-secret counts
+  `status 200, known: true` per repo (e.g. superbot "5 secret(s)" — the
+  secrets-list endpoint is never anonymous), `auto_merge.allowed` known,
+  and the deploy-drift row all-`in_sync` at `b9250728` · evidence: live
+  `/api/readiness.json` fetched 2026-07-12T10:4xZ (ORDER 012 reconcile) ·
+  consequence: the "unknown (token lacks admin scope)" degradation era is
+  over; the owner set the token — OWNER-ACTIONS Decided row H.
+- 2026-07-12 · wall · **The Actions runner cannot create pull requests on
+  this repo** — both review-bake runs failed at the same line: run
+  29167034060 (`event: workflow_dispatch`, 2026-07-11T20:26:33Z) and run
+  29184552812 (`event: schedule`, 2026-07-12T07:38:28Z; the daily cron IS
+  firing) baked their data fine, were ruleset-blocked from pushing main
+  (GH013, expected), pushed fallback branches, then died at `gh pr create`
+  with the exact error: "GraphQL: GitHub Actions is not permitted to
+  create or approve pull requests (createPullRequest)" · evidence: both
+  runs' job logs via MCP get_job_logs 2026-07-12 · workaround: none
+  in-repo — the fix is the owner console toggle (Settings → Actions →
+  General → "Allow GitHub Actions to create and approve pull requests"),
+  filed as the active six-field ask in docs/owner/OWNER-ACTIONS.md; a PAT
+  Actions-secret would also bypass it. Side-effect to clean up once fixed:
+  orphan branches bake/review-data-20260711-202653 and
+  bake/review-data-20260712-073843.

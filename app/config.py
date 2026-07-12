@@ -14,6 +14,12 @@ Everything runtime-tunable comes from env vars (documented in docs/site.md):
                       for testing behind restricted egress).
   GITHUB_RAW_BASE     raw-content base (default https://raw.githubusercontent.com).
   CACHE_TTL_SECONDS   server-side GitHub cache TTL (default 180 = 3 minutes).
+  RAILWAY_TOKEN       PROJECT-SCOPED Railway token (superbot-websites only) for
+                      the gated /owner/environments live variable-NAME reads —
+                      never the account RAILWAY_API_KEY, never the ambient
+                      production-bot IDs (docs/RAILWAY-SAFETY.md). Unset (the
+                      state until the owner mints it), the page degrades
+                      honestly to committed facts only.
 """
 
 import os
@@ -70,6 +76,10 @@ GITHUB_RAW_BASE = os.environ.get(
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 # Gates ONLY the /owner area (see app/owner.py). The public site never reads it.
 SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "")
+# Project-scoped Railway read token for /owner/environments (app/railway.py).
+# Deliberately NOT the account key and NOT an ambient ID — see the docstring
+# above and docs/RAILWAY-SAFETY.md. Read only behind the /owner gate.
+RAILWAY_TOKEN = os.environ.get("RAILWAY_TOKEN", "")
 CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "180"))
 # Client-side poll interval for the LIVE-MONITORING pages only (the board `/`
 # and `/fleet`). A small unobtrusive JS refresh (app/static/autorefresh.js)

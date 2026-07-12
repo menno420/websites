@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Arcade — SuperBot{% endblock %}
+{% block description %}Fleet Arcade: the public front door for the fleet's playable games, with honest maturity and availability labels.{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ arcade_games|length }} games</span>
+    <div class="head-row"><h1>Fleet Arcade</h1></div>
+    <p class="sb-lead">The fleet's playable games, in one place — each with an honest maturity
+      and availability label. A play or download link only appears when the game is really reachable.</p>
+  </section>
+
+  {% if arcade_games %}
+  <div class="card-grid section-sm">
+    {% for g in arcade_games %}
+    <article class="sb-card sb-feat">
+      <div class="sb-feat-top">
+        <span class="sb-tile sb-tile-emoji">{{ icon("gamepad", 22) }}</span>
+        <h3 style="font-size:var(--sb-text-lg)">{{ g.name }}</h3>
+        <span class="sb-badge {{ {'playable': 'sb-badge-ok', 'beta': 'sb-badge-info', 'prototype': 'sb-badge-neutral'}[g.maturity] }}">{{ g.maturity }}</span>
+      </div>
+      <p class="sb-muted" style="margin:6px 0 0">{{ g.tagline }}</p>
+      <div class="feat-desc">{{ g.description }}</div>
+      {% if g.has_link %}
+      <p style="margin:10px 0 0">
+        <a class="sb-btn sb-btn-primary sb-btn-sm" href="{{ g.link_url }}" target="_blank" rel="noopener">
+          {% if g.availability == "live" %}Play now{% else %}Download{% endif %} {{ icon("external", 13) }}
+        </a>
+      </p>
+      {% elif g.status_note %}
+      <p class="sb-muted" style="margin:10px 0 0"><em>{{ g.status_note }}</em></p>
+      {% endif %}
+      <div class="sb-feat meta">
+        <a href="https://github.com/{{ g.source_repo }}" target="_blank" rel="noopener">{{ g.source_repo }} {{ icon("external", 12) }}</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="sb-empty section"><span class="ico">{{ icon("gamepad", 20) }}</span><h4>No games registered yet</h4>
+    <p>The arcade registry is empty or unavailable right now. Nothing is faked here.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -26,4 +26,4 @@ This repo owns no database in its shipped state — every service is read-only t
 
 ## New areas
 
-A new surface belongs to the service that renders it (app/ control-plane, botsite/, or dashboard/): add its route + data helper there and a row to the table above — never spin up a fourth process for a page. Cross-repo data for it must arrive as committed JSON over raw GitHub, keeping the new area read-only toward superbot. Anything that needs a real write path (a store, a token, a live-bot call) is a new owner decision routed through docs/question-router.md before it lands.
+A new surface belongs to the service that renders it (app/ control-plane, botsite/, dashboard/, or review/): add its route + data helper there and a row to the table above — adding a whole new process is a deliberate, owner-directed service addition (review/ in 2026-07 is the precedent), never a per-page default. Cross-repo data for it must arrive as committed JSON over raw GitHub, keeping the new area read-only toward superbot. Anything that needs a real write path (a store, a token, a live-bot call) is a new owner decision routed through docs/question-router.md before it lands.
