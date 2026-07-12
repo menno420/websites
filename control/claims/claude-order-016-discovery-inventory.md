@@ -1,1 +1,0 @@
-- `claude/order-016-discovery-inventory` · **ORDER 016 discovery inventory** — committed cross-repo website-plans discovery inventory (the order's unmet done-when) · expected files: docs/plans/ (or thread-specified path), .sessions/2026-07-12-order-016-discovery-inventory.md · 2026-07-12
