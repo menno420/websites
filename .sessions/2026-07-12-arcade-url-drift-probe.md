@@ -1,7 +1,6 @@
 # 2026-07-12 — Arcade live-URL drift probe (healthcheck pass)
 
-> **Status:** `in-progress` — branch `claude/arcade-url-drift-probe`; flips to
-> `complete` + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/arcade-url-drift-probe`, PR #214.
 
 - **📊 Model:** claude-fable-5 · worker · feature-slice
 
