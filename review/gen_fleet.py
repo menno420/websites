@@ -55,6 +55,86 @@ REGISTRY_URL = f"https://github.com/{OWNER}/{REGISTRY_REPO}/blob/main/{REGISTRY_
 OUT_PATH = Path(__file__).resolve().parent / "data" / "fleet.json"
 TIMEOUT = 20
 
+# ---------------------------------------------------------------------------
+# The 8 standing seats — the fleet's owner-decided standing structure.
+#
+# This block is REGISTRY STRUCTURE (names, member repos, one-job roles), not
+# numbers: it transcribes the owner's 8-seat decision doc and the manager's
+# registry restructure, each pinned to its commit below. The per-seat
+# HEARTBEAT data is never written here — it is derived at bake/render time
+# from the same per-repo heartbeat mirror the lanes use, so the numbers stay
+# regenerated, not hand-edited. If the seat structure changes again, the
+# fleet-manager registry moves first and this transcription follows it.
+#
+# Sources (commit-pinned; every URL verified resolving before commit):
+# - superbot docs/owner/fleet-8seat-structure-2026-07-11.md
+#     @ 95fc025bb56d0901940ccd5a9b6184a2d8a813de
+#     (the owner decision — "8 standing Projects, owner-decided 2026-07-11, late")
+# - fleet-manager commit 639b0f09d7e99056cb8be83abc733edc198f1728
+#     (2026-07-12T03:15:10Z — "Fleet restructure slice 1: registry
+#     restructured to the 8 standing seats")
+# - fleet-manager projects/README.md @ main (the living 8-seat registry)
+# ---------------------------------------------------------------------------
+SEAT_DECISION_URL = (
+    "https://github.com/menno420/superbot/blob/"
+    "95fc025bb56d0901940ccd5a9b6184a2d8a813de/"
+    "docs/owner/fleet-8seat-structure-2026-07-11.md"
+)
+SEAT_REGISTRY_URL = (
+    f"https://github.com/{OWNER}/{REGISTRY_REPO}/blob/main/projects/README.md"
+)
+SEAT_RESTRUCTURE_COMMIT_URL = (
+    f"https://github.com/{OWNER}/{REGISTRY_REPO}/commit/"
+    "639b0f09d7e99056cb8be83abc733edc198f1728"
+)
+
+SEATS: list[dict[str, Any]] = [
+    {"seat": "Fleet Manager", "repos": ["fleet-manager"],
+     "role": "Hub — single source of truth; routes work; keeps records truthful"},
+    {"seat": "Venture Lab", "repos": ["venture-lab", "trading-strategy"],
+     "role": "Make money; trading-strategy is a research toolkit only (holdout spent)"},
+    {"seat": "SuperBot World", "repos": ["superbot-games", "superbot-idle", "superbot-mineverse"],
+     "role": "The bot's games (flagship: mineverse — it reads the bot's mining economy)"},
+    {"seat": "SuperBot 2.0", "repos": ["superbot-next", "superbot"],
+     "role": "Drive the rebuild to cutover; keep prod alive"},
+    {"seat": "Ideas Lab", "repos": ["idea-engine", "sim-lab"],
+     "role": "Generate → verify; honest nulls are the product"},
+    {"seat": "Game Lab", "repos": ["gba-homebrew", "pokemon-mod-lab"],
+     "role": "Standalone games; strict public/private isolation"},
+    {"seat": "Self Improvement", "repos": ["substrate-kit"],
+     "role": "Improve the workflow all seats run on"},
+    {"seat": "Websites", "repos": ["websites"],
+     "role": "Control plane; merge = deploy"},
+]
+
+CONSOLIDATION: dict[str, Any] = {
+    # Precise phrasing, on purpose: no machine count of exactly 15 exists —
+    # the peak is screenshot-supported ("~15"), the 8-seat side is
+    # commit-verified. Decided late 2026-07-11 (owner decision doc);
+    # canonicalized in the fleet-manager registry 2026-07-12T03:15Z.
+    "summary": (
+        "peaked at ~15 Projects; consolidation decided 2026-07-11, "
+        "canonicalized 2026-07-12T03:15Z"
+    ),
+    "peak": "~15",
+    "decided": "2026-07-11",
+    "canonicalized": "2026-07-12T03:15:10Z",
+    "evidence": [
+        {"label": "the 8-seat decision doc (superbot, 2026-07-11)",
+         "url": SEAT_DECISION_URL},
+        {"label": "registry restructure commit (fleet-manager 639b0f0, 2026-07-12T03:15Z)",
+         "url": SEAT_RESTRUCTURE_COMMIT_URL},
+        {"label": "before: the ~15-Project grid (fig-01)",
+         "url": ("https://github.com/menno420/superbot/blob/"
+                 "e3eb0eb2bf3683794dd0d8c40bbf3988832c31ea/"
+                 "docs/eap/screenshots-2026-07-11/index.md")},
+        {"label": "after: the 8-seat grid (fig-21)",
+         "url": ("https://github.com/menno420/superbot/blob/"
+                 "cbb549539c64e0ce3b4fea268e27b7ac49eeaf08/"
+                 "docs/eap/screenshots-2026-07-12/index.md")},
+    ],
+}
+
 # The documented control/status.md field keys (control/README.md grammar —
 # a standalone copy of app/fleet.KNOWN_KEYS; see module docstring for why
 # this is a copy and not an import).
@@ -164,6 +244,43 @@ def bake_lane(entry: dict[str, Any]) -> dict[str, Any]:
     return lane
 
 
+def bake_seats(lanes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The 8 standing seats, each joined to its member repos' mirrored
+    heartbeats. The heartbeat data comes from the SAME per-repo fetches the
+    lane mirror uses (never hand-written): each member repo carries its
+    heartbeat ``updated:`` stamp verbatim, or the honest reason it could not
+    be read. A repo in the seat structure but absent from the lane registry
+    is recorded as such — never silently dropped."""
+    by_repo = {ln.get("repo"): ln for ln in lanes if ln.get("repo")}
+    seats: list[dict[str, Any]] = []
+    for seat in SEATS:
+        members: list[dict[str, Any]] = []
+        for repo in seat["repos"]:
+            lane = by_repo.get(repo)
+            if lane is None:
+                members.append({
+                    "repo": repo,
+                    "heartbeat_available": False,
+                    "updated": "",
+                    "reason": "repo not in the lane registry mirror",
+                })
+                continue
+            hb = lane.get("heartbeat") or {}
+            members.append({
+                "repo": repo,
+                "repo_url": lane.get("repo_url", f"https://github.com/{OWNER}/{repo}"),
+                "heartbeat_available": bool(hb.get("available")),
+                "updated": (hb.get("fields") or {}).get("updated", ""),
+                "reason": hb.get("reason", ""),
+            })
+        seats.append({
+            "seat": seat["seat"],
+            "role": seat["role"],
+            "repos": members,
+        })
+    return seats
+
+
 def main() -> int:
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     reg_text, reg_err = _fetch(REGISTRY_RAW)
@@ -208,6 +325,15 @@ def main() -> int:
             "repo_seats": len(lanes) - len(registry_only),
             "registry_only_seats": registry_only,
         },
+        # The standing structure: 8 seats over the per-repo lanes, plus the
+        # consolidation record (both commit-pinned — see the module constants).
+        "seats": bake_seats(lanes),
+        "seats_sources": [
+            {"label": "the 8-seat decision doc", "url": SEAT_DECISION_URL},
+            {"label": "fleet-manager projects/ registry", "url": SEAT_REGISTRY_URL},
+            {"label": "restructure commit 639b0f0", "url": SEAT_RESTRUCTURE_COMMIT_URL},
+        ],
+        "consolidation": CONSOLIDATION,
         "lanes": lanes,
     }
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)

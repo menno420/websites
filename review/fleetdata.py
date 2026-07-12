@@ -228,6 +228,50 @@ def lane_view(
     return view
 
 
+def seats_view(
+    fleet_data: dict[str, Any],
+    *,
+    now: Optional[datetime] = None,
+) -> dict[str, Any]:
+    """The 8-standing-seats view baked by ``gen_fleet.bake_seats`` — each
+    member repo's heartbeat stamp turned into a freshness reading, and a
+    seat-level "last heartbeat" = the freshest member. Mirrors without a
+    ``seats`` section (pre-consolidation bakes) yield ``ok=False`` and the
+    page skips the section rather than inventing a structure."""
+    seats_raw = (fleet_data or {}).get("seats") or []
+    if not seats_raw:
+        return {"ok": False, "seats": [], "consolidation": {}, "sources": []}
+    seats = []
+    for s in seats_raw:
+        members = []
+        best: Optional[dict[str, Any]] = None
+        for m in s.get("repos", []):
+            fr = freshness(m.get("updated", ""), now=now, stale_hours=12)
+            member = {
+                "repo": m.get("repo", "?"),
+                "repo_url": m.get("repo_url", ""),
+                "heartbeat_available": bool(m.get("heartbeat_available")),
+                "reason": m.get("reason", ""),
+                "freshness": fr,
+            }
+            members.append(member)
+            if fr["ok"] and (best is None or fr["age_hours"] < best["age_hours"]):
+                best = fr
+        seats.append({
+            "seat": s.get("seat", "?"),
+            "role": s.get("role", ""),
+            "repos": members,
+            # honest seat-level reading: freshest member heartbeat, or none
+            "last_heartbeat": best,
+        })
+    return {
+        "ok": True,
+        "seats": seats,
+        "consolidation": (fleet_data or {}).get("consolidation") or {},
+        "sources": (fleet_data or {}).get("seats_sources") or [],
+    }
+
+
 _DISPOSITION_ORDER = {"live": 0, "hub": 1, "registry-only": 2, "archived": 3}
 
 

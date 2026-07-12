@@ -71,6 +71,10 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
     snap = story.load_snapshot()
     git_head = snap["data"].get("git_head", "") if snap["ok"] else ""
     deployed = _deployed_sha()
+    # Footer "last refreshed" stamps — from the committed data files, never
+    # hardcoded. Each mirror stamps its own bake time; absence stays honest.
+    fl = fleetdata.load_fleet()
+    fleet_generated_at = fl["data"].get("generated_at", "") if fl["ok"] else ""
     return {
         "request": request,
         "active": active,
@@ -86,6 +90,7 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
         # commit, the repo has moved since the numbers were baked — say so.
         "snapshot_aged": bool(deployed and git_head and deployed[:8] != git_head[:8]),
         "deployed_sha": deployed,
+        "fleet_generated_at": fleet_generated_at,
         "repo_url": story.REPO_URL,
         # "Room to interact", read-only: a prefilled new-issue link per page.
         "ask_url": story.ask_url(f"{active or 'site'} page"),
@@ -181,6 +186,7 @@ async def fleet(request: Request):
             "stats_ok": st["ok"],
             "stats_error": st["error"],
             "overview": fleetdata.fleet_overview(fl["data"], st["data"]) if fl["ok"] else {},
+            "seats": fleetdata.seats_view(fl["data"]) if fl["ok"] else None,
             "fleet_age": fleetdata.freshness(fl["data"].get("generated_at", "")) if fl["ok"] else None,
             "stats_age": fleetdata.freshness(st["data"].get("generated_at", "")) if st["ok"] else None,
         }

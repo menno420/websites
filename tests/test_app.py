@@ -159,6 +159,7 @@ def test_deploy_state_in_sync_when_deployed_equals_head(monkeypatch):
     states = {s["service"]: s["state"] for s in ds["services"]}
     assert states == {
         "control-plane": "in_sync", "botsite": "in_sync", "dashboard": "in_sync",
+        "review": "in_sync",
     }
 
 

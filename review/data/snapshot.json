@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-11T13:38:18Z",
-  "git_head": "df4763374d4253a118669affd40b5b4835e61950",
+  "generated_at": "2026-07-12T14:15:31Z",
+  "git_head": "869cb76fd0cabf9267fca3cdff232c35555b7fc5",
   "days": [
     {
       "date": "2026-07-09",
@@ -18,18 +18,25 @@
     },
     {
       "date": "2026-07-11",
-      "prs_merged": 45,
-      "commits": 64,
-      "session_cards": 22,
-      "test_functions_eod": 250,
+      "prs_merged": 72,
+      "commits": 95,
+      "session_cards": 36,
+      "test_functions_eod": 315
+    },
+    {
+      "date": "2026-07-12",
+      "prs_merged": 6,
+      "commits": 13,
+      "session_cards": 3,
+      "test_functions_eod": 326,
       "partial": true
     }
   ],
   "totals": {
-    "prs_merged": 126,
-    "commits": 149,
-    "session_cards": 72,
-    "test_functions": 250,
+    "prs_merged": 159,
+    "commits": 193,
+    "session_cards": 89,
+    "test_functions": 326,
     "services": 4
   }
 }

@@ -232,3 +232,96 @@ def test_fleet_page_no_stale_banner_far_future_stamp(monkeypatch, tmp_path: Path
     r = client.get("/fleet")
     assert r.status_code == 200
     assert "This mirror is stale" not in r.text
+
+
+# ---------------------------------------------------------------------------
+# The 8 standing seats (ORDER 017: consolidation reflected, from baked data)
+# ---------------------------------------------------------------------------
+def _fixture_seats() -> dict:
+    return {
+        "generated_at": "2026-07-12T14:00:00Z",
+        "registry": {"ok": True, "reason": "", "url": "u",
+                     "total_seats": 0, "repo_seats": 0, "registry_only_seats": []},
+        "lanes": [],
+        "seats": [
+            {"seat": "Websites", "role": "Control plane; merge = deploy",
+             "repos": [
+                 {"repo": "websites", "repo_url": "https://github.com/menno420/websites",
+                  "heartbeat_available": True, "updated": "2026-07-12T11:00:00Z", "reason": ""},
+             ]},
+            {"seat": "Game Lab", "role": "Standalone games",
+             "repos": [
+                 {"repo": "gba-homebrew", "repo_url": "https://github.com/menno420/gba-homebrew",
+                  "heartbeat_available": True, "updated": "2026-07-12T09:00:00Z", "reason": ""},
+                 {"repo": "pokemon-mod-lab", "repo_url": "",
+                  "heartbeat_available": False, "updated": "",
+                  "reason": "HTTP 404 — no control/status.md on main (or repo not public)"},
+             ]},
+        ],
+        "seats_sources": [{"label": "decision doc", "url": "https://github.com/menno420/superbot/blob/x/d.md"}],
+        "consolidation": {
+            "summary": "peaked at ~15 Projects; consolidation decided 2026-07-11, canonicalized 2026-07-12T03:15Z",
+            "peak": "~15", "decided": "2026-07-11", "canonicalized": "2026-07-12T03:15:10Z",
+            "evidence": [{"label": "e", "url": "https://github.com/menno420/superbot/blob/x/e.md"}],
+        },
+    }
+
+
+def test_seats_view_freshest_member_wins_and_gaps_stay_honest():
+    sv = fleetdata.seats_view(_fixture_seats(), now=NOW)
+    assert sv["ok"] is True
+    game_lab = next(s for s in sv["seats"] if s["seat"] == "Game Lab")
+    # seat-level reading = the freshest member (09:00 → 3h at the frozen NOW)
+    assert game_lab["last_heartbeat"]["age_human"] == "3h ago"
+    # the private member is an honest gap, never invented
+    poke = next(m for m in game_lab["repos"] if m["repo"] == "pokemon-mod-lab")
+    assert poke["heartbeat_available"] is False
+    assert poke["freshness"]["ok"] is False
+    assert "404" in poke["reason"]
+
+
+def test_seats_view_absent_section_is_honest():
+    """A pre-consolidation mirror (no seats key) yields ok=False — the page
+    skips the section rather than inventing a structure."""
+    sv = fleetdata.seats_view({"lanes": []}, now=NOW)
+    assert sv["ok"] is False and sv["seats"] == []
+
+
+def test_committed_mirror_carries_the_eight_standing_seats():
+    """The committed fleet.json reflects the 07-11/07-12 consolidation:
+    exactly 8 standing seats, each member repo carrying an honest heartbeat
+    record (values regenerate daily and are never pinned here)."""
+    res = fleetdata.load_fleet()
+    assert res["ok"], res["error"]
+    seats = res["data"].get("seats") or []
+    assert len(seats) == 8
+    names = {s["seat"] for s in seats}
+    assert names == {
+        "Fleet Manager", "Venture Lab", "SuperBot World", "SuperBot 2.0",
+        "Ideas Lab", "Game Lab", "Self Improvement", "Websites",
+    }
+    for s in seats:
+        for m in s["repos"]:
+            assert m["heartbeat_available"] in (True, False)
+            if not m["heartbeat_available"]:
+                assert m["reason"].strip()
+    cons = res["data"].get("consolidation") or {}
+    # the precise, evidence-honest phrasing (never an exact "15")
+    assert cons.get("peak") == "~15"
+    assert cons.get("decided") == "2026-07-11"
+    assert cons.get("canonicalized", "").startswith("2026-07-12T03:15")
+
+
+def test_fleet_page_renders_eight_seats_and_consolidation():
+    r = client.get("/fleet")
+    assert r.status_code == 200
+    assert "The 8 standing seats" in r.text
+    for name in ("Fleet Manager", "Venture Lab", "SuperBot World", "SuperBot 2.0",
+                 "Ideas Lab", "Game Lab", "Self Improvement", "Websites"):
+        assert name in r.text
+    # consolidation phrased precisely, commit-linked
+    assert "peaked at ~15 Projects" in r.text
+    assert "canonicalized 2026-07-12T03:15Z" in r.text
+    assert "639b0f09d7e99056cb8be83abc733edc198f1728" in r.text
+    # the private Game Lab member is an honest labeled gap
+    assert "not measurable" in r.text
