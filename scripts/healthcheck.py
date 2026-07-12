@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Post-deploy healthcheck: GET /healthz and / on the three live services, plus
-the `/fleet` registry live-parse smoke check and the arcade URL drift probe
-(live+download).
+the `/fleet` registry live-parse smoke check, the arcade URL drift probe
+(live+download) and the tester-task URL liveness guard (open tasks).
 
 ──────────────────────────────────────────────────────────────────────────────
 PROVENANCE / KILL-SWITCH HEADER
@@ -41,10 +41,21 @@ into the exit code below, never a traceback. Live fetches run ONLY here (and
 the 6-hourly healthcheck.yml schedule) — the required `quality` gate tests the
 probe against `httpx.MockTransport`, network-free.
 
+The tester-task pass (docs/ideas/backlog.md "Tester-task URL liveness guard",
+ORDER 018 session) cold-fetches every `status: "open"` task's `product_url`
+in `botsite/testing_tasks.json` via `botsite.testing_probe` and FLAGS any
+whose FINAL response stops being 200 — every open task points a PAYING
+tester at that URL, and a dead link burns real testers' time before anyone
+notices. Same contract as the arcade pass: redirects followed, fail-soft per
+URL (dead/missing/malformed URL = FLAGGED finding, never a traceback),
+non-open tasks reported explicitly as not probed, live fetches ONLY here
+(and the healthcheck.yml schedule) — the required `quality` gate tests the
+probe against `httpx.MockTransport`, network-free.
+
 Usage:  python3 scripts/healthcheck.py
 Exit 0 = every checked endpoint returned its expected status AND the registry
-parsed to a non-empty lane set AND no probed arcade URL was flagged; exit 1 =
-any of those fail.
+parsed to a non-empty lane set AND no probed arcade URL was flagged AND no
+probed open tester-task URL was flagged; exit 1 = any of those fail.
 """
 
 from __future__ import annotations
@@ -57,7 +68,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import config, fleet  # noqa: E402  (path setup must run first)
-from botsite import arcade_probe  # noqa: E402  (path setup must run first)
+from botsite import arcade_probe, testing_probe  # noqa: E402  (path setup must run first)
 
 # (label, base URL). Endpoints checked per service: /healthz and / (both expect
 # 200 now that all three are public).
@@ -141,6 +152,32 @@ def check_arcade_urls() -> tuple[bool, list[str]]:
     return result["ok"], lines
 
 
+def check_testing_urls() -> tuple[bool, list[str]]:
+    """Cold-fetch every open tester task's product_url
+    (botsite.testing_probe) and flag drift — a dead product link must never
+    quietly keep collecting paid testers. Returns (ok, printable lines).
+    Never raises: per-URL failures are FLAGGED findings inside the probe,
+    and a probe bug itself degrades to a FAIL line (defensive, same stance
+    as check_arcade_urls)."""
+    try:
+        result = testing_probe.probe_task_urls()
+    except Exception as exc:  # defensive: a probe bug shouldn't crash the check
+        return False, [f"probe raised {type(exc).__name__}: {exc}"]
+
+    lines: list[str] = []
+    for row in result["rows"]:
+        mark = "PASS" if row["ok"] else "FLAGGED"
+        status = row.get("status", "?")
+        lines.append(
+            f"{row['id']:36}  {mark:7}  [{status}]  "
+            f"{row['url'] or '<no url>'}  ({row['note']})"
+        )
+    for entry in result["skipped"]:
+        lines.append(f"{entry['id']:36}  not probed (status: {entry['status']})")
+    lines.append(result["note"])
+    return result["ok"], lines
+
+
 def main() -> int:
     rows: list[tuple[str, str, int, bool, str]] = []
     ok_all = True
@@ -170,6 +207,13 @@ def main() -> int:
     print()
     print(f"arcade URL drift probe (live+download): {'PASS' if arcade_ok else 'FAIL'}")
     for line in arcade_lines:
+        print(f"  {line}")
+
+    testing_ok, testing_lines = check_testing_urls()
+    ok_all = ok_all and testing_ok
+    print()
+    print(f"tester-task URL liveness guard (open tasks): {'PASS' if testing_ok else 'FAIL'}")
+    for line in testing_lines:
         print(f"  {line}")
 
     print()
