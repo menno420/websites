@@ -14,12 +14,12 @@
     "slug": "mineverse",
     "name": "mineverse",
     "tagline": "A staged web mining-world game — the fleet's games flagship.",
-    "description": "A staged web game with stages 0, a, b and c complete. It runs today as a read-only demo on localhost only; the live deployment is blocked on provisioning environment variables.",
+    "description": "A staged web game with stages 0, a, b and c complete. It now serves live as a read-only view over the superbot mining economy; player sign-in is launching next.",
     "maturity": "beta",
-    "availability": "unavailable",
-    "url": null,
+    "availability": "live",
+    "url": "https://web-production-97636.up.railway.app",
     "source_repo": "menno420/superbot-mineverse",
-    "status_note": "Not deployed yet: runs as a localhost demo only; going live is blocked on env-var provisioning for a production host."
+    "status_note": "Read-only demo — player sign-in launching."
   },
   {
     "slug": "games-web",

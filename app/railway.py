@@ -93,7 +93,7 @@ SERVICES: list[dict[str, Any]] = [
         "env_vars": [
             _var("GITHUB_TOKEN", "PAT for GitHub REST reads (board cells; admin scope un-masks secrets counts)"),
             _var("SITE_PASSWORD", "gates the /owner area (HTTP Basic; unset → /owner fails closed 503)"),
-            _var("RAILWAY_TOKEN", "project-scoped Railway read token for THIS page's live section (owner errand pending)"),
+            _var("RAILWAY_TOKEN", "project-scoped Railway read token for THIS page's live section (set on the deployed service 2026-07-12, ORDER 022)"),
             _var("PORT", "bind port (Railway injects it)"),
             _var("GITHUB_API_BASE", "REST base override (testing behind restricted egress)"),
             _var("GITHUB_RAW_BASE", "raw-content base override"),
@@ -155,9 +155,13 @@ async def _graphql(query: str, variables: dict | None = None) -> dict[str, Any]:
 
     Sends the project-scoped token as ``Project-Access-Token`` (Railway's
     documented header for project tokens). Read-only by construction: callers
-    only pass query strings. UNVERIFIED against the live API until the owner
-    mints the token — any shape/auth mismatch surfaces as an honest
-    ``unavailable`` reason, never a 500.
+    only pass query strings. Query shapes VERIFIED 2026-07-12 against the live
+    API (backboard.railway.app/graphql/v2): ``projectToken`` exposes
+    ``projectId``/``environmentId``; ``project(id:)`` returns ``name`` +
+    ``services.edges[].node{id,name}``; ``variables(projectId:,
+    environmentId:, serviceId:)`` returns a name→value JSON map (names kept,
+    values dropped in ``_names_only``). Any future shape/auth mismatch still
+    surfaces as an honest ``unavailable`` reason, never a 500.
     """
     headers = {
         "Project-Access-Token": config.RAILWAY_TOKEN,
