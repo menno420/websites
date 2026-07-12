@@ -142,6 +142,11 @@
         {% else %}
         <p class="sb-muted rv-gap">{{ l.heartbeat_reason }}.</p>
         {% endif %}
+        {% if l.head and l.head.ok %}
+        <p class="sb-chart-note sb-muted">latest commit <span class="sb-mono">{{ l.head.sha[:8] }}</span>{% if l.head.committed_at %} · {{ l.head.committed_at }}{% endif %} <span title="{{ l.head.source }}">(git transport, at bake time)</span></p>
+        {% elif l.repo and l.head %}
+        <p class="sb-chart-note sb-muted">latest commit: not readable — {{ l.head.reason }}.</p>
+        {% endif %}
         {% if l.stats and l.stats.ok %}
         <p class="sb-chart-note sb-muted">last push {{ l.stats.pushed_at[:10] }}{% if l.stats.total_prs is defined %} · {{ l.stats.total_prs }} PRs ever opened{% endif %}{% if l.stats.open_issues_and_prs is not none %} · {{ l.stats.open_issues_and_prs }} open issues+PRs{% endif %}</p>
         {% elif l.repo %}

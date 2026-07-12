@@ -84,10 +84,26 @@ control-plane deploy board; soften/attribute every unverifiable number.
   seats + precise consolidation phrasing + the labeled private gap; footer
   stamp provably follows the data file (synthetic-snapshot monkeypatch);
   `seats_view` freshest-member + absent-section units.
-- **Verified:** `python3 -m pytest tests/ botsite/tests dashboard/tests
-  review/tests -q` — **363 passed**; `python3 bootstrap.py check --strict`
-  — all checks passed (advisory-only warnings). Born-red gate simulated
-  locally with the exact CI invocation before push (designed HOLD observed).
+- **Coordinator extension (owner directive, same session):** comprehensive
+  coverage sweep — `list_repos` discovery found 19 account repos; every
+  fleet repo is already covered by the registry mirror except
+  `superbot-plugin-hello` (a superbot plugin satellite, NOT a registry lane
+  — flagged to the manager rather than hand-added, one-source-of-truth).
+  `gen_fleet.py` gained `head_probe()`: every repo-backed lane's latest
+  committed state (HEAD sha + committer date) read over anonymous git
+  transport (`ls-remote` + depth-1 `--filter=tree:0` fetch — reachable
+  where the REST API is proxy-walled; tokenless in Actions too); rendered
+  on the lane cards with honest reasons for unreachable repos. Mirrors
+  re-baked at the final head (17/18 HEADs probed). `review/README.md`
+  gained the manual-refresh path (workflow_dispatch → run summary →
+  compare-link PR) + the exact owner toggle that retires it. origin/main
+  merged in twice (landability — main advanced mid-session), no conflicts.
+- **Verified (final head):** `python3 -m pytest tests/ botsite/tests
+  dashboard/tests review/tests -q` — **378 passed**; `python3 bootstrap.py
+  check --strict` — all checks passed (advisory-only warnings). Born-red
+  gate simulated locally with the exact CI invocation before first push
+  (designed HOLD observed, confirmed verbatim in the CI log); quality on
+  the flip head f755ce5 completed SUCCESS in CI before the extension.
 - Claim `control/claims/claude-order-017-data-refresh.md` created in the
   first commit and deleted at this flip per the claims README.
 
