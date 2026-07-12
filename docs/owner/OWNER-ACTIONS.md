@@ -107,15 +107,21 @@ manually" ask (you ran it 2026-07-11T20:26:33Z — run `29167034060`,
 `event: workflow_dispatch`; it failed on a repo setting, NOT for lack of
 the click — the follow-up is the single ask below).
 
-```markdown
-⚑ OWNER-ACTION
-WHAT: Allow GitHub Actions to create pull requests on menno420/websites, so the daily review-bake can land its data refresh.
-WHERE: github.com/menno420/websites → Settings → Actions → General → "Workflow permissions" → check "Allow GitHub Actions to create and approve pull requests" → Save.
-HOW: one checkbox + Save. Optionally afterwards: Actions → review-bake → "Run workflow" (branch main) to land the first bake immediately instead of waiting for the daily cron.
-WHY-IT-MATTERS: the review-bake workflow has now run TWICE and failed BOTH times at the same wall — run 29167034060 (event: workflow_dispatch, 2026-07-11T20:26:33Z, your manual run) and run 29184552812 (event: schedule, 2026-07-12T07:38:28Z — the daily cron IS firing). Each run baked the data fine (snapshot + fleet + stats: "17/18 repos with live stats"), was correctly ruleset-blocked from pushing to main, pushed its fallback branch, then died at `gh pr create` with: "GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)". Until the toggle flips, every daily bake fails. (Staleness fix 2026-07-12T16:49Z: review/data/stats.json is no longer absent from main — an agent session landed it manually via ORDER 017 A, PR #175 — but the AUTOMATED daily loop is still dead: the workflow's run history still shows exactly the same 2 runs, both failed; no run has succeeded since.)
-UNBLOCKS: the self-updating review-site data loop (snapshot/fleet/stats refreshed daily via [bake] PRs that auto-merge on green); also makes the two orphan branches the failed runs pushed (bake/review-data-20260711-202653, bake/review-data-20260712-073843 — stale, safe to delete) stop accumulating.
-VERIFIED-NEEDED: the "Allow GitHub Actions to create and approve pull requests" setting is repo-console-only (Settings → Actions), owner-held; agents hold no path to it. Failure verified by event type from both runs' logs 2026-07-12 (ORDER 012); exact error string quoted above.
-```
+**STRUCK 2026-07-12 (docs truth sweep — SATISFIED, moved to Decided row M
+below; the ask text is kept verbatim under the Decided table, per "do not
+delete, move").** The toggle is flipped and proven end-to-end: review-bake
+run `29202721928` (`event: workflow_dispatch`, actor menno420,
+2026-07-12T17:49:33Z, conclusion **success**) got past the old
+`createPullRequest` wall — it created PR #194 as github-actions[bot],
+and #194 auto-merged (merged 2026-07-12T19:41:08Z, `merged_by:
+github-actions[bot]`), landing the bake diff on main as `a513ff4`
+(review/data snapshot.json + fleet.json + stats.json). Two factual notes:
+(1) the first SCHEDULED (cron) bake fire is still unproven — the only
+successful run so far is the manual dispatch; next cron is due
+~2026-07-13 morning; (2) the stale orphan bake branches named in the ask
+(`bake/review-data-20260711-202653`, `bake/review-data-20260712-073843`)
+are now deletable, but branch deletion is 403-walled for agents on every
+path (`docs/CAPABILITIES.md`), so they are left in place for the owner.
 
 ```markdown
 ⚑ OWNER-ACTION
@@ -224,6 +230,7 @@ the variable NAME `RAILWAY_TOKEN` present on control-plane/production
 | J | **Review Railway service** (was the standing fourth-service ⚑ ask) | **DONE by owner** — the review service is LIVE at `https://review-production-f027.up.railway.app`: `/` returns HTTP 200 unauthenticated, `/healthz` returns `{"status":"ok","service":"review"}`, `/version` reports sha `c5abd3ee` (= main HEAD at verification — the service is deploy-current). Follow-ups now unblocked (not owner-gated): add the fourth service to the board's deploy-drift row + `scripts/healthcheck.py`. | Cold fetches 2026-07-12T16:49Z (records reconcile); ask text kept verbatim below. Re-confirmed 2026-07-12T17:56Z (ORDER 022 reconcile): `/healthz` still 200 `{"status":"ok","service":"review"}`, and the control-plane's live `/api/readiness.json` deploy-drift row now tracks all FOUR services `in_sync` at `e25d7d58` (`all_in_sync: true`). |
 | K | **ANTHROPIC_API_KEY on botsite + review** (was the ORDER 018 PR2 exit-review ask, "reported RESOLVED" pending final verification) | **DONE** — the key was set on both services per ORDER 022 (owner directive, fleet-manager `control/inbox.md` @ `1bb53f9`) and the pending verification has now happened: the review service's live `/ask` page renders with NO "Live assistant degraded" banner and says "assistant is live, answering server-side" — `ai_ready` true at runtime. | Cold fetch of `https://review-production-f027.up.railway.app/ask` 2026-07-12T17:56Z (ORDER 022 reconcile); ORDER 022 @ fleet-manager `control/inbox.md` `1bb53f9`; ask text kept verbatim below. |
 | L | **RAILWAY_TOKEN on control-plane** (was the `/owner/environments` live-half ask) | **DONE by owner** — a project-scoped token was set as RAILWAY_TOKEN on the control-plane service (superbot-websites/production) 2026-07-12 and the service redeployed (ORDER 022 directive). Supporting evidence: a live Railway GraphQL read (ORDER 022 query-shape verification, 2026-07-12) shows the variable NAME `RAILWAY_TOKEN` present on control-plane/production, and all three `app/railway.py` query shapes (`projectToken`, `project(id:)`, `variables(...)`) verified correct against the live API — verdict already-correct, stale "UNVERIFIED" docstring updated. | ORDER 022 @ fleet-manager `control/inbox.md` `1bb53f9`; live GraphQL shape verification 2026-07-12 (names only, never values); ask text kept verbatim below. |
+| M | **Actions "create and approve pull requests" toggle** (was the archive-consolidated review-bake follow-up ask) | **DONE by owner — proven end-to-end.** review-bake run `29202721928` (`event: workflow_dispatch`, actor menno420, 2026-07-12T17:49:33Z) succeeded, created PR #194 as github-actions[bot], and #194 auto-merged (`merged_by: github-actions[bot]`, 2026-07-12T19:41:08Z) — bake diff on main `a513ff4`. The Actions `createPullRequest` wall is gone. Residuals: first SCHEDULED (cron) success still unproven (next cron ~2026-07-13 morning); the two stale orphan bake branches remain (branch deletion 403-walled for agents — `docs/CAPABILITIES.md` — owner cleanup). | Run + PR verified via GitHub API 2026-07-12 (docs truth sweep); merge commit `a513ff4` on main; ask text kept verbatim below. |
 
 ### Satisfied ask — kept verbatim (Decided row J, satisfied by 2026-07-12)
 
@@ -260,6 +267,18 @@ HOW: create the project token, copy it once, paste it as RAILWAY_TOKEN on the co
 WHY-IT-MATTERS: the gated /owner/environments page (PR #166, ORDER 016 slice 1) is live behind the owner gate (HTTP 401 unauthenticated, verified 2026-07-12) but its live half renders "not-configured" while RAILWAY_TOKEN is unset — you only see the committed facts, not what is actually configured where; the owner decided 2026-07-11 to mint this token but it has not landed (docs/CAPABILITIES.md 2026-07-12 wall entry).
 UNBLOCKS: live env-var-name visibility across all four services from one gated page, and first real-API verification of the GraphQL read path (UNVERIFIED until the token exists, per the capability ledger).
 VERIFIED-NEEDED: code path confirmed 2026-07-12 — app/config.py reads RAILWAY_TOKEN from the env; app/railway.py renders state "not-configured" while it is unset and the CAPABILITIES ledger records the token as NOT provisioned (session env + deployed service, 2026-07-12). Token minting + Railway variable mutations are owner-held / policy-walled for agents (docs/RAILWAY-SAFETY.md — deliberately not attempted; same wall as the asks above).
+```
+
+### Satisfied ask — kept verbatim (Decided row M, satisfied by 2026-07-12)
+
+```markdown
+⚑ OWNER-ACTION — SATISFIED 2026-07-12 (Decided row M; kept for the record)
+WHAT: Allow GitHub Actions to create pull requests on menno420/websites, so the daily review-bake can land its data refresh.
+WHERE: github.com/menno420/websites → Settings → Actions → General → "Workflow permissions" → check "Allow GitHub Actions to create and approve pull requests" → Save.
+HOW: one checkbox + Save. Optionally afterwards: Actions → review-bake → "Run workflow" (branch main) to land the first bake immediately instead of waiting for the daily cron.
+WHY-IT-MATTERS: the review-bake workflow has now run TWICE and failed BOTH times at the same wall — run 29167034060 (event: workflow_dispatch, 2026-07-11T20:26:33Z, your manual run) and run 29184552812 (event: schedule, 2026-07-12T07:38:28Z — the daily cron IS firing). Each run baked the data fine (snapshot + fleet + stats: "17/18 repos with live stats"), was correctly ruleset-blocked from pushing to main, pushed its fallback branch, then died at `gh pr create` with: "GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)". Until the toggle flips, every daily bake fails. (Staleness fix 2026-07-12T16:49Z: review/data/stats.json is no longer absent from main — an agent session landed it manually via ORDER 017 A, PR #175 — but the AUTOMATED daily loop is still dead: the workflow's run history still shows exactly the same 2 runs, both failed; no run has succeeded since.)
+UNBLOCKS: the self-updating review-site data loop (snapshot/fleet/stats refreshed daily via [bake] PRs that auto-merge on green); also makes the two orphan branches the failed runs pushed (bake/review-data-20260711-202653, bake/review-data-20260712-073843 — stale, safe to delete) stop accumulating.
+VERIFIED-NEEDED: the "Allow GitHub Actions to create and approve pull requests" setting is repo-console-only (Settings → Actions), owner-held; agents hold no path to it. Failure verified by event type from both runs' logs 2026-07-12 (ORDER 012); exact error string quoted above.
 ```
 
 ## How to use this doc
