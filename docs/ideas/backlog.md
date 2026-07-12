@@ -610,3 +610,12 @@
   stops returning 200, so a dead game link never quietly outlives its card.
   Worth having because the arcade honesty doctrine currently depends on
   manual reconciles (ORDER 022 flipped mineverse by hand) to notice drift.
+
+- **review-bake self-janitor for stale bake branches** — captured 2026-07-12
+  (docs truth sweep session). The review-bake workflow's token can now
+  create branches and PRs (proven by run 29202721928 → PR #194 auto-merged);
+  a final workflow step deleting its own merged/superseded
+  `bake/review-data-*` branches (plus the two 2026-07-11/12 orphans) would
+  remove the owner errand entirely. Worth having because branch deletion is
+  403-walled for agent sessions (`docs/CAPABILITIES.md`) — the workflow is
+  the one actor that can keep its own house clean.
