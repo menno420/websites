@@ -22,6 +22,12 @@ mutated. Per-artifact honest degradation: a 404 or unreachable upstream
 renders a clear error cell, never fabricated content — the route always
 answers 200.
 
+Consolidated (ORDER 015): the fetch+parse model lives in
+``app/prompt_artifacts.py`` and the copy-ready block in
+``templates/_prompt_artifact.html`` — ONE render path shared with the
+/projects/{package} dispatch screen; this module only pins WHICH artifacts
+the library shows.
+
 The artifact list is PINNED here rather than discovered: the raw host
 cannot list directories, and this page deliberately avoids the token-burning
 contents-API listing walk /projects does. Every path below was verified
@@ -35,13 +41,18 @@ this registry constant is updated.
 from __future__ import annotations
 
 import asyncio
-import re
 from typing import Any
 
-from . import config, github
+from . import config, prompt_artifacts
 
-REPO = "fleet-manager"
-REF = "main"
+# Shared fetch+parse path (ORDER 015) — re-exported so consumers and tests
+# keep one import surface for the library's registry semantics.
+from .prompt_artifacts import (  # noqa: F401
+    _PROVENANCE_MAX_CHARS,
+    REF,
+    REPO,
+    extract_provenance,
+)
 
 # The 8 fleet seats (registry package directories under projects/), in the
 # owner's dispatch order (same order /projects uses). Verified live
@@ -75,40 +86,6 @@ FLEET_WIDE: tuple[tuple[str, str], ...] = (
 # How many artifacts the page promises (the order's done-when counts them).
 TOTAL_ARTIFACTS = len(SEATS) * len(SEAT_FILES) + len(FLEET_WIDE)
 
-# Best-effort version/provenance extraction: the registry copies open with
-# HTML-comment headers like ``<!-- v5 · 2026-07-12 · fleet-manager projects
-# registry — GENERATED COPY … -->`` and the v3 docs carry ``<!-- v3.3 ·
-# 2026-07-12 · provenance: … -->`` within their first lines (verified live
-# 2026-07-12). The FIRST early line carrying a v-number marker wins; no
-# match = "" — the template renders an honest "no version line found",
-# never an invented one.
-_VERSION_LINE_RE = re.compile(r"\bv\d+(?:\.\d+)*\s*·")
-_PROVENANCE_SCAN_LINES = 15
-_PROVENANCE_MAX_CHARS = 220
-
-
-def extract_provenance(text: str) -> str:
-    """The artifact's version/provenance line, best-effort.
-
-    Scans the first ``_PROVENANCE_SCAN_LINES`` lines for the first one
-    carrying a ``vN[.N] ·`` marker, strips comment/quote scaffolding, and
-    truncates long provenance prose. Returns ``""`` when absent.
-    """
-    for line in (text or "").splitlines()[:_PROVENANCE_SCAN_LINES]:
-        if _VERSION_LINE_RE.search(line):
-            cleaned = line.strip()
-            for token in ("<!--", "-->"):
-                cleaned = cleaned.replace(token, "")
-            cleaned = cleaned.strip().lstrip(">#").strip()
-            if len(cleaned) > _PROVENANCE_MAX_CHARS:
-                cleaned = cleaned[: _PROVENANCE_MAX_CHARS - 1].rstrip() + "…"
-            return cleaned
-    return ""
-
-
-def _blob_url(path: str) -> str:
-    return f"https://github.com/{config.OWNER}/{REPO}/blob/{REF}/{path}"
-
 
 def _artifact_spec() -> list[dict[str, Any]]:
     """The pinned 26-artifact registry as (seat, label, path) dicts."""
@@ -136,42 +113,27 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
           "ttl": CACHE_TTL_SECONDS, "repo_url",
         }
 
-    Each artifact dict: ``{seat, label, path, github_url, anchor, ok, text,
-    error, fetched_at, cached, provenance, chars}``. ``text`` is the exact
-    upstream bytes-as-text (the paste body, never mutated here); on failure
-    ``text`` is ``None`` and ``error`` says why — content is never
-    fabricated and stale-cache serving is the ``github`` layer's TTL
-    behaviour, surfaced via ``cached``/``fetched_at``.
+    Each artifact dict is the canonical shared model
+    (:func:`app.prompt_artifacts.build_artifact`) plus a page-local
+    ``anchor``. ``text`` is the exact upstream bytes-as-text (the paste
+    body, never mutated here); on failure ``text`` is ``None`` and
+    ``error`` says why — content is never fabricated and stale-cache
+    serving is the ``github`` layer's TTL behaviour, surfaced via
+    ``cached``/``fetched_at``.
     """
     spec = _artifact_spec()
-    fetched = await asyncio.gather(
-        *[github.fetch_file(REPO, s["path"], ref=REF, refresh=refresh) for s in spec]
-    )
-
-    artifacts: list[dict[str, Any]] = []
-    for i, (s, res) in enumerate(zip(spec, fetched)):
-        ok = bool(res["ok"]) and isinstance(res["data"], str)
-        text = res["data"] if ok else None
-        artifacts.append(
-            {
-                "seat": s["seat"],
-                "label": s["label"],
-                "path": s["path"],
-                "github_url": _blob_url(s["path"]),
-                "anchor": f"artifact-{i}",
-                "ok": ok,
-                "text": text,
-                "error": (
-                    ""
-                    if ok
-                    else (res.get("error") or f"HTTP {res.get('status')}")
-                ),
-                "fetched_at": res.get("fetched_at", ""),
-                "cached": bool(res.get("cached")),
-                "provenance": extract_provenance(text or ""),
-                "chars": len(text) if text else 0,
-            }
+    artifacts = list(
+        await asyncio.gather(
+            *[
+                prompt_artifacts.fetch_artifact(
+                    s["path"], s["label"], seat=s["seat"], refresh=refresh
+                )
+                for s in spec
+            ]
         )
+    )
+    for i, a in enumerate(artifacts):
+        a["anchor"] = f"artifact-{i}"
 
     seats = [
         {
