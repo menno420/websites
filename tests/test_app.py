@@ -219,6 +219,60 @@ def test_unknown_repo_404(client):
     assert r.status_code == 404
 
 
+# --- /journal/{repo}/file render guard (fleet-lane widening) ---
+
+
+def _mock_fetch_file(monkeypatch, text="# hello\n\nworld"):
+    """Mock github.fetch_file so file renders need no network."""
+    calls = []
+
+    async def fake_fetch_file(repo, path, ref="main", refresh=False):
+        calls.append((repo, path, ref))
+        return {
+            "ok": True, "status": 200, "data": text,
+            "error": "", "fetched_at": "", "cached": False, "url": "",
+        }
+
+    monkeypatch.setattr(github, "fetch_file", fake_fetch_file)
+    return calls
+
+
+def test_journal_file_unknown_repo_still_404(client):
+    r = client.get("/journal/not-a-repo/file", params={"path": "README.md"})
+    assert r.status_code == 404
+
+
+def test_journal_file_bad_path_still_400(client):
+    for bad in ["../secrets.md", "docs/../../etc/passwd", "/etc/passwd"]:
+        r = client.get("/journal/websites/file", params={"path": bad})
+        assert r.status_code == 400, bad
+
+
+def test_journal_file_fleet_lane_repo_renders(client, monkeypatch):
+    # sim-lab is a FLEET_LANES repo that is NOT in config.REPOS — it must
+    # now pass the guard and render.
+    assert "sim-lab" not in config.REPOS
+    assert "sim-lab" in config.JOURNAL_RENDER_REPOS
+    calls = _mock_fetch_file(monkeypatch)
+    r = client.get(
+        "/journal/sim-lab/file", params={"path": "docs/current-state.md"}
+    )
+    assert r.status_code == 200
+    assert "hello" in r.text
+    assert calls == [("sim-lab", "docs/current-state.md", "main")]
+
+
+def test_journal_file_original_repo_still_renders(client, monkeypatch):
+    # An original REPOS repo keeps working through the widened guard.
+    calls = _mock_fetch_file(monkeypatch)
+    r = client.get(
+        "/journal/superbot/file", params={"path": "docs/current-state.md"}
+    )
+    assert r.status_code == 200
+    assert "hello" in r.text
+    assert calls == [("superbot", "docs/current-state.md", "main")]
+
+
 # --- live-monitoring auto-refresh (board / + /fleet only) ---
 
 

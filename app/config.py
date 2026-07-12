@@ -327,3 +327,12 @@ FLEET_LANES: list = [
     },
 ]
 
+# Repos whose committed files the /journal/{repo}/file route may render.
+# Derived, never hand-listed: the four REPOS entries plus every fleet lane
+# repo from FLEET_LANES above (which mirrors the kit's generated
+# docs/adopters.md registry — kit-owned convention). REPOS itself stays the
+# readiness-board / journal-corpus fan-out set and must NOT grow from here.
+JOURNAL_RENDER_REPOS: set = set(REPOS) | {
+    lane["repo"] for lane in FLEET_LANES if lane.get("repo")
+}
+
