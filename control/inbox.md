@@ -185,3 +185,14 @@ do: OWNER WRITEBACK ON THE SITES — the owner's order VERBATIM between the mark
 BEGIN ORDER TEXT
 also make sure I can directly write reviews on the websites, so I can make an owner action complete or request assistance, do you understand what I mean? it could use it to suggest corrections, add my ideas to certain things etc
 END ORDER TEXT
+
+## ORDER 021 · 2026-07-12T17:55Z · status: new
+priority: P2
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (~18:05Z), iterating on /owner/environments
+why: the owner wants one place to find, store, and manage every environment across the fleet — see all envs + links to where each is managed, Discord-authed (the auth already used on the dashboard), and eventually create/review complete per-project-group environments.
+done-when: an owner-authed environments hub on the control-plane lists every fleet environment (Railway projects/services, Claude Code cloud envs, GitHub secret stores) with variable NAMES (never values), purpose, and a deep link to where each is managed; grouped per project-group and reviewable separately; Discord OAuth gating stood up (or the Discord OAuth app flagged as the one owner dependency); a "create complete environment per project group" capability scoped (built where the API allows, owner-gated where it needs real infra/secrets).
+do: OWNER ENVIRONMENTS HUB — the owner's directive VERBATIM between the markers:
+BEGIN ORDER TEXT
+and one important part I'm  still missing is the part where I can find and store all my envs etc, I want to be able to see all envs and links to where theyre managed on the website, and as pasword we could use the discord auth we already use across 2 instances, do you understand what I mean? one of the things it also does for us is a way to actually create the complete enviroments per project group and review them seperately
+END ORDER TEXT
