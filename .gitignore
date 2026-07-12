@@ -9,3 +9,6 @@ __pycache__/
 # substrate-kit handoff pointer (v1.11.0+): regenerated UNTRACKED at every
 # session boot — read it, never commit it (kit machinery, not source).
 HANDOFF.md
+
+# tester-program local SQLite (ephemeral runtime state — never commit data)
+botsite/testing.sqlite3*
