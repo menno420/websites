@@ -31,6 +31,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from . import arcade as arcade_registry
 from . import data_source as ds
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -38,6 +39,7 @@ NAV = [
     ("features", "Features", "/features"),
     ("commands", "Commands", "/commands"),
     ("games", "Games", "/games"),
+    ("arcade", "Arcade", "/arcade"),
     ("changelog", "Changelog", "/changelog"),
     ("status", "Status", "/status"),
 ]
@@ -175,6 +177,19 @@ async def games(request: Request):
     ctx = _base_ctx(request, "games", res)
     ctx.update({"games": ds.games(site)})
     return templates.TemplateResponse(request, "games.html", ctx)
+
+
+@app.get("/arcade", response_class=HTMLResponse)
+async def arcade(request: Request):
+    """Fleet Arcade — public catalog of the fleet's playable games (ORDER 014,
+    slice 1). Data is the committed ``botsite/data/arcade.json`` read from disk
+    at request time — no network. Honest labels: a play/download link renders
+    only when a game is really reachable; otherwise the card carries its
+    status note. Read-only in this slice: no state-changing routes."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "arcade", res)
+    ctx.update({"arcade_games": arcade_registry.load_games()})
+    return templates.TemplateResponse(request, "arcade.html", ctx)
 
 
 @app.get("/changelog", response_class=HTMLResponse)
