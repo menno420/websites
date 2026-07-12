@@ -172,6 +172,28 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    not-configured / unavailable / per-package + per-meta error banners
    otherwise. `/projects.json` drops the rendered meta HTML (mirrors
    `/fleet.json`).
+   **Owner Launch Console** (single-screen dispatch, owner ask 2026-07-12):
+   the index splits into active **Seats** first — sorted in the owner's
+   start order (fleet-manager/project-manager, venture-lab, superbot-world,
+   superbot-2.0/superbot-next, ideas-lab, game-lab, self-improvement,
+   websites; unmatched names after, alphabetical) — with retired / merged /
+   stub packages collapsed under a `<details>` below (`is_stub` is
+   fail-ACTIVE: only an unambiguous retired/merged-into/stub declaration in
+   the meta state line or early meta.md body demotes a package; when unsure
+   it stays a seat). Each seat links to **`/projects/{package}`** — the
+   per-seat dispatch screen: every recognized role file fetched in FULL
+   through the same TTL-cached layer and rendered copy-ready in `<pre>`
+   blocks (`copycode.js`), a deployed-state badge + best-effort
+   `environment:` name + claude.ai Project link from `meta.md` (absent =
+   "unknown" / "none recorded", never invented), and a static numbered
+   dispatch checklist (copy Custom Instructions → paste; copy coordinator
+   prompt → first message; verify the failsafe cron, failsafe file linked).
+   The `{package}` name is validated against the live registry listing —
+   anything not a listed directory (including traversal shapes) is a 404;
+   registry-fetch failures render the same honest empty / not-configured /
+   unavailable banners on a 200 page. `/projects.json` packages carry
+   `stub` + `detail_url` (contract pinned in
+   `tests/test_json_contracts.py`).
 3e. **Review queue** (`/reviews`, `.json` variant) — read-only render of the
    fleet's post-merge second-review ledger `menno420/fleet-manager
    docs/review-queue.md` ([D-0031], ORDER 009 increment 3). The gen-2
@@ -242,8 +264,9 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/queue` | public | owner queue — every ⚑ needs-owner ask + the fleet-manager owner-queue, deduplicated (HTML) — [D-0027] |
 | `/queue.json` | public | same owner queue as JSON — the manager's file-an-ask → poll → confirm round-trip (rendered doc HTML stripped) |
 | `/environments` | public | fleet-manager `environments/` registry, copy-to-clipboard (HTML) — [D-0027] |
-| `/projects` | public | fleet-manager `projects/` Project-package registry (HTML) — [D-0030] |
-| `/projects.json` | public | same registry as JSON (rendered meta HTML stripped) |
+| `/projects` | public | fleet-manager `projects/` Project-package registry — seats-first dispatch index (HTML) — [D-0030] |
+| `/projects.json` | public | same registry as JSON (rendered meta HTML stripped; packages carry `stub` + `detail_url`) |
+| `/projects/{package}` | public | per-seat dispatch screen — full role-file contents copy-ready + dispatch checklist (HTML; unknown package → 404) |
 | `/reviews` | public | fleet post-merge review-queue ledger + findings links (HTML) — [D-0031] |
 | `/reviews.json` | public | same ledger as JSON (rendered HTML stripped) |
 | `/orders` | public | every repo's inbox ORDERs × heartbeat done= cross-reference (HTML) — [D-0032] |

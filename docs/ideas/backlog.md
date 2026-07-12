@@ -9,6 +9,20 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Seat role-coverage chips on the /projects dispatch index** · `captured`
+  — the dispatch screen (PR #158) renders whatever role files a package
+  has, but the INDEX doesn't say which seats are dispatch-READY: a seat
+  missing its coordinator prompt or failsafe looks identical to a complete
+  one until the owner opens it mid-dispatch. One chip row per seat card
+  (instructions ✓ / coordinator ✗ / failsafe ✓ — derived from the
+  role-classified listing the page already fetches, zero extra API calls)
+  turns "which seat can't launch yet" into a glance, and doubles as
+  registry lint the fleet-manager lane can act on. Worth having because
+  the single-screen dispatch flow's remaining blind spot is incomplete
+  packages discovered at paste time. Deduped against this backlog + the
+  queue-state NEXT list: nothing touches projects-registry completeness.
+  Source: `.sessions/2026-07-12-projects-dispatch-view.md` 💡.
+
 - **Ask superbot for a sanitized guild list in `dashboard.json`** ·
   `captured` — the /admin management flows (dry-run today, armed later) all
   start with "which server?", but NO committed feed carries a guild list, so

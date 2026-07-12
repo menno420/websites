@@ -52,7 +52,8 @@ QUEUE_FM = {  # _fleet_manager_half minus body_html
 
 PROJECTS_TOP = {"state", "reason", "token_set", "repo_url", "packages", "root_files"}
 PROJECTS_PACKAGE = {  # per-package dict, meta_html dropped in JSON
-    "name", "path", "github_url", "files", "error", "meta_error", "state",
+    "name", "path", "github_url", "detail_url", "files", "error",
+    "meta_error", "state", "stub",
 }
 PROJECTS_FILE = {"name", "path", "role", "label", "github_url"}
 
