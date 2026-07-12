@@ -174,3 +174,14 @@ do: OWNER-QUEUE FILTERS + CENTRALIZED LIST FILTER/SORT — the owner's order VER
 BEGIN ORDER TEXT
 the owner queue is currrenty onle long list with no way to sort or filter things, I'd like multiple filters, per project, per task, what kind of action it is etc, and the rest of the website should be reviewed aswell to make sure this is implemented as a centralized feature
 END ORDER TEXT
+
+## ORDER 020 · 2026-07-12T15:50Z · status: new
+priority: P1
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (~15:50Z)
+why: the owner wants to author directly on the sites — act on owner-actions (mark complete / request assistance) and leave corrections, ideas, and notes — with that input flowing back into the fleet's source of truth so agents act on it.
+done-when: owner-authenticated writeback controls land on the owner-action queue and key surfaces (mark-complete, request-assistance, add note/correction/idea), the owner's input is committed back to the repo control bus (or honestly degraded + the required write-scoped token flagged), state-changing routes carry the CSRF/Origin + rate-limit floor, and it's verified live.
+do: OWNER WRITEBACK ON THE SITES — the owner's order VERBATIM between the markers:
+BEGIN ORDER TEXT
+also make sure I can directly write reviews on the websites, so I can make an owner action complete or request assistance, do you understand what I mean? it could use it to suggest corrections, add my ideas to certain things etc
+END ORDER TEXT
