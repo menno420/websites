@@ -61,6 +61,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.templating import Jinja2Templates
 
 from . import data_source as ds
+from . import listfilter
 from . import testing_ai as ai
 from . import testing_payouts as payouts
 from . import testing_store as store
@@ -249,6 +250,122 @@ def task_steps(task: Optional[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 # --------------------------------------------------------------------------
+# ORDER 019 PR2 — filter/sort/search specs over the centralized listfilter
+# core (botsite/listfilter.py, a byte-identical vendored copy of
+# app/listfilter.py). One spec per surface; no params renders each page
+# exactly as before.
+# --------------------------------------------------------------------------
+PAYOUT_BUCKETS = ("<=10", "11-14", "15+")
+EST_BUCKETS = ("<=30", "31-45", "46+")
+
+
+def payout_bucket(task: dict[str, Any]) -> str:
+    """Deterministic payout bucket over ``payout_usd`` (derived, not stored)."""
+    p = float(task.get("payout_usd") or 0)
+    if p <= 10:
+        return "<=10"
+    if p < 15:
+        return "11-14"
+    return "15+"
+
+
+def est_minutes_bucket(task: dict[str, Any]) -> str:
+    """Deterministic time bucket over ``est_minutes`` (derived, not stored)."""
+    m = int(task.get("est_minutes") or 0)
+    if m <= 30:
+        return "<=30"
+    if m <= 45:
+        return "31-45"
+    return "46+"
+
+
+TASKS_FILTER_SPEC = listfilter.ListSpec(
+    path="/testing",
+    dimensions=(
+        listfilter.Dimension(
+            key="type", label="type",
+            values=("site-review", "game-test", "guided-walkthrough"),
+            get=lambda t: [t.get("type", "")],
+        ),
+        listfilter.Dimension(
+            key="status", label="status",
+            values=("open", "coming-soon", "closed"),
+            get=lambda t: [t.get("effective_status", "")],
+        ),
+        listfilter.Dimension(
+            key="payout", label="payout", derived=True,
+            values=PAYOUT_BUCKETS,
+            labels={"<=10": "$10 or less", "11-14": "$11–14", "15+": "$15+"},
+            get=lambda t: [payout_bucket(t)],
+        ),
+        listfilter.Dimension(
+            key="time", label="time", derived=True,
+            values=EST_BUCKETS,
+            labels={"<=30": "≤30 min", "31-45": "31–45 min", "46+": "46+ min"},
+            get=lambda t: [est_minutes_bucket(t)],
+        ),
+    ),
+    sorts=(
+        # ``catalog`` keeps the committed catalog's own order — the default,
+        # so a no-param /testing renders exactly as before.
+        listfilter.SortOption("catalog", "catalog order"),
+        listfilter.SortOption(
+            "payout", "payout high→low",
+            sort_key=lambda t: float(t.get("payout_usd") or 0), reverse=True,
+        ),
+        listfilter.SortOption(
+            "minutes", "time short→long",
+            sort_key=lambda t: int(t.get("est_minutes") or 0),
+        ),
+        listfilter.SortOption(
+            "title", "title A-Z",
+            sort_key=lambda t: str(t.get("title") or "").casefold(),
+        ),
+    ),
+    search=lambda t: " ".join(
+        str(t.get(k) or "") for k in ("title", "brief", "id")
+    ),
+)
+
+
+def _submission_search_text(s: dict[str, Any]) -> str:
+    parts = [str(s.get(k) or "") for k in ("name", "email", "task_id", "findings")]
+    answers = s.get("answers")
+    if isinstance(answers, dict):
+        parts.extend(str(v) for v in answers.values())
+    return " ".join(parts)
+
+
+OWNER_FILTER_SPEC = listfilter.ListSpec(
+    path="/testing/owner",
+    dimensions=(
+        listfilter.Dimension(
+            key="status", label="claim status",
+            values=("submitted", "reviewed", "approved", "rejected", "paid"),
+            get=lambda s: [s.get("claim_status", "")],
+        ),
+        listfilter.Dimension(
+            key="task", label="task",
+            get=lambda s: [s.get("task_id", "")],
+        ),
+        listfilter.Dimension(
+            key="date", label="date", derived=True,
+            get=lambda s: [str(s.get("created_at") or "")[:10] or "undated"],
+        ),
+    ),
+    sorts=(
+        # ``newest`` keeps the store's own id-DESC order — the default, so a
+        # no-param owner queue renders exactly as before.
+        listfilter.SortOption("newest", "newest"),
+        listfilter.SortOption(
+            "oldest", "oldest", sort_key=lambda s: int(s.get("id") or 0),
+        ),
+    ),
+    search=_submission_search_text,
+)
+
+
+# --------------------------------------------------------------------------
 # template context (same base keys the rest of the site's pages carry)
 # --------------------------------------------------------------------------
 async def _ctx(request: Request) -> dict[str, Any]:
@@ -287,7 +404,15 @@ def _clean(form: Any, field: str) -> str:
 @router.get("/", response_class=HTMLResponse)
 async def testing_index(request: Request):
     ctx = await _ctx(request)
-    ctx.update({"tasks": shaped_tasks(), "bounty": _bounty()})
+    tasks = shaped_tasks()
+    state = listfilter.parse(TASKS_FILTER_SPEC, request.query_params)
+    ctx.update(
+        {
+            "tasks": tasks,
+            "tasks_filter": listfilter.apply(TASKS_FILTER_SPEC, tasks, state),
+            "bounty": _bounty(),
+        }
+    )
     return templates.TemplateResponse(request, "testing_index.html", ctx)
 
 
@@ -908,9 +1033,15 @@ async def _owner_page(
             )
         else:
             s["autopay_preview"] = None
+    # ORDER 019 PR2: filter/sort/search over the submissions queue (the
+    # centralized listfilter core; state lives in the GET query string, so
+    # POST-action re-renders simply show the unfiltered default).
+    state = listfilter.parse(OWNER_FILTER_SPEC, request.query_params)
+    submissions_filter = listfilter.apply(OWNER_FILTER_SPEC, submissions, state)
     ctx = await _ctx(request)
     ctx.update(
         {
+            "submissions_filter": submissions_filter,
             "tasks": shaped_tasks(),
             "claims": store.list_claims(),
             "submissions": submissions,

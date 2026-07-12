@@ -23,6 +23,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from . import listfilter
+
 BASE_DIR = Path(__file__).resolve().parent
 ARCADE_JSON_PATH = BASE_DIR / "data" / "arcade.json"
 
@@ -85,3 +87,50 @@ def load_games(path: Path | None = None) -> list[dict[str, Any]]:
         game["link_url"] = _with_ref(url) if game["has_link"] and url else None
         games.append(game)
     return games
+
+
+# --------------------------------------------------------------------------- #
+# ORDER 019 PR2 — /arcade filter/sort/search over the centralized listfilter
+# core (botsite/listfilter.py, a byte-identical vendored copy of
+# app/listfilter.py — the repo's sharing pattern, like static/ds/).
+# --------------------------------------------------------------------------- #
+
+_MATURITY_RANK = {m: i for i, m in enumerate(MATURITIES)}
+
+
+def _search_text(game: dict[str, Any]) -> str:
+    return " ".join(
+        str(game.get(k) or "") for k in ("name", "tagline", "description")
+    )
+
+
+FILTER_SPEC = listfilter.ListSpec(
+    path="/arcade",
+    dimensions=(
+        listfilter.Dimension(
+            key="maturity", label="maturity", values=MATURITIES,
+            get=lambda g: [g.get("maturity", "")],
+        ),
+        listfilter.Dimension(
+            key="availability", label="availability", values=AVAILABILITIES,
+            get=lambda g: [g.get("availability", "")],
+        ),
+    ),
+    sorts=(
+        # ``catalog`` keeps the registry file's own order — the default, so a
+        # no-param /arcade renders exactly as before.
+        listfilter.SortOption("catalog", "catalog order"),
+        listfilter.SortOption(
+            "az", "name A-Z",
+            sort_key=lambda g: str(g.get("name") or "").casefold(),
+        ),
+        listfilter.SortOption(
+            "maturity", "maturity",
+            sort_key=lambda g: (
+                _MATURITY_RANK.get(g.get("maturity"), len(MATURITIES)),
+                str(g.get("name") or "").casefold(),
+            ),
+        ),
+    ),
+    search=_search_text,
+)

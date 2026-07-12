@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from . import listfilter
+
 BASE_DIR = Path(__file__).resolve().parent
 FLEET_PATH = BASE_DIR / "data" / "fleet.json"
 STATS_PATH = BASE_DIR / "data" / "stats.json"
@@ -388,3 +390,96 @@ def lane_detail(
         if ln.get("repo") == repo:
             return lane_view(ln, stats_repos, now=now)
     return None
+
+
+# --------------------------------------------------------------------------- #
+# ORDER 019 PR2 — /fleet lane filter/sort/search over the centralized
+# listfilter core (review/listfilter.py, a byte-identical vendored copy of
+# app/listfilter.py — the repo's sharing pattern, like static/ds/). The spec
+# filters the per-repo LANES grid; the seat dimension maps each lane onto its
+# standing seat via the mirror's own seats section (derived, never invented).
+# --------------------------------------------------------------------------- #
+
+FRESHNESS_BUCKETS = ("fresh", "stale", "age-unknown", "no-heartbeat")
+
+
+def lane_freshness_bucket(lane: dict[str, Any]) -> str:
+    """One lane view's heartbeat freshness bucket — honest states only:
+    ``fresh`` / ``stale`` (both measured), ``age-unknown`` (heartbeat exists
+    but its stamp is unparseable), ``no-heartbeat`` (nothing mirrored)."""
+    if not lane.get("heartbeat_available"):
+        return "no-heartbeat"
+    fr = lane.get("freshness") or {}
+    if not fr.get("ok"):
+        return "age-unknown"
+    return "stale" if fr.get("stale") else "fresh"
+
+
+def seat_by_repo(fleet_data: dict[str, Any]) -> dict[str, str]:
+    """``repo -> standing-seat name`` from the mirror's own seats section
+    (empty when the mirror predates seat consolidation — the dimension then
+    simply offers no options, never a guessed seat)."""
+    out: dict[str, str] = {}
+    for s in (fleet_data or {}).get("seats") or []:
+        for m in s.get("repos", []):
+            repo = str(m.get("repo") or "")
+            if repo:
+                out[repo] = str(s.get("seat") or "")
+    return out
+
+
+def annotate_lane_seats(
+    lanes: list[dict[str, Any]], seat_map: dict[str, str]
+) -> list[dict[str, Any]]:
+    """Stamp each lane view with its seat name ("" when unmapped) so the
+    filter dimension reads a real field. Mutates and returns ``lanes``."""
+    for lane in lanes:
+        lane["seat"] = seat_map.get(str(lane.get("repo") or ""), "")
+    return lanes
+
+
+def _lane_search_text(lane: dict[str, Any]) -> str:
+    return " ".join(
+        str(lane.get(k) or "") for k in ("lane", "repo", "seat")
+    )
+
+
+def _heartbeat_age_key(lane: dict[str, Any]) -> tuple:
+    fr = lane.get("freshness") or {}
+    if fr.get("ok"):
+        return (0, fr.get("age_hours") or 0.0)
+    return (1, 0.0)  # unmeasurable ages sort last — unknown, not infinite
+
+
+LANES_FILTER_SPEC = listfilter.ListSpec(
+    path="/fleet",
+    dimensions=(
+        listfilter.Dimension(
+            key="disposition", label="disposition",
+            values=("live", "hub", "registry-only", "archived"),
+            get=lambda ln: [ln.get("disposition") or ""],
+        ),
+        listfilter.Dimension(
+            key="freshness", label="heartbeat", derived=True,
+            values=FRESHNESS_BUCKETS,
+            get=lambda ln: [lane_freshness_bucket(ln)],
+        ),
+        listfilter.Dimension(
+            key="seat", label="seat",
+            get=lambda ln: [ln.get("seat") or ""],
+        ),
+    ),
+    sorts=(
+        # ``disposition`` keeps fleet_overview()'s own attention order — the
+        # default, so a no-param /fleet renders exactly as before.
+        listfilter.SortOption("disposition", "disposition"),
+        listfilter.SortOption(
+            "az", "lane A-Z",
+            sort_key=lambda ln: str(ln.get("lane") or "").casefold(),
+        ),
+        listfilter.SortOption(
+            "heartbeat", "freshest heartbeat", sort_key=_heartbeat_age_key,
+        ),
+    ),
+    search=_lane_search_text,
+)

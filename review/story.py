@@ -24,6 +24,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from . import listfilter
+
 BASE_DIR = Path(__file__).resolve().parent
 SNAPSHOT_PATH = BASE_DIR / "data" / "snapshot.json"
 
@@ -767,3 +769,56 @@ def overview_stats(snapshot_data: dict[str, Any]) -> list[dict[str, Any]]:
             continue  # honest absence — no tile without a real number
         tiles.append({"key": key, "label": label, "sub": sub, "value": value})
     return tiles
+
+
+# --------------------------------------------------------------------------- #
+# ORDER 019 PR2 — /questions ledger filter/sort/search over the centralized
+# listfilter core (review/listfilter.py, a byte-identical vendored copy of
+# app/listfilter.py). The ledger records carry ``asked``/``title``/``url``/
+# ``status``/``answer_url``/``answer_label`` (see data/questions.json + the
+# template) — the dimensions read exactly those fields, defaulting the same
+# way the template does (missing status renders as "open").
+# --------------------------------------------------------------------------- #
+
+
+def question_status(q: dict[str, Any]) -> str:
+    """A ledger record's status, defaulting to ``open`` exactly like the
+    template's ``q.status or "open"``."""
+    return str(q.get("status") or "open")
+
+
+def question_answer_state(q: dict[str, Any]) -> str:
+    """``answered`` when an answer link exists, else ``pending`` — the same
+    reading the template renders in its "Answered where" column."""
+    return "answered" if q.get("answer_url") else "pending"
+
+
+QUESTIONS_FILTER_SPEC = listfilter.ListSpec(
+    path="/questions",
+    dimensions=(
+        listfilter.Dimension(
+            key="status", label="status",
+            get=lambda q: [question_status(q)],
+        ),
+        listfilter.Dimension(
+            key="answer", label="answer", values=("answered", "pending"),
+            get=lambda q: [question_answer_state(q)],
+        ),
+    ),
+    sorts=(
+        # ``ledger`` keeps the committed file's own order — the default, so a
+        # no-param /questions renders exactly as before.
+        listfilter.SortOption("ledger", "ledger order"),
+        listfilter.SortOption(
+            "newest", "newest asked",
+            sort_key=lambda q: str(q.get("asked") or ""), reverse=True,
+        ),
+        listfilter.SortOption(
+            "oldest", "oldest asked",
+            sort_key=lambda q: str(q.get("asked") or ""),
+        ),
+    ),
+    search=lambda q: " ".join(
+        str(q.get(k) or "") for k in ("title", "status", "answer_label")
+    ),
+)

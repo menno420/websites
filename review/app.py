@@ -39,7 +39,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import ai, editions, fleetdata, story
+from . import ai, editions, fleetdata, listfilter, story
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -185,16 +185,33 @@ async def problems(request: Request):
 # ---------------------------------------------------------------------------
 @app.get("/fleet", response_class=HTMLResponse)
 async def fleet(request: Request):
+    """ORDER 019 PR2: the lanes grid gains the centralized listfilter widget
+    (disposition / derived heartbeat-freshness / seat dimensions + lane/repo/
+    seat search, defined in fleetdata.py); the default sort keeps the
+    existing disposition order, so no params renders exactly as before."""
     ctx = _base_ctx(request, "fleet")
     fl = fleetdata.load_fleet()
     st = fleetdata.load_stats()
+    overview = fleetdata.fleet_overview(fl["data"], st["data"]) if fl["ok"] else {}
+    lanes_filter = None
+    if fl["ok"]:
+        lanes = fleetdata.annotate_lane_seats(
+            overview.get("lanes", []), fleetdata.seat_by_repo(fl["data"])
+        )
+        state = listfilter.parse(
+            fleetdata.LANES_FILTER_SPEC, request.query_params
+        )
+        lanes_filter = listfilter.apply(
+            fleetdata.LANES_FILTER_SPEC, lanes, state
+        )
     ctx.update(
         {
             "fleet_ok": fl["ok"],
             "fleet_error": fl["error"],
             "stats_ok": st["ok"],
             "stats_error": st["error"],
-            "overview": fleetdata.fleet_overview(fl["data"], st["data"]) if fl["ok"] else {},
+            "overview": overview,
+            "lanes_filter": lanes_filter,
             "seats": fleetdata.seats_view(fl["data"]) if fl["ok"] else None,
             "fleet_age": fleetdata.freshness(fl["data"].get("generated_at", "")) if fl["ok"] else None,
             "stats_age": fleetdata.freshness(st["data"].get("generated_at", "")) if st["ok"] else None,
@@ -243,8 +260,20 @@ async def fleet_repo(request: Request, repo: str):
 # ---------------------------------------------------------------------------
 @app.get("/reviews", response_class=HTMLResponse)
 async def reviews(request: Request):
+    """ORDER 019 PR2: filter/sort/search over the centralized listfilter core
+    (month dimension + title/summary search, defined in editions.py); no
+    params renders exactly the pre-filter page."""
     ctx = _base_ctx(request, "reviews")
-    ctx.update({"editions": editions.list_editions()})
+    all_editions = editions.list_editions()
+    state = listfilter.parse(editions.FILTER_SPEC, request.query_params)
+    ctx.update(
+        {
+            "editions": all_editions,
+            "editions_filter": listfilter.apply(
+                editions.FILTER_SPEC, all_editions, state
+            ),
+        }
+    )
     return templates.TemplateResponse(request, "reviews.html", ctx)
 
 
@@ -291,9 +320,23 @@ async def ask(request: Request):
 
 @app.get("/questions", response_class=HTMLResponse)
 async def questions(request: Request):
+    """ORDER 019 PR2: filter/sort/search over the centralized listfilter core
+    (status / answered dimensions + title search, defined in story.py); no
+    params renders exactly the pre-filter page."""
     ctx = _base_ctx(request, "questionnaire")
     q = story.load_questions()
-    ctx.update({"q_ok": q["ok"], "q_error": q["error"], "ledger": q["data"]})
+    records = q["data"].get("questions") or [] if q["ok"] else []
+    state = listfilter.parse(story.QUESTIONS_FILTER_SPEC, request.query_params)
+    ctx.update(
+        {
+            "q_ok": q["ok"],
+            "q_error": q["error"],
+            "ledger": q["data"],
+            "q_filter": listfilter.apply(
+                story.QUESTIONS_FILTER_SPEC, records, state
+            ),
+        }
+    )
     return templates.TemplateResponse(request, "questions.html", ctx)
 
 
