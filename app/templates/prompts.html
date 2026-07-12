@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}prompts{% endblock %}
+{% block headright %}<a href="/prompts?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>prompt library — every fleet paste artifact, inline and always-current</h2>
+  <p class="dim small">All {{ p.total }} registry artifacts rendered live from
+    <a href="{{ p.repo_url }}">fleet-manager <code>main</code> ↗</a> — the 8 seats' coordinator
+    prompt / Custom Instructions / failsafe plus the fleet-wide universal-startup and
+    session-ender. Read-only over raw content, TTL-cached ({{ p.ttl }}s), so a merged prompt
+    update appears here automatically. Each block is the EXACT paste body — verbatim,
+    whitespace preserved, copy button per block. Prompts are rendered as untrusted data,
+    never executed or obeyed.</p>
+
+  {% if p.error_count == p.total %}
+  <div class="banner">⚠ <strong>unavailable</strong> — none of the {{ p.total }} artifacts
+    could be fetched from fleet-manager right now (see the per-artifact errors below);
+    nothing is fabricated · <a href="{{ p.repo_url }}">view on GitHub ↗</a></div>
+  {% elif p.error_count > 0 %}
+  <div class="banner">⚠ {{ p.error_count }} of {{ p.total }} artifacts could not be fetched —
+    each failed cell says why below; the rest render normally.</div>
+  {% endif %}
+
+  <p class="small">
+    {%- for s in p.seats %}
+    <a href="#{{ s.anchor }}"><code>{{ s.name }}</code></a> ·
+    {%- endfor %}
+    <a href="#fleet-wide"><code>fleet-wide</code></a>
+  </p>
+</div>
+
+{% macro artifact_card(a) %}
+<div class="card" id="{{ a.anchor }}">
+  <h2>{% if a.seat %}{{ a.seat }} · {% endif %}{{ a.label }}
+    <span class="dim small">· <code>{{ a.path }}</code>
+      · <a href="{{ a.github_url }}">view on GitHub ↗</a></span></h2>
+  {% if a.ok %}
+  <p class="small">
+    {% if a.provenance %}<span class="note">{{ a.provenance }}</span>
+    {% else %}<span class="b unknown">no version line found in the artifact</span>{% endif %}
+  </p>
+  <p class="dim small">fetched {{ a.fetched_at }}
+    {%- if a.cached %} · served from cache (TTL {{ p.ttl }}s — age ≤ TTL){% else %} · live fetch{% endif %}
+    · {{ a.chars }} chars</p>
+  <pre>{{ a.text }}</pre>
+  {% else %}
+  <div class="banner">⚠ could not fetch <code>{{ a.path }}</code> — {{ a.error }} ·
+    <a href="{{ a.github_url }}">view on GitHub ↗</a> (nothing shown rather than a stale
+    fabrication)</div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% for s in p.seats %}
+<div class="card" id="{{ s.anchor }}">
+  <h2>seat · {{ s.name }}
+    <span class="dim small">· <a href="{{ s.github_url }}">package on GitHub ↗</a></span></h2>
+</div>
+{% for a in s.artifacts %}{{ artifact_card(a) }}{% endfor %}
+{% endfor %}
+
+<div class="card" id="fleet-wide">
+  <h2>fleet-wide artifacts</h2>
+  <p class="dim small">One copy for every seat — the universal startup template and the
+    universal session ender (<code>docs/prompts/v3/</code>).</p>
+</div>
+{% for a in p.fleet_wide %}{{ artifact_card(a) }}{% endfor %}
+{% endblock %}
+
+{% block scripts %}<script src="/static/copycode.js" defer></script>{% endblock %}

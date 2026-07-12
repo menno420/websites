@@ -19,7 +19,9 @@ at build time (the deployed container ships only this folder, so runtime reads
 of git/.sessions/control are impossible by design — see that module's
 docstring). A missing or corrupt snapshot renders an honest banner, never
 invented numbers. Charts are server-rendered inline SVG; geometry is computed
-in the domain layer (``story.py``) so it stays unit-testable.
+in the domain layer (``story.py``) so it stays unit-testable. ORDER 017 added
+ONE deliberate exception to the network-free rule: the AI assistant's
+server-side Anthropic API call in ``ai.py`` (nothing else gained network).
 
 Deploy: a new Railway service in ``superbot-websites`` (Root Directory =
 ``review``), own Dockerfile, binds ``0.0.0.0:$PORT`` — queued as an
@@ -37,7 +39,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import editions, fleetdata, story
+from . import ai, editions, fleetdata, story
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -56,6 +58,10 @@ app = FastAPI(title="Program Review", docs_url=None, redoc_url=None, openapi_url
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
+# ORDER 017 workstream B: the AI assistant's POST endpoint (/ask/api) — the
+# service's one deliberate runtime-network exception; see review/ai.py.
+app.include_router(ai.router)
+
 
 def _deployed_sha() -> str:
     return (os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("GIT_SHA") or "").strip()
@@ -65,6 +71,10 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
     snap = story.load_snapshot()
     git_head = snap["data"].get("git_head", "") if snap["ok"] else ""
     deployed = _deployed_sha()
+    # Footer "last refreshed" stamps — from the committed data files, never
+    # hardcoded. Each mirror stamps its own bake time; absence stays honest.
+    fl = fleetdata.load_fleet()
+    fleet_generated_at = fl["data"].get("generated_at", "") if fl["ok"] else ""
     return {
         "request": request,
         "active": active,
@@ -80,6 +90,7 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
         # commit, the repo has moved since the numbers were baked — say so.
         "snapshot_aged": bool(deployed and git_head and deployed[:8] != git_head[:8]),
         "deployed_sha": deployed,
+        "fleet_generated_at": fleet_generated_at,
         "repo_url": story.REPO_URL,
         # "Room to interact", read-only: a prefilled new-issue link per page.
         "ask_url": story.ask_url(f"{active or 'site'} page"),
@@ -175,6 +186,7 @@ async def fleet(request: Request):
             "stats_ok": st["ok"],
             "stats_error": st["error"],
             "overview": fleetdata.fleet_overview(fl["data"], st["data"]) if fl["ok"] else {},
+            "seats": fleetdata.seats_view(fl["data"]) if fl["ok"] else None,
             "fleet_age": fleetdata.freshness(fl["data"].get("generated_at", "")) if fl["ok"] else None,
             "stats_age": fleetdata.freshness(st["data"].get("generated_at", "")) if st["ok"] else None,
         }
@@ -257,6 +269,15 @@ async def questionnaire(request: Request):
     ctx = _base_ctx(request, "questionnaire")
     ctx.update({"items": story.QUESTIONNAIRE})
     return templates.TemplateResponse(request, "questionnaire.html", ctx)
+
+
+@app.get("/ask", response_class=HTMLResponse)
+async def ask(request: Request):
+    """The AI assistant page (ORDER 017 B): Ask/Review widget + the seeded
+    evidence-backed answers, honest about the degraded no-key state."""
+    ctx = _base_ctx(request, "questionnaire")
+    ctx.update(ai.page_context())
+    return templates.TemplateResponse(request, "ask.html", ctx)
 
 
 @app.get("/questions", response_class=HTMLResponse)

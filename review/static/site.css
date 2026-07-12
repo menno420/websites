@@ -82,6 +82,15 @@
 .rv-problem-kv { margin: var(--sb-s-4) 0; }
 .rv-problem-kv p { margin: var(--sb-s-1) 0 0; font-size: var(--sb-text-sm); }
 
+/* incident sub-findings (a problem too big for one paragraph) */
+.rv-problem-details { display: grid; gap: var(--sb-s-3); margin: var(--sb-s-4) 0; }
+.rv-problem-detail {
+  border-left: 2px solid var(--sb-line-2);
+  padding-left: var(--sb-s-5);
+}
+.rv-problem-detail h3 { margin: 0 0 var(--sb-s-1); font-size: var(--sb-text-md); }
+.rv-problem-detail p { margin: 0 0 var(--sb-s-2); font-size: var(--sb-text-sm); }
+
 /* timeline */
 .rv-timeline {
   list-style: none;

@@ -9,3 +9,7 @@ jinja2==3.1.6
 # Renders the committed review editions (data/reviews/*.md - trusted repo
 # content, same pinned version as the control-plane journal renderer).
 Markdown==3.10.2
+# ORDER 017 workstream B: the on-site AI assistant's server-side call to the
+# Anthropic Messages API (review/ai.py) — the ONE deliberate exception to
+# this service's network-free-at-runtime doctrine. Same pin as the siblings.
+httpx==0.28.1

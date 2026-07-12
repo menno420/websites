@@ -4,13 +4,14 @@
 <section class="sb-page-hero">
   <div class="sb-wrap-narrow">
     <p class="sb-ey">Growth</p>
-    <h1>Three days, measured from git</h1>
+    <h1>Every day since the repo was born, measured from git</h1>
     <p class="sb-lead">
       Nothing here is estimated. Each chart is derived from the repo's committed history by a
       generator script anyone can re-run
       (<a href="{{ repo_url }}/blob/main/review/gen_snapshot.py" target="_blank" rel="noopener">review/gen_snapshot.py</a>);
       the snapshot's exact source commit is in the footer. Speed came from parallel lanes and
       unattended session chains — but every single merge below passed the same required gate.
+      {% if generated_at %}<span class="sb-muted">Numbers as of {{ generated_at }}.</span>{% endif %}
     </p>
   </div>
 </section>
@@ -100,7 +101,7 @@
     <h2>Why it could move this fast</h2>
     <ul class="sb-bullets">
       <li><strong>Merge is the deploy</strong> — no release train; a green required check is the entire distance between an idea and production.</li>
-      <li><strong>Parallel lanes with a conflict-free bus</strong> — one writer per file means ten lanes never block each other on coordination.</li>
+      <li><strong>Parallel lanes with a conflict-free bus</strong> — one writer per file means parallel lanes never block each other on coordination.</li>
       <li><strong>Unattended chains</strong> — sessions schedule their own successors; the 26-slice overnight run is most of day three's bar.</li>
       <li><strong>Discovered cost is paid once</strong> — every wall goes into the capability ledger with its exact error and workaround, so no later session re-pays it.</li>
       <li><strong>The gates scale with the speed</strong> — the test count chart is the counterweight to the PR chart; both grew together, on purpose.</li>

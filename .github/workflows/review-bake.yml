@@ -15,14 +15,28 @@ name: review-bake
 #
 # Landing path for the baked diff (touches ONLY review/data/**):
 #   1. try a direct push to main — if the branch ruleset allows it, done;
-#   2. otherwise open a `[bake]` PR and enable auto-merge, so the required
-#      `quality` check still gates the diff (a data-only PR adds no session
-#      card — the quality workflow's no-card path is explicitly advisory for
-#      exactly this kind of diff — and the full test suite runs against the
-#      regenerated data, which the review tests treat shape-wise, not
-#      value-wise);
-#   3. if auto-merge is not permitted either, the PR stays open for a human
-#      click (visible on /orders and the board — never silent).
+#   2. otherwise push a `bake/…` branch and try to open a `[bake]` PR with
+#      auto-merge, so the required `quality` check still gates the diff (a
+#      data-only PR adds no session card — the quality workflow's no-card
+#      path is explicitly advisory for exactly this kind of diff — and the
+#      full test suite runs against the regenerated data, which the review
+#      tests treat shape-wise, not value-wise);
+#   3. if PR creation is refused, the job DOES NOT FAIL: the baked branch is
+#      already pushed, and the run summary says exactly what to do with it.
+#
+# ⚑ KNOWN WALL — OWNER TOGGLE REQUIRED for step 2 to work end-to-end:
+#   Both historical scheduled/dispatch runs (incl. run 29184552812,
+#   2026-07-12T07:38Z) baked successfully, pushed their bake/ branch, then
+#   failed at `gh pr create` with the verbatim error
+#     "GitHub Actions is not permitted to create or approve pull requests".
+#   That is a repo/org console setting no workflow content can change:
+#   Settings → Actions → General → Workflow permissions →
+#   check "Allow GitHub Actions to create and approve pull requests".
+#   Until the owner flips it, this workflow degrades honestly: the bake data
+#   lands on a pushed `bake/…` branch, the job stays green, and the summary
+#   carries a compare link so any session (or the owner) can open the PR.
+#   No new secrets are required either way. Queued in
+#   docs/owner/OWNER-ACTIONS.md.
 #
 # Scope safety: the commit path stages review/data/ files explicitly (never
 # `git add -A`), the job has no secret beyond the repo-scoped Actions token,
@@ -86,10 +100,36 @@ jobs:
           branch="bake/review-data-$(date -u +%Y%m%d-%H%M%S)"
           git checkout -b "$branch"
           git push -u origin "$branch"
-          pr_url="$(gh pr create \
+          echo "pushed $branch — the baked data is safe on the remote regardless of what follows."
+          # PR creation is BEST-EFFORT: it is refused until the owner enables
+          # "Allow GitHub Actions to create and approve pull requests"
+          # (see the header). A refusal must not fail the job — the bake
+          # itself succeeded and the branch is pushed.
+          if pr_url="$(gh pr create \
             --title "[bake] review data refresh $stamp" \
             --body "Automated daily bake of the review service's committed data mirrors (review/data/snapshot.json, fleet.json, stats.json). Data-only diff — no session card by design. Auto-merge is enabled; if it could not be armed, this PR waits for a human click." \
-            --base main --head "$branch")"
-          echo "opened $pr_url"
-          gh pr merge --squash --auto "$pr_url" \
-            || echo "auto-merge could not be enabled — PR left open for a human click (visible on the board)."
+            --base main --head "$branch" 2>&1)"; then
+            echo "opened $pr_url"
+            {
+              echo "## review-bake: PR opened"
+              echo "Baked data refreshed and PR opened: $pr_url"
+            } >> "$GITHUB_STEP_SUMMARY"
+            gh pr merge --squash --auto "$pr_url" \
+              || echo "auto-merge could not be enabled — PR left open for a human click (visible on the board)."
+          else
+            echo "PR creation refused: $pr_url"
+            {
+              echo "## review-bake: baked branch pushed, PR creation refused"
+              echo ""
+              echo "The bake succeeded and its data is on branch \`$branch\`, but"
+              echo "\`gh pr create\` was refused (verbatim): \`$pr_url\`"
+              echo ""
+              echo "**Owner fix (one console toggle):** Settings → Actions → General →"
+              echo "Workflow permissions → check *Allow GitHub Actions to create and approve pull requests*."
+              echo ""
+              echo "**Until then:** open the PR from the pushed branch —"
+              echo "https://github.com/${GITHUB_REPOSITORY}/compare/main...$branch?expand=1"
+            } >> "$GITHUB_STEP_SUMMARY"
+            # exit 0 on purpose: the bake worked; only the landing needs a hand.
+            exit 0
+          fi
