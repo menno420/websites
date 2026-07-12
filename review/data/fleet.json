@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-12T15:45:40Z",
+  "generated_at": "2026-07-12T17:49:39Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -32,7 +32,7 @@
           "repo": "venture-lab",
           "repo_url": "https://github.com/menno420/venture-lab",
           "heartbeat_available": true,
-          "updated": "2026-07-12T14:01Z status: green - **timestamp:** 2026-07-12T14:01Z (Money-seat heartbeat **2026-07-12b** \u2014 ledger refresh folding the owner-delegated creative wave that self-landed since the 12:15Z heartbeat (#66): #67 Tummel+Dormouse, #68 Lull (DREAMLINE) Part-1, #69 Comet Biscuit trilogy, #71 dashboard MONETIZATION.md, #72 Star Pirates Book 1 \u2014 every claim verified merged against GitHub before writing. Branch `claude/heartbeat-2026-07-12b`, born-red card flipped green, PR opened READY to self-land. This write follows a final `control/inbox.md` re-read at HEAD `574408a` \u2014 highest order still \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-12T17:24Z status: green - **timestamp:** 2026-07-12T17:24Z (**SWTK free gotcha-article PUBLISHED \u2014 funnel top now LIVE.** The owner published the free gotcha article on dev.to (owner click, 2026-07-12T17:18:47Z): <https://dev.to/menno420/your-stripe-webhook-says-customeremail-is-null-heres-why-and-the-fix-1bgp>. This slice INDEPENDENTLY re-verified it \u2014 **HTTP 200 at 2026-07-12T17:24:10Z**, the `gumroad.com/l/stripe-webhook-test-kit` product link present (2\u00d7), tag state = **ZERO tags** at fetch time (no stripe/webhooks/payments/debugging `/t/` links rendered \u2014 flagged as a cheap owner- \u2026 [truncated for the mirror \u2014 full text at the source]",
           "reason": ""
         },
         {
@@ -79,7 +79,7 @@
           "repo": "superbot-next",
           "repo_url": "https://github.com/menno420/superbot-next",
           "heartbeat_available": true,
-          "updated": "2026-07-12T15:05Z",
+          "updated": "2026-07-12T16:55Z",
           "reason": ""
         },
         {
@@ -99,7 +99,7 @@
           "repo": "idea-engine",
           "repo_url": "https://github.com/menno420/idea-engine",
           "heartbeat_available": true,
-          "updated": "2026-07-12T15:33:00Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-12T14:23:57Z overwrite; committed by the coordinator's scribe worker with dictated content \u2014 the coordinator session has no file tools)",
+          "updated": "2026-07-12T16:28:23Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-12T15:33:00Z overwrite; committed by the coordinator's scribe worker with dictated content \u2014 the coordinator session has no file tools)",
           "reason": ""
         },
         {
@@ -119,7 +119,7 @@
           "repo": "gba-homebrew",
           "repo_url": "https://github.com/menno420/gba-homebrew",
           "heartbeat_available": true,
-          "updated": "2026-07-12T13:00:22Z Coordinator-only; overwritten wholesale each coordinator turn. Prior narrative in git history (`0a76b546` boot, `d06456f2` cycle 2, `a7d2e113` cycle 3). - **ts:** 2026-07-12T13:00:22Z - **phase:** WORK LOOP cycle 4 (merged seat v1) - **chain:** healthy \u2014 pacemaker ticks + 12:50Z failsafe all delivered (serialize-on-busy behavior confirmed and documented cycle 3); next pacemaker ~13:25Z, failsafe cron 50 */2 * * *. - PR #64 \u2014 Gloamline slice 7 \"lantern-oil light pressure\" MERGED by owner. - PR #65 \u2014 Brineward slice 4 \"port + upgrades\" MERGED by owner (after one staleness re \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-12T16:20:12Z Coordinator-only; overwritten wholesale each coordinator turn. Prior narrative in git history (`0a76b546` boot, `d06456f2` c2, `a7d2e113` c3, `baa39b9b` c4). - **ts:** 2026-07-12T16:20:12Z - **phase:** WORK LOOP cycle 5 (merged seat v1) \u2014 idle on owner clicks, both next slices pre-built - **chain:** healthy \u2014 pacemaker chain re-armed each turn (serialize-on-busy doctrine, documented c3); failsafe `trig_01JD1t7rD5jUCqkJQJaNCi3E` cron 50 */2 * * * firing on schedule (12:50Z + 14:50Z fires delivered). - PR #68 \u2014 Gloamline slice 8 \"synthesized audio\" (session 30): head `8d4245 \u2026 [truncated for the mirror \u2014 full text at the source]",
           "reason": ""
         }
       ]
@@ -132,7 +132,7 @@
           "repo": "substrate-kit",
           "repo_url": "https://github.com/menno420/substrate-kit",
           "heartbeat_available": true,
-          "updated": "2026-07-12T15:35:00Z",
+          "updated": "2026-07-12T16:55:00Z",
           "reason": ""
         }
       ]
@@ -145,7 +145,7 @@
           "repo": "websites",
           "repo_url": "https://github.com/menno420/websites",
           "heartbeat_available": true,
-          "updated": "2026-07-12T15:17:20Z",
+          "updated": "2026-07-12T16:41:04Z",
           "reason": ""
         }
       ]
@@ -197,8 +197,8 @@
       "repo_url": "https://github.com/menno420/superbot",
       "head": {
         "ok": true,
-        "sha": "d5e815c2ce5ab5fa56e5cc51ae487c6354480ae0",
-        "committed_at": "2026-07-12T17:21:26+02:00",
+        "sha": "5c84ce2ed133e18242dd0ba787c70d4446815b81",
+        "committed_at": "2026-07-12T19:22:27+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -222,18 +222,18 @@
       "repo_url": "https://github.com/menno420/superbot-next",
       "head": {
         "ok": true,
-        "sha": "1aec607d701c156bca2e7058c565c755bd13e499",
-        "committed_at": "2026-07-12T17:39:17+02:00",
+        "sha": "2c15d58697314126a9bef10de56d71be23fc2c6e",
+        "committed_at": "2026-07-12T19:33:59+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-12T15:05Z",
+          "updated": "2026-07-12T16:55Z",
           "phase": "band-5 COMPLETE \u2014 live-bug fix lane DONE via #111 (merge `569beea`; CI https://github.com/menno420/superbot-next/actions/runs/29116022101 \u2014 all 6 checks in that run green, `report` red-by-design/non-required): the 3 live-only bugs from #109's ledger fixed test-first \u2014 (1) role pending terminals now register at MODULE IMPORT (`sb/domain/role/handlers.py` calls `_register_pending()` top-level; the live root never ran ENSURE_REFS with zero plugins), (2) setrole/unsetrole/removereactrole acks read the engine's REAL `after` keys (rollup keys by step target_name, never `after[\"record\"]`) with copy p \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "health": "green with the standing red-by-design (`report` dashboard red until the `_unmapped` re-home pool is green \u2014 the golden-parity GATE is non-vacuous and GREEN). WAVE-9 RE-HOME waypoint (re-home wave-9 heartbeat fold, 2026-07-12T12:00Z, measured at #252's merge `526d9f4`): the parity program stays **50/50 ported** \u2014 no row flipped, re-homes are attribution work over PORTED rows (the ruled deathmatch NEW-ROW birth, 50\u219251 rows, is still in flight \u2014 see the wave-9 record below); gate GREEN \u2014 **389/389** goldens across the 50 ported at `526d9f4` (per-PR movement 365\u2192370 at #248 `c148d2e` \u2192 375/375 at \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "health": "green with the standing red-by-design (`report` dashboard red until the two owner decisions on the parked `_unmapped` set land \u2014 the golden-parity GATE is non-vacuous and GREEN). \u2605 WAVE-9 END / POOL DRAINED waypoint (re-home wave-9 wrap-up fold, 2026-07-12T16:45Z, HEAD `9ae4902` \u2014 #285's merge, main HEAD): **THE WORKABLE `_unmapped` POOL IS DRAINED** \u2014 the parity program stands at **51 ported rows** (50 subsystem rows + the kernel coverage home; deathmatch is row 51, BORN ported at #261 `5050b8f` per the coordinator ruling \u2014 check_parity_depth in CI: \"OK \u2014 51 subsystems (50 ported), kernel por \u2026 [truncated for the mirror \u2014 full text at the source]",
           "kit": "v1.12.1 (#215 2026-07-11, merge `977bb27` \u2014 substrate-kit v1.12.0\u2192v1.12.1, `kit_version` 1.12.1 pinned in substrate.config.json:47) \u00b7 prior v1.10.1 check: green (#166 2026-07-11, card `.sessions/2026-07-11-kit-upgrade-v1.10.1.md`: asset sha256 `fbe83ce3\u2026` three-way verified against tag v1.10.1 @ kit commit `7e361bb` release run 29146372884; v1.10.0 banked byte-identical as `.substrate/backup/bootstrap-1.10.0.py` \u2014 exactly one new bank; staged gate regen now carries the v1.10.1 every-card-graded `tail -1` shadowing fix \u2014 still STAGED only, no live substrate-gate by design; `.sessions/README.md` \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "last-shipped": "ADMIN-SURFACE AUDIT doc (2026-07-12T15:05Z, THIS PR \u2014 owner-directive 2026-07-12 core-admin-function-audit lane, slice 2, docs/control-only): `docs/review/admin-surface-audit-2026-07-12.md` consolidates the four parallel read-only audit passes at `764a393` (#260) \u2014 master verdict table (every row file:line-cited), FIX list of exactly 3 (the `!givexp` bare-ID misparse sb/domain/xp/ops.py:58-88 \u2014 SHIPPING IN A PARALLEL SLICE of this directive, cross-referenced not duplicated; `post_action_cleanup(+_limit)` settings with zero consumers; `public_log_actions`/`public_log` declared-editable but hard \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "last-shipped": "TREASURY GRANT + KARMA THANKS ARGV PARSE FIX (2026-07-12T17:25Z, THIS PR \u2014 owner-directive 2026-07-12 lane, slice 5: the two sibling scan-class defects #275's card NOTED, now fixed the same way): `!treasury grant <bare_id> <amt>` no longer reads the snowflake as the AMOUNT (sb/domain/treasury/ops.py `_amount_from` takes a positional slot \u2014 contribute slot 0, grant slot 1 per the oracle's `grant(ctx, member: discord.Member, amount: int)`; `_record_disburse` binds the target from argv[0] ONLY, mention or bare ID) and `!thanks <name> <digit\u2026>` no longer binds a digit in the reason tail as the TAR \u2026 [truncated for the mirror \u2014 full text at the source]",
           "blockers": "NONE order-shaped \u2014 ORDER 002's last hang (the owner-created separate repo) RESOLVED 2026-07-12: the owner created menno420/superbot-plugin-hello and ORDER 014 sanctioned the seed, executed at plugin-repo commit `bbaccec50aa21fc744b8d37ecded8666365a63a1` (the \"ORDER-014 round 2026-07-12\" record below). Codex capacity is FLAPPING, not hard-walled: after the late-night usage-limit replies on #148 (comment 4942100526) and #151 (comment 4942514698) and one more on #152 (comment 4942577962, 05:08Z), the connector returned FULL P2 reviews on #154 (review 4676723779, 05:54Z), #157 (review 4676836079, \u2026 [truncated for the mirror \u2014 full text at the source]",
           "orders": "acked=001,002,003,004,005,006,007,008,009,010,011,012,013,014,015 done=002,003,005,006,007,008,009,010,011,012,013,014,015 \u2014 ORDER 015 (P2 boot-doc render, filed 2026-07-12T08:30Z) ACKED and DONE at this wake (rides #259 with card `.sessions/2026-07-12-order-015-claude-md-render.md` + telemetry row per Q-0194): `.claude/CLAUDE.md` rendered live via the kit's own mechanism (`python3 bootstrap.py adopt --include-claude`, kit v1.13.0 \u2014 the ONE sanctioned live-`.claude/` write; byte-identical to the staged source `.substrate/claude/CLAUDE.md`, sha256 recorded in `.substrate/state.json` planted_doc \u2026 [truncated for the mirror \u2014 full text at the source]",
           "needs-owner": "THREE live OWNER-ACTION items below (six-field format per control/README.md) \u2014 item 2 DROPPED 2026-07-12 per ORDER 014's done-when (the owner created the repo; seeded at `bbaccec5` \u2014 record below; items keep their numbers, no renumbering); item 3 unchanged; item 5 (band-7 AI key envelope \u2014 the live-NL leg is blocked on it); item 6 NEW at close-out: fleet failsafes may still be dead from the 2026-07-11T16:31Z platform env-teardown (this lane self-healed; sibling lanes could not be \u2014 record in docs/retro/q0265-routine-loop-2026-07-11.md); item 4 stays RETIRED, its capacity half now FLAPPING rath \u2026 [truncated for the mirror \u2014 full text at the source]",
@@ -249,22 +249,22 @@
       "repo_url": "https://github.com/menno420/substrate-kit",
       "head": {
         "ok": true,
-        "sha": "eaf4f23ca3cda3a8161b53f62c428c8290bb5109",
-        "committed_at": "2026-07-12T15:36:19+00:00",
+        "sha": "0801be98a2108eae6291ded40f512cc091955f14",
+        "committed_at": "2026-07-12T16:45:13Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-12T15:35:00Z",
-          "phase": "HEARTBEAT-GRAMMAR ROW DONE (this heartbeat records it; work PR #289, 2026-07-12) \u2014 the grounded-skills graduation map's LAST open row closed (hardening-input map \u00a7(b) row 8; named the one unowned remainder by the #287 card): the control template family now teaches the NEGATIVE `kit:` line example \u2014 the bold-label form `- **kit:** v1.2.3 \u00b7 check: green \u00b7 engaged: yes` that KIT_LINE_RE rejects (the optional bold group cannot contain the `kit:` token; the [a private lane] live incident, report \u00a7a.4) \u2014 homed as grammar renderer `kit_line_negative_example()` and carried verbatim by control-README.md \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "health": "green \u2014 verified this session (2026-07-12, heartbeat-grammar row, pre-flip): `python3 -m pytest tests/ -q` \u2192 **1203 passed** (1198 \u2192 1203; the 1198 baseline verified by a clean stash run against main @ a025d6d); `python3 -m ruff check src/engine/` \u2192 All checks passed; dist byte-pin clean (builder print 828825 B == on-disk); `python3 dist/bootstrap.py check --strict` \u2192 red only with the designed born-red hold naming this session's card (cleared by the flip commit). Prior health chains: git history of this file.",
-          "kit": "v1.14.0 \u00b7 check: green \u00b7 engaged: yes ROUTINE STATE (final record at archive, live-verified this session): \u2014 **ARMED (RE-ARMED 2026-07-11T23:26:20Z, replacing a vanished predecessor): the daily kit-lab loop** \u2014 trigger **trig_01Jm57GAjNCFrYJn1oLMiYGE** \"kit-lab loop\" \u00b7 cron `0 6 * * *` (UTC) \u00b7 fresh session per fire (create_new_session_on_fire=true; post-create list_triggers confirms no persistent_session_id) \u00b7 environment env_01R1G1wsWsEMShxECRsFnVor \u00b7 prompt = docs/operations/lab-loop.md fenced block (byte-identical) \u00b7 verified post-create: enabled=true, next fire 2026-07-12T06:06:34Z, exact \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "last-shipped": "**HEARTBEAT-GRAMMAR ROW (PR #289, 2026-07-12)** \u2014 the graduation map's last open row (\u00a7(b) row 8): taught negative `- **kit:** v\u2026` example, grammar-homed (`kit_line_negative_example()`) with writer\u2194enforcer verbatim pins in control-README.md.tmpl + control-status.md.tmpl, plus the adopters.md deference doctrine (self-reports lag; generated docs/adopters.md / committed tree = version truth); suite 1198 \u2192 1203; dist rebuilt (card .sessions/2026-07-12-heartbeat-grammar-row.md). Before it: **GROUNDED-SKILLS \u00a77 TAIL (PR #287, squash 420fc06, 2026-07-12)** \u2014 three graduation-map rows landed: `routin \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "blockers": "none. Coordination notes: pin PRs #220 + #238 park OPEN by design (owner ratification, \u2691 14/15 below \u2014 do NOT arm auto-merge on them); the `wave-a-v1130` \"wave A v1.13.0 distribution\" claim was DELETED at its close-out (lane terminal at #268), and the `wave-b-v1130` claim is DELETED by THIS close-out (lane terminal at #269) \u2014 control/claims/ back to README-only (the slice-4 claim `claude/grounded-skills-slice4-owner-assist` was created and deleted within its own lane, #272); ~48 stale merged-PR branches await the owner's auto-delete checkbox (\u2691 10; agent branch-deletion is a verified 403 wall) \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-12T16:55:00Z",
+          "phase": "\u2691 SLICE 6 FM-SIDE WIRING DONE (this close-out, 2026-07-12; cross-repo slice, claim kit PR #295 @ 67efef6, deleted by this close-out): **fleet-manager's prompt-regen tooling now consumes the kit's seat-digest extraction contract** \u2014 fm PR #126 merged @ **434c5f9a219214c1fb5ca4bf62663dc4c40254fd** (CI green on final head e36e258: substrate-gate run 29200638366 + freshness run 29200638376). Shipped fm-side: `docs/prompts/v3/tools/seat_digest_sync.py` (vendored fence-prefix constants byte-copied from kit grammar.py @ v1.15.0/dc8aeb1; extraction semantics identical to check_seat_digest._fenced_bloc \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "health": "green \u2014 verified this session (2026-07-12, slice-6 fm-side close-out): kit tree untouched except control/** (claim + this heartbeat; fm-side verification on the fm lane: seat_digest_sync --selftest 11/11 OK \u00b7 --check OK \u00b7 regen_b_files.py exit 0 all 8 seats + advisory clean \u00b7 --check-registry 24/24 \u00b7 fm bootstrap check --strict green at flip). Prior health record verbatim (heartbeat-grammar row, pre-flip): `python3 -m pytest tests/ -q` \u2192 **1203 passed** (1198 \u2192 1203; the 1198 baseline verified by a clean stash run against main @ a025d6d); `python3 -m ruff check src/engine/` \u2192 All checks passed \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "kit": "v1.15.0 \u00b7 check: green \u00b7 engaged: yes ROUTINE STATE (final record at archive, live-verified this session): \u2014 **ARMED (RE-ARMED 2026-07-11T23:26:20Z, replacing a vanished predecessor): the daily kit-lab loop** \u2014 trigger **trig_01Jm57GAjNCFrYJn1oLMiYGE** \"kit-lab loop\" \u00b7 cron `0 6 * * *` (UTC) \u00b7 fresh session per fire (create_new_session_on_fire=true; post-create list_triggers confirms no persistent_session_id) \u00b7 environment env_01R1G1wsWsEMShxECRsFnVor \u00b7 prompt = docs/operations/lab-loop.md fenced block (byte-identical) \u00b7 verified post-create: enabled=true, next fire 2026-07-12T06:06:34Z, exact \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "last-shipped": "**RELEASE v1.15.0 SHIPPED + VERIFIED (2026-07-12)** \u2014 bump PR **#290** (born-red card first commit, auto-merged by the enabler on green, squash **eaf4f23ca3cda3a8161b53f62c428c8290bb5109**) \u2192 `release.yml` dispatch run **29198852306** (workflow_dispatch, success, head eaf4f23) \u2192 tag **v1.15.0** (annotated **0b26d4168fd52005d0b27bee0c0d1f69ac2cda36** \u2192 eaf4f23) \u2192 GitHub Release https://github.com/menno420/substrate-kit/releases/tag/v1.15.0 \u2192 three-way sha256 verified (runbook \u00a75, never skipped): downloaded asset == release.json `sha256` field == committed dist/bootstrap.py @ v1.15.0 == fresh lo \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "blockers": "none. Coordination notes: the `claude/slice6-fm-regen-wiring` claim (landed kit PR #295 @ 67efef6) is DELETED by THIS close-out (lane terminal \u2014 fm PR #126 merged) \u2014 control/claims/ back to README-only at this writing; pin PRs #220 + #238 park OPEN by design (owner ratification, \u2691 14/15 below \u2014 do NOT arm auto-merge on them); the `wave-a-v1130` \"wave A v1.13.0 distribution\" claim was DELETED at its close-out (lane terminal at #268), and the `wave-b-v1130` claim is DELETED by THIS close-out (lane terminal at #269) \u2014 control/claims/ back to README-only (the slice-4 claim `claude/grounded-skills- \u2026 [truncated for the mirror \u2014 full text at the source]",
           "orders": "acked=001,002,003,004,005,006,007,008,009,010,011,012,013,014,015 done=001,002,003,004,005,006,007,008,009,010,011,012,013,014,015",
           "needs-owner": "thirteen open items (items 2\u201312 carried verbatim \u2014 ordinals kept stable so cross-references hold \u2014 plus 14 + 15, the two parked pin PRs; item 13 RESOLVED 2026-07-11: the owner merged #181 @ f7aa633 \u2014 full resolution record in the retro \u00a72 postscript + git history of this file). The two HOT ones are one click each: \u2691 OWNER-ACTION 15 \u2014 T5 v3 probe re-shape \u2014 pin PR #238 awaits your ratification (do-not-automerge by design; PAIRS with OWNER-ACTION 14 / PR #220) WHAT: Ratify (merge) or reject (close with a word) the T5 task-text re-shape that restores the probe's discriminating tension. WHERE: htt \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "notes": "this update = the heartbeat-grammar row close-out (updated/phase/health/last-shipped overwrite + the \u2691 FOR MANAGER follow-on-candidate line marked RESOLVED + this notes line; work PR #289, card .sessions/2026-07-12-heartbeat-grammar-row.md; the claim `claude/heartbeat-grammar-row` was created and deleted within its own lane \u2014 control/claims/ back to README-only; everything else, including ROUTINE STATE, all manager content, and the owner-ask blocks, kept verbatim). Prior notes: this update = the grounded-skills slice-6 close-out (phase/health/last-shipped overwrite + this notes line; work PR # \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "notes": "this update = the wave-B v1.15.0 close-out (four rows + adopters regen + the four wave-b-v1150-* claim deletes; PR #294, card .sessions/2026-07-12-wave-b-v1150-closeout.md; wave-B edits scoped to phase \u2691 WAVE B v1.15.0 DONE, the blockers claim note, the next-queue parenthetical, and this notes line \u2014 everything else, including all wave-A and manager content, ROUTINE STATE, and the owner-ask blocks, kept verbatim). Prior notes: this update = the v1.15.0 release close-out (kit line v1.14.0 \u2192 v1.15.0 + the RELEASE v1.15.0 record prepended to last-shipped + claim `control/claims/release-v1.15.0.md \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/substrate-kit/blob/main/control/status.md"
       }
@@ -276,26 +276,26 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "0fd2f48998fb6743456ab49cf4fb915c3b3ec230",
-        "committed_at": "2026-07-12T15:44:42+00:00",
+        "sha": "e25d7d58058eca29ea14ad0ec392a2df8b8720c3",
+        "committed_at": "2026-07-12T17:15:23Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-12T15:17:20Z",
-          "phase": "RECONCILE + BUILD \u2014 auto-merge enabler (#167) is live and green claude/* PRs are landing themselves. ORDER 012 (records reconcile) lands with the PR that carries this heartbeat (PR #160); the plans-sweep (ORDER 016) slices are draining through auto-merge.",
-          "health": "green (main HEAD 26dcaf6; four-suite `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q` and `python3 bootstrap.py check --strict` both re-run 2026-07-12T15:0xZ on this PR's merge of b844d15 under kit v1.14.0; CLAUDE.md re-render re-verified byte-identical to the v1.14.0 render of the merged slots)",
-          "kit": "v1.14.0 \u00b7 check: green \u00b7 engaged: yes last-shipped (merged to main since the last heartbeat, newest first): #170 ORDER 016 /projects role chips (54c0191), #168 ORDER 016 dashboard schema-check, #175 ORDER 017A review-data refresh, #172 ORDER 017 filing, #174 ORDER 017B /ask assistant, #179 ORDER 018 PR2 AI exit-review; #176 ORDER 018 PR1 tester-recruitment /testing (24e2a70); #159 ORDER 013 CSRF (b844d15); #173 ORDER 018 inbox filing (4279cb6); #165 ORDER 014 /prompts library (bff4289); #167 auto-merge-enabler (f14aeaa); #177/#178 /journal fleet-lane guard; #171 kit v1.13.0\u2192v1.14.0 (869cb76). \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-12T16:41:04Z",
+          "phase": "HEARTBEAT REFRESH \u2014 the auto-merge wave has drained: ORDERS 017 (review-site refresh, all four workstreams), 018 (tester platform, full PR series), and 019 (centralized list filters + site-wide rollout) are MERGED on main; ORDER 020's writeback build is merged and awaiting live verification + the owner PAT paste; 015 (prompt-surface consolidation) and 016's discovery inventory are the remaining build items.",
+          "health": "green (main HEAD 84e9397; four-suite `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q` \u2192 `642 passed, 1 warning in 31.92s` and `python3 bootstrap.py check --strict` \u2192 `check: all checks passed.` (one advisory owner-action-fields warning, never exit-affecting) \u2014 both re-run 2026-07-12T16:3xZ at 84e9397 in this heartbeat's worktree; all FOUR live services return /healthz 200, verified 2026-07-12T16:32Z)",
+          "kit": "v1.14.0 \u00b7 check: green \u00b7 engaged: yes last-shipped (merged to main since the last heartbeat 15:17Z, newest first per git log at 84e9397): #189 ORDER 020 owner writeback + AI note-drafting (84e9397, main HEAD); #188 ORDER 019 PR2 site-wide filter rollout (2d6fdcc); #187 ORDER 019 PR1 centralized listfilter /queue+/orders (3bfdf18); #186 ORDER 017 coordinator card (d67eaad); #185 stand-down log (c81ceb4); #184 ORDER 017 D private-lane filter (790aa5e); #183 ORDER 020 inbox filing (3a9023b); #182 ORDER 019 inbox filing (0fd2f48); #180 ORDER 017 C homepage rebuild (d7721bb); #160 ORDER 012 records \u2026 [truncated for the mirror \u2014 full text at the source]",
           "blockers": "none",
-          "routine": "armed \u00b7 failsafe cron trig_01Aak59jvQQdimDgy5K1yAGQ \u00b7 \"Websites failsafe wake\" \u00b7 45 */2 * * * \u00b7 verified bound to the coordinator session; pacemaker send_later chain live (~15 min). GROUND TRUTH (ORDER 012 verification, 2026-07-12): trig_017H9Qb9oxtLgUy6sw2gnSHg (the old 4-hourly ORDER-008 wake, cron 0 */4 * * *) NO LONGER EXISTS live \u2014 absent from an exhaustive list_triggers sweep of the account (823 triggers, full history back to 2026-06-12); not deleted or modified by this seat (already gone at check time). Review-bake Actions cron IS firing (first schedule-event run 29184552812, 2026-07-12 \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "landing": "pushed-unmerged claude/order-012-records-reconcile \u2014 PR #160 (this one) is the last records-reconcile PR; auto-merge is armed server-side, so it lands itself once clean + up-to-date + green. Open PRs at this poll (auto-merge is draining them; heads current): #161 (ORDER 016 arcade slice 1, head ace4e45), #166 (ORDER 016 /owner/environments, head 39f303a); #180 (ORDER 017 C homepage rebuild, head 69cb7bc); #163 (DRAFT record-only reviewer card, head bd58c88). Prune-candidate branches (owner-attention; agents get 403 on branch deletion): claude/harden-verify, claude/probe-dash-mgmt, claude/rewor \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "deployed": "control-plane / botsite / dashboard tracked on the live board; last full verification 2026-07-12T10:4xZ showed all three in_sync (any_drift=false); main has since climbed fast via the auto-merge wave, so expect the board to show transient deploy-drift until Railway catches each landed PR. The review/ service still does not exist on Railway (open owner ask).",
+          "routine": "armed \u00b7 failsafe cron trig_01Aak59jvQQdimDgy5K1yAGQ \u00b7 \"Websites failsafe wake\" \u00b7 45 */2 * * * \u00b7 LIVE-VERIFIED via list_triggers this heartbeat (2026-07-12T16:2xZ): enabled, next fire 2026-07-12T16:45Z, bound to the coordinator session. Pacemaker send_later chain LIVE-VERIFIED same sweep: multiple pending ~15-min ticks (next at 16:35Z / 16:41Z / 16:52Z / 17:07Z / 17:14Z) plus the daily \"Websites pacemaker re-arm\" one-shots firing on schedule (last fired 16:19Z). Review-bake Actions cron fires but fails on the repo setting \u2014 see needs-owner (ledger ask; run history verified under ORDER 012, not \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "landing": "pushed-unmerged claude/coordinator-heartbeat-2026-07-12 \u2014 this heartbeat's own branch (status refresh + session card only; lands itself via auto-merge on green); #167's auto-merge-enabler (.github/workflows/auto-merge-enabler.yml, on main at f14aeaa) lands green claude/* PRs server-side (observed working this wave: e.g. #179/#189 merged_by github-actions[bot]). Open PRs at this poll (verified via GitHub API 16:32Z): only #163 (DRAFT record-only reviewer card, head bd58c88). Prune-candidate branches (owner-attention; agents get 403 on branch deletion \u2014 full remote list re-pulled this session): \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "deployed": "ALL FOUR services live and healthy, probed 2026-07-12T16:32Z: control-plane /healthz 200 + /version sha 84e9397 (= main HEAD, no drift); review-production-f027 /healthz 200 + /version sha 84e9397 (the review Railway service EXISTS and is current \u2014 the ledger's \"create the review service\" ask appears satisfied; reconcile owed to docs/owner/OWNER-ACTIONS.md, which still lists it open); botsite /healthz 200 (/testing serves 200); dashboard /healthz 200 (version shas not probed for botsite/dashboard this session). Live URLs are pointered in docs/current-state.md.",
           "rung": "active",
           "tooling": "pr-capable",
-          "orders": "acked=001-018 done=001-014 (012 lands with this PR #160; 013 #159 + 014 #165 MERGED; 015 consolidate = new, gated on 014; 016 plans-sweep IN PROGRESS \u2014 slices #168 #170 MERGED, #161 #166 open; 017 review-site refresh + AI assistant now IN INBOX \u2014 filing #172 + #174 (B) + #175 (A) MERGED, #180 (C homepage) open; 018 tester-recruitment IN PROGRESS \u2014 PR1 #176 + PR2 #179 MERGED, PR3 #181 MERGED \u2014 series complete)",
-          "needs-owner": "SIX standing asks \u2014 canonical six-field blocks in docs/owner/OWNER-ACTIONS.md: (1) allow GitHub Actions to create PRs (Settings \u2192 Actions \u2192 General) \u2014 review-bake's ONLY two runs, 29167034060 (workflow_dispatch, 2026-07-11T20:26:33Z) and 29184552812 (schedule, 2026-07-12T07:38:28Z), BOTH failed at `gh pr create` on that setting; (2) create the review/ Railway service (Root Directory = review); (3) answer Q-0004 (where live bot control lives); (4) Discord OAuth app (post-Q-0004); (5) scoped control-API token + separate armed service (post-Q-0004); (6) botsite DATABASE_URL Postgres. NEW owner-ga \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "notes": "NEUTRAL pointers only. Boot from main: HANDOFF.md \u2192 docs/current-state.md \u2192 this heartbeat; owner asks live in docs/owner/OWNER-ACTIONS.md; capability walls in docs/CAPABILITIES.md (2026-07-12 appends: GITHUB_TOKEN wall RESOLVED; Actions-cannot-create-PRs wall NEW, evidence = both bake run logs). ORDER 012 re-rendered the kit docs to tree truth: four services (app/ botsite/ dashboard/ review/) + four-suite verify in .claude/CLAUDE.md, docs/architecture.md, docs/AGENT_ORIENTATION.md, docs/ownership.md, docs/ai-project-workflow.md (source fixed in .substrate/state.json slots, then `bootstrap.py \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "orders": "acked=001-020 done=001-014,017,018,019 (015 NOT STARTED \u2014 unblocked now that 014 is done, the single fetch/render/copy path is unbuilt; 016 IN PROGRESS \u2014 slices #161 #166 #168 #170 all MERGED, but the done-when's committed discovery inventory is absent at 84e9397; 017 DONE \u2014 A #175, B #174, C #180, D #184 all merged + review service live-verified 200 at main HEAD; 018 DONE \u2014 PR1 #176, PR2 #179, PR3 #181 merged, /testing live 200, payment/fulfillment gates flagged in the ledger; 019 DONE \u2014 PR1 #187 + PR2 #188 merged, /queue live 200; 020 IN PROGRESS \u2014 filing #183 + build #189 MERGED, remaining \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "needs-owner": "pointer \u2014 canonical six-field blocks live in docs/owner/OWNER-ACTIONS.md (re-read this heartbeat). EIGHT active asks there: Actions \"allow create PRs\" toggle (review-bake), Q-0004, Discord OAuth (post-Q-0004), armed control service + token (post-Q-0004), botsite DATABASE_URL Postgres, PayPal Payouts creds (ORDER 018), botsite SITE_PASSWORD (ORDER 018), fine-grained contents:write PAT as GITHUB_TOKEN on control-plane+botsite (ORDER 020). The ledger's review-Railway-service ask appears SATISFIED (service live-verified this session, above) \u2014 reconcile owed; the ANTHROPIC_API_KEY ask is kept-for-r \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "notes": "NEUTRAL pointers only. Boot from main: HANDOFF.md \u2192 docs/current-state.md \u2192 this heartbeat; owner asks live in docs/owner/OWNER-ACTIONS.md; capability walls in docs/CAPABILITIES.md. Everything above marked \"verified\"/\"live-verified\" was checked this session at main HEAD 84e9397 (git log, GitHub API PR states, list_triggers sweep, live-service probes, both gates); items marked \"carried\"/\"as last recorded\" (review-bake run history, botsite/dashboard version shas) were not re-pulled. next: ORDER 020 live verification \u2014 owner pastes the fine-grained PAT (ledger ask), then a writeback submit on /ow \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/websites/blob/main/control/status.md"
       }
@@ -308,7 +308,7 @@
       "head": {
         "ok": true,
         "sha": "dfd46bb8c662c4b745a2e7853a5229365a67254e",
-        "committed_at": "2026-07-12T13:46:22+00:00",
+        "committed_at": "2026-07-12T13:46:22Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -332,14 +332,14 @@
       "repo_url": "https://github.com/menno420/venture-lab",
       "head": {
         "ok": true,
-        "sha": "452af472a3fbad2af902ba92f60d1fbd352d3a56",
-        "committed_at": "2026-07-12T15:40:17+00:00",
+        "sha": "2cf81cd053bbead26d05bb3ef690d2830c7834db",
+        "committed_at": "2026-07-12T17:27:52Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-12T14:01Z status: green - **timestamp:** 2026-07-12T14:01Z (Money-seat heartbeat **2026-07-12b** \u2014 ledger refresh folding the owner-delegated creative wave that self-landed since the 12:15Z heartbeat (#66): #67 Tummel+Dormouse, #68 Lull (DREAMLINE) Part-1, #69 Comet Biscuit trilogy, #71 dashboard MONETIZATION.md, #72 Star Pirates Book 1 \u2014 every claim verified merged against GitHub before writing. Branch `claude/heartbeat-2026-07-12b`, born-red card flipped green, PR opened READY to self-land. This write follows a final `control/inbox.md` re-read at HEAD `574408a` \u2014 highest order still \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "updated": "2026-07-12T17:24Z status: green - **timestamp:** 2026-07-12T17:24Z (**SWTK free gotcha-article PUBLISHED \u2014 funnel top now LIVE.** The owner published the free gotcha article on dev.to (owner click, 2026-07-12T17:18:47Z): <https://dev.to/menno420/your-stripe-webhook-says-customeremail-is-null-heres-why-and-the-fix-1bgp>. This slice INDEPENDENTLY re-verified it \u2014 **HTTP 200 at 2026-07-12T17:24:10Z**, the `gumroad.com/l/stripe-webhook-test-kit` product link present (2\u00d7), tag state = **ZERO tags** at fetch time (no stripe/webhooks/payments/debugging `/t/` links rendered \u2014 flagged as a cheap owner- \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/venture-lab/blob/main/control/status.md"
       }
@@ -404,8 +404,8 @@
       "repo_url": "https://github.com/menno420/superbot-mineverse",
       "head": {
         "ok": true,
-        "sha": "3591c7745ebba822db5ada7ab9f5f957d0096c82",
-        "committed_at": "2026-07-12T15:54:21+02:00",
+        "sha": "ac312e84b72c500c420d3d6f1daa19d21aa86d6d",
+        "committed_at": "2026-07-12T16:49:58Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -438,14 +438,14 @@
       "repo_url": "https://github.com/menno420/gba-homebrew",
       "head": {
         "ok": true,
-        "sha": "f16e4047ddd6225af7c229174f2b67edf3061cc9",
-        "committed_at": "2026-07-12T15:50:06+02:00",
+        "sha": "557474d3052bd9c8d6595d7a0e17c1244227ac17",
+        "committed_at": "2026-07-12T18:23:16+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-12T13:00:22Z Coordinator-only; overwritten wholesale each coordinator turn. Prior narrative in git history (`0a76b546` boot, `d06456f2` cycle 2, `a7d2e113` cycle 3). - **ts:** 2026-07-12T13:00:22Z - **phase:** WORK LOOP cycle 4 (merged seat v1) - **chain:** healthy \u2014 pacemaker ticks + 12:50Z failsafe all delivered (serialize-on-busy behavior confirmed and documented cycle 3); next pacemaker ~13:25Z, failsafe cron 50 */2 * * *. - PR #64 \u2014 Gloamline slice 7 \"lantern-oil light pressure\" MERGED by owner. - PR #65 \u2014 Brineward slice 4 \"port + upgrades\" MERGED by owner (after one staleness re \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "updated": "2026-07-12T16:20:12Z Coordinator-only; overwritten wholesale each coordinator turn. Prior narrative in git history (`0a76b546` boot, `d06456f2` c2, `a7d2e113` c3, `baa39b9b` c4). - **ts:** 2026-07-12T16:20:12Z - **phase:** WORK LOOP cycle 5 (merged seat v1) \u2014 idle on owner clicks, both next slices pre-built - **chain:** healthy \u2014 pacemaker chain re-armed each turn (serialize-on-busy doctrine, documented c3); failsafe `trig_01JD1t7rD5jUCqkJQJaNCi3E` cron 50 */2 * * * firing on schedule (12:50Z + 14:50Z fires delivered). - PR #68 \u2014 Gloamline slice 8 \"synthesized audio\" (session 30): head `8d4245 \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/gba-homebrew/blob/main/control/status.md"
       }
@@ -480,22 +480,22 @@
       "repo_url": "https://github.com/menno420/idea-engine",
       "head": {
         "ok": true,
-        "sha": "9d3b065539f8709459c83697673615c5506c2de4",
-        "committed_at": "2026-07-12T15:31:21+00:00",
+        "sha": "bb5a9d67a284c931a2a8779fb334d53b711d1bed",
+        "committed_at": "2026-07-12T17:48:20Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-12T15:33:00Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-12T14:23:57Z overwrite; committed by the coordinator's scribe worker with dictated content \u2014 the coordinator session has no file tools)",
-          "phase": "ACTIVE-IDLE pending (verify pipeline empty again \u2014 VERDICT 014 fanned out at sim-lab and in here; queue drained). ROUTINES: failsafe cron \"Ideas Lab failsafe wake\" trig_01T83UuVthszGBcENYwrTrm7 (0 */2 * * * \u2014 even hours :00) = the standing deadman wake. Pacemaker send_later chain: PAUSED after the ~10:32Z fire per the honesty guard \u2014 re-arms when work resumes.",
+          "updated": "2026-07-12T16:28:23Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-12T15:33:00Z overwrite; committed by the coordinator's scribe worker with dictated content \u2014 the coordinator session has no file tools)",
+          "phase": "ACTIVE-IDLE (re-declared \u2014 the 16:00Z failsafe wake settled; verify pipeline empty, queue drained). ROUTINES: failsafe cron \"Ideas Lab failsafe wake\" trig_01T83UuVthszGBcENYwrTrm7 (0 */2 * * * \u2014 even hours :00) = the standing deadman wake. Pacemaker send_later chain: PAUSED after the ~10:32Z fire per the honesty guard \u2014 re-arms when work resumes; posture now VERDICT-014-backed.",
           "health": "green \u2014 python3 bootstrap.py check --strict green on this tree immediately before push.",
           "kit": "v1.10.0 \u00b7 check: green \u00b7 engaged: yes",
-          "last-shipped": "today \u2014 sim-lab #53 \u2192 477b452 (VERDICT 014: routine-cadence economics, PROPOSAL 012 \u2014 landed by the sim-lab ORDER-003 enabler, zero agent merge calls), sim-lab #54 \u2192 46d7387 (VERDICT 014 fan-out ceremony: INTAKE 012 + outbox entry + heartbeat \u2014 also enabler-landed), this PR (VERDICT 014 fan-in: sim-verdict note on the idea + fleet README badge + this heartbeat); prior: #220/fc0bab6 (first-wake heartbeat), #221/329547d (check_sections: tolerate roster gen #9 `\u21b3` sub-rows \u2014 LIVE BREAK closed, preflight green repo-wide), #222/80f5384 (fleet-program-pulse-feed probe \u2192 parked(build-direct)), #223/0 \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "last-shipped": "today \u2014 #262/9bc1c9d (story-page first-commit window re-check post-ORDER-017 \u2192 both riders OPEN: ORDER 017 rebuilt the review service, not the story page; the narrative-in-code default deepened \u2014 the rider constraint is MORE necessary; pulse-feed premise byte-verified intact, fold-in cost fell), sim-lab #55 \u2192 4cb884a (codex-question line corrected: posted, comment 4951710032), sim-lab #56 \u2192 dedc12e (codex incident #3 disposition + escalation), sim-lab #53 \u2192 477b452 (VERDICT 014: routine-cadence economics, PROPOSAL 012 \u2014 landed by the sim-lab ORDER-003 enabler, zero agent merge calls), sim-lab \u2026 [truncated for the mirror \u2014 full text at the source]",
           "blockers": "none.",
           "orders": "acked=001-002 done=001-002 (inbox read FIRST this session at wake HEAD c71710e \u2014 no new orders, none beyond 002; ORDER 001's standing per-session rule re-satisfied by this slice's card: \ud83d\udcca Model: fable-5 \u2014 a standing order's per-wake execution needs no fresh claim per control/README \u00a7 Claiming an order; ORDER 002 done by #158, its Self-review section preserved verbatim at docs/retro/self-review-2026-07-11.md).",
           "needs-owner": "ARCHIVE HANDOFF (this slice, wrap-up \u2014 read FIRST at next wake): (1) STANDING RULING Q-0265, CONTINUOUS-CHAINING MODE \u2014 restored DURABLY here this slice (it previously lived only in session cards, grep of this file was negative): the coordinator chains bounded slices CONTINUOUSLY via child sessions, the next slice dispatching as each one reports; the 2-hourly cron trigger is a FAILSAFE DEADMAN WAKE, not the work cadence (README \u00a7 Coordination; first recorded live in this file @ 139932e). The archiving coordinator's failsafe cron trigger AND its 15-minute send_later chain are being DISMANTLED w \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "notes": "15:3xZ VERDICT 014 FAN-OUT + FAN-IN: **VERDICT 014 APPROVE \u2014 posture unchanged, keep hybrid(event-driven + failsafe-2h)** (= PROPOSAL 012; sim-lab #53 \u2192 477b452, report sims/verdict-014-routine-cadence-economics/REPORT.md, gate PASS 5/5, evidence moderate; fan-out sim-lab #54 \u2192 46d7387: INTAKE 012 + outbox entry + heartbeat, enabler-landed zero agent merge calls; fan-in this PR: sim-verdict note on ideas/fleet/routine-cadence-economics-sim-2026-07-12.md + fleet README badge). PASTE-READY FOR THE \u2691 POSTURE DECISION (\u22642026-07-13): \"VERDICT 014 (evidence: sim-lab #53): keep hybrid \u2014 event-driven \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "notes": "16:00Z FAILSAFE SWEEP + SETTLEMENT: home repos quiet at pins, no new ORDERs; roster gen #16 still pre-cutover Lane rows, seat never pasted/armed; superbot-next got ORDER 016 (their lane); websites ORDER-017 burst (39 commits) triggered the story-page window re-check \u2192 both riders OPEN (#262/9bc1c9d), manager flag AMENDED: fold both riders into ONE ORDER on the P002 phase-1 routing + NEW TRIPWIRE \u2014 if the lane self-starts story-page work under ANY order, inject both rider lines immediately (hours-scale time-sensitive now that websites has its own auto-merge enabler). CODEX INCIDENT #3 (comment \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/idea-engine/blob/main/control/status.md"
       }
@@ -507,8 +507,8 @@
       "repo_url": "https://github.com/menno420/sim-lab",
       "head": {
         "ok": true,
-        "sha": "46d73877848715a6bb6a302fe8ec2e483b2b15d6",
-        "committed_at": "2026-07-12T15:27:20+00:00",
+        "sha": "dedc12ee4233872344bbec5ece94778e955da617",
+        "committed_at": "2026-07-12T16:16:48Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -611,8 +611,8 @@
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "81ce3f1211d119e547075bd17be2fafc32bfcca9",
-        "committed_at": "2026-07-12T15:37:42+00:00",
+        "sha": "1bb53f9e772a2a9700e19587a4cd3ca89ca82314",
+        "committed_at": "2026-07-12T19:40:31+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
