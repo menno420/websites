@@ -65,9 +65,11 @@ from . import listfilter
 from . import testing_ai as ai
 from . import testing_payouts as payouts
 from . import testing_store as store
+from .testing_catalog import TASKS_PATH, load_tasks  # noqa: F401  (re-export — the
+# catalog loader moved to botsite/testing_catalog.py so the tester-task URL
+# liveness probe reads tasks through the SAME loader without importing routes)
 
 BASE_DIR = Path(__file__).resolve().parent
-TASKS_PATH = BASE_DIR / "testing_tasks.json"
 
 router = APIRouter(prefix="/testing")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -206,13 +208,9 @@ def require_owner(request: Request) -> None:
 
 
 # --------------------------------------------------------------------------
-# task catalog (committed JSON) + live shaping over the store
+# task catalog (committed JSON, via botsite/testing_catalog.py) + live
+# shaping over the store
 # --------------------------------------------------------------------------
-def load_tasks() -> list[dict[str, Any]]:
-    data = json.loads(TASKS_PATH.read_text(encoding="utf-8"))
-    return list(data.get("tasks") or [])
-
-
 def bounty_cap_usd() -> float:
     return float(os.environ.get("TESTING_BOUNTY_CAP_USD") or DEFAULT_BOUNTY_CAP_USD)
 
