@@ -1,0 +1,101 @@
+{
+  "_comment": "Tester-program task catalog (ORDER 018). Committed JSON is the source of truth for WHAT can be tested; live claim/slot state lives in the SQLite store. status: open | coming-soon | closed. Every task is a REAL fleet product — coming-soon tasks say honestly why they are not open yet.",
+  "tasks": [
+    {
+      "id": "site-review-botsite",
+      "type": "site-review",
+      "title": "Review the SuperBot public site",
+      "product_url": "https://botsite-production-cfd7.up.railway.app",
+      "brief": "Browse the SuperBot marketing and reference site the way a curious Discord server owner would. Open every page in the header nav (Features, Commands, Games, Changelog, Status), open at least five command detail pages, try the search palette (Cmd/Ctrl+K), and toggle the light/dark theme. Look for: links that 404 or go nowhere, pages that fail to load or load slowly, copy that is confusing or reads unfinished, layout problems on a phone-sized screen, and anything that would make you distrust the site. Note the exact page URL for every issue you report.",
+      "payout_usd": 10,
+      "est_minutes": 30,
+      "slots_total": 3,
+      "status": "open",
+      "note": ""
+    },
+    {
+      "id": "site-review-dashboard",
+      "type": "site-review",
+      "title": "Review the SuperBot dashboard",
+      "product_url": "https://dashboard-production-a91b.up.railway.app",
+      "brief": "Explore the read-only SuperBot dashboard end to end. Visit every section reachable from its navigation, including the /admin area (it is an openly labeled dry-run — nothing you do there controls anything real). Look for: panels or tables that render empty or broken, numbers or labels that make no sense without insider knowledge, error messages after refreshing or using the browser back button, mobile rendering problems, and dead links. Tell us where you got lost first — the first confusing screen is the most valuable finding.",
+      "payout_usd": 12,
+      "est_minutes": 40,
+      "slots_total": 3,
+      "status": "open",
+      "note": ""
+    },
+    {
+      "id": "site-review-control-plane-projects",
+      "type": "site-review",
+      "title": "Review the control-plane /projects pages",
+      "product_url": "https://control-plane-production-abb0.up.railway.app/projects",
+      "brief": "Start at /projects and click through every project card and its detail/dispatch views. You are seeing an internal fleet-operations surface — judge it as an outsider. Look for: navigation that traps you or loses your place, jargon a first-time visitor cannot decode, links that 404, pages slower than ~3 seconds, and layout breakage on mobile. List each term you did not understand and each click that did not do what you expected.",
+      "payout_usd": 12,
+      "est_minutes": 45,
+      "slots_total": 2,
+      "status": "open",
+      "note": ""
+    },
+    {
+      "id": "site-review-program-review-site",
+      "type": "site-review",
+      "title": "Review the program-review site",
+      "product_url": "https://review-production-f027.up.railway.app",
+      "brief": "Read the program-review site as a skeptical outside reviewer: the process pages, growth charts, successes, the problems page, the fleet index, and the review editions feed. Look for: claims that are unclear or unsupported, charts that are hard to read, broken links, and pages that render badly on mobile.",
+      "payout_usd": 15,
+      "est_minutes": 45,
+      "slots_total": 2,
+      "status": "coming-soon",
+      "note": "Honest hold: the review service's public URL is not yet confirmed live (the Railway service still needs an owner click; the URL above is the expected one, unverified). This task opens when the URL is verified."
+    },
+    {
+      "id": "game-test-lumen-drift",
+      "type": "game-test",
+      "title": "Playtest Lumen Drift",
+      "product_url": "",
+      "brief": "Play Lumen Drift for at least 30 minutes across several sessions. Look for: crashes or freezes, states where you get stuck with no way forward, controls that feel wrong or are never explained, difficulty spikes, and moments you got bored — say exactly when and why. Note your device and browser.",
+      "payout_usd": 15,
+      "est_minutes": 45,
+      "slots_total": 3,
+      "status": "coming-soon",
+      "note": "Activates when the game deploys — Lumen Drift is not deployed yet, so there is honestly nothing to test today."
+    },
+    {
+      "id": "game-test-mineverse",
+      "type": "game-test",
+      "title": "Playtest mineverse",
+      "product_url": "",
+      "brief": "Play mineverse for at least 45 minutes. Try to break it: rapid clicks, leaving mid-action, refreshing at odd moments. Look for: progress that fails to save, unclear goals in the first five minutes, UI elements that overlap or vanish on smaller screens, and anything that made you want to quit. Note your device and browser.",
+      "payout_usd": 15,
+      "est_minutes": 60,
+      "slots_total": 3,
+      "status": "coming-soon",
+      "note": "Activates when the game deploys — mineverse is not deployed yet, so there is honestly nothing to test today."
+    },
+    {
+      "id": "game-test-games-web",
+      "type": "game-test",
+      "title": "Playtest the games-web arcade",
+      "product_url": "",
+      "brief": "Work through every game in the arcade for a few minutes each. Look for: games that fail to start, broken or laggy input, scores that do not record, confusing instructions, and mobile/touch problems. Rank the games from most to least fun and say why in one line each.",
+      "payout_usd": 12,
+      "est_minutes": 40,
+      "slots_total": 3,
+      "status": "coming-soon",
+      "note": "Activates when the game deploys — the games-web arcade is not deployed yet, so there is honestly nothing to test today."
+    },
+    {
+      "id": "walkthrough-superbot-onboarding",
+      "type": "guided-walkthrough",
+      "title": "Guided walkthrough: add SuperBot to a test server",
+      "product_url": "https://botsite-production-cfd7.up.railway.app",
+      "brief": "Follow a step-by-step script to add SuperBot to a throwaway Discord server and run its core commands, confirming each step as you go and reporting exactly where the script and reality disagree.",
+      "payout_usd": 20,
+      "est_minutes": 60,
+      "slots_total": 2,
+      "status": "coming-soon",
+      "note": "Honest hold: guided walkthroughs need their written step scripts and the AI step-confirmation reviewer (PR2) before they can open."
+    }
+  ]
+}

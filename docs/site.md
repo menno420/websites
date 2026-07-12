@@ -384,6 +384,14 @@ action, while the main site stays browsable:
     repo's default branch and POSTs `rerun-failed-jobs` via `GITHUB_TOKEN`.
     Honest banners for the 403 (token lacks `actions:write`) and no-failed-run
     cases; never 500s.
+- **POST hardening (ORDER 013):** every state-changing `/owner` action layers,
+  after Basic auth, a **strict same-origin CSRF check** — the `Origin` header's
+  host must match the request's own `Host` (falling back to `Referer` when
+  `Origin` is absent; **both absent → 403**, the documented strict choice,
+  since browsers always send `Origin` on POST) — and a dependency-free
+  **in-process rate limit** (sliding window, 10 requests / 60 s per route +
+  client, **429** with `Retry-After` beyond that). Hosts are compared rather
+  than scheme+host because Railway's proxy terminates TLS ahead of the app.
 
 **Deliberately NOT wired** (separate owner approval): any Railway
 account-token action and any **live production-bot** control API. No
