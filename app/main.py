@@ -52,14 +52,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
-# Nav manifest as Jinja globals: base.html iterates ONE list (app/nav.py)
-# instead of hand-kept markup — the overflow-guard membership lives in
-# exactly one place (tests/test_nav_manifest.py holds routes to it).
-templates.env.globals["NAV_PRIMARY"] = nav.PRIMARY
-templates.env.globals["NAV_GROUPED"] = nav.GROUPED
-# Console-home section map: same manifest module, so the home cards can
-# never drift from the nav (see nav.section_map).
-templates.env.globals["NAV_SECTIONS"] = nav.section_map()
+# Nav manifest as Jinja globals: base.html renders the ~5 main categories
+# from ONE structure (app/nav.py CATEGORIES) instead of hand-kept markup —
+# the category → subcategory decision lives in exactly one place
+# (tests/test_nav_manifest.py holds routes to it). NAV_CATEGORY_FOR maps a
+# route's active key to its category for the current-category highlight.
+templates.env.globals["NAV_CATEGORIES"] = nav.CATEGORIES
+templates.env.globals["NAV_CATEGORY_FOR"] = nav.category_for
 
 # Static assets (the live-monitoring auto-refresh JS). Public, no credentials —
 # served straight from app/static/ (mirrors the credential-free public site).
@@ -89,6 +88,37 @@ async def version():
     no network dependency — read straight from the environment. Powers the
     readiness board's deploy-state drift cell."""
     return config.version_info("control-plane")
+
+
+def _attention(rows: list, heartbeat_chips: dict) -> list[dict]:
+    """The overview dashboard's what-needs-attention summary — derived from
+    data the home page ALREADY fetches (readiness rows + board-repo
+    heartbeat freshness), never a new fan-out. Only definite bads surface
+    (broken checks, deploy DRIFT, stale heartbeats); unknown-because-
+    unfetchable cells stay the board's per-cell honesty below, not alarms."""
+    items: list[dict] = []
+    for r in rows:
+        if r.get("broken_runs"):
+            items.append({
+                "text": f"{r['repo']}: {len(r['broken_runs'])} broken check(s)",
+                "href": "/",
+                "state": "bad",
+            })
+        ds = r.get("deploy_state") or {}
+        if ds.get("any_drift"):
+            items.append({
+                "text": f"{r['repo']}: deploy DRIFT",
+                "href": "/",
+                "state": "bad",
+            })
+    for repo, hb in heartbeat_chips.items():
+        if hb.get("stale"):
+            items.append({
+                "text": f"{repo}: heartbeat stale ({hb.get('age_human', '?')})",
+                "href": "/fleet",
+                "state": "warn",
+            })
+    return items
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -128,6 +158,7 @@ async def board(request: Request):
             "rows": rows,
             "idea_chips": idea_chips,
             "heartbeat_chips": heartbeat_chips,
+            "attention": _attention(rows, heartbeat_chips),
             "ttl": config.CACHE_TTL_SECONDS,
             "active": "board",
             "autorefresh_seconds": config.AUTOREFRESH_SECONDS,
@@ -138,6 +169,129 @@ async def board(request: Request):
 @app.get("/api/readiness.json")
 async def board_json(request: Request):
     return JSONResponse(await readiness.board(refresh=_refresh(request)))
+
+
+# ---------------------------------------------------------------------------
+# Category landing pages (IA v2, owner-directed 2026-07-12): /work, /history,
+# /console. Each renders its category's subcategories as clear rows — name +
+# one-line purpose + a live count chip where one is cheap + the primary action
+# as a right-aligned button. The hierarchy itself is data in app/nav.py; these
+# routes only attach counts. GET-only, no state change, no CSRF surface.
+# ---------------------------------------------------------------------------
+
+
+async def _count_queue(refresh: bool):
+    d = await owner_queue.overview(refresh=refresh)
+    n = d["summary"]["total"]
+    return n, "open", ("warn" if n else "ok")
+
+
+async def _count_orders(refresh: bool):
+    d = await orders.overview(refresh=refresh)
+    n = d["summary"]["open"]
+    return n, "open", ("warn" if n else "ok")
+
+
+async def _count_ideas(refresh: bool):
+    repos = await ideas.overview(refresh=refresh)
+    return ideas.totals(repos)["ideas"], "ideas", "repo"
+
+
+async def _count_reviews(refresh: bool):
+    d = await reviews.overview(refresh=refresh)
+    if d["state"] != "ok":
+        return None
+    n = d["open_count"]
+    return n, "open", ("warn" if n else "ok")
+
+
+async def _count_activity(refresh: bool):
+    d = await activity.timeline(refresh=refresh)
+    return len(d["items"]), "recent PRs", "repo"
+
+
+async def _count_projects(refresh: bool):
+    d = await projects.overview(refresh=refresh)
+    if d["state"] != "ok":
+        return None
+    seats = [p for p in d["packages"] if not p.get("stub")]
+    return len(seats), "seats", "repo"
+
+
+async def _count_prompts(refresh: bool):
+    # Static registry size (app/prompts.py pins the artifact list) — the one
+    # genuinely free count: no fetch at all.
+    return prompts.TOTAL_ARTIFACTS, "artifacts", "repo"
+
+
+async def _count_directory(refresh: bool):
+    reg = web_presence.load_registry()
+    if not reg["ok"]:
+        return None
+    return len(reg["sites"]), "surfaces", "repo"
+
+
+# Per-item count providers, keyed by the nav item's active key. Items absent
+# here (journal, environments, the gated owner pages, board/fleet) render
+# without a chip — a count is only shown where it is CHEAP and honest.
+# NOTE environments stays chip-less on purpose: a parallel session is landing
+# an environments-hub rework; keeping this row generic keeps the merge clean.
+_COUNTERS = {
+    "queue": _count_queue,
+    "orders": _count_orders,
+    "ideas": _count_ideas,
+    "reviews": _count_reviews,
+    "activity": _count_activity,
+    "projects": _count_projects,
+    "prompts": _count_prompts,
+    "directory": _count_directory,
+}
+
+
+async def _category_rows(cat: dict, refresh: bool) -> list[dict]:
+    """The category's items decorated with fail-soft live counts: a counter
+    exception or an honest non-ok upstream state yields count=None (the row
+    shows —), never a 500 and never an invented number."""
+
+    async def one(item: dict) -> dict:
+        row = {**item, "counted": False, "count": None, "unit": "",
+               "chip_state": "repo"}
+        fn = _COUNTERS.get(item["key"])
+        if fn is None:
+            return row
+        row["counted"] = True
+        try:
+            got = await fn(refresh)
+        except Exception:
+            got = None
+        if got is not None:
+            row["count"], row["unit"], row["chip_state"] = got
+        return row
+
+    return list(await asyncio.gather(*[one(it) for it in cat["items"]]))
+
+
+async def _category_page(request: Request, key: str) -> HTMLResponse:
+    cat = nav.category(key)
+    rows = await _category_rows(cat, _refresh(request))
+    return templates.TemplateResponse(
+        request, "category.html", {"cat": cat, "rows": rows, "active": key}
+    )
+
+
+@app.get("/work", response_class=HTMLResponse)
+async def work_landing(request: Request):
+    return await _category_page(request, "work")
+
+
+@app.get("/history", response_class=HTMLResponse)
+async def history_landing(request: Request):
+    return await _category_page(request, "history")
+
+
+@app.get("/console", response_class=HTMLResponse)
+async def console_landing(request: Request):
+    return await _category_page(request, "console")
 
 
 def _repo_param(request: Request) -> str | None:

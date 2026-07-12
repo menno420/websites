@@ -22,10 +22,10 @@
   {% endif %}
 
   <p class="small">
-    {%- for s in p.seats %}
-    <a href="#{{ s.anchor }}"><code>{{ s.name }}</code></a> ·
+    <a href="#universal"><code>universal</code></a>
+    {%- for s in p.seats %} ·
+    <a href="#{{ s.anchor }}"><code>{{ s.name }}</code></a>
     {%- endfor %}
-    <a href="#fleet-wide"><code>fleet-wide</code></a>
   </p>
 </div>
 
@@ -41,6 +41,17 @@
 </div>
 {% endmacro %}
 
+{# UNIVERSAL prompts FIRST (owner feedback 2026-07-12: the session-ender was
+   buried at the bottom of ~26 artifacts) — the two fleet-wide prompts every
+   session uses, clearly labeled, above the per-seat listing. #}
+<div class="card" id="universal">
+  <h2>Universal prompts <span class="b ok">every seat, every session</span></h2>
+  <p class="dim small">One copy for the whole fleet — the <strong>Universal
+    Startup</strong> and the <strong>Universal Session-Ender</strong>
+    (<code>docs/prompts/v3/</code>). Per-seat artifacts follow below.</p>
+</div>
+{% for a in p.fleet_wide %}{{ artifact_card(a) }}{% endfor %}
+
 {% for s in p.seats %}
 <div class="card" id="{{ s.anchor }}">
   <h2>seat · {{ s.name }}
@@ -48,13 +59,6 @@
 </div>
 {% for a in s.artifacts %}{{ artifact_card(a) }}{% endfor %}
 {% endfor %}
-
-<div class="card" id="fleet-wide">
-  <h2>fleet-wide artifacts</h2>
-  <p class="dim small">One copy for every seat — the universal startup template and the
-    universal session ender (<code>docs/prompts/v3/</code>).</p>
-</div>
-{% for a in p.fleet_wide %}{{ artifact_card(a) }}{% endfor %}
 {% endblock %}
 
 {% block scripts %}<script src="/static/copycode.js" defer></script>{% endblock %}

@@ -13,15 +13,39 @@
 {%- endmacro %}
 
 {% block content %}
-<div class="card">
-  <h2>superbot control plane <span class="dim small">— the owner's launch
-    console: one server-rendered front door over the fleet's committed truth</span></h2>
-  <p class="dim small">Every surface this service renders, one hop from here —
-    the live readiness board follows below. Pages marked 🔒 expect the owner login.</p>
+<div class="card" id="overview-dashboard">
+  <h2>superbot control plane <span class="dim small">— overview: fleet health at
+    a glance; every surface two clicks away via its category</span></h2>
+
+  {# what-needs-attention summary — derived from the SAME data the board
+     below and /fleet already fetch (readiness rows + heartbeat freshness);
+     an honest all-quiet line when nothing needs the owner. #}
+  <div class="attn">
+    {% if attention %}
+    <span class="dim small">needs attention:</span>
+    {% for a in attention %}
+    <a href="{{ a.href }}"><span class="b {{ a.state }}">{{ a.text }}</span></a>
+    {% endfor %}
+    {% else %}
+    <span class="b ok">all quiet</span>
+    <span class="dim small">— no broken checks, deploy drift, or stale
+      heartbeats among the tracked signals below</span>
+    {% endif %}
+  </div>
+
+  {# the category → subcategory map: the nav's 5 main categories, every
+     feature page one hop from here. Pages marked 🔒 expect the owner login. #}
   <div class="secmap">
-    {%- for s in NAV_SECTIONS %}
-    <a class="sec" href="{{ s.href }}"><span class="sec-label">{{ s.label }}{{ ' 🔒' if s.href == '/owner' }}</span>
-      <span class="sec-desc">{{ s.desc }}</span></a>
+    {%- for cat in NAV_CATEGORIES %}
+    <div class="sec">
+      <a class="sec-label" href="{{ cat.href }}">{{ cat.label }}</a>
+      <span class="sec-desc">{{ cat.desc }}</span>
+      <span class="sec-items">
+        {%- for it in cat['items'] %}
+        <a href="{{ it.href }}">{{ it.label }}</a>
+        {%- endfor %}
+      </span>
+    </div>
     {%- endfor %}
   </div>
 </div>
