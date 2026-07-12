@@ -9,6 +9,17 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Deep-link fleet lane files into the widened /journal/{repo}/file view**
+  · `captured` — PR #177 lets the file route render markdown from every
+  FLEET_LANES repo, but no page links there for lane repos: the capability
+  is reachable only by hand-typed URLs. Add per-lane deep-links from the
+  /fleet lane cards (e.g. the lane's `docs/current-state.md` and its
+  `control/status.md` source) through the in-app renderer. Worth having
+  because a shipped capability nothing navigates to is invisible to the
+  owner. Deduped against this backlog + queue-state NEXT: the lanes.json
+  and pickup ideas touch /fleet data, not file-view navigation. Source:
+  `.sessions/2026-07-12-journal-guard-fleet.md` 💡.
+
 - **Seat role-coverage chips on the /projects dispatch index** · `captured`
   — the dispatch screen (PR #158) renders whatever role files a package
   has, but the INDEX doesn't say which seats are dispatch-READY: a seat
