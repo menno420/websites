@@ -42,7 +42,8 @@
     <p class="sb-hint" style="margin-top:8px">Auto-payout eligibility now runs on the REAL AI
       exit-review score (threshold {{ "%.0f"|format(payout_config.autopay_min_score) }},
       {{ payout_config.min_score_env }}) — but v1 still queues everything for you: dry-run holds
-      until the live PayPal Payouts call lands in PR3. Credential names only; values never appear here.</p>
+      until you land PayPal credentials (owner-gated; a separate small PR wires the live Payouts
+      call then). Credential names only; values never appear here.</p>
   </div>
 
   <div class="section-sm">
@@ -54,6 +55,7 @@
       <span class="sb-badge">model: {{ ai_state.model }} (TESTING_AI_MODEL)</span>
       <span class="sb-badge">calls today: {{ ai_state.daily_used }}/{{ ai_state.daily_cap }} (TESTING_AI_DAILY_CAP)</span>
       <span class="sb-badge">per-submission cap: {{ ai_state.per_submission_cap }} calls</span>
+      <span class="sb-badge">guide cap: {{ ai_state.guide_cap }} messages/claim ({{ ai_state.guide_cap_env }})</span>
       <span class="sb-badge {{ 'sb-badge-warn' if degraded_reviews else '' }}">degraded reviews: {{ degraded_reviews }}</span>
     </div>
     <p class="sb-hint" style="margin-top:8px">The reviewer grades completeness/quality (0–100),
