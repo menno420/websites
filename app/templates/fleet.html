@@ -51,7 +51,9 @@
     <span class="dim small">·
       <a href="{{ l.repo_url }}">{{ l.repo }}</a>
       {% if l.model and l.model != 'unknown' %}· {{ l.model }}{% endif %}
-      · <a href="{{ l.github_url }}">status ↗</a></span>
+      {% if l.status_file_url %}· <a href="{{ l.status_file_url }}">status</a>{% endif %}
+      · <a href="{{ l.github_url }}">status ↗</a>
+      {% if l.current_state_url %}· <a href="{{ l.current_state_url }}">current-state</a>{% endif %}</span>
   </h2>
 
   {% if l.fetch_error %}

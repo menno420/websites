@@ -23,6 +23,7 @@ import asyncio
 import re
 from datetime import datetime, timezone
 from typing import Any, Optional
+from urllib.parse import quote
 
 from . import clock, config, github, journal
 
@@ -464,6 +465,15 @@ def _gh_blob(repo: str, path: str) -> str:
     return f"https://github.com/{OWNER}/{repo}/blob/main/{path}"
 
 
+def _file_view_url(repo: str, path: str) -> Optional[str]:
+    """In-app /journal/{repo}/file deep-link, or None when the repo is outside
+    the render allow-set (config.JOURNAL_RENDER_REPOS — a registry lane the
+    file route would 404 gets no dead link)."""
+    if repo not in config.JOURNAL_RENDER_REPOS:
+        return None
+    return f"/journal/{repo}/file?path={quote(path, safe='/')}"
+
+
 # --------------------------------------------------------------------------- #
 # Live lane set from the fleet-manager registry
 # --------------------------------------------------------------------------- #
@@ -617,6 +627,13 @@ async def lane_status(
         "note": lane.get("note", ""),
         "github_url": _gh_blob(repo, path),
         "repo_url": f"https://github.com/{OWNER}/{repo}",
+        # In-app deep-links through the widened /journal/{repo}/file renderer
+        # (PR #177 allows every FLEET_LANES repo): the lane's status source and
+        # its current-state ledger, readable without leaving the console. None
+        # for a registry-only lane outside the render allow-set — the template
+        # simply omits the links; the GitHub links above stay the fallback.
+        "status_file_url": _file_view_url(repo, path),
+        "current_state_url": _file_view_url(repo, "docs/current-state.md"),
         "last_commit": meta["last_commit"],
         "open_prs": meta["open_prs"],
         "missing": False,

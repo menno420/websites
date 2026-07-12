@@ -13,6 +13,19 @@
 {%- endmacro %}
 
 {% block content %}
+<div class="card">
+  <h2>superbot control plane <span class="dim small">— the owner's launch
+    console: one server-rendered front door over the fleet's committed truth</span></h2>
+  <p class="dim small">Every surface this service renders, one hop from here —
+    the live readiness board follows below. Pages marked 🔒 expect the owner login.</p>
+  <div class="secmap">
+    {%- for s in NAV_SECTIONS %}
+    <a class="sec" href="{{ s.href }}"><span class="sec-label">{{ s.label }}{{ ' 🔒' if s.href == '/owner' }}</span>
+      <span class="sec-desc">{{ s.desc }}</span></a>
+    {%- endfor %}
+  </div>
+</div>
+
 {% include "_autorefresh.html" %}
 <div id="live-content">
 {% for r in rows %}

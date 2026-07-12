@@ -56,9 +56,12 @@ def test_nav_groups_secondary_pages_and_keeps_all_reachable(monkeypatch):
 
 
 def test_grouped_page_opens_dropdown_and_highlights_summary(monkeypatch):
+    # /ideas is a GROUPED page (was /orders until the console-home PR
+    # promoted orders to primary — keep this pinned to the manifest).
+    assert "/ideas" in GROUPED
     _offline(monkeypatch)
     with TestClient(app) as c:
-        r = c.get("/orders")
+        r = c.get("/ideas")
     assert r.status_code == 200
     assert '<details class="navmore" open' in r.text
     assert 'summary class="on"' in r.text  # the group shows as active
