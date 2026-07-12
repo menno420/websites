@@ -56,6 +56,9 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 # exactly one place (tests/test_nav_manifest.py holds routes to it).
 templates.env.globals["NAV_PRIMARY"] = nav.PRIMARY
 templates.env.globals["NAV_GROUPED"] = nav.GROUPED
+# Console-home section map: same manifest module, so the home cards can
+# never drift from the nav (see nav.section_map).
+templates.env.globals["NAV_SECTIONS"] = nav.section_map()
 
 # Static assets (the live-monitoring auto-refresh JS). Public, no credentials —
 # served straight from app/static/ (mirrors the credential-free public site).

@@ -66,7 +66,12 @@
   `.sessions/2026-07-12-prompt-library.md` 💡.
 
 - **Deep-link fleet lane files into the widened /journal/{repo}/file view**
-  · `captured` — PR #177 lets the file route render markdown from every
+  · `built` (2026-07-12, console-home discoverability PR — every /fleet
+  lane card header now links the lane's status source and its
+  `docs/current-state.md` through the in-app `/journal/{repo}/file`
+  renderer (`fleet._file_view_url`); a lane outside the render allow-set
+  gets no dead link, and the GitHub ↗ links stay as fallback) — original
+  capture: PR #177 lets the file route render markdown from every
   FLEET_LANES repo, but no page links there for lane repos: the capability
   is reachable only by hand-typed URLs. Add per-lane deep-links from the
   /fleet lane cards (e.g. the lane's `docs/current-state.md` and its
