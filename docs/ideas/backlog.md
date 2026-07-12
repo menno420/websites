@@ -38,6 +38,20 @@
   the testing catalog. Source:
   `.sessions/2026-07-12-order-018-testing-platform-pr1.md` 💡.
 
+- **Guide chat transcript as exit-review evidence** · `captured` — the
+  guided-walkthrough side panel (ORDER 018 PR3) generates a per-step Q&A
+  between tester and AI guide, but it evaporates when the tab closes: the
+  exit reviewer grades the final answers blind to how the tester actually
+  engaged. Persisting the TEXT transcript only (bounded, per claim — screen
+  frames stay in-memory-only by the privacy contract) and appending it to
+  the submission as untrusted context would let the grader and the owner see
+  engagement, confusion points, and coached-vs-independent answers. Worth
+  having because the program pays on report quality and the guide already
+  produces first-hand evidence of it that is currently thrown away. Deduped
+  against this backlog + the queue-state NEXT list: nothing touches the
+  guide flow (it ships this PR). Source:
+  `.sessions/2026-07-12-order-018-testing-guided-mode-pr3.md` 💡.
+
 - **/prompts pinned-registry drift chip** · `captured` — the /prompts
   artifact list is pinned in `app/prompts.py` (the raw host cannot list
   directories), so a seat added or renamed in fleet-manager `projects/`

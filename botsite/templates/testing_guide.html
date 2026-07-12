@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Guided walkthrough — SuperBot testing program{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> guided walkthrough</span>
+    <div class="head-row"><h1>{{ task.title }}</h1></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+      <span class="sb-badge">{{ icon("coins", 11) }} ${{ task.payout_usd }}</span>
+      <span class="sb-badge">Step {{ step_index + 1 }} of {{ steps|length }}</span>
+      <span class="sb-badge">{{ claim.email }}</span>
+    </div>
+    <p class="sb-hint" style="margin-top:8px">One screen at a time. Your answers become your report —
+      finishing the last step submits it. <a href="/testing/s/{{ claim.token }}">Back to your claim page</a>.</p>
+  </section>
+
+  {% if error %}
+  <div class="sb-error section-sm" role="alert">{{ icon("alert", 16) }}<div>{{ error }}</div></div>
+  {% endif %}
+
+  <div style="display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:20px; align-items:start" class="guide-grid">
+    <div>
+      <div class="section-sm">
+        <h3>Your progress</h3>
+        {% for s in steps %}
+        <p class="sb-hint" style="margin-top:4px">
+          {% if loop.index0 == step_index %}<strong>→ {{ loop.index }}. {{ s.title }}</strong>
+          {% elif carried.get(loop.index0) %}✓ {{ loop.index }}. {{ s.title }}
+          {% else %}{{ loop.index }}. {{ s.title }}{% endif %}
+        </p>
+        {% endfor %}
+      </div>
+
+      {% set step = steps[step_index] %}
+      <form class="section-sm" method="post" action="/testing/s/{{ claim.token }}/guide" id="guide-step-form">
+        <h3>Step {{ step_index + 1 }} — {{ step.title }}</h3>
+        <p><strong>Do this:</strong> {{ step.instruction }}</p>
+        <p class="sb-hint" style="margin-top:6px"><strong>Look for:</strong> {{ step.look_for }}</p>
+        {% if task.product_url and step_index == 0 %}
+        <a class="sb-btn sb-btn-ghost sb-btn-sm" href="{{ task.product_url }}" target="_blank" rel="noopener" style="margin-top:6px">Open the product in a new tab {{ icon("external", 15) }}</a>
+        {% endif %}
+
+        <input type="hidden" name="step" value="{{ step_index }}">
+        {% for s in steps %}{% if loop.index0 != step_index %}
+        <input type="hidden" name="answer_{{ loop.index0 }}" value="{{ carried.get(loop.index0, '') }}">
+        {% endif %}{% endfor %}
+        {% if step_index != steps|length - 1 %}
+        <input type="hidden" name="findings" value="{{ findings_carry }}">
+        {% endif %}
+
+        <div class="sb-field" style="margin-top:12px">
+          <label class="sb-label" for="answer_{{ step_index }}">{{ step.question }}</label>
+          <textarea class="sb-inp" id="answer_{{ step_index }}" name="answer_{{ step_index }}" rows="4" maxlength="5000">{{ carried.get(step_index, '') }}</textarea>
+        </div>
+
+        {% if step_index == steps|length - 1 %}
+        <div class="sb-field">
+          <label class="sb-label" for="findings">Anything else? (optional)</label>
+          <textarea class="sb-inp" id="findings" name="findings" rows="4" maxlength="5000" placeholder="Anything the steps didn't ask about — exact URLs help.">{{ findings_carry }}</textarea>
+        </div>
+        {% endif %}
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px">
+          {% if step_index > 0 %}
+          <button class="sb-btn sb-btn-ghost" type="submit" name="nav" value="back">← Back</button>
+          {% endif %}
+          {% if step_index == steps|length - 1 %}
+          <button class="sb-btn sb-btn-primary" type="submit" name="nav" value="submit">Finish &amp; submit my walkthrough</button>
+          {% else %}
+          <button class="sb-btn sb-btn-primary" type="submit" name="nav" value="next">Save answer → next step</button>
+          {% endif %}
+        </div>
+        <p class="sb-hint" style="margin-top:8px">Answers travel with this form until the final step —
+          nothing is stored before you submit. Closing the page loses unsubmitted answers.</p>
+      </form>
+    </div>
+
+    <div id="guide-ai-config"
+         data-chat-url="/testing/s/{{ claim.token }}/guide/chat"
+         data-frame-url="/testing/s/{{ claim.token }}/guide/frame"
+         data-step="{{ step_index }}"
+         data-frame-max="{{ frame_max_bytes }}"
+         data-ai-available="{{ '1' if ai_available else '0' }}">
+      <div class="section-sm">
+        <h3>AI guide</h3>
+        {% if ai_available %}
+        <p class="sb-hint">Ask about the current step — what to check, where to click, what a finding
+          should look like. {{ guide_cap }} messages per claim (screen questions count too).</p>
+        <noscript><p class="sb-hint"><strong>JavaScript is off:</strong> the chat and screen sharing
+          need it, but every step above works and submits without it.</p></noscript>
+        <div id="guide-chat-log" aria-live="polite" style="max-height:320px; overflow-y:auto; margin-top:8px"></div>
+        <div style="display:flex; gap:8px; margin-top:10px">
+          <input class="sb-inp" id="guide-chat-input" maxlength="2000" placeholder="Ask the guide…" style="flex:1">
+          <button class="sb-btn sb-btn-primary sb-btn-sm" id="guide-chat-send" type="button">Send</button>
+        </div>
+        {% else %}
+        <p class="sb-hint"><strong>The AI guide is offline</strong> — no API key is configured on the
+          server. The step-by-step walkthrough above works fully without it; your answers still get
+          reviewed the normal way.</p>
+        {% endif %}
+      </div>
+
+      {% if ai_available %}
+      <div class="section-sm" id="guide-screen-section">
+        <h3>Screen awareness (optional)</h3>
+        <div class="sb-lane-pending" style="margin-top:6px">
+          <div class="head">{{ icon("info", 16) }}<h4>Before you opt in — what this does</h4></div>
+          <p><strong>What is captured:</strong> a screenshot of the screen or window you pick, roughly
+            every 15 seconds, plus whenever you press "Ask about this screen".</p>
+          <p><strong>When:</strong> only while this guide page is open, sharing is active, and this tab
+            is visible — nothing is captured while this tab is hidden.</p>
+          <p><strong>Retention:</strong> each frame is analyzed in memory and immediately discarded.
+            It is never stored, logged, or shown to anyone — not even the program owner.</p>
+          <p><strong>How to stop:</strong> your browser's stop-sharing bar or the Stop button below;
+            both halt the capture timer instantly. Capture also stops when you finish the walkthrough.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px">
+          <button class="sb-btn sb-btn-primary sb-btn-sm" id="guide-share-start" type="button">Share my screen with the AI guide</button>
+          <button class="sb-btn sb-btn-ghost sb-btn-sm" id="guide-share-ask" type="button" disabled>Ask about this screen</button>
+          <button class="sb-btn sb-btn-ghost sb-btn-sm" id="guide-share-stop" type="button" disabled>Stop sharing</button>
+        </div>
+        <p class="sb-hint" id="guide-share-status" style="margin-top:8px">Not sharing. Nothing is captured until you opt in.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<style>@media (max-width: 900px) { .guide-grid { grid-template-columns: minmax(0,1fr) !important; } }</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/testing_guide.js"></script>
+{% endblock %}

@@ -1,5 +1,5 @@
 {
-  "_comment": "Tester-program task catalog (ORDER 018). Committed JSON is the source of truth for WHAT can be tested; live claim/slot state lives in the SQLite store. status: open | coming-soon | closed. Every task is a REAL fleet product — coming-soon tasks say honestly why they are not open yet.",
+  "_comment": "Tester-program task catalog (ORDER 018). Committed JSON is the source of truth for WHAT can be tested; live claim/slot state lives in the SQLite store. status: open | coming-soon | closed. Every task is a REAL fleet product — coming-soon tasks say honestly why they are not open yet. guided-walkthrough tasks additionally carry a steps array (title, instruction, look_for, question) that drives the /testing/s/{token}/guide flow.",
   "tasks": [
     {
       "id": "site-review-botsite",
@@ -86,16 +86,54 @@
       "note": "Activates when the game deploys — the games-web arcade is not deployed yet, so there is honestly nothing to test today."
     },
     {
-      "id": "walkthrough-superbot-onboarding",
+      "id": "walkthrough-botsite-first-visit",
       "type": "guided-walkthrough",
-      "title": "Guided walkthrough: add SuperBot to a test server",
+      "title": "Guided walkthrough: first visit to the SuperBot site",
       "product_url": "https://botsite-production-cfd7.up.railway.app",
-      "brief": "Follow a step-by-step script to add SuperBot to a throwaway Discord server and run its core commands, confirming each step as you go and reporting exactly where the script and reality disagree.",
-      "payout_usd": 20,
-      "est_minutes": 60,
-      "slots_total": 2,
-      "status": "coming-soon",
-      "note": "Honest hold: guided walkthroughs need their written step scripts and the AI step-confirmation reviewer (PR2) before they can open."
+      "brief": "A step-by-step guided review of the SuperBot public site. After you claim the task, your private guide page walks you through six screens, one at a time, each with an instruction, things to look for, and one question to answer. An optional AI guide sits beside the steps: you can chat with it, and — only if you explicitly opt in — share your screen so it can ask about what it sees. The steps work fully without the AI.",
+      "payout_usd": 12,
+      "est_minutes": 30,
+      "slots_total": 3,
+      "status": "open",
+      "note": "",
+      "steps": [
+        {
+          "title": "Homepage first impression",
+          "instruction": "Open the site's homepage in another tab or window and look at it for about ten seconds before scrolling.",
+          "look_for": "Whether you can tell what SuperBot is, who it is for, and what the page wants you to do next — without scrolling or clicking.",
+          "question": "In one or two sentences: what is this site offering, and what did it seem to want you to do first? If you couldn't tell, say so."
+        },
+        {
+          "title": "Features",
+          "instruction": "Open Features from the header navigation and click into one feature that interests you.",
+          "look_for": "Cards that render empty or broken, copy that reads unfinished, and whether the feature's detail page delivers what its card promised.",
+          "question": "Which feature did you open, and did its detail page answer your questions about it? What was missing or confusing?"
+        },
+        {
+          "title": "Commands and search",
+          "instruction": "Open Commands, then press Cmd/Ctrl+K (or the search button) and search for any command you saw.",
+          "look_for": "Whether the search palette opens, whether its results make sense, and whether command detail pages load and read clearly.",
+          "question": "Did search find what you typed? Name one command page you opened and one thing on it that was unclear."
+        },
+        {
+          "title": "Games and Changelog",
+          "instruction": "Visit the Games page, then the Changelog page.",
+          "look_for": "Empty or broken sections, dates or entries that look wrong, and whether the changelog tells you the project is alive.",
+          "question": "After these two pages, does the project feel actively maintained? Point at what convinced you either way."
+        },
+        {
+          "title": "Status page",
+          "instruction": "Open the Status page from the navigation.",
+          "look_for": "Whether the systems list renders, whether the statuses are understandable to an outsider, and anything that looks stuck or fake.",
+          "question": "Do you trust what the status page tells you? What would make it more convincing?"
+        },
+        {
+          "title": "Theme and phone width",
+          "instruction": "Toggle the light/dark theme button in the header, then narrow your browser window to roughly phone width (or use your phone) and revisit two pages you already saw.",
+          "look_for": "Unreadable text after the theme switch, overlapping or clipped layout at phone width, and navigation that becomes unusable.",
+          "question": "What broke or got ugly in the other theme or at phone width? Name the page and what you saw — or say it held up."
+        }
+      ]
     }
   ]
 }
