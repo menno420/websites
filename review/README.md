@@ -30,7 +30,12 @@ generators, run from the repo root, produce the committed mirrors:
 - `gen_snapshot.py` → `data/snapshot.json` — this repo's own per-day history.
 - `gen_fleet.py` → `data/fleet.json` — the fleet-manager's canonical `LANES`
   registry + every repo-backed lane's `control/status.md` heartbeat
-  (raw.githubusercontent.com, anonymous, fail-soft, fields capped for size).
+  (raw.githubusercontent.com, anonymous, fail-soft, fields capped for size)
+  + every repo-backed lane's latest-commit `head` record (anonymous git
+  transport: `ls-remote` + a depth-1 treeless fetch — works where the REST
+  API is walled) + the 8-standing-seats structure and consolidation record
+  (commit-pinned sources in the module header; seat heartbeat numbers are
+  derived from the same per-repo fetches, never hand-written).
   Seat counts are recorded **as found** — the pages never hardcode a fleet
   size; registry-only seats (a seat with no repo) are surfaced as such.
 - `gen_stats.py` → `data/stats.json` — two REST calls per repo (last push,
@@ -45,6 +50,30 @@ Every stats surface renders its as-of timestamp; mirrors older than
 `fleetdata.STALE_HOURS` (48h) banner as stale, and a deployment whose code
 sha differs from the snapshot's source commit shows the snapshot-aging
 banner site-wide.
+
+**⚑ Until the owner flips one console toggle, the daily bake cannot
+self-land.** Verified 2026-07-12 (both historical runs, incl. run
+29184552812): the bake succeeds and pushes its `bake/…` branch, then
+`gh pr create` is refused with *"GitHub Actions is not permitted to create
+or approve pull requests"*. The workflow degrades honestly (job stays
+green; the run summary carries a compare link). The manual refresh path,
+until then:
+
+1. GitHub → Actions → **review-bake** → *Run workflow* (`workflow_dispatch`
+   on `main`) — or wait for the daily cron (`23 5 * * *`, best-effort).
+2. Open the run's **Summary**: if the ruleset allowed a direct push, the
+   data is already on `main` (done). Otherwise the summary names the pushed
+   `bake/…` branch and links the compare page — open the PR from there
+   (any session or the owner) and merge it on green `quality`.
+3. **Owner fix that retires step 2** (✅ safe, reversible): repo
+   **Settings → Actions → General → Workflow permissions → check "Allow
+   GitHub Actions to create and approve pull requests"**. After that the
+   workflow opens its own `[bake]` PR and arms auto-merge; the whole loop
+   is hands-free. (Queued in `docs/owner/OWNER-ACTIONS.md`.)
+
+Any agent session can also refresh by hand: run the three generators from
+the repo root and land `review/data/**` through a normal PR (this is what
+the ORDER 017 refresh did).
 
 ## Publishing a review edition (the ritual)
 

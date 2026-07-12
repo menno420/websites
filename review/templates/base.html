@@ -81,8 +81,9 @@
     <span>Program review — the record explaining itself.</span>
     <span class="sb-muted">Every number derived from the repo's committed history; every claim linked to its evidence.</span>
     <span class="right">
+      {% if generated_at %}<span class="sb-muted">data last refreshed {{ generated_at }}</span>{% endif %}
       {% if git_head %}<a href="{{ repo_url }}/commit/{{ git_head }}" target="_blank" rel="noopener">snapshot @ {{ git_head[:8] }}</a>{% endif %}
-      {% if generated_at %}<span class="sb-muted">generated {{ generated_at }}</span>{% endif %}
+      {% if fleet_generated_at %}<span class="sb-muted">fleet mirror {{ fleet_generated_at }}</span>{% endif %}
       <a href="{{ repo_url }}" target="_blank" rel="noopener">source repo</a>
       <a href="/story.json">story.json</a>
       <a href="/reviews/feed.xml">Atom feed</a>
