@@ -8,9 +8,13 @@ Covered per the order + seat conventions: the pinned registry's shape, the
 happy path rendering every seat and both fleet-wide artifacts with
 provenance + copy affordance + freshness indicator, autoescaping of hostile
 prompt content (prompts are untrusted DATA — a <script> in an upstream file
-must stay escaped), whitespace-exact rendering, and the degraded paths
+must stay escaped), whitespace-exact rendering, the degraded paths
 (per-artifact 404 and fully unreachable upstream) — always 200, never
-fabricated content. Network-free: ``github.fetch_file`` is monkeypatched.
+fabricated content — and the pinned-vs-registry drift chip (match / +added /
+−missing / both / listing unavailable = drift unknown, no false green).
+Network-free: ``github.fetch_file`` AND ``github.repo_api`` are
+monkeypatched (the autouse fixture pins a MATCHED registry listing; the
+drift tests override it per case).
 """
 
 import asyncio
@@ -19,6 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app import github, prompts  # noqa: E402
@@ -28,6 +33,35 @@ from app.main import app  # noqa: E402
 def _res(ok=True, status=200, data=None, error="", cached=False):
     return {"ok": ok, "status": status, "data": data, "error": error,
             "fetched_at": "12:00:00 UTC", "cached": cached, "url": ""}
+
+
+def _registry_listing(names):
+    """A projects/ contents-API listing whose package dirs are ``names``
+    (plus a root file, which the drift check must ignore)."""
+    return [{"type": "file", "name": "README.md", "path": "projects/README.md"}] + [
+        {"type": "dir", "name": n, "path": f"projects/{n}"} for n in names
+    ]
+
+
+def _patch_registry(monkeypatch, names=None, ok=True, status=200, error=""):
+    """Pin the projects/ registry listing (github.repo_api) for the test."""
+
+    async def fake_api(repo, subpath="", refresh=False):
+        assert repo == "fleet-manager" and subpath == "/contents/projects"
+        if not ok:
+            return _res(ok=False, status=status, data=None, error=error)
+        return _res(data=_registry_listing(names or []))
+
+    monkeypatch.setattr(github, "repo_api", fake_api)
+
+
+@pytest.fixture(autouse=True)
+def _registry_matches_by_default(monkeypatch):
+    """Every test in this module starts network-free with a registry listing
+    that MATCHES the pinned seats — overview() now cross-checks the pinned
+    set against the /projects listing, so an unpatched github.repo_api would
+    be a real network call. The drift tests below override this per case."""
+    _patch_registry(monkeypatch, names=list(prompts.SEATS))
 
 
 # --------------------------------------------------------------------------- #
@@ -264,3 +298,117 @@ async def _overview_offline(monkeypatch):
 
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
     return await prompts.overview()
+
+
+# --------------------------------------------------------------------------- #
+# pinned-vs-registry drift chip: the pinned SEATS cross-checked against the
+# live projects/ listing (same TTL-cached call /projects makes)
+# --------------------------------------------------------------------------- #
+
+
+def test_drift_exact_match_renders_ok_chip_only(monkeypatch):
+    _happy(monkeypatch)  # registry matches via the autouse fixture
+    out = asyncio.run(prompts.registry_drift())
+    assert out == {"state": "ok", "added": [], "missing": [], "reason": ""}
+
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert "pinned list matches registry" in r.text
+    assert "pinned list drifted" not in r.text
+    assert "drift unknown" not in r.text
+
+
+def test_drift_added_seat_in_registry(monkeypatch):
+    _happy(monkeypatch)
+    _patch_registry(monkeypatch, names=list(prompts.SEATS) + ["new-seat"])
+    out = asyncio.run(prompts.registry_drift())
+    assert out["state"] == "drift"
+    assert out["added"] == ["new-seat"] and out["missing"] == []
+
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert "pinned list drifted" in r.text
+    assert "+1 new in registry" in r.text
+    assert "<code>new-seat</code>" in r.text  # the actual name, not a count
+    assert "no longer present" not in r.text
+    assert "pinned list matches registry" not in r.text
+
+
+def test_drift_missing_seat_from_registry(monkeypatch):
+    _happy(monkeypatch)
+    _patch_registry(
+        monkeypatch, names=[s for s in prompts.SEATS if s != "websites"]
+    )
+    out = asyncio.run(prompts.registry_drift())
+    assert out["state"] == "drift"
+    assert out["added"] == [] and out["missing"] == ["websites"]
+
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert "pinned list drifted" in r.text
+    assert "−1 no longer present" in r.text
+    assert "new in registry" not in r.text
+    assert "pinned list matches registry" not in r.text
+
+
+def test_drift_added_and_missing_at_once(monkeypatch):
+    _happy(monkeypatch)
+    _patch_registry(
+        monkeypatch,
+        names=[s for s in prompts.SEATS if s not in ("websites", "game-lab")]
+        + ["seat-x", "seat-y"],
+    )
+    out = asyncio.run(prompts.registry_drift())
+    assert out["state"] == "drift"
+    assert out["added"] == ["seat-x", "seat-y"]
+    assert out["missing"] == ["game-lab", "websites"]
+
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert "pinned list drifted" in r.text
+    assert "+2 new in registry" in r.text
+    assert "<code>seat-x</code>" in r.text and "<code>seat-y</code>" in r.text
+    assert "−2 no longer present" in r.text
+    assert "pinned list matches registry" not in r.text
+
+
+def test_drift_unknown_when_listing_unavailable_never_false_green(monkeypatch):
+    """No listing = drift UNKNOWN — the chip says so honestly; a matched
+    green is never fabricated from a failed fetch. A 404 (registry not
+    landed) is also unknown, NOT '8 seats missing'."""
+    _happy(monkeypatch)
+    _patch_registry(monkeypatch, ok=False, status=0,
+                    error="ConnectError: unreachable")
+    out = asyncio.run(prompts.registry_drift())
+    assert out["state"] == "unknown"
+    assert "ConnectError: unreachable" in out["reason"]
+    assert out["added"] == [] and out["missing"] == []
+
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert "registry unavailable — drift unknown" in r.text
+    assert "pinned list matches registry" not in r.text  # no false green
+    assert "pinned list drifted" not in r.text  # and no invented drift
+
+    # 404 = registry not landed upstream → unknown too, never mass-missing
+    _patch_registry(monkeypatch, ok=False, status=404, error="Not Found")
+    out = asyncio.run(prompts.registry_drift())
+    assert out["state"] == "unknown" and "not landed" in out["reason"]
+    assert out["missing"] == []
+
+
+def test_drift_empty_registry_is_real_drift_not_unknown(monkeypatch):
+    """Distinguish empty-because-unavailable from genuinely empty: a listing
+    that SUCCEEDS but holds no package dirs means every pinned seat is
+    really missing upstream — honest drift, not unknown."""
+    _happy(monkeypatch)
+    _patch_registry(monkeypatch, names=[])
+    out = asyncio.run(prompts.registry_drift())
+    assert out["state"] == "drift"
+    assert out["added"] == [] and out["missing"] == sorted(prompts.SEATS)
+
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert "pinned list drifted" in r.text
+    assert "−8 no longer present" in r.text
+    assert "drift unknown" not in r.text

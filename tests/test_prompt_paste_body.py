@@ -11,7 +11,9 @@ without the marker (universals: comment header only; multi-line comment
 headers too), the no-``<!--``-ever guarantee, idempotence on already-clean
 text, and — via the route with a stubbed fetcher — that the rendered
 ``<pre>`` (which IS the copy payload: copycode.js copies ``pre.textContent``)
-carries the cleaned body. Network-free: ``github.fetch_file`` monkeypatched.
+carries the cleaned body. Network-free: ``github.fetch_file`` monkeypatched
+(the route test also pins ``github.repo_api`` — the drift chip's registry
+listing).
 """
 
 import re
@@ -22,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import github, prompt_artifacts  # noqa: E402
+from app import github, prompt_artifacts, prompts  # noqa: E402
 from app.main import app  # noqa: E402
 from app.prompt_artifacts import extract_paste_body  # noqa: E402
 
@@ -171,7 +173,13 @@ def test_prompts_route_renders_and_copies_only_the_clean_body(monkeypatch):
         return _res(data=fixtures.get(path.rsplit("/", 1)[-1],
                                       "v0 · plain body\n"))
 
+    async def fake_api(repo, subpath="", refresh=False):
+        # the drift chip's registry listing — matched, and network-free
+        return _res(data=[{"type": "dir", "name": s, "path": f"projects/{s}"}
+                          for s in prompts.SEATS])
+
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
+    monkeypatch.setattr(github, "repo_api", fake_api)
     r = TestClient(app).get("/prompts")
     assert r.status_code == 200
     pres = _pre_blocks(r.text)
