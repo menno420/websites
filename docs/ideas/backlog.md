@@ -9,6 +9,19 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Manifest completeness diff — "what is missing to finish this
+  environment"** · `captured` — the ORDER 021 slice-2 manifest page
+  (`/owner/environments-hub/manifest/{group}`) renders the owner-executed
+  plan (names + placeholders); merging the slice-1 live variable-NAME read
+  (superbot-websites group, project-scoped `RAILWAY_TOKEN`) would badge
+  each schema row set-live / missing-live, turning the plan into a
+  run-down checklist. Worth having because the owner executes these plans
+  by hand and today must eyeball the console against the plan to know what
+  remains. Distinct from the estate-page drift-check bullet below (that
+  one is documented-vs-live on `/owner/environments`; this is
+  manifest-vs-live per project group). Source:
+  `.sessions/2026-07-12-environments-hub-slice2.md` 💡.
+
 - **/owner/environments drift check: documented vs live variable names** ·
   `captured` — once the owner's project-scoped `RAILWAY_TOKEN` lands, the
   page holds both halves of a diff it does not yet compute: the COMMITTED

@@ -249,6 +249,199 @@ def _search_text(row: dict[str, Any]) -> str:
     return " ".join(parts)
 
 
+# ---------------------------------------------------------------------------
+# ORDER 021 slice 2 — env-creation plan/manifest generator.
+#
+# For one project group, generate the complete-environment MANIFEST from the
+# committed registry: (a) the service definitions, (b) the env-var SCHEMA —
+# variable NAMES paired with placeholders like <SET-IN-RAILWAY-CONSOLE>,
+# NEVER real values, (c) copyable setup commands the OWNER executes by hand
+# (Railway CLI variable sets, service-creation console steps, GitHub
+# settings/secrets/actions steps).
+#
+# HARD BOUNDARY (docs/RAILWAY-SAFETY.md, binding): this module only ever
+# GENERATES the plan. It makes no Railway call, contains no GraphQL
+# mutation strings (create/upsert/delete), and handles no API key —
+# RAILWAY_API_KEY never lives on an app service. Actual provisioning is
+# executed by the owner (or an authorized non-app session) at the consoles
+# the plan names. Placeholders are filled by hand there; a real value can
+# never appear here because none is ever loaded (the registry loader above
+# hard-rejects value-like fields).
+# ---------------------------------------------------------------------------
+
+# Placeholder per surface kind — the text names the console where the owner
+# fills in the real value BY HAND. Never a real value, by construction.
+PLACEHOLDER_BY_KIND = {
+    "railway-service": "<SET-IN-RAILWAY-CONSOLE>",
+    "railway-worker": "<SET-IN-RAILWAY-CONSOLE>",
+    "railway-postgres": "<MANAGED-BY-RAILWAY>",
+    "github-actions-secrets": "<SET-IN-GITHUB-SECRETS>",
+    "claude-environment": "<SET-IN-CLAUDE-SETTINGS>",
+}
+DEFAULT_PLACEHOLDER = "<SET-BY-OWNER>"
+
+# Single-source boundary notice: rendered verbatim (and prominently) on the
+# manifest page; the tests assert this exact text is present.
+BOUNDARY_NOTICE = (
+    "OWNER-EXECUTED PLAN ONLY — this page GENERATES the plan; it performs no "
+    "provisioning. Per docs/RAILWAY-SAFETY.md agents make no Railway "
+    "mutations and RAILWAY_API_KEY never lives on an app service. Every "
+    "<SET-...> placeholder is filled in BY HAND at the console it names by "
+    "the owner (or an authorized non-app session) — real secret values never "
+    "appear on this site."
+)
+
+
+def placeholder_for(kind: str) -> str:
+    return PLACEHOLDER_BY_KIND.get(kind, DEFAULT_PLACEHOLDER)
+
+
+def get_group(group_id: str, registry: dict[str, Any] | None = None):
+    """The registry group for ``group_id``, or ``None`` (route → 404)."""
+    reg = registry if registry is not None else load_registry()
+    for group in reg["groups"]:
+        if group["id"] == group_id:
+            return group
+    return None
+
+
+def _surface_commands(group: dict[str, Any], surface: dict[str, Any]) -> list[str]:
+    """The owner-executed setup steps for one surface — comments + copyable
+    commands. Variable placeholders only; an empty ``variable_names`` renders
+    an honest not-recorded note, never a guessed name."""
+    kind = surface["kind"]
+    ph = placeholder_for(kind)
+    manage = manage_link(group, surface)
+    names = surface["variable_names"]
+    lines = [f"## {surface['name']} ({kind}) — {surface['purpose']}"]
+
+    if kind in ("railway-service", "railway-worker"):
+        lines.append(
+            f"# 1. Railway console: create service '{surface['name']}' in "
+            f"project '{group['title']}' ({manage['url']})"
+        )
+        if names:
+            lines.append(
+                "# 2. set its variables (Railway CLI, explicitly linked to "
+                "that project/service — never ambient linkage):"
+            )
+            lines.extend(
+                f'railway variables --service "{surface["name"]}" '
+                f'--set "{name}={ph}"'
+                for name in names
+            )
+        else:
+            lines.append(
+                "# variable names are not recorded in this repo — record "
+                "them by PR (app/data/environments.json) before "
+                "provisioning; never guess."
+            )
+    elif kind == "railway-postgres":
+        lines.append(
+            "# Railway-managed database — add it from the Railway console; "
+            "connection variables are Railway-managed and never live in "
+            "this repo."
+        )
+    elif kind == "github-actions-secrets":
+        lines.append(f"# manage at: {manage['url']}")
+        if names:
+            lines.extend(
+                f'gh secret set {name} --repo "{surface["name"]}"  '
+                f"# value prompted interactively — {ph}"
+                for name in names
+            )
+        else:
+            lines.append(
+                f'# per secret: gh secret set NAME --repo "{surface["name"]}" '
+                "(value prompted interactively — secret names are not "
+                "recorded in this repo; list them at the settings page)."
+            )
+    elif kind == "claude-environment":
+        lines.append(f"# create/edit at: {manage['url']}")
+        lines.append(
+            "# env-var schema + setup script: fleet-manager environments/ "
+            "registry — rendered read-only at /environments on this site."
+        )
+        if names:
+            lines.extend(f"# variable: {name}={ph}" for name in names)
+    else:
+        lines.append(f"# manage at: {manage['url']}")
+        if names:
+            lines.extend(f"# variable: {name}={ph}" for name in names)
+        else:
+            lines.append("# variable names are not recorded in this repo.")
+    return lines
+
+
+def manifest(group_id: str) -> dict[str, Any] | None:
+    """The complete-environment manifest for one project group, generated
+    from the committed registry alone (no network, no live reads, no
+    mutations). ``None`` for an unknown group (route → 404)."""
+    registry = load_registry()
+    group = get_group(group_id, registry)
+    if group is None:
+        return None
+
+    services: list[dict[str, Any]] = []
+    for surface in group["surfaces"]:
+        services.append(
+            {
+                "surface": surface,
+                "manage": manage_link(group, surface),
+                "placeholder": placeholder_for(surface["kind"]),
+                "schema": [
+                    {"name": n, "placeholder": placeholder_for(surface["kind"])}
+                    for n in surface["variable_names"]
+                ],
+            }
+        )
+
+    header = [
+        f"# complete-environment plan — {group['title']}",
+        f"# generated from app/data/environments.json (as of "
+        f"{registry.get('as_of', '')}) — names + placeholders only",
+        "# " + BOUNDARY_NOTICE,
+        "",
+    ]
+    command_lines = list(header)
+    for svc in services:
+        command_lines.extend(_surface_commands(group, svc["surface"]))
+        command_lines.append("")
+
+    json_doc = {
+        "generated_from": "app/data/environments.json",
+        "as_of": registry.get("as_of", ""),
+        "boundary": BOUNDARY_NOTICE,
+        "group": {
+            "id": group["id"],
+            "title": group["title"],
+            "kind": group["kind"],
+            "purpose": group["purpose"],
+        },
+        "services": [
+            {
+                "name": svc["surface"]["name"],
+                "kind": svc["surface"]["kind"],
+                "purpose": svc["surface"]["purpose"],
+                "url": svc["surface"].get("url"),
+                "managed_at": svc["manage"]["url"],
+                "env_schema": svc["schema"],
+                "notes": svc["surface"].get("notes", ""),
+            }
+            for svc in services
+        ],
+    }
+
+    return {
+        "group": group,
+        "as_of": registry.get("as_of", ""),
+        "services": services,
+        "boundary": BOUNDARY_NOTICE,
+        "commands_text": "\n".join(command_lines).rstrip() + "\n",
+        "manifest_json": json.dumps(json_doc, indent=2),
+    }
+
+
 # ORDER 019 reuse: each project group is a separately reviewable filter; the
 # kind dimension cuts across groups (e.g. all railway-services at once).
 FILTER_SPEC = listfilter.ListSpec(

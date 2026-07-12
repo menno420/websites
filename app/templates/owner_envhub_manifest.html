@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}owner · environment manifest · {{ m.group.id }}{% endblock %}
+{% block headright %}🔒 owner · <a href="/owner/environments-hub">environments hub</a> · <a href="/owner">board</a>{% endblock %}
+
+{% block content %}
+
+<div class="card" style="border-color:var(--purple);">
+  <h2>🔒 create-complete-environment manifest
+    <span class="dim small">— {{ m.group.title }}</span></h2>
+  <p class="small dim">{{ m.group.purpose }} · generated from the committed
+  registry <code>app/data/environments.json</code> (as of {{ m.as_of }},
+  correct/extend it by PR) — ORDER 021 slice 2. Variable
+  <strong>names + placeholders only, never values</strong>.</p>
+  <p class="banner">⚠ {{ m.boundary }}</p>
+</div>
+
+<div class="card">
+  <h2>service definitions <span class="dim small">— what a complete {{ m.group.id }} environment contains</span></h2>
+  <table>
+    <tr><th>service / surface</th><th>kind</th><th>purpose</th><th>managed at</th></tr>
+    {% for svc in m.services %}
+    <tr>
+      <td>{% if svc.surface.url %}<a href="{{ svc.surface.url }}">{{ svc.surface.name }}</a>{% else %}{{ svc.surface.name }}{% endif %}</td>
+      <td><span class="b design">{{ svc.surface.kind }}</span></td>
+      <td class="small">{{ svc.surface.purpose }}
+        {% if svc.surface.notes %}<div class="dim">{{ svc.surface.notes }}</div>{% endif %}</td>
+      <td class="small"><a href="{{ svc.manage.url }}">{{ svc.manage.label }} →</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>env-var schema <span class="dim small">— variable NAMES + placeholders; the owner fills each placeholder by hand at the console it names</span></h2>
+  <table>
+    <tr><th>service / surface</th><th>variable name</th><th>placeholder (never a value)</th></tr>
+    {% for svc in m.services %}
+    {% if svc.schema %}
+    {% for row in svc.schema %}
+    <tr>
+      <td class="small">{{ svc.surface.name }}</td>
+      <td><code>{{ row.name }}</code></td>
+      <td class="small"><code>{{ row.placeholder }}</code></td>
+    </tr>
+    {% endfor %}
+    {% else %}
+    <tr>
+      <td class="small">{{ svc.surface.name }}</td>
+      <td class="dim small" colspan="2">variable names not recorded in this
+        repo — record them by PR before provisioning; never guessed here.</td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>setup commands <span class="dim small">— copyable; EXECUTED BY THE OWNER, never by this site or an agent</span></h2>
+  <p class="small dim">Railway CLI variable sets, console service-creation
+  steps, and GitHub <code>settings/secrets/actions</code> steps. Replace each
+  placeholder by hand — the plan carries no real value to leak.</p>
+  <pre>{{ m.commands_text }}</pre>
+</div>
+
+<div class="card">
+  <h2>manifest (JSON) <span class="dim small">— the same plan as a copyable machine-readable block</span></h2>
+  <pre>{{ m.manifest_json }}</pre>
+</div>
+
+<p class="dim small">🔒 this page is read-only and owner-gated (same gate +
+Discord-OAuth seam as the <a href="/owner/environments-hub">environments
+hub</a>). No provisioning code exists behind it — see
+<code>docs/RAILWAY-SAFETY.md</code>.</p>
+{% endblock %}
+
+{% block scripts %}<script src="/static/copycode.js" defer></script>{% endblock %}

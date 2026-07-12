@@ -259,6 +259,32 @@ async def owner_environments_hub(request: Request, _: None = Depends(require_own
     )
 
 
+@router.get("/environments-hub/manifest/{group_id}", response_class=HTMLResponse)
+async def owner_envhub_manifest(
+    group_id: str, request: Request, _: None = Depends(require_owner)
+):
+    """ORDER 021 slice 2 — the env-creation plan/manifest generator: for one
+    project group, the complete-environment manifest generated from the
+    committed registry (app/data/environments.json): service definitions,
+    the env-var SCHEMA (variable NAMES + placeholders, never values), and
+    copyable setup commands the OWNER executes by hand.
+
+    Read-only GET behind the exact same gate as the hub (same Discord-OAuth
+    seam: swap the dependency, nothing else). It performs NO provisioning —
+    per docs/RAILWAY-SAFETY.md agents make no Railway mutations and
+    RAILWAY_API_KEY never lives on an app service; this route makes no
+    Railway (or any network) call at all.
+    """
+    data = envhub.manifest(group_id)
+    if data is None:
+        raise HTTPException(
+            status_code=404, detail=f"unknown project group {group_id!r}"
+        )
+    return templates.TemplateResponse(
+        request, "owner_envhub_manifest.html", {"m": data}
+    )
+
+
 async def _render_with_banner(request: Request, banner: dict) -> HTMLResponse:
     rows = await readiness.board(reveal_secrets=True)
     return templates.TemplateResponse(
