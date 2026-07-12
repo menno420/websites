@@ -59,6 +59,12 @@ the screenshot upload deferred from PR1.
 - **Owner ask** appended to `docs/owner/OWNER-ACTIONS.md` (six-field + RISK):
   set `ANTHROPIC_API_KEY` on the botsite service (no such ask existed) —
   reversible, spend bounded, degraded mode holds until then.
+  - *Amended same day (follow-up commit on this branch):* the coordinator
+    session reported the key already wired 2026-07-12 (copied from the
+    Railway "worker" service via the Railway API onto botsite + review;
+    auto-redeployed) — the ⚑ block is annotated reported-resolved; not
+    verifiable from this repo, so verify post-merge via the owner queue's
+    AI-state panel at `/testing/owner`.
 - **Tests** — 28 new (`botsite/tests/test_testing_ai.py` + fixture/assert
   updates in `test_testing.py`): degraded mode, mocked-API happy path
   (httpx seam monkeypatched — CI makes zero network calls), JSON/schema

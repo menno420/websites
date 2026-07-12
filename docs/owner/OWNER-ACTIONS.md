@@ -156,17 +156,17 @@ the shipped mitigations). The SAME one-paste `DATABASE_URL` errand in the
 existing "botsite submissions PostgreSQL" ask unblocks durable storage for
 BOTH `/submit` and `/testing` — one database, two payoffs.
 
-### ⚑ Ask added by ORDER 018 PR2 (2026-07-12 — AI exit-review on `/testing`)
+### ⚑ Ask added by ORDER 018 PR2 (2026-07-12 — AI exit-review on `/testing`) — **reported wired 2026-07-12, no owner click expected**
 
 ```markdown
-⚑ OWNER-ACTION
-WHAT: Set ANTHROPIC_API_KEY on the botsite Railway service so the tester program's AI exit-review runs.
-WHERE: console.anthropic.com → API Keys (create a key if none exists); then railway.app → project superbot-websites → service botsite → Variables → New Variable.
-HOW: name ANTHROPIC_API_KEY, value = the key from the Anthropic console. One paste, Save. Optional tuning knobs (defaults are sensible): TESTING_AI_MODEL (default claude-haiku-4-5-20251001 — cheap grading), TESTING_AI_DAILY_CAP (default 50 calls/day), TESTING_AUTOPAY_MIN_SCORE (default 80).
+⚑ OWNER-ACTION — reported RESOLVED 2026-07-12 (kept for the record; verify after merge, no click needed unless degraded)
+WHAT: ~~Set ANTHROPIC_API_KEY on the botsite Railway service so the tester program's AI exit-review runs.~~ Reported wired 2026-07-12: the coordinator session copied the key from the Railway "worker" service via the Railway API onto BOTH the botsite and review services (verified present by name; services auto-redeployed).
+WHERE: was: console.anthropic.com → API Keys; railway.app → superbot-websites → botsite → Variables. Now: nothing — the variable is reportedly already on botsite (and review).
+HOW: no action. Optional tuning knobs remain available (defaults are sensible): TESTING_AI_MODEL (default claude-haiku-4-5-20251001 — cheap grading), TESTING_AI_DAILY_CAP (default 50 calls/day), TESTING_AUTOPAY_MIN_SCORE (default 80).
 RISK: ↩️ reversible — delete the variable any time; while unset the program degrades honestly (submissions accepted exactly as before, pages say the review is manual) and no call is ever made. Spend is bounded even with the key set: ~1500 max output tokens/call, 50 calls/day default, 4 calls/submission, one retry max.
-WHY-IT-MATTERS: without the key every tester submission waits for your fully manual read; with it each submission arrives in the owner queue pre-graded (0–100 score, low-effort flag, findings by severity, follow-up Q&A) and the auto-pay gate computes real eligibility for PR3.
-UNBLOCKS: the AI exit-review shipping in ORDER 018 PR2, and the same integration pattern is the template for ORDER 017's review-site assistant.
-VERIFIED-NEEDED: the key is owner-held (no agent credential exists — the env is unset in every agent session, degraded mode confirmed by tests) and Railway variable mutations are policy-walled for agents (docs/RAILWAY-SAFETY.md — deliberately not attempted; same wall as the asks above).
+WHY-IT-MATTERS: with the key present each tester submission arrives in the owner queue pre-graded (0–100 score, low-effort flag, findings by severity, follow-up Q&A) and the auto-pay gate computes real eligibility for PR3.
+UNBLOCKS: the AI exit-review shipping in ORDER 018 PR2 goes live on merge with no owner errand; the same integration pattern is the template for ORDER 017's review-site assistant.
+VERIFIED-NEEDED: the wiring report is relayed from the coordinator session and is NOT independently verifiable from this repo (no agent credential here can read Railway variables — docs/RAILWAY-SAFETY.md still walls agent-initiated Railway reads/mutations from repo sessions). Verify after #176/#179 merge via the owner queue's AI-state panel at <botsite-url>/testing/owner (it shows whether the key is present at runtime). Only if that panel shows degraded does the original one-paste ask above come back into force.
 ```
 
 ## 🟢 Decided / resolved
