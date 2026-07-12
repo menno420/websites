@@ -47,6 +47,8 @@
   <summary>{{ s.group.title }} <span class="b">{{ s.rows | length }}</span>
     <span class="dim small">{{ s.group.purpose }}</span></summary>
   {% if s.group.notes %}<p class="dim small">{{ s.group.notes }}</p>{% endif %}
+  <p class="small"><a class="b" href="/owner/environments-hub/manifest/{{ s.group.id }}">create-complete-environment manifest →</a>
+    <span class="dim">names + placeholders + owner-executed setup commands — never values, never provisioning</span></p>
   <table>
     <tr><th>surface</th><th>holds (variable names)</th><th>managed at</th></tr>
     {% for row in s.rows %}
@@ -110,7 +112,8 @@
 
 <p class="dim small">🔒 secret values are never stored in the registry, fetched,
 or rendered — names and links only (the registry loader rejects value-like
-fields). Slice 2 (create-complete-environment manifests per project group)
-follows separately. To correct or extend this inventory, edit
+fields). Each group's <strong>create-complete-environment manifest</strong>
+(slice 2) generates the owner-executed setup plan — names + placeholders,
+never values, never provisioning. To correct or extend this inventory, edit
 <code>app/data/environments.json</code> by PR.</p>
 {% endblock %}
