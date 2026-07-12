@@ -16,12 +16,13 @@ eligibility gate, kill switch — with **no way to move real money**:
   being absent/false.
 - Hard caps: per-payout max, per-day cap, per-month cap, one payout per
   email per task.
-- Auto-payout eligibility (auto-pay when the AI exit-review passes threshold
-  AND the tester is not first-time/flagged; otherwise queue for owner
-  one-click) is implemented as real code paths — but the AI exit-review only
-  lands in PR2, so in v1 the review gate ALWAYS resolves to "queue for owner
-  approval". Every approve in v1 therefore produces an ``owed`` ledger row
-  for the owner queue, never a payment.
+- Auto-payout eligibility (auto-pay when the AI exit-review score reaches
+  the ``TESTING_AUTOPAY_MIN_SCORE`` threshold AND the submission is not
+  low-effort/flagged; otherwise queue for owner one-click) computes REAL
+  eligibility since PR2 wired the exit-review score in — but the ``DRY_RUN``
+  constant below still holds every payout back, so every approve in v1
+  produces an ``owed`` ledger row for the owner queue, never a payment. The
+  owner queue shows the would-auto-pay verdict per submission.
 
 Layering: domain module for ``botsite/testing.py``; imports only the store.
 """
@@ -49,6 +50,16 @@ DEFAULT_MONTHLY_CAP_USD = 300.0
 ENV_CLIENT_ID = "PAYPAL_CLIENT_ID"
 ENV_CLIENT_SECRET = "PAYPAL_CLIENT_SECRET"
 ENV_AUTOPAY = "TESTING_AUTOPAY_ENABLED"
+
+# Auto-pay quality bar: the AI exit-review score (PR2) must reach this for a
+# submission to be autopay-eligible. Env-tunable; the gate still queues
+# everything in v1 because DRY_RUN holds.
+ENV_MIN_SCORE = "TESTING_AUTOPAY_MIN_SCORE"
+DEFAULT_MIN_SCORE = 80.0
+
+
+def min_autopay_score() -> float:
+    return float(os.environ.get(ENV_MIN_SCORE) or DEFAULT_MIN_SCORE)
 
 
 def daily_cap_usd() -> float:
@@ -129,14 +140,18 @@ def decide_payout(
     claim: dict[str, Any],
     task: dict[str, Any],
     *,
-    ai_review_passed: Optional[bool] = None,
+    ai_score: Optional[int] = None,
+    ai_low_effort: bool = False,
     tester_flagged: bool = False,
 ) -> dict[str, Any]:
     """The auto-payout eligibility gate, evaluated on approve.
 
     Returns ``{"action": "queue-owner" | "autopay", "amount_usd", "reasons"}``.
-    ``ai_review_passed`` is the PR2 AI exit-review verdict — v1 has no
-    reviewer, so it is always ``None`` here and the gate ALWAYS queues.
+    ``ai_score`` is the AI exit-review's 0-100 quality score (PR2); ``None``
+    means no automated verdict exists for the submission (degraded mode /
+    review pending) and the gate queues. The score gate computes REAL
+    eligibility now, but v1 behavior is unchanged: the DRY_RUN constant below
+    always appends a reason, so everything still queues for the owner.
     Reasons are accumulated (not short-circuited) so the owner queue can show
     every gate that held a payout back.
     """
@@ -165,28 +180,42 @@ def decide_payout(
         reasons.append(f"monthly payout cap (${monthly_cap_usd():.2f}) would be exceeded")
     if tester_flagged:
         reasons.append("tester is flagged — held for owner review")
-    if ai_review_passed is None:
-        # v1 reality: the AI exit-review arrives in PR2, so no submission can
-        # pass the review threshold yet — everything queues for the owner.
-        reasons.append("AI exit-review not live yet (PR2) — queued for owner one-click approval")
-    elif not ai_review_passed:
-        reasons.append("AI exit-review below threshold — queued for owner review")
+    if ai_low_effort:
+        reasons.append("AI exit-review flagged the submission as low-effort — held for owner review")
+    if ai_score is None:
+        reasons.append(
+            "no automated exit-review verdict for this submission "
+            "(degraded/unavailable) — queued for owner one-click approval"
+        )
+    elif ai_score < min_autopay_score():
+        reasons.append(
+            f"AI exit-review score {ai_score} is below the auto-pay threshold "
+            f"({min_autopay_score():.0f} — {ENV_MIN_SCORE})"
+        )
 
     if reasons:
         return {"action": "queue-owner", "amount_usd": amount, "reasons": reasons}
-    # Unreachable in v1 by construction (the DRY_RUN + AI-review gates above
-    # always append a reason); kept as the real PR2/PR3 code path.
+    # Unreachable in v1 by construction (the DRY_RUN gate above always
+    # appends a reason); kept as the real PR3 code path.
     return {"action": "autopay", "amount_usd": amount, "reasons": []}
 
 
-def process_approval(claim: dict[str, Any], task: dict[str, Any]) -> dict[str, Any]:
+def process_approval(
+    claim: dict[str, Any],
+    task: dict[str, Any],
+    *,
+    ai_score: Optional[int] = None,
+    ai_low_effort: bool = False,
+) -> dict[str, Any]:
     """Run the gate for an approved submission and write the ledger.
 
     v1 outcome, always: an ``owed`` ledger row (queued for the owner) with the
     gate's reasons in the note. The autopay branch exists and is exercised in
     tests via the adapter's dry-run execute — it can never pay in v1.
     """
-    decision = decide_payout(claim, task)
+    decision = decide_payout(
+        claim, task, ai_score=ai_score, ai_low_effort=ai_low_effort
+    )
     if decision["action"] == "autopay":  # pragma: no cover - impossible in v1
         result = get_adapter().execute(claim=claim, amount_usd=decision["amount_usd"])
         decision["executed"] = result
@@ -217,4 +246,6 @@ def payout_config_summary() -> dict[str, Any]:
         "max_payout_usd": MAX_PAYOUT_USD,
         "daily_cap_usd": daily_cap_usd(),
         "monthly_cap_usd": monthly_cap_usd(),
+        "autopay_min_score": min_autopay_score(),
+        "min_score_env": ENV_MIN_SCORE,
     }

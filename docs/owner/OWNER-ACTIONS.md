@@ -156,6 +156,19 @@ the shipped mitigations). The SAME one-paste `DATABASE_URL` errand in the
 existing "botsite submissions PostgreSQL" ask unblocks durable storage for
 BOTH `/submit` and `/testing` — one database, two payoffs.
 
+### ⚑ Ask added by ORDER 018 PR2 (2026-07-12 — AI exit-review on `/testing`)
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Set ANTHROPIC_API_KEY on the botsite Railway service so the tester program's AI exit-review runs.
+WHERE: console.anthropic.com → API Keys (create a key if none exists); then railway.app → project superbot-websites → service botsite → Variables → New Variable.
+HOW: name ANTHROPIC_API_KEY, value = the key from the Anthropic console. One paste, Save. Optional tuning knobs (defaults are sensible): TESTING_AI_MODEL (default claude-haiku-4-5-20251001 — cheap grading), TESTING_AI_DAILY_CAP (default 50 calls/day), TESTING_AUTOPAY_MIN_SCORE (default 80).
+RISK: ↩️ reversible — delete the variable any time; while unset the program degrades honestly (submissions accepted exactly as before, pages say the review is manual) and no call is ever made. Spend is bounded even with the key set: ~1500 max output tokens/call, 50 calls/day default, 4 calls/submission, one retry max.
+WHY-IT-MATTERS: without the key every tester submission waits for your fully manual read; with it each submission arrives in the owner queue pre-graded (0–100 score, low-effort flag, findings by severity, follow-up Q&A) and the auto-pay gate computes real eligibility for PR3.
+UNBLOCKS: the AI exit-review shipping in ORDER 018 PR2, and the same integration pattern is the template for ORDER 017's review-site assistant.
+VERIFIED-NEEDED: the key is owner-held (no agent credential exists — the env is unset in every agent session, degraded mode confirmed by tests) and Railway variable mutations are policy-walled for agents (docs/RAILWAY-SAFETY.md — deliberately not attempted; same wall as the asks above).
+```
+
 ## 🟢 Decided / resolved
 
 | # | Item | Decision | Provenance |

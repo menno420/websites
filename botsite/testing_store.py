@@ -23,6 +23,7 @@ gitignored).
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import sqlite3
@@ -34,9 +35,17 @@ from typing import Any, Optional
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_DB_PATH = BASE_DIR / "testing.sqlite3"
 
-# Claim lifecycle: claimed → submitted → approved | rejected; approved → paid.
+# Claim lifecycle: claimed → submitted → (AI exit-review done) reviewed →
+# approved | rejected; approved → paid. A submission whose AI review is
+# degraded/unavailable stays 'submitted' (the owner reviews it manually).
 # A rejected claim frees its task slot (active = everything except rejected).
-CLAIM_STATUSES = ("claimed", "submitted", "approved", "rejected", "paid")
+CLAIM_STATUSES = ("claimed", "submitted", "reviewed", "approved", "rejected", "paid")
+# AI exit-review lifecycle (one review row per submission):
+#   pending-followup — graded, follow-up questions await the tester
+#   reviewed         — final verdict (score present)
+#   degraded         — no automated verdict (no key / cap hit / API or
+#                      schema failure); the reason is stored, never a secret
+AI_REVIEW_STATUSES = ("pending-followup", "reviewed", "degraded")
 # Ledger states: owed (approved, waiting on the owner/rail) · held (flagged) ·
 # paid (owner marked it paid) · dry-run (the payout adapter's no-money record).
 LEDGER_STATES = ("owed", "held", "paid", "dry-run")
@@ -58,6 +67,28 @@ CREATE TABLE IF NOT EXISTS submissions (
     claim_id INTEGER NOT NULL REFERENCES claims(id),
     answers_json TEXT NOT NULL DEFAULT '{}',
     findings TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ai_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id INTEGER NOT NULL UNIQUE REFERENCES submissions(id),
+    status TEXT NOT NULL,
+    score INTEGER,
+    low_effort INTEGER NOT NULL DEFAULT 0,
+    summary TEXT NOT NULL DEFAULT '',
+    findings_json TEXT NOT NULL DEFAULT '[]',
+    followups_json TEXT NOT NULL DEFAULT '[]',
+    degraded_reason TEXT NOT NULL DEFAULT '',
+    calls_used INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS screenshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id INTEGER NOT NULL REFERENCES submissions(id),
+    filename TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    data BLOB NOT NULL,
     created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS payout_ledger (
@@ -214,6 +245,133 @@ def list_submissions() -> list[dict[str, Any]]:
     return _rows(rows)
 
 
+# --- AI exit-reviews (one row per submission) --------------------------------
+
+def _review_row(row: sqlite3.Row) -> dict[str, Any]:
+    """Row → dict with the JSON columns decoded (defensively)."""
+    out = dict(row)
+    for col, key, fallback in (
+        ("findings_json", "findings", []),
+        ("followups_json", "followups", []),
+    ):
+        try:
+            out[key] = json.loads(out.get(col) or "[]")
+        except ValueError:
+            out[key] = fallback
+    out["low_effort"] = bool(out.get("low_effort"))
+    return out
+
+
+def save_ai_review(
+    submission_id: int,
+    *,
+    status: str,
+    score: Optional[int] = None,
+    low_effort: bool = False,
+    summary: str = "",
+    findings: Optional[list[dict[str, Any]]] = None,
+    followups: Optional[list[dict[str, Any]]] = None,
+    degraded_reason: str = "",
+    calls_used: int = 0,
+) -> dict[str, Any]:
+    """Insert-or-replace the submission's single AI review row."""
+    assert status in AI_REVIEW_STATUSES, status
+    now = _now()
+    with closing(_connect()) as conn, conn:
+        existing = conn.execute(
+            "SELECT id, created_at FROM ai_reviews WHERE submission_id = ?",
+            (submission_id,),
+        ).fetchone()
+        created_at = existing["created_at"] if existing else now
+        conn.execute(
+            "INSERT INTO ai_reviews (submission_id, status, score, low_effort,"
+            " summary, findings_json, followups_json, degraded_reason,"
+            " calls_used, created_at, updated_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            " ON CONFLICT(submission_id) DO UPDATE SET"
+            " status=excluded.status, score=excluded.score,"
+            " low_effort=excluded.low_effort, summary=excluded.summary,"
+            " findings_json=excluded.findings_json,"
+            " followups_json=excluded.followups_json,"
+            " degraded_reason=excluded.degraded_reason,"
+            " calls_used=excluded.calls_used, updated_at=excluded.updated_at",
+            (
+                submission_id,
+                status,
+                score,
+                1 if low_effort else 0,
+                summary,
+                json.dumps(findings or [], ensure_ascii=False),
+                json.dumps(followups or [], ensure_ascii=False),
+                degraded_reason,
+                calls_used,
+                created_at,
+                now,
+            ),
+        )
+        row = conn.execute(
+            "SELECT * FROM ai_reviews WHERE submission_id = ?", (submission_id,)
+        ).fetchone()
+    return _review_row(row)
+
+
+def ai_review_for_submission(submission_id: int) -> Optional[dict[str, Any]]:
+    with closing(_connect()) as conn:
+        row = conn.execute(
+            "SELECT * FROM ai_reviews WHERE submission_id = ?", (submission_id,)
+        ).fetchone()
+    return _review_row(row) if row else None
+
+
+def degraded_review_count() -> int:
+    with closing(_connect()) as conn:
+        (n,) = conn.execute(
+            "SELECT COUNT(*) FROM ai_reviews WHERE status = 'degraded'"
+        ).fetchone()
+    return int(n)
+
+
+# --- screenshots (blobs — captured by the JSON export valve) -----------------
+
+def add_screenshot(
+    submission_id: int, filename: str, content_type: str, data: bytes
+) -> dict[str, Any]:
+    with closing(_connect()) as conn, conn:
+        cur = conn.execute(
+            "INSERT INTO screenshots (submission_id, filename, content_type,"
+            " data, created_at) VALUES (?, ?, ?, ?, ?)",
+            (submission_id, filename, content_type, data, _now()),
+        )
+        row = conn.execute(
+            "SELECT id, submission_id, filename, content_type,"
+            " LENGTH(data) AS size_bytes, created_at"
+            " FROM screenshots WHERE id = ?",
+            (cur.lastrowid,),
+        ).fetchone()
+    return dict(row)
+
+
+def screenshots_for_submission(submission_id: int) -> list[dict[str, Any]]:
+    """Metadata only — the blob is served by its own owner-auth route."""
+    with closing(_connect()) as conn:
+        rows = conn.execute(
+            "SELECT id, submission_id, filename, content_type,"
+            " LENGTH(data) AS size_bytes, created_at"
+            " FROM screenshots WHERE submission_id = ? ORDER BY id",
+            (submission_id,),
+        ).fetchall()
+    return _rows(rows)
+
+
+def screenshot_by_id(shot_id: int) -> Optional[dict[str, Any]]:
+    """Full row including the blob (owner-auth serving route only)."""
+    with closing(_connect()) as conn:
+        row = conn.execute(
+            "SELECT * FROM screenshots WHERE id = ?", (shot_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
 # --- payout ledger ----------------------------------------------------------
 
 def add_ledger_entry(
@@ -288,9 +446,18 @@ def export_all() -> dict[str, Any]:
         submissions = _rows(
             conn.execute("SELECT * FROM submissions ORDER BY id").fetchall()
         )
+        ai_reviews = _rows(
+            conn.execute("SELECT * FROM ai_reviews ORDER BY id").fetchall()
+        )
+        shots = _rows(
+            conn.execute("SELECT * FROM screenshots ORDER BY id").fetchall()
+        )
         ledger = _rows(
             conn.execute("SELECT * FROM payout_ledger ORDER BY id").fetchall()
         )
+    # Screenshot blobs base64 so the export stays a single valid JSON backup.
+    for s in shots:
+        s["data_base64"] = base64.b64encode(s.pop("data")).decode("ascii")
     return {
         "exported_at": _now(),
         "db_path": db_path(),
@@ -300,5 +467,7 @@ def export_all() -> dict[str, Any]:
         ),
         "claims": claims,
         "submissions": submissions,
+        "ai_reviews": ai_reviews,
+        "screenshots": shots,
         "payout_ledger": ledger,
     }

@@ -4,10 +4,15 @@ Public flow: an honest landing page over a committed task catalog
 (``testing_tasks.json``), a claim form per open task (no mail provider exists
 in this repo, so no magic-code email — the claim response shows a private
 tokened link the tester must save; claims are reviewed manually), and a
-structured per-type submission form on that private link. The AI exit-review
-arrives in PR2; every page says so honestly. Screenshot upload is deliberately
-deferred to PR2 (multipart parsing would add the first new dependency to this
-service; the form says so and asks for described/linked evidence instead).
+structured per-type submission form on that private link — now with optional
+screenshot upload (≤3 files, ≤2 MB each, png/jpeg only, magic-bytes checked;
+stored as SQLite blobs so the owner export captures them; served back only on
+the owner queue). On submit, the AI exit-review (``testing_ai.py``, PR2)
+grades the report, may ask up to 3 follow-up questions inline on the tester's
+status page (answers get ONE re-grade round), and stores a structured report
+for the owner queue. No API key / cap hit / API failure → honest degraded
+mode: the submission is accepted exactly as before and every page says the
+owner reviews manually.
 
 Owner flow: HTTP Basic (constant-time compare vs env ``SITE_PASSWORD``,
 fail-closed — unset → 503, wrong → 401; mirrors the control-plane's
@@ -43,10 +48,11 @@ from typing import Any, Optional
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from . import data_source as ds
+from . import testing_ai as ai
 from . import testing_payouts as payouts
 from . import testing_store as store
 
@@ -85,6 +91,23 @@ QUESTIONNAIRES: dict[str, list[tuple[str, str, str]]] = {
     "guided-walkthrough": [],  # placeholder — step scripts + AI confirmation land in PR2
 }
 SEVERITIES = ["none", "minor", "major", "blocker"]
+
+# Screenshot upload caps (PR2 — the deliberate PR1 deferral, now shipped):
+# multipart parsing is the service's one new dependency (python-multipart).
+SCREENSHOT_MAX_FILES = 3
+SCREENSHOT_MAX_BYTES = 2 * 1024 * 1024  # 2 MB each
+# content-type AND magic bytes must both say png/jpeg — never trust either alone.
+_SCREENSHOT_TYPES = {"image/png", "image/jpeg"}
+_MAGIC_PNG = b"\x89PNG\r\n\x1a\n"
+_MAGIC_JPEG = b"\xff\xd8\xff"
+
+
+def _screenshot_magic_ok(content_type: str, data: bytes) -> bool:
+    if content_type == "image/png":
+        return data.startswith(_MAGIC_PNG)
+    if content_type == "image/jpeg":
+        return data.startswith(_MAGIC_JPEG)
+    return False
 
 
 # --------------------------------------------------------------------------
@@ -332,16 +355,22 @@ def _submission_ctx(claim: dict[str, Any]) -> dict[str, Any]:
     }
     submission = store.submission_for_claim(claim["id"])
     answers = {}
+    review = None
+    screenshots: list[dict[str, Any]] = []
     if submission:
         try:
             answers = json.loads(submission.get("answers_json") or "{}")
         except ValueError:
             answers = {}
+        review = store.ai_review_for_submission(submission["id"])
+        screenshots = store.screenshots_for_submission(submission["id"])
     return {
         "claim": claim,
         "task": task,
         "submission": submission,
         "answers": answers,
+        "review": review,
+        "screenshots": screenshots,
         "questionnaire": QUESTIONNAIRES.get(task.get("type") or "", []),
         "severities": SEVERITIES,
     }
@@ -357,6 +386,87 @@ async def testing_submission_page(request: Request, token: str):
     ctx.update(_submission_ctx(claim))
     ctx.update({"error": None})
     return templates.TemplateResponse(request, "testing_submission.html", ctx)
+
+
+async def _validate_screenshots(form: Any) -> list[tuple[str, str, bytes]]:
+    """Validate uploaded screenshots; returns (filename, content_type, data).
+
+    Raises ValueError with a tester-facing message on any cap/type violation.
+    Empty file inputs (browser sends one when nothing is picked) are skipped.
+    """
+    uploads = []
+    for item in form.getlist("screenshots"):
+        # Text fields also land in getlist when names collide; only keep files.
+        if isinstance(item, str):
+            continue
+        filename = (item.filename or "").strip()
+        data = await item.read()
+        if not filename and not data:
+            continue  # empty file input
+        uploads.append((filename, (item.content_type or "").lower(), data))
+    if len(uploads) > SCREENSHOT_MAX_FILES:
+        raise ValueError(
+            f"Too many screenshots — at most {SCREENSHOT_MAX_FILES} files."
+        )
+    out = []
+    for filename, content_type, data in uploads:
+        if content_type not in _SCREENSHOT_TYPES:
+            raise ValueError("Screenshots must be PNG or JPEG images.")
+        if len(data) > SCREENSHOT_MAX_BYTES:
+            raise ValueError("Each screenshot must be 2 MB or smaller.")
+        if not data or not _screenshot_magic_ok(content_type, data):
+            raise ValueError(
+                "That file doesn't look like a real PNG/JPEG image."
+            )
+        out.append(((filename or "screenshot")[:200], content_type, data))
+    return out
+
+
+def _run_exit_review(
+    submission: dict[str, Any], claim: dict[str, Any], task: Optional[dict[str, Any]]
+) -> None:
+    """Grade the fresh submission; degrade honestly on any failure.
+
+    Deliberately SYNCHRONOUS (decide-and-flag): the call is bounded (~15 s
+    timeout, one retry max) and running it inline means the tester sees the
+    follow-up questions immediately on the confirmation page instead of on a
+    later refresh — and the flow stays deterministic under test. A failure
+    here can never lose the submission: it is already stored.
+    """
+    answers: dict[str, Any] = {}
+    try:
+        answers = json.loads(submission.get("answers_json") or "{}")
+    except ValueError:
+        pass
+    findings = submission.get("findings") or ""
+    if not ai.available():
+        store.save_ai_review(
+            submission["id"],
+            status="degraded",
+            degraded_reason=f"{ai.ENV_API_KEY} is not set on the service",
+        )
+        return
+    try:
+        report = ai.grade_submission(task or {}, answers, findings)
+    except ai.AIReviewUnavailable as exc:
+        store.save_ai_review(
+            submission["id"], status="degraded", degraded_reason=str(exc), calls_used=1
+        )
+        return
+    followups = [{"question": q, "answer": None} for q in report["followup_questions"]]
+    status = "pending-followup" if followups else "reviewed"
+    store.save_ai_review(
+        submission["id"],
+        status=status,
+        score=report["score"],
+        low_effort=report["low_effort"],
+        summary=report["summary"],
+        findings=report["findings"],
+        followups=followups,
+        calls_used=1,
+    )
+    if not followups:
+        store.set_claim_status(claim["id"], "reviewed")
 
 
 @router.post("/s/{token}", response_class=HTMLResponse)
@@ -375,7 +485,7 @@ async def testing_submit(
         )
     task = task_by_id(claim["task_id"])
     task_type = (task or {}).get("type") or ""
-    form = await request.form()
+    form = await request.form()  # multipart (python-multipart) or urlencoded
     answers: dict[str, str] = {}
     has_content = False
     for field, _label, kind in QUESTIONNAIRES.get(task_type, []):
@@ -393,8 +503,98 @@ async def testing_submit(
         return templates.TemplateResponse(
             request, "testing_submission.html", ctx, status_code=400
         )
-    store.create_submission(claim["id"], answers, findings)
+    try:
+        screenshots = await _validate_screenshots(form)
+    except ValueError as exc:
+        ctx.update(_submission_ctx(claim))
+        ctx.update({"error": str(exc)})
+        return templates.TemplateResponse(
+            request, "testing_submission.html", ctx, status_code=400
+        )
+    submission = store.create_submission(claim["id"], answers, findings)
+    for filename, content_type, data in screenshots:
+        store.add_screenshot(submission["id"], filename, content_type, data)
     store.set_claim_status(claim["id"], "submitted")
+    _run_exit_review(submission, claim, task)
+    refreshed = store.claim_by_token(token)
+    ctx.update(_submission_ctx(refreshed))
+    ctx.update({"error": None})
+    return templates.TemplateResponse(request, "testing_submission.html", ctx)
+
+
+@router.post("/s/{token}/followups", response_class=HTMLResponse)
+async def testing_followups(
+    request: Request, token: str, _: None = Depends(guard_state_change)
+):
+    """Tester answers the AI's follow-up questions → ONE re-grade round."""
+    claim = store.claim_by_token(token)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="unknown submission link")
+    submission = store.submission_for_claim(claim["id"])
+    review = store.ai_review_for_submission(submission["id"]) if submission else None
+    ctx = await _ctx(request)
+    if not submission or not review or review["status"] != "pending-followup":
+        ctx.update(_submission_ctx(claim))
+        ctx.update({"error": "There are no open follow-up questions on this claim."})
+        return templates.TemplateResponse(
+            request, "testing_submission.html", ctx, status_code=409
+        )
+    form = await request.form()
+    transcript = []
+    any_answer = False
+    for i, entry in enumerate(review["followups"]):
+        answer = _clean(form, f"followup_{i}")
+        any_answer = any_answer or bool(answer)
+        transcript.append({"question": entry["question"], "answer": answer})
+    if not any_answer:
+        ctx.update(_submission_ctx(claim))
+        ctx.update({"error": "Answer at least one follow-up question."})
+        return templates.TemplateResponse(
+            request, "testing_submission.html", ctx, status_code=400
+        )
+    answers: dict[str, Any] = {}
+    try:
+        answers = json.loads(submission.get("answers_json") or "{}")
+    except ValueError:
+        pass
+    task = task_by_id(claim["task_id"])
+    calls_used = int(review.get("calls_used") or 0)
+    try:
+        ai.check_submission_cap(calls_used)
+        report = ai.regrade_with_followups(
+            task or {}, answers, submission.get("findings") or "", transcript
+        )
+    except ai.AIReviewUnavailable as exc:
+        # Honest fallback: keep the original grade, store the tester's answers,
+        # note that the re-grade round was unavailable. The tester did their
+        # part — the claim moves to reviewed either way.
+        store.save_ai_review(
+            submission["id"],
+            status="reviewed",
+            score=review.get("score"),
+            low_effort=bool(review.get("low_effort")),
+            summary=review.get("summary") or "",
+            findings=review.get("findings") or [],
+            followups=transcript,
+            degraded_reason=f"re-grade round unavailable: {exc}",
+            calls_used=calls_used,
+        )
+        store.set_claim_status(claim["id"], "reviewed")
+        refreshed = store.claim_by_token(token)
+        ctx.update(_submission_ctx(refreshed))
+        ctx.update({"error": None})
+        return templates.TemplateResponse(request, "testing_submission.html", ctx)
+    store.save_ai_review(
+        submission["id"],
+        status="reviewed",
+        score=report["score"],
+        low_effort=report["low_effort"],
+        summary=report["summary"],
+        findings=report["findings"],
+        followups=transcript,
+        calls_used=calls_used + 1,
+    )
+    store.set_claim_status(claim["id"], "reviewed")
     refreshed = store.claim_by_token(token)
     ctx.update(_submission_ctx(refreshed))
     ctx.update({"error": None})
@@ -413,6 +613,25 @@ async def _owner_page(
             s["answers"] = json.loads(s.get("answers_json") or "{}")
         except ValueError:
             s["answers"] = {}
+        s["review"] = store.ai_review_for_submission(s["id"])
+        s["screenshots"] = store.screenshots_for_submission(s["id"])
+        # Would-auto-pay preview: the REAL eligibility gate, evaluated
+        # read-only per submission so the owner sees yes/no + every reason.
+        if s["claim_status"] in ("submitted", "reviewed"):
+            review = s["review"] or {}
+            claim_row = {
+                "id": s["claim_id"],
+                "task_id": s["task_id"],
+                "email": s["email"],
+            }
+            s["autopay_preview"] = payouts.decide_payout(
+                claim_row,
+                task_by_id(s["task_id"]) or {"payout_usd": 0},
+                ai_score=review.get("score"),
+                ai_low_effort=bool(review.get("low_effort")),
+            )
+        else:
+            s["autopay_preview"] = None
     ctx = await _ctx(request)
     ctx.update(
         {
@@ -423,6 +642,8 @@ async def _owner_page(
             "ledger_totals": store.ledger_totals(),
             "bounty": _bounty(),
             "payout_config": payouts.payout_config_summary(),
+            "ai_state": ai.state_summary(),
+            "degraded_reviews": store.degraded_review_count(),
             "db_path": store.db_path(),
             "banner": banner,
         }
@@ -454,16 +675,22 @@ async def owner_approve(
     _guard: None = Depends(guard_state_change),
     _auth: None = Depends(require_owner),
 ):
-    _submission, claim = _submission_claim_or_400(submission_id)
-    if claim["status"] not in ("submitted",):
+    submission, claim = _submission_claim_or_400(submission_id)
+    if claim["status"] not in ("submitted", "reviewed"):
         return await _owner_page(
             request,
-            {"ok": False, "text": f"claim #{claim['id']} is '{claim['status']}' — only a submitted claim can be approved"},
+            {"ok": False, "text": f"claim #{claim['id']} is '{claim['status']}' — only a submitted/reviewed claim can be approved"},
             status_code=409,
         )
     task = task_by_id(claim["task_id"]) or {"payout_usd": 0}
     store.set_claim_status(claim["id"], "approved")
-    decision = payouts.process_approval(claim, task)
+    review = store.ai_review_for_submission(submission["id"]) or {}
+    decision = payouts.process_approval(
+        claim,
+        task,
+        ai_score=review.get("score"),
+        ai_low_effort=bool(review.get("low_effort")),
+    )
     return await _owner_page(
         request,
         {
@@ -524,6 +751,28 @@ async def owner_mark_paid(
     return await _owner_page(
         request,
         {"ok": True, "text": f"claim #{claim['id']} marked PAID and written to the ledger"},
+    )
+
+
+@router.get("/owner/screenshots/{shot_id}")
+async def owner_screenshot(
+    request: Request, shot_id: int, _: None = Depends(require_owner)
+):
+    """Serve one uploaded screenshot blob — OWNER-ONLY, never public.
+
+    Content-Disposition + nosniff keep the visitor-supplied bytes inert:
+    the browser downloads/renders them as an image, never as a document.
+    """
+    shot = store.screenshot_by_id(shot_id)
+    if shot is None:
+        raise HTTPException(status_code=404, detail="unknown screenshot")
+    return Response(
+        content=shot["data"],
+        media_type=shot["content_type"],
+        headers={
+            "Content-Disposition": f'inline; filename="screenshot-{shot_id}"',
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
