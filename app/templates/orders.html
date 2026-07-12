@@ -87,13 +87,15 @@
 {% for c in o.cards %}
 {% if not o.filter.active or c.shown_orders or c.fetch_error %}
 <div class="card" id="repo-{{ c.repo }}">
-  <h2>{{ c.repo }}
-    {% if c.open_count %}<span class="b warn">{{ c.open_count }} open</span>{% endif %}
-    {% if c.claimed_count %}<span class="b design">{{ c.claimed_count }} claimed</span>{% endif %}
-    {% if c.orders and not c.open_count and not c.claimed_count and not c.unknown_count %}<span class="b ok">all done</span>{% endif %}
-    {% if c.pickup_median_mins is not none %}<span class="b" title="this repo's median filed→claimed pickup">pickup ~{{ c.pickup_median_human | replace(' ago','') }}</span>{% endif %}
-    <span class="dim small">· <a href="{{ c.repo_url }}">{{ c.repo }}</a>
-      · <a href="{{ c.inbox_url }}">inbox ↗</a></span></h2>
+  <div class="rowhead">
+    <h2>{{ c.repo }}
+      {% if c.open_count %}<span class="b warn">{{ c.open_count }} open</span>{% endif %}
+      {% if c.claimed_count %}<span class="b design">{{ c.claimed_count }} claimed</span>{% endif %}
+      {% if c.orders and not c.open_count and not c.claimed_count and not c.unknown_count %}<span class="b ok">all done</span>{% endif %}
+      {% if c.pickup_median_mins is not none %}<span class="b" title="this repo's median filed→claimed pickup">pickup ~{{ c.pickup_median_human | replace(' ago','') }}</span>{% endif %}
+      <span class="dim small">· <a href="{{ c.repo_url }}">{{ c.repo }}</a></span></h2>
+    <span class="cr-action"><a class="btn" href="{{ c.inbox_url }}">open inbox ↗</a></span>
+  </div>
 
   {% if c.fetch_error %}
   <div class="banner">⚠ could not fetch <code>control/inbox.md</code> — {{ c.fetch_error }}</div>

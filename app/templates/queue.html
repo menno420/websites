@@ -6,7 +6,12 @@
     filtered view — one markup source, zero drift. -#}
 {% macro ask_card(it) %}
 <div class="card">
-  <h2>{% if it.what %}{{ it.what }}{% else %}{{ it.text }}{% endif %}</h2>
+  <div class="rowhead">
+    <h2>{% if it.what %}{{ it.what }}{% else %}{{ it.text }}{% endif %}</h2>
+    {% if it.sources %}
+    <span class="cr-action"><a class="btn" href="{{ it.sources[0].url }}">open source ↗</a></span>
+    {% endif %}
+  </div>
   <p class="small">
     {% for s in it.sources %}
     <span class="b repo">{{ s.label }}</span>

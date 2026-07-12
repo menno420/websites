@@ -4,16 +4,21 @@
 
 {#- One idea row — used by the live list and the collapsed built/retired
     section. -#}
+{#- The catrow idiom (IA v2): title + one-line summary left, the primary
+    action as the right-aligned button; GitHub deep-link stays a small
+    secondary link beside it. -#}
 {% macro idea_row(i) %}
-    <div class="idea-row">
-      <div class="idea-title">
-        <a href="{{ i.internal_url }}">{{ i.title }}</a>
-        {% if i.state %}<span class="b {{ 'ok' if i.state == 'built' else ('design' if i.state == 'retired' else 'repo') }}">{{ i.state }}</span>{% endif %}
-        <span class="small"> · <a href="{{ i.github_url }}" class="dim">GitHub ↗</a></span>
+    <div class="catrow">
+      <div class="cr-main">
+        <span class="idea-title">
+          <a href="{{ i.internal_url }}">{{ i.title }}</a>
+          {% if i.state %}<span class="b {{ 'ok' if i.state == 'built' else ('design' if i.state == 'retired' else 'repo') }}">{{ i.state }}</span>{% endif %}
+        </span>
+        {% if i.summary %}<span class="cr-desc">{{ i.summary }}</span>
+        {% elif i.degraded %}<span class="cr-desc">(summary unavailable — could not fetch file)</span>
+        {% endif %}
       </div>
-      {% if i.summary %}<div class="idea-sum">{{ i.summary }}</div>
-      {% elif i.degraded %}<div class="idea-sum">(summary unavailable — could not fetch file)</div>
-      {% endif %}
+      <span class="cr-action"><a class="btn" href="{{ i.internal_url }}">open idea →</a><a href="{{ i.github_url }}" class="dim small">GitHub ↗</a></span>
     </div>
 {% endmacro %}
 
