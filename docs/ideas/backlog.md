@@ -521,3 +521,12 @@
   set: live from manifest — N lanes parsed" vs the fallback banner), which is
   exactly the surfacing this capture asked for; verified in the template +
   covered by `test_fleet_overview_is_manifest_sourced`. Nothing to build.
+
+- **Harvest the AI-assistant question log into the /questions ledger** —
+  captured 2026-07-12 (ORDER 017 B session). `review/ai.py` logs every
+  visitor question as a structured JSON line on stdout (mode, truncated
+  text, outcome, salted IP hash); a harvest step (manual or baked) could
+  promote real reviewer questions into `review/data/questions.json` so the
+  ledger fills from real traffic instead of starting empty. Worth having
+  because the order itself says the question log "feeds the Q&A page" —
+  this closes that loop.
