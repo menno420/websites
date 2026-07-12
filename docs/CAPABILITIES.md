@@ -71,6 +71,20 @@ Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 (Hand-filled by sessions, per the discovery rule. Seed walls/capabilities
 above came from the fleet's lived 2026-07 findings; local ones go here.)
 
+- 2026-07-12 · wall · **`RAILWAY_TOKEN` is NOT provisioned** — neither in
+  this agent session's environment (`printenv | grep -i railway` shows only
+  the ambient production trio + `RAILWAY_API_KEY`, none of which
+  `/owner/environments` may use per `docs/RAILWAY-SAFETY.md` and the plan
+  doc) nor on the deployed control-plane service (the owner decided
+  2026-07-11 to mint a **project-scoped** token for `superbot-websites` but
+  it has not landed) · evidence: env check during the ORDER 015
+  `/owner/environments` build session; nothing to attempt — with the token
+  unset the read layer's only honest state is `not-configured`, which is
+  exactly what `app/railway.py` renders · workaround: none agent-side — the
+  token is an owner-click Railway errand; the page degrades honestly (an
+  explicit owner-errand banner + committed facts) until it lands, and the
+  live GraphQL path stays UNVERIFIED against the real API until then.
+
 - 2026-07-10 · wall · **The 16:01Z routine-fired session's `git push` never
   landed, despite its session card recording the branch as pushed** — at
   ~19:15Z the remote had no `claude/order008-manifest-smoke-2026-07-10`
