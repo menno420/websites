@@ -115,3 +115,10 @@ provenance: filed by the fleet manager — relocation of startup-prompt v3.1 ord
 do: app/owner.py POST routes (refresh / rerun-ci) ride Basic auth alone — add a CSRF token or strict Origin check plus rate-limiting, with tests.
 why: verified at 8f97654 2026-07-12: zero csrf/origin hits in app/owner.py.
 done-when: merged green with tests; the routes reject cross-origin POSTs.
+
+## ORDER 014 · 2026-07-12T10:50Z · status: new
+priority: P1
+owner: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (landed into the inbox by the coordinator seat with the ORDER 012 reconcile PR — deviation from the one-writer convention on the owner's direct live instruction).
+do: find all website related plans across the multiple repos and execute all the important ones
+status: new
