@@ -25,6 +25,30 @@
   the testing catalog. Source:
   `.sessions/2026-07-12-order-018-testing-platform-pr1.md` 💡.
 
+- **/prompts pinned-registry drift chip** · `captured` — the /prompts
+  artifact list is pinned in `app/prompts.py` (the raw host cannot list
+  directories), so a seat added or renamed in fleet-manager `projects/`
+  silently degrades to a 404 cell here until someone edits the constant.
+  One cheap cross-check: when the /projects registry listing is available
+  (same TTL cache, zero extra fetch on a warm cache), compare its directory
+  set against `prompts.SEATS` and render a "pinned list drifted: +X / −Y"
+  chip on /prompts. Worth having because the page's one honest weakness is
+  registry drift, and the site already fetches the ground truth elsewhere.
+  Deduped against this backlog + the queue-state NEXT list: nothing touches
+  the prompt library (it ships this PR). Source:
+  `.sessions/2026-07-12-prompt-library.md` 💡.
+
+- **Deep-link fleet lane files into the widened /journal/{repo}/file view**
+  · `captured` — PR #177 lets the file route render markdown from every
+  FLEET_LANES repo, but no page links there for lane repos: the capability
+  is reachable only by hand-typed URLs. Add per-lane deep-links from the
+  /fleet lane cards (e.g. the lane's `docs/current-state.md` and its
+  `control/status.md` source) through the in-app renderer. Worth having
+  because a shipped capability nothing navigates to is invisible to the
+  owner. Deduped against this backlog + queue-state NEXT: the lanes.json
+  and pickup ideas touch /fleet data, not file-view navigation. Source:
+  `.sessions/2026-07-12-journal-guard-fleet.md` 💡.
+
 - **Seat role-coverage chips on the /projects dispatch index** · `captured`
   — the dispatch screen (PR #158) renders whatever role files a package
   has, but the INDEX doesn't say which seats are dispatch-READY: a seat
