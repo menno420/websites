@@ -1,4 +1,4 @@
-"""Arcade live-URL drift probe tests — NETWORK-FREE.
+"""Arcade URL drift probe tests (live+download availabilities) — NETWORK-FREE.
 
 Every fetch goes through ``httpx.MockTransport`` (or a client whose handler
 fails the test if it is ever reached). The real network fetch runs only via
@@ -112,26 +112,96 @@ def test_unexpected_exception_degrades_to_finding_not_crash():
     assert "probe error" in note and "RuntimeError" in note
 
 
-# --- probe_live_urls summaries ---------------------------------------------------
+# --- probe_registry_urls summaries -----------------------------------------------
 
 
-def test_live_entries_probed_non_live_reported_skipped(tmp_path):
+def test_probed_availabilities_covered_others_skipped(tmp_path):
+    """Both link-bearing availabilities (live AND download) are probed; every
+    other availability is explicitly reported as skipped — never silently."""
     reg = _registry(tmp_path, [
         _entry("alive", "live", "https://example.com/game"),
         _entry("waiting", "unavailable", None),
         _entry("rom", "download", "https://example.com/rom"),
     ])
     with _client(lambda req: httpx.Response(200)) as c:
-        result = arcade_probe.probe_live_urls(reg, client=c)
+        result = arcade_probe.probe_registry_urls(reg, client=c)
     assert result["ok"] is True
-    assert [r["slug"] for r in result["rows"]] == ["alive"]
+    assert [r["slug"] for r in result["rows"]] == ["alive", "rom"]
+    assert [r["availability"] for r in result["rows"]] == ["live", "download"]
     assert result["flagged"] == []
-    # honest coverage: download + unavailable are explicitly NOT probed
+    # honest coverage: only the unavailable entry is NOT probed
     assert result["skipped"] == [
         {"slug": "waiting", "availability": "unavailable"},
-        {"slug": "rom", "availability": "download"},
     ]
-    assert "1 live URL(s) probed, 0 flagged, 2 non-live entries not probed" == result["note"]
+    assert (
+        "2 URL(s) probed (live+download), 0 flagged, "
+        "1 other-availability entry not probed" == result["note"]
+    )
+
+
+def test_download_200_is_healthy(tmp_path):
+    reg = _registry(tmp_path, [_entry("rom", "download", "https://example.com/rom.zip")])
+    with _client(lambda req: httpx.Response(200)) as c:
+        result = arcade_probe.probe_registry_urls(reg, client=c)
+    assert result["ok"] is True
+    (row,) = result["rows"]
+    assert row["slug"] == "rom" and row["availability"] == "download"
+    assert row["ok"] is True and row["note"] == "200"
+
+
+def test_download_redirect_chain_to_200_is_healthy(tmp_path):
+    """Release-asset idiom: GitHub 302s asset downloads to a CDN. A chain
+    ending in 200 is healthy — follow_redirects already covers it."""
+    reg = _registry(tmp_path, [_entry("rom", "download", "https://example.com/release")])
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path == "/release":
+            return httpx.Response(302, headers={"location": "https://cdn.example.com/rom.zip"})
+        return httpx.Response(200)
+
+    with _client(handler) as c:
+        result = arcade_probe.probe_registry_urls(reg, client=c)
+    assert result["ok"] is True
+    (row,) = result["rows"]
+    assert row["ok"] is True and row["note"] == "200"
+
+
+def test_download_404_is_flagged(tmp_path):
+    reg = _registry(tmp_path, [_entry("rom", "download", "https://example.com/gone.zip")])
+    with _client(lambda req: httpx.Response(404)) as c:
+        result = arcade_probe.probe_registry_urls(reg, client=c)
+    assert result["ok"] is False
+    (row,) = result["flagged"]
+    assert row["slug"] == "rom" and row["availability"] == "download"
+    assert row["note"] == "HTTP 404"
+
+
+def test_download_timeout_is_flagged(tmp_path):
+    reg = _registry(tmp_path, [_entry("rom", "download", "https://example.com/slow.zip")])
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("slow", request=req)
+
+    with _client(handler) as c:
+        result = arcade_probe.probe_registry_urls(reg, client=c)
+    assert result["ok"] is False
+    (row,) = result["flagged"]
+    assert "timeout" in row["note"]
+
+
+def test_redirect_loop_is_flagged_not_hung(tmp_path):
+    """A 302 pointing at itself exhausts the client's redirect budget —
+    httpx raises TooManyRedirects, which degrades to a flagged finding."""
+    reg = _registry(tmp_path, [_entry("loop", "download", "https://example.com/loop")])
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(302, headers={"location": "https://example.com/loop"})
+
+    with _client(handler) as c:
+        result = arcade_probe.probe_registry_urls(reg, client=c)
+    assert result["ok"] is False
+    (row,) = result["flagged"]
+    assert "TooManyRedirects" in row["note"]
 
 
 def test_dead_live_url_is_flagged_but_never_raises(tmp_path):
@@ -149,7 +219,7 @@ def test_dead_live_url_is_flagged_but_never_raises(tmp_path):
         return httpx.Response(200)
 
     with _client(handler) as c:
-        result = arcade_probe.probe_live_urls(reg, client=c)
+        result = arcade_probe.probe_registry_urls(reg, client=c)
     assert result["ok"] is False
     assert len(result["rows"]) == 3
     assert [r["slug"] for r in result["flagged"]] == ["dead-game", "hung-game"]
@@ -157,23 +227,47 @@ def test_dead_live_url_is_flagged_but_never_raises(tmp_path):
     assert by_slug["ok-game"]["ok"] is True
     assert by_slug["dead-game"]["note"] == "HTTP 404"
     assert "timeout" in by_slug["hung-game"]["note"]
-    assert "3 live URL(s) probed, 2 flagged" in result["note"]
+    assert "3 URL(s) probed (live+download), 2 flagged" in result["note"]
 
 
-def test_live_entry_with_no_url_is_flagged(tmp_path):
-    reg = _registry(tmp_path, [_entry("linkless", "live", None)])
+def test_mixed_registry_probes_live_and_download_flags_each_honestly(tmp_path):
+    """One registry, every class at once: a healthy live, a dead download, a
+    skipped unavailable — each lands in exactly the right bucket."""
+    reg = _registry(tmp_path, [
+        _entry("alive", "live", "https://example.com/game"),
+        _entry("dead-rom", "download", "https://example.com/dead.zip"),
+        _entry("waiting", "unavailable", None),
+    ])
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path == "/dead.zip":
+            return httpx.Response(404)
+        return httpx.Response(200)
+
+    with _client(handler) as c:
+        result = arcade_probe.probe_registry_urls(reg, client=c)
+    assert result["ok"] is False
+    assert [r["slug"] for r in result["rows"]] == ["alive", "dead-rom"]
+    assert [r["slug"] for r in result["flagged"]] == ["dead-rom"]
+    assert result["skipped"] == [{"slug": "waiting", "availability": "unavailable"}]
+
+
+@pytest.mark.parametrize("availability", ["live", "download"])
+def test_probed_entry_with_no_url_is_flagged(tmp_path, availability):
+    reg = _registry(tmp_path, [_entry("linkless", availability, None)])
     with _client(_never_called) as c:
-        result = arcade_probe.probe_live_urls(reg, client=c)
+        result = arcade_probe.probe_registry_urls(reg, client=c)
     assert result["ok"] is False
     (row,) = result["rows"]
     assert row["slug"] == "linkless" and row["ok"] is False and row["url"] is None
-    assert "no URL to probe" in row["note"]
+    assert row["availability"] == availability
+    assert f'availability "{availability}" but no URL to probe' == row["note"]
 
 
 def test_live_entry_with_malformed_url_is_flagged(tmp_path):
     reg = _registry(tmp_path, [_entry("garbled", "live", "not a url at all")])
     with _client(_never_called) as c:
-        result = arcade_probe.probe_live_urls(reg, client=c)
+        result = arcade_probe.probe_registry_urls(reg, client=c)
     assert result["ok"] is False
     (row,) = result["flagged"]
     assert row["slug"] == "garbled"
@@ -185,23 +279,27 @@ def test_zero_entry_registry_is_a_flagged_condition(tmp_path):
     the committed registry lists three games; zero means the probe is blind
     (mirrors the fleet-registry zero-lanes alert)."""
     missing = tmp_path / "does-not-exist.json"
-    result = arcade_probe.probe_live_urls(missing, client=None)
+    result = arcade_probe.probe_registry_urls(missing, client=None)
     assert result["ok"] is False
     assert result["rows"] == [] and result["skipped"] == []
     assert "ZERO entries" in result["note"]
 
 
-def test_committed_registry_live_set_matches_probe_coverage():
+def test_committed_registry_linked_set_matches_probe_coverage():
     """Coverage pin against the committed registry (no network: nothing is
     fetched, we only assert WHAT WOULD BE probed): exactly the entries the
-    /arcade page presents as live."""
+    /arcade page renders an outbound link for (live + download)."""
     from botsite import arcade
 
     games = arcade.load_games()
-    live = [g["slug"] for g in games if g["availability"] == "live"]
+    linked = [
+        g["slug"] for g in games
+        if g["availability"] in arcade_probe.PROBED_AVAILABILITIES
+    ]
     with _client(lambda req: httpx.Response(200)) as c:
-        result = arcade_probe.probe_live_urls(client=c)
-    assert [r["slug"] for r in result["rows"]] == live
+        result = arcade_probe.probe_registry_urls(client=c)
+    assert [r["slug"] for r in result["rows"]] == linked
     assert {s["slug"] for s in result["skipped"]} == {
-        g["slug"] for g in games if g["availability"] != "live"
+        g["slug"] for g in games
+        if g["availability"] not in arcade_probe.PROBED_AVAILABILITIES
     }
