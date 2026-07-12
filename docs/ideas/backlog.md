@@ -815,3 +815,15 @@
   the queue-state NEXT list: nothing touches the owner JSON contract or a
   machine-readable environments rollup. Source:
   `.sessions/2026-07-12-owner-readiness-env-chip.md` 💡.
+
+- **Align `.sessions/README.md`'s model-line examples with the family-level
+  rule** · `captured` (2026-07-12, card-model-line-fix session 💡) — the
+  README's template and ender checklist say "FAMILY level only" but give
+  `claude-fable-5` / `claude-opus-4-8` as the examples, i.e. the exact-ID
+  shape; agents copy templates literally, so the doc that defines the rule
+  keeps seeding its violation into new cards (the #223 card was one).
+  Update the two example strings to "Fable 5" / "Opus 4.8" phrasing. Worth
+  having because it stops the exact-ID form at its source instead of fixing
+  cards one at a time. Deduped against this backlog + the queue-state NEXT
+  list: nothing touches the session-card template or model-attribution
+  examples. Source: `.sessions/2026-07-12-card-model-line-fix.md` 💡.
