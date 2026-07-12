@@ -124,10 +124,18 @@ do: PROMPT LIBRARY PAGE — make every fleet prompt findable and always-current 
 why: the fleet's paste artifacts (coordinator prompts, instructions, failsafes, session-ender, universal-startup) live in the fleet-manager registry but are findable nowhere on the control website; the owner pastes them by hand and stale copies drift — the site renders, the manager's repo stores.
 done-when: page live on Railway; all 26 artifacts (8×3 + 2) findable, copyable, and verified to update after a fleet-manager registry merge (cite the verification).
 
-## ORDER 015 · 2026-07-12T10:50Z · status: new
+## ORDER 015 · 2026-07-12T12:48Z · status: new
+priority: P3
+executor: websites coordinator
+provenance: fleet manager — owner-review follow-up 2026-07-12
+do: CONSOLIDATE PROMPT SURFACES — after ORDER 014's /prompts page is live, unify the prompt-rendering between /projects/{package} (PR #158) and /prompts (PR #165) into one implementation: one fetch/render/copy code path, one canonical page for finding prompts (the other links to it), no duplicated raw-content fetch logic. Do NOT start before ORDER 014 is done.
+why: two independently-built prompt surfaces now render the same fleet-manager registry artifacts with parallel fetch/render/copy logic — duplicated code paths drift and double the maintenance surface.
+done-when: single render path merged green; both URLs still work (one may redirect); duplication removed.
+
+## ORDER 016 · 2026-07-12T10:50Z · status: new
 priority: P1
 owner: Websites coordinator
-provenance: owner live in the coordinator session 2026-07-12 (landed into the inbox by the coordinator seat with the ORDER 012 reconcile PR — deviation from the one-writer convention on the owner's direct live instruction; renumbered 014→015 in the same PR after fleet-manager's prompt-library order reached main first as ORDER 014 via PR #162 — earlier-at-HEAD holds the number).
+provenance: owner live in the coordinator session 2026-07-12 (landed into the inbox by the coordinator seat with the ORDER 012 reconcile PR — deviation from the one-writer convention on the owner's direct live instruction; renumbered 014→015→016 in the same PR as fleet-manager orders reached main first holding those numbers — prompt-library ORDER 014 via PR #162, consolidate-prompt-surfaces ORDER 015 via PR #169; earlier-at-HEAD holds the number).
 do: find all website related plans across the multiple repos and execute all the important ones
 why: owner live directive 2026-07-12 — website-related plans are scattered across the fleet's repos (planning docs, ideas backlogs, inbox orders, review findings) and nothing sweeps them into execution.
-done-when: a committed discovery inventory lists the website-related plans found across the repos, each important one is executed or explicitly ledgered with a reason (owner-gated / superseded / deferred), and status.md reports done=015.
+done-when: a committed discovery inventory lists the website-related plans found across the repos, each important one is executed or explicitly ledgered with a reason (owner-gated / superseded / deferred), and status.md reports done=016.

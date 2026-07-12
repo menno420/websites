@@ -7,15 +7,16 @@
     "soft_target_sessions": 50
   },
   "graduation_proposed": false,
-  "kit_version": "1.12.1",
+  "kit_version": "1.13.0",
   "last_compaction_session": 0,
   "mode": "guided",
   "mode_history": [],
   "open_questions": [],
   "planted_doc_hashes": {
-    ".claude/CLAUDE.md": "fc898c339bde7ac68ba5f57870d8040b334608eaf4d13680a056b283d4d911dd",
+    ".claude/CLAUDE.md": "26af862a36e83f202c0b08febdf22ca6346b0871cc4681c2320d0d48072864e4",
     "control/claims/README.md": "14cb7a6a66bc2b9ee6d97c0c72e8642356907ffec3ff706d27a732470b3a19ac",
     "docs/CAPABILITIES.md": "b0b2b57311a27a1c04d76743e3ff3db1d9b50fd67b84c5ea57033645867fafdf",
+    "docs/SKILLS.md": "148388dab14f7844fb9413a015ea6aa81704154a109f80f5f559ab2c4c79768e",
     "docs/ai-project-workflow.md": "bb2400128907f591860ac016b0d230185a7e5db815865e8701a87893df94c911",
     "docs/helper-policy.md": "21b91ac9c09bca03e6dcf8350680513b639a47367e5373ca73ac909bc201b0c3",
     "docs/owner-profile.md": "27c5748bb6d087a9a8384723fd499b91e9b4634d635aa5bf397bf69702c67b00"
