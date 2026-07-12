@@ -116,10 +116,18 @@ do: app/owner.py POST routes (refresh / rerun-ci) ride Basic auth alone — add 
 why: verified at 8f97654 2026-07-12: zero csrf/origin hits in app/owner.py.
 done-when: merged green with tests; the routes reject cross-origin POSTs.
 
-## ORDER 014 · 2026-07-12T10:50Z · status: new
+## ORDER 014 · 2026-07-12T11:27Z · status: new
+priority: P1
+executor: websites coordinator
+provenance: owner-directed via fleet manager, 2026-07-12
+do: PROMPT LIBRARY PAGE — make every fleet prompt findable and always-current on the control website. Requirements: (a) a page (extend the existing /projects view or add /prompts) rendering INLINE, for each of the 8 seats, the three registry artifacts from fleet-manager main — projects/<seat>/coordinator-prompt.md, instructions.md, failsafe-prompt.md — plus the fleet-wide artifacts docs/prompts/v3/session-ender.md and docs/prompts/v3/universal-startup.md; (b) fetched live from fleet-manager main over the existing raw-content read-only pattern (app/github.py TTL cache — the repo's cross-repo rule: committed JSON/text over raw.githubusercontent, read-only, forward-only), so every merged prompt update appears automatically with no manual step (TTL-bounded staleness ≤ a few minutes acceptable); (c) each artifact shows its version/provenance line prominently and offers one-click copy of the exact paste body; (d) monospace/pre rendering that preserves whitespace exactly (these are paste artifacts — rendering must not mutate them); (e) test-covered per seat conventions, landed via quality-green.
+why: the fleet's paste artifacts (coordinator prompts, instructions, failsafes, session-ender, universal-startup) live in the fleet-manager registry but are findable nowhere on the control website; the owner pastes them by hand and stale copies drift — the site renders, the manager's repo stores.
+done-when: page live on Railway; all 26 artifacts (8×3 + 2) findable, copyable, and verified to update after a fleet-manager registry merge (cite the verification).
+
+## ORDER 015 · 2026-07-12T10:50Z · status: new
 priority: P1
 owner: Websites coordinator
-provenance: owner live in the coordinator session 2026-07-12 (landed into the inbox by the coordinator seat with the ORDER 012 reconcile PR — deviation from the one-writer convention on the owner's direct live instruction).
+provenance: owner live in the coordinator session 2026-07-12 (landed into the inbox by the coordinator seat with the ORDER 012 reconcile PR — deviation from the one-writer convention on the owner's direct live instruction; renumbered 014→015 in the same PR after fleet-manager's prompt-library order reached main first as ORDER 014 via PR #162 — earlier-at-HEAD holds the number).
 do: find all website related plans across the multiple repos and execute all the important ones
 why: owner live directive 2026-07-12 — website-related plans are scattered across the fleet's repos (planning docs, ideas backlogs, inbox orders, review findings) and nothing sweeps them into execution.
-done-when: a committed discovery inventory lists the website-related plans found across the repos, each important one is executed or explicitly ledgered with a reason (owner-gated / superseded / deferred), and status.md reports done=014.
+done-when: a committed discovery inventory lists the website-related plans found across the repos, each important one is executed or explicitly ledgered with a reason (owner-gated / superseded / deferred), and status.md reports done=015.
