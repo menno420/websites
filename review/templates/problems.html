@@ -21,6 +21,22 @@
       <article class="sb-card rv-story-card">
         <h2>{{ item.title }}</h2>
         <p>{{ item.what }}</p>
+        {% if item.details %}
+        <div class="sb-stack rv-problem-details">
+          {% for d in item.details %}
+          <div class="rv-problem-detail">
+            <h3>{{ d.heading }}</h3>
+            <p>{{ d.text }}</p>
+            <p class="rv-evidence">
+              <span class="sb-label">Evidence:</span>
+              {% for label, url in d.evidence %}
+              <a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a>{% if not loop.last %} · {% endif %}
+              {% endfor %}
+            </p>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
         <div class="sb-kv-grid rv-problem-kv">
           <div class="sb-kv"><span class="sb-label">Cost</span><p>{{ item.cost }}</p></div>
           <div class="sb-kv"><span class="sb-label">What changed</span><p>{{ item.fix }}</p></div>

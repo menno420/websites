@@ -155,7 +155,7 @@ def growth_charts(snapshot_data: dict[str, Any]) -> list[dict[str, Any]]:
 # Who's who, for an outside reader.
 GLOSSARY: list[tuple[str, str]] = [
     ("Owner", "The one human. He designs and directs by conversation; he cannot code. Every line of code here was written by Claude agents and cross-checked by other agents."),
-    ("Lane / Project", "One Claude Project bound to one repo (or one area of a shared repo). This repo — websites — is one lane of a ~10-lane fleet."),
+    ("Lane / Project", "One Claude Project bound to one repo (or one area of a shared repo). This repo — websites — is one seat of a fleet that peaked at ~15 Projects and was consolidated to 8 standing seats (decided 2026-07-11, canonicalized 2026-07-12 — see the Fleet page)."),
     ("Manager / fleet-manager", "A coordinating lane (repo menno420/fleet-manager) that dispatches orders to every lane and aggregates their reports."),
     ("The bus", "Committed git files as the only inter-agent channel. Sessions cannot talk to each other; control/inbox.md (orders in) and control/status.md (heartbeat out) are the entire protocol."),
     ("Order", "A numbered instruction block the manager appends to control/inbox.md — priority, what to do, why, and a checkable done-when."),
@@ -202,7 +202,7 @@ SERVICES: list[dict[str, str]] = [
     {
         "name": "review",
         "dir": "review/",
-        "url": "",
+        "url": "https://review-production-f027.up.railway.app",
         "desc": "This site — the program explaining itself to an outside reviewer, from its own committed record.",
     },
 ]
@@ -210,7 +210,114 @@ SERVICES: list[dict[str, str]] = [
 # Problems — honest, specific, evidenced. This list leads the site's story:
 # a review surface that hides failures is worthless (the ORDER 011 retro's
 # own framing). Each entry: what happened, what it cost, what changed.
+# Entries may carry an optional ``details`` list ({heading, text, evidence})
+# for incidents too big for one paragraph.
+
+# The 2026-07-12 scheduler incident's commit-pinned sources (fleet-wide, so
+# the evidence lives in the fleet's public repos, not this one). Every URL
+# below was verified resolving before commit.
+_SB = "https://github.com/menno420/superbot/blob"
+_NIGHT_REVIEW_0712 = f"{_SB}/8558179e6a90670ed18c778234d789c65c2b5789/docs/eap/night-review-2026-07-12.md"
+_EMAIL2_DRAFT = f"{_SB}/8558179e6a90670ed18c778234d789c65c2b5789/docs/eap/anthropic-email-2-draft-2026-07-11.md"
+_FIGS_0712 = f"{_SB}/cbb549539c64e0ce3b4fea268e27b7ac49eeaf08/docs/eap/screenshots-2026-07-12/index.md"
+_ROSTER_GEN13 = "https://github.com/menno420/fleet-manager/blob/10fc4f7a95c3ca2be96eac7017dbb2fdb3e6a172/docs/roster.md"
+_SWEEP_8SEAT = "https://github.com/menno420/fleet-manager/blob/4111da44ae218bb37442ad958d740b782b1c859a/docs/research/2026-07-12-staleness-sweep-8seat.md"
+
 PROBLEMS: list[dict[str, Any]] = [
+    {
+        "title": "2026-07-12: the platform's trigger scheduler silently degraded — the fleet's dead-man failsafes brought it back",
+        "what": (
+            "Between ~02:30Z and ~08:00Z on 2026-07-12, the scheduler behind the fleet's "
+            "self-wake triggers degraded platform-side: due firings were dropped or frozen "
+            "with no error, no retry, and no state change — a stalled trigger looks identical "
+            "to a healthy one on every surface. The night review's verdict, from its own live "
+            "trigger-registry reads: the batch was armed correctly; nothing agent-side changed "
+            "versus the previous night, which — per the same registry evidence reported in "
+            "that review — had run 84 of 85 one-shot wakes clean."
+        ),
+        "cost": (
+            "Roughly five and a half hours of degraded unattended operation; two seats went "
+            "fully dark (one failsafe itself wedged, one seat had no failsafe layer); a daily "
+            "loop recovered ~2.7 hours late by manual re-fire. The detection gap is the real "
+            "cost: a dropped tick stays 'enabled' with its fire time in the past — nothing "
+            "alerts on it, and a queued tick and a lost tick look identical."
+        ),
+        "fix": (
+            "The dead-man doctrine held and is now production-proven: every seat whose "
+            "2-hourly failsafe cron stayed healthy self-revived the moment the scheduler "
+            "breathed again, so the standing rule — never run a self-wake chain without a "
+            "dead-man cron, and keep failsafe coverage itself alive — is written into fleet "
+            "doctrine. Cross-substrate redundancy also held (the roster regen, moved earlier "
+            "to a GitHub Actions cron, kept flowing through the outage). The incident record "
+            "and its asks went to Anthropic as finding 7 of the July 12 email."
+        ),
+        "details": [
+            {
+                "heading": "Three self-wake mechanisms — all three failed differently, silently",
+                "text": (
+                    "A fleet can wake itself three ways today: one-shot send_later self-messages "
+                    "(the fleet's ~15-minute pacemaker chains), cron routines bound to a persistent "
+                    "session (the 2-hourly dead-man failsafes), and fresh-session-per-fire routines "
+                    "(daily loops). On this night all three failed in different ways, each without "
+                    "an error surface."
+                ),
+                "evidence": [("email finding 7 (verbatim)", _EMAIL2_DRAFT), ("night review §1", _NIGHT_REVIEW_0712)],
+            },
+            {
+                "heading": "The three silent failure modes",
+                "text": (
+                    "(1) Nine due one-shots were never delivered (06:12 through 08:23Z, across five "
+                    "seat sessions) — each stayed 'enabled' with its fire time in the past. "
+                    "(2) Two crons wedged with next_run_at frozen hours in the past while still "
+                    "enabled: a seat failsafe stuck at 06:06Z and a daily loop at 06:08Z showing "
+                    "'last fire: never'. (3) The fresh-session daily fire was dropped entirely and "
+                    "was recovered ~2.7 hours late by a manual re-fire at 08:46Z. Detection "
+                    "signature, per the review: enabled=true AND next_run_at < now−15min — nothing "
+                    "alerts on it today; the dropped ticks were visible in the trigger list all night."
+                ),
+                "evidence": [("night review §1 + §4.1 (timeline, signature)", _NIGHT_REVIEW_0712), ("figs 22/24/25 (the dropped routine, a lane's first-person account)", _FIGS_0712)],
+            },
+            {
+                "heading": "The dead-man-cron failsafe worked — where it was alive",
+                "text": (
+                    "Every seat whose 2-hourly failsafe cron stayed healthy came back on its own at "
+                    "~08:0xZ when the scheduler partially recovered. The two dark seats were exactly "
+                    "the ones whose failsafe coverage was missing (daily-only) or itself wedged — the "
+                    "doctrine takeaway, verbatim: 'a failsafe only protects while it is alive.' The "
+                    "frozen crons are visible in the machine roster generated mid-incident."
+                ),
+                "evidence": [("night review §3.1 (Q-0265, production-proven)", _NIGHT_REVIEW_0712), ("roster gen #13 (frozen wake-state column)", _ROSTER_GEN13), ("8-seat staleness sweep, run mid-window", _SWEEP_8SEAT)],
+            },
+            {
+                "heading": "Serialization vs. real drop — the same-day refinement",
+                "text": (
+                    "A seat working from the trigger registry split the 'dropped one-shot' class in "
+                    "two: ticks bound to a busy session serialize and deliver the moment the turn "
+                    "goes idle (its 09:10Z tick fired at 11:16Z at exactly that boundary — sound by "
+                    "construction), while the genuinely-failed remainder is the fresh-session loop "
+                    "and the frozen crons. The refinement makes the incident smaller and sharper — "
+                    "and the platform gap clearer: no surface distinguishes queued from lost."
+                ),
+                "evidence": [("night review §8 (addendum ~12:00Z)", _NIGHT_REVIEW_0712), ("fig 35 (the serialization diagnosis)", _FIGS_0712)],
+            },
+            {
+                "heading": "Duplicate-fire safety held: a verified zero-write stand-down",
+                "text": (
+                    "When the manual 08:46Z kick and the scheduler's late ~10:28Z catch-up "
+                    "double-fired the same daily loop, the second run verified the first's commits "
+                    "and stood down with zero writes — the duplicate-fire safety an at-least-once "
+                    "delivery model needs already works on the fleet's side."
+                ),
+                "evidence": [("night review §8", _NIGHT_REVIEW_0712), ("fig 34 (the clean stand-down)", _FIGS_0712)],
+            },
+        ],
+        "evidence": [
+            ("the incident record: superbot night-review-2026-07-12 @ 8558179", _NIGHT_REVIEW_0712),
+            ("finding 7 of the July 12 email (same commit)", _EMAIL2_DRAFT),
+            ("the curated figure set (figs 20–35) @ cbb5495", _FIGS_0712),
+            ("fleet-manager roster gen #13, generated mid-incident @ 10fc4f7", _ROSTER_GEN13),
+        ],
+    },
     {
         "title": "A gate that was supposed to block merges let an empty PR through",
         "what": "The session-card gate is meant to hold every PR red until its card flips complete. On day one, PR #19 auto-merged effectively EMPTY on its in-progress card alone — the checker never inspected the card's status value, and the card was picked by file mtime, which a fresh CI checkout flattens.",
@@ -288,7 +395,7 @@ SUCCESSES: list[dict[str, Any]] = [
     },
     {
         "title": "Gates got harder faster than work got faster",
-        "what": "The safety net grew from 0 to 226 test functions in three days, and the gates themselves became test subjects: the born-red gate has a both-directions regression test, the CI fast lane's control gates are driven end-to-end against the real checker CLI, JSON payloads are pinned by shape contracts, and a meta-guard AST-scans the test suite for time discipline.",
+        "what": "The safety net grew from 0 to 226 test functions in the repo's first three days (and keeps growing — the current count is on the Growth page, from the snapshot), and the gates themselves became test subjects: the born-red gate has a both-directions regression test, the CI fast lane's control gates are driven end-to-end against the real checker CLI, JSON payloads are pinned by shape contracts, and a meta-guard AST-scans the test suite for time discipline.",
         "evidence": [("tests/test_born_red_session_gate.py", blob("tests/test_born_red_session_gate.py")), ("PR #127 (gate suite tests)", pr(127)), ("PR #114 (time-discipline guard)", pr(114))],
     },
     {
@@ -315,6 +422,7 @@ MILESTONES: list[dict[str, str]] = [
     {"date": "2026-07-09 late", "title": "The gate leak found and fixed; fleet coordination adopted", "detail": "PR #19's empty merge exposed the born-red leak, fixed via kit v1.0.0 (PR #24); the control/ bus adopted; /fleet renders every lane's heartbeat (PR #35). Gen-1 winds down after its 46-PR day (43 merged, 3 closed superseded) leaving succession docs a fresh generation can boot from."},
     {"date": "2026-07-10", "title": "Gen-2 boots from main alone; sessions arm their own wakes", "detail": "Walking skeleton proves the landing path (PR #51); /queue + /environments ship (PR #53); ORDER 008 self-arms the 4-hourly routine; the stranded-push incident and its rescue (PR #59) produce the proof-of-push rule; continuous mode begins (~PR #64)."},
     {"date": "2026-07-11", "title": "The 26-slice chain: fleet visibility wave + hardening", "detail": "/orders, /reviews, /projects, JSON contracts, board chips, nav guard; the healthcheck cron catches the registry break (fixed, PR #102); the time-bomb class defused (PRs #111/#114); fast-lane control gates (PR #125/#127); kit upgraded five versions; ORDER 011 self-review lands."},
+    {"date": "2026-07-11/12", "title": "Fleet consolidation; the scheduler incident; this site goes live", "detail": "Fleet-wide: the owner consolidates a fleet that peaked at ~15 Projects to 8 standing seats (decided 07-11, canonicalized in the manager's registry 07-12T03:15Z), and the platform's trigger scheduler silently degrades overnight — the incident and the failsafe doctrine that recovered it lead the problems page. This review site deploys publicly (2026-07-12, per the fleet's record) and the second review email goes to Anthropic."},
 ]
 
 # Overview stat tiles (labels only — values come from the snapshot).
@@ -485,7 +593,7 @@ QUESTIONNAIRE: list[dict[str, Any]] = [
     {
         "id": "why-fast",
         "q": "Where did the speed actually come from?",
-        "a": "Not from skipping checks — the gate got harder while the pace held. Four mechanisms, each visible in the record: merge-is-deploy (a green required check is the whole distance to production); parallel lanes on a conflict-free bus (one writer per file, so ten lanes never block each other); unattended chains that schedule their own successors and land one verified slice per wake; and paying discovery cost once (every wall's workaround is a committed fact the next session starts from). The growth page shows the test-count curve growing alongside the PR curve — the counterweight is the point.",
+        "a": "Not from skipping checks — the gate got harder while the pace held. Four mechanisms, each visible in the record: merge-is-deploy (a green required check is the whole distance to production); parallel lanes on a conflict-free bus (one writer per file, so parallel lanes never block each other); unattended chains that schedule their own successors and land one verified slice per wake; and paying discovery cost once (every wall's workaround is a committed fact the next session starts from). The growth page shows the test-count curve growing alongside the PR curve — the counterweight is the point.",
         "evidence": [
             ("/growth (this site)", "/growth"),
             ("docs/retro/gen1-final-retro-2026-07-09.md (the 46-PR day, honestly)", blob("docs/retro/gen1-final-retro-2026-07-09.md")),

@@ -51,15 +51,16 @@ def version_info(service: str) -> dict:
     }
 
 
-# Public `/version` endpoints of the three superbot-websites Railway services.
+# Public `/version` endpoints of the four superbot-websites Railway services.
 # The readiness board's websites-row "deploy state" cell compares each service's
 # DEPLOYED sha to the websites repo's `main` HEAD. control-plane is THIS app, so
 # its deployed sha is read straight from the environment with no network hop
-# (url = None); the other two are fetched over their public /version JSON.
+# (url = None); the other three are fetched over their public /version JSON.
 SERVICE_DEPLOY_TARGETS: dict = {
     "control-plane": None,
     "botsite": "https://botsite-production-cfd7.up.railway.app/version",
     "dashboard": "https://dashboard-production-a91b.up.railway.app/version",
+    "review": "https://review-production-f027.up.railway.app/version",
 }
 
 GITHUB_API_BASE = os.environ.get("GITHUB_API_BASE", "https://api.github.com").rstrip("/")
