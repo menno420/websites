@@ -131,3 +131,14 @@ provenance: fleet manager — owner-review follow-up 2026-07-12
 do: CONSOLIDATE PROMPT SURFACES — after ORDER 014's /prompts page is live, unify the prompt-rendering between /projects/{package} (PR #158) and /prompts (PR #165) into one implementation: one fetch/render/copy code path, one canonical page for finding prompts (the other links to it), no duplicated raw-content fetch logic. Do NOT start before ORDER 014 is done.
 why: two independently-built prompt surfaces now render the same fleet-manager registry artifacts with parallel fetch/render/copy logic — duplicated code paths drift and double the maintenance surface.
 done-when: single render path merged green; both URLs still work (one may redirect); duplication removed.
+
+## ORDER 018 · 2026-07-12T14:01Z · status: new
+priority: P1
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-12 (~14:10Z); numbered 018 because 016 is reserved by PR #160 and 017 by PR #172 (both on unmerged branches — at main HEAD this append follows ORDER 015).
+do: TESTER-RECRUITMENT SITE — the owner's idea VERBATIM between the markers:
+BEGIN ORDER TEXT
+I have another idea, create a website that could help me recruit people to help me test everything, explaining what needs to be done, like certain games to play, certain websites to review etc, and each task should offer a payment, probably like 10-20 per task which would take about 30 mins to one hour to complete and ends with and AI review, or directly guides users througha set of actions with a seperate AI window open that also knows what happens on screen, so it can ask guiding questions about each screen and the things it sees or doesn't see etc, do you understand what I mean? can you improve  my idea further and then execute it
+END ORDER TEXT
+why: owner wants real testers recruited for fleet products (games, websites) with paid tasks and AI-guided/AI-reviewed sessions.
+done-when: v1 recruitment site live with a task catalog, a submission + AI exit-review flow, and the payment/fulfillment gates flagged as owner actions.
