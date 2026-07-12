@@ -30,6 +30,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import (
     config,
+    envdrift,
     envhub,
     github,
     listfilter,
@@ -220,8 +221,17 @@ async def owner_environments(request: Request, _: None = Depends(require_owner))
     behind the same gate as the rest of /owner: committed per-service env
     facts always; live Railway variable NAMES (never values) when the
     project-scoped RAILWAY_TOKEN is configured; an honest owner-errand
-    banner while it is not."""
+    banner while it is not.
+
+    Name-drift check (the captured backlog bullet, promoted): the documented
+    names and the live names are additionally DIFFED (app/envdrift.py, the
+    PR #216 annotate idiom) — documented-but-missing-live /
+    live-but-undocumented chips per service + a page-level rollup, with the
+    honest unknown-with-reason state whenever Railway is unreachable; never
+    a fabricated match. Names only — values never exist past the client
+    boundary in app/railway.py."""
     data = await railway.overview(refresh=_refresh(request))
+    envdrift.annotate(data)
     return templates.TemplateResponse(
         request,
         "owner_environments.html",

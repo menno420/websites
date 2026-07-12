@@ -50,6 +50,36 @@
     {% endfor %}
   </table>
   {% endif %}
+
+  {# Documented-vs-live NAME drift rollup — computed in app/envdrift.py over
+     the two halves this page already renders (committed SERVICES names vs
+     the live NAME read). Railway unreachable = drift UNKNOWN with the exact
+     reason, never a fabricated match. #}
+  <h3>documented ↔ live name drift</h3>
+  {% if env.drift.state == 'unknown' %}
+  <p class="small">{{ badge('unknown', 'drift unknown') }}
+    <span class="dim">— {{ env.drift.reason }}; the documented and live name
+    sets cannot be compared right now, so nothing is assumed in sync.</span></p>
+  {% elif env.drift.state == 'drift' %}
+  <p class="small">{{ badge('warn', 'name drift') }}
+    <span class="dim">—
+      {%- if env.drift.missing_live_total %} documented-but-missing-live: {{ env.drift.missing_live_total }}{% endif %}
+      {%- if env.drift.missing_live_total and env.drift.undocumented_total %} ·{% endif %}
+      {%- if env.drift.undocumented_total %} live-but-undocumented: {{ env.drift.undocumented_total }}{% endif %}
+      {%- if env.drift.drifted_services %} — in
+      {% for n in env.drift.drifted_services %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      (details on each service card below){% endif %}
+      {%- if env.drift.undocumented_services %} · live service{{ 's' if env.drift.undocumented_services|length != 1 }} the repo does not document:
+      {% for n in env.drift.undocumented_services %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      — add {{ 'it' if env.drift.undocumented_services|length == 1 else 'them' }} to <code>app/railway.py</code> SERVICES{% endif %}</span>
+    {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}</p>
+  {% else %}
+  <p class="small">{{ badge('ok', 'no name drift (' ~ env.drift.services_compared ~ ' services compared)') }}
+    <span class="dim">— every documented variable name is set live and no
+    undocumented live name exists (Railway-provided <code>RAILWAY_*</code>
+    names are informational, not drift).</span>
+    {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}</p>
+  {% endif %}
 </div>
 
 {% for svc in env.services %}
@@ -62,7 +92,7 @@
     requirements <code>{{ svc.requirements }}</code> · committed facts — these
     come from the repo, not from Railway.</p>
   <table>
-    <tr><th>documented variable</th><th>what it is for</th><th>set?</th><th>manage</th></tr>
+    <tr><th>documented variable</th><th>what it is for</th><th>set?</th><th>live (Railway)?</th><th>manage</th></tr>
     {% for var in svc.env_vars %}
     <tr>
       <td><code>{{ var.name }}</code></td>
@@ -72,10 +102,44 @@
         {% elif var.set_here is false %}{{ badge('warn', 'unset (this runtime)') }}
         {% else %}{{ badge('unknown', 'needs live Railway read') }}{% endif %}
       </td>
+      <td>
+        {% if var.live_state == 'set-live' %}{{ badge('ok', 'set live') }}
+        {% elif var.live_state == 'missing-live' %}{{ badge('warn', 'missing live') }}
+        {% elif var.live_state == 'runtime-injected' %}<span class="dim small" title="Railway injects this into the runtime — not expected in the variables tab; never counted as drift">runtime-injected</span>
+        {% else %}{{ badge('unknown', 'unknown') }}{% endif %}
+      </td>
       <td class="small"><a href="{{ var.manage.url }}">{{ var.manage.label }} →</a></td>
     </tr>
     {% endfor %}
   </table>
+
+  {# Per-service name-drift line (app/envdrift.py) — honest states only:
+     no drift / drift with the actual names / unknown with the reason. #}
+  <p class="small">
+    {% if svc.drift.state == 'unknown' %}
+    {{ badge('unknown', 'drift unknown') }}
+    <span class="dim">— {{ svc.drift.reason }}</span>
+    {% elif svc.drift.state == 'ok' %}
+    {{ badge('ok', 'no name drift') }}
+    <span class="dim">— documented and live names match</span>
+    {% else %}
+    {{ badge('warn', 'name drift') }}
+    <span class="dim">—
+      {%- if svc.drift.note %} {{ svc.drift.note }} ·{% endif %}
+      {%- if svc.drift.missing_live %} documented-but-missing-live:
+      {% for n in svc.drift.missing_live %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      (set {{ 'it' if svc.drift.missing_live|length == 1 else 'them' }} in the Railway console, or drop the row from <code>app/railway.py</code>){% endif %}
+      {%- if svc.drift.missing_live and svc.drift.undocumented %} ·{% endif %}
+      {%- if svc.drift.undocumented %} live-but-undocumented:
+      {% for n in svc.drift.undocumented %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      (document {{ 'it' if svc.drift.undocumented|length == 1 else 'them' }} in <code>app/railway.py</code> SERVICES){% endif %}</span>
+    {% endif %}
+    {% if svc.drift.railway_provided %}
+    <span class="dim small">· +{{ svc.drift.railway_provided|length }} Railway-provided
+      {% for n in svc.drift.railway_provided %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      (Railway-managed — informational, not drift)</span>
+    {% endif %}
+  </p>
 </div>
 {% endfor %}
 
