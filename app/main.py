@@ -27,6 +27,7 @@ from . import (
     github,
     ideas,
     journal,
+    listfilter,
     nav,
     orders,
     owner,
@@ -208,8 +209,15 @@ async def fleet_heartbeat_json(request: Request):
 async def owner_queue_page(request: Request):
     """ORDER 005: the owner's single to-do surface — every lane's ⚑ needs-owner
     plus the fleet-manager owner-queue, deduplicated, newest first. Degrades
-    honestly when GITHUB_TOKEN is unset or the private upstream is unreachable."""
+    honestly when GITHUB_TOKEN is unset or the private upstream is unreachable.
+    ORDER 019: filter/sort/search over the centralized listfilter core
+    (project / derived kind / age dimensions, defined in owner_queue.py);
+    no params renders exactly the pre-filter page."""
     data = await owner_queue.overview(refresh=_refresh(request))
+    state = listfilter.parse(owner_queue.FILTER_SPEC, request.query_params)
+    data["filter"] = listfilter.apply(
+        owner_queue.FILTER_SPEC, data["items"], state
+    )
     return templates.TemplateResponse(
         request, "queue.html", {"q": data, "active": "queue"}
     )
@@ -220,9 +228,17 @@ async def owner_queue_json(request: Request):
     """JSON variant of /queue — the manager's machine round-trip: file an ask
     in a lane heartbeat, poll this, confirm it actually surfaces. Same
     overview dict, minus the fleet-manager doc's rendered HTML (an HTML-view
-    concern; the /fleet.json precedent)."""
+    concern; the /fleet.json precedent). Accepts the same ORDER 019 filter
+    params as /queue (project/kind/age/q/sort) — a ``filter`` echo key states
+    what was applied; without params ``items`` is byte-identical to before."""
     data = await owner_queue.overview(refresh=_refresh(request))
+    state = listfilter.parse(owner_queue.FILTER_SPEC, request.query_params)
+    fl = listfilter.apply(owner_queue.FILTER_SPEC, data["items"], state)
     payload = dict(data)
+    payload["items"] = fl["items"]
+    payload["filter"] = {
+        k: fl[k] for k in ("q", "sort", "selected", "active", "shown", "total")
+    }
     payload["fleet_manager"] = {
         k: v for k, v in data["fleet_manager"].items() if k != "body_html"
     }
@@ -324,6 +340,21 @@ async def orders_page(request: Request):
     protocol keeps inbox orders 'new' forever — execution truth lives in the
     status files). Honest absences/banners/unknowns; always 200."""
     data = await orders.overview(refresh=_refresh(request))
+    # ORDER 019: the /queue filter widget, reused verbatim (same module, same
+    # partial). Orders filter as a FLAT list (each stamped with its card's
+    # repo), then regroup per card; the per-card attention sort stays. With
+    # no params every card shows its full inbox order — identical to before.
+    state = listfilter.parse(orders.FILTER_SPEC, request.query_params)
+    flat = [
+        {**o, "repo": c["repo"]} for c in data["cards"] for o in c["orders"]
+    ]
+    fl = listfilter.apply(orders.FILTER_SPEC, flat, state)
+    shown_by_repo: dict[str, list] = {}
+    for o in fl["items"]:
+        shown_by_repo.setdefault(o["repo"], []).append(o)
+    for c in data["cards"]:
+        c["shown_orders"] = shown_by_repo.get(c["repo"], [])
+    data["filter"] = fl
     return templates.TemplateResponse(
         request, "orders.html", {"o": data, "active": "orders"}
     )
