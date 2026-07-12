@@ -253,7 +253,7 @@ def _fixture_seats() -> dict:
              "repos": [
                  {"repo": "gba-homebrew", "repo_url": "https://github.com/menno420/gba-homebrew",
                   "heartbeat_available": True, "updated": "2026-07-12T09:00:00Z", "reason": ""},
-                 {"repo": "pokemon-mod-lab", "repo_url": "",
+                 {"repo": "unreadable-repo", "repo_url": "",
                   "heartbeat_available": False, "updated": "",
                   "reason": "HTTP 404 — no control/status.md on main (or repo not public)"},
              ]},
@@ -273,11 +273,11 @@ def test_seats_view_freshest_member_wins_and_gaps_stay_honest():
     game_lab = next(s for s in sv["seats"] if s["seat"] == "Game Lab")
     # seat-level reading = the freshest member (09:00 → 3h at the frozen NOW)
     assert game_lab["last_heartbeat"]["age_human"] == "3h ago"
-    # the private member is an honest gap, never invented
-    poke = next(m for m in game_lab["repos"] if m["repo"] == "pokemon-mod-lab")
-    assert poke["heartbeat_available"] is False
-    assert poke["freshness"]["ok"] is False
-    assert "404" in poke["reason"]
+    # an unreadable member is an honest gap, never invented
+    gap = next(m for m in game_lab["repos"] if m["repo"] == "unreadable-repo")
+    assert gap["heartbeat_available"] is False
+    assert gap["freshness"]["ok"] is False
+    assert "404" in gap["reason"]
 
 
 def test_seats_view_absent_section_is_honest():
@@ -323,8 +323,6 @@ def test_fleet_page_renders_eight_seats_and_consolidation():
     assert "peaked at ~15 Projects" in r.text
     assert "canonicalized 2026-07-12T03:15Z" in r.text
     assert "639b0f09d7e99056cb8be83abc733edc198f1728" in r.text
-    # the private Game Lab member is an honest labeled gap
-    assert "not measurable" in r.text
 
 
 # ---------------------------------------------------------------------------
@@ -346,6 +344,107 @@ def test_committed_mirror_heads_cover_every_repo_backed_lane():
             assert len(head["sha"]) == 40 and int(head["sha"], 16) >= 0
         else:
             assert head["reason"].strip()
+
+
+# ---------------------------------------------------------------------------
+# ORDER 017 workstream D: "the Pokémon lane stays private" — the private
+# lane never reaches a public surface: not the committed mirrors, not the
+# rendered pages, not the machine-readable JSON.
+# ---------------------------------------------------------------------------
+def _assert_no_private_lane(text: str) -> None:
+    low = text.lower()
+    assert "pokemon" not in low and "pokémon" not in low
+
+
+def test_private_lane_never_renders_on_fleet_page():
+    r = client.get("/fleet")
+    assert r.status_code == 200
+    _assert_no_private_lane(r.text)
+
+
+def test_private_lane_never_renders_on_homepage():
+    r = client.get("/")
+    assert r.status_code == 200
+    _assert_no_private_lane(r.text)
+
+
+def test_private_lane_absent_from_fleet_json_endpoint():
+    r = client.get("/fleet.json")
+    assert r.status_code == 200
+    _assert_no_private_lane(r.text)
+
+
+def test_private_lane_detail_is_404():
+    r = client.get("/fleet/pokemon-mod-lab")
+    assert r.status_code == 404
+    _assert_no_private_lane(r.text)
+
+
+def test_committed_mirrors_carry_no_private_lane():
+    """The bake-time filter (gen_fleet.PRIVATE_LANES) holds for the files as
+    committed — the string never even reaches the repo's public data."""
+    data_dir = Path(__file__).resolve().parent.parent / "data"
+    for name in ("fleet.json", "stats.json"):
+        _assert_no_private_lane((data_dir / name).read_text(encoding="utf-8"))
+
+
+def test_defensive_filter_strips_private_lane_from_an_unfiltered_mirror(tmp_path):
+    """An OLDER, pre-filter mirror (private lane still baked in) loads with
+    the lane dropped, the counts decremented consistently, the seat member
+    removed, and free-text mentions scrubbed."""
+    old = {
+        "generated_at": "2026-07-12T06:00:00Z",
+        "registry": {"ok": True, "reason": "", "url": "u",
+                     "total_seats": 3, "repo_seats": 2,
+                     "registry_only_seats": ["coordinator (no repo)"]},
+        "lanes": [
+            {"lane": "gba-homebrew", "repo": "gba-homebrew", "disposition": "live",
+             "repo_url": "https://github.com/menno420/gba-homebrew",
+             "heartbeat": {"available": True,
+                           "fields": {"notes": "paired with pokemon-mod-lab work"},
+                           "source_url": "s"}},
+            {"lane": "pokemon-mod-lab", "repo": "pokemon-mod-lab", "disposition": "live",
+             "repo_url": "https://github.com/menno420/pokemon-mod-lab",
+             "heartbeat": {"available": False, "reason": "HTTP 404"}},
+            {"lane": "coordinator (no repo)", "repo": None, "disposition": "registry-only",
+             "heartbeat": {"available": False, "reason": "registry-only seat"}},
+        ],
+        "seats": [
+            {"seat": "Game Lab", "role": "Standalone games",
+             "repos": [
+                 {"repo": "gba-homebrew", "repo_url": "", "heartbeat_available": True,
+                  "updated": "2026-07-12T05:00:00Z", "reason": ""},
+                 {"repo": "pokemon-mod-lab", "repo_url": "", "heartbeat_available": False,
+                  "updated": "", "reason": "HTTP 404"},
+             ]},
+        ],
+    }
+    p = tmp_path / "fleet.json"
+    p.write_text(json.dumps(old), encoding="utf-8")
+    res = fleetdata.load_fleet(p)
+    assert res["ok"], res["error"]
+    data = res["data"]
+    _assert_no_private_lane(json.dumps(data))
+    assert [ln["lane"] for ln in data["lanes"]] == ["gba-homebrew", "coordinator (no repo)"]
+    # counts stay consistent with what actually renders
+    assert data["registry"]["total_seats"] == 2
+    assert data["registry"]["repo_seats"] == 1
+    assert [m["repo"] for m in data["seats"][0]["repos"]] == ["gba-homebrew"]
+    # the free-text mention is scrubbed, the field itself survives
+    notes = data["lanes"][0]["heartbeat"]["fields"]["notes"]
+    assert "[a private lane]" in notes
+
+
+def test_defensive_filter_strips_private_lane_from_old_stats(tmp_path):
+    old = {"generated_at": "2026-07-12T06:00:00Z",
+           "repos": {"gba-homebrew": {"ok": True},
+                     "pokemon-mod-lab": {"ok": False, "reason": "HTTP 404"}}}
+    p = tmp_path / "stats.json"
+    p.write_text(json.dumps(old), encoding="utf-8")
+    res = fleetdata.load_stats(p)
+    assert res["ok"], res["error"]
+    assert list(res["data"]["repos"]) == ["gba-homebrew"]
+    _assert_no_private_lane(json.dumps(res["data"]))
 
 
 def test_lane_view_passes_head_through_and_page_renders_it():

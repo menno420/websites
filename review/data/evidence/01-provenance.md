@@ -46,7 +46,7 @@ asserted.
 | superbot-next 37/49 subsystems, 218/218 goldens | UNVERIFIED here — email-draft claim; attribute, don't assert | `8558179` |
 | substrate-kit v1.7 → v1.12.1 in ~3 days | UNVERIFIED here (email-draft claim); roster gen #13 shows lanes on v1.12.x and fm #114 upgraded to v1.13.0 — version numbers at least consistent | `8558179`, `10fc4f7` |
 | Trading lane's honest null result ("no strategy cleared significance") | VERIFIED (documented) — keep; the honesty is deliberate | email draft (e) @ `8558179` |
-| Pokémon lane private by design (Nintendo-derived) | VERIFIED (documented) — do not surface its internals | email draft (e); roster gen #13 (NOT MEASURED, auth wall) |
+| One Game Lab lane private by design (Nintendo-derived; unnamed here — ORDER 017 D) | VERIFIED (documented) — do not surface its name or internals | email draft (e); roster gen #13 (NOT MEASURED, auth wall) |
 
 ## ANTHROPIC_API_KEY (references only — no secret values anywhere)
 

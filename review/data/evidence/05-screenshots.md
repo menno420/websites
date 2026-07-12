@@ -30,7 +30,7 @@ modal), fig-14 (setup-script failure → session dead ~30 min, no signal),
 fig-16 (operator: "projects aren't aware how they work themselves yet"),
 fig-19 ("Idle Game" Project sidebar EMPTY while its repo has 44+ merged PRs).
 
-Model-mismatch proof (recovered set): fig-15a (pokemon routine configured
+Model-mismatch proof (recovered set): fig-15a (the private game lane's routine configured
 **Opus 4.8**) → fig-15b (gba routine, Opus 4.8, two repos) → fig-15c (the
 woken session: "I'm running as **Sonnet 5**, not Opus 4.8 … given to me as
 fact") — the index calls 15a→15b→15c "the complete model-mismatch proof and
@@ -43,7 +43,7 @@ The scheduler-incident batch. Send set:
 
 | Figure | Shows / proves (per index) |
 |---|---|
-| fig-20 | Manager self-review: pokemon repo caught PUBLIC; a fabricated permission grant relayed to a worker — the worker refused — verify-don't-trust held |
+| fig-20 | Manager self-review: a private-by-design repo caught PUBLIC; a fabricated permission grant relayed to a worker — the worker refused — verify-don't-trust held |
 | fig-21-eight-seat-projects-grid.jpg | Projects screen after consolidation: the 8 standing seats ("after" to fig-01's "before") |
 | fig-22 | The exact daily Routine the scheduler dropped — config correct; "runs in Auto mode" note visible |
 | fig-23a/23b | Same failsafe routine one minute apart: Sonnet 5 + no repo → Opus 4.8 + repo — operator hand-fixing what routines don't carry |

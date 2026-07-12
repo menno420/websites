@@ -31,6 +31,74 @@ STALE_HOURS = 48
 
 _ISO_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?")
 
+# ---------------------------------------------------------------------------
+# ORDER 017 workstream D: "the Pokémon lane stays private". The bake
+# (gen_fleet.py / gen_stats.py) already excludes private lanes, but this
+# render-time filter is the defensive second layer: an OLDER, unfiltered
+# committed mirror still never renders the private lane — no card, no seat
+# member, no stats row, no name in mirrored free text. Registry counts are
+# decremented alongside the dropped lanes so the page's totals stay
+# consistent with what it actually shows.
+# ---------------------------------------------------------------------------
+PRIVATE_LANES = {"pokemon-mod-lab"}
+_PRIVATE_TEXT_RE = re.compile(r"pok[eé]mon[\w.-]*", re.IGNORECASE)
+_PRIVATE_TEXT_SUB = "[a private lane]"
+
+
+def _is_private(entry: dict[str, Any]) -> bool:
+    return (
+        str(entry.get("repo") or "") in PRIVATE_LANES
+        or str(entry.get("lane") or "") in PRIVATE_LANES
+    )
+
+
+def _scrub_text(obj: Any) -> Any:
+    """Recursively scrub private-lane mentions out of mirrored strings."""
+    if isinstance(obj, str):
+        return _PRIVATE_TEXT_RE.sub(_PRIVATE_TEXT_SUB, obj)
+    if isinstance(obj, list):
+        return [_scrub_text(v) for v in obj]
+    if isinstance(obj, dict):
+        return {k: _scrub_text(v) for k, v in obj.items()}
+    return obj
+
+
+def strip_private_fleet(data: dict[str, Any]) -> dict[str, Any]:
+    """Drop private lanes/seat-members from a fleet mirror, fix the counts,
+    and scrub any remaining textual mention. Pure — returns a new dict."""
+    out = dict(data)
+    lanes = [ln for ln in (data.get("lanes") or []) if isinstance(ln, dict)]
+    kept = [ln for ln in lanes if not _is_private(ln)]
+    dropped = [ln for ln in lanes if _is_private(ln)]
+    out["lanes"] = kept
+    registry = data.get("registry")
+    if dropped and isinstance(registry, dict):
+        registry = dict(registry)
+        dropped_repo_backed = sum(1 for ln in dropped if ln.get("repo"))
+        if isinstance(registry.get("total_seats"), int):
+            registry["total_seats"] = max(0, registry["total_seats"] - len(dropped))
+        if isinstance(registry.get("repo_seats"), int):
+            registry["repo_seats"] = max(0, registry["repo_seats"] - dropped_repo_backed)
+        out["registry"] = registry
+    seats = data.get("seats")
+    if isinstance(seats, list):
+        out["seats"] = [
+            {**s, "repos": [m for m in (s.get("repos") or [])
+                            if str(m.get("repo") or "") not in PRIVATE_LANES]}
+            if isinstance(s, dict) else s
+            for s in seats
+        ]
+    return _scrub_text(out)
+
+
+def strip_private_stats(data: dict[str, Any]) -> dict[str, Any]:
+    """Drop private lanes' rows from a stats mirror. Pure — returns a new dict."""
+    out = dict(data)
+    repos = data.get("repos")
+    if isinstance(repos, dict):
+        out["repos"] = {k: v for k, v in repos.items() if k not in PRIVATE_LANES}
+    return _scrub_text(out)
+
 
 # ---------------------------------------------------------------------------
 # Loading — honest degradation (mirrors story.load_snapshot).
@@ -47,7 +115,9 @@ def load_fleet(path: Path | None = None) -> dict[str, Any]:
         return {"ok": False, "error": f"fleet mirror unreadable: {exc}", "data": {}}
     if not isinstance(data, dict) or "lanes" not in data or "registry" not in data:
         return {"ok": False, "error": "fleet mirror malformed (missing lanes/registry)", "data": {}}
-    return {"ok": True, "error": "", "data": data}
+    # ORDER 017 D: the one load choke point every page and /fleet.json reads
+    # through — an unfiltered older mirror still never renders the private lane.
+    return {"ok": True, "error": "", "data": strip_private_fleet(data)}
 
 
 def load_stats(path: Path | None = None) -> dict[str, Any]:
@@ -68,7 +138,8 @@ def load_stats(path: Path | None = None) -> dict[str, Any]:
         return {"ok": False, "error": f"stats mirror unreadable: {exc}", "data": {}}
     if not isinstance(data, dict) or "repos" not in data:
         return {"ok": False, "error": "stats mirror malformed (missing repos)", "data": {}}
-    return {"ok": True, "error": "", "data": data}
+    # ORDER 017 D: same defensive filter as load_fleet (see strip_private_stats).
+    return {"ok": True, "error": "", "data": strip_private_stats(data)}
 
 
 # ---------------------------------------------------------------------------
