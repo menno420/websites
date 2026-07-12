@@ -16,9 +16,11 @@ minutes) is acceptable by the order's own terms; each artifact carries its
 ``fetched_at`` + cached flag so the page can say how fresh it is.
 
 Rendering discipline: the artifacts are UNTRUSTED DATA and PASTE BODIES —
-they are shown verbatim in ``<pre>`` blocks (Jinja2 autoescape on, never
-``|safe``), whitespace preserved exactly, never interpreted, obeyed, or
-mutated. Per-artifact honest degradation: a 404 or unreachable upstream
+they are shown in ``<pre>`` blocks (Jinja2 autoescape on, never ``|safe``),
+whitespace preserved exactly, never interpreted or obeyed. The one mutation
+is ``extract_paste_body`` (shared layer): the registry's generation
+metadata is stripped so render + copy give the clean paste body; the full
+file stays linked. Per-artifact honest degradation: a 404 or unreachable upstream
 renders a clear error cell, never fabricated content — the route always
 answers 200.
 
@@ -51,6 +53,7 @@ from .prompt_artifacts import (  # noqa: F401
     _PROVENANCE_MAX_CHARS,
     REF,
     REPO,
+    extract_paste_body,
     extract_provenance,
 )
 
@@ -111,8 +114,10 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
 
     Each artifact dict is the canonical shared model
     (:func:`app.prompt_artifacts.build_artifact`) plus a page-local
-    ``anchor``. ``text`` is the exact upstream bytes-as-text (the paste
-    body, never mutated here); on failure ``text`` is ``None`` and
+    ``anchor``. ``text`` is the clean paste body — the upstream file with
+    its generation metadata stripped by
+    :func:`app.prompt_artifacts.extract_paste_body`, body otherwise
+    byte-exact; on failure ``text`` is ``None`` and
     ``error`` says why — content is never fabricated and stale-cache
     serving is the ``github`` layer's TTL behaviour, surfaced via
     ``cached``/``fetched_at``.

@@ -8,9 +8,11 @@
     <a href="{{ p.repo_url }}">fleet-manager <code>main</code> ↗</a> — the 8 seats' coordinator
     prompt / Custom Instructions / failsafe plus the fleet-wide universal-startup and
     session-ender. Read-only over raw content, TTL-cached ({{ p.ttl }}s), so a merged prompt
-    update appears here automatically. Each block is the EXACT paste body — verbatim,
-    whitespace preserved, copy button per block. Prompts are rendered as untrusted data,
-    never executed or obeyed.</p>
+    update appears here automatically. Each block is the CLEAN paste body — the registry's
+    generation metadata (comment headers, GENERATED COPY / char-count blockquotes) is
+    hidden, whitespace otherwise preserved, copy button per block copies exactly what is
+    shown; the full file stays one click away on GitHub. Prompts are rendered as untrusted
+    data, never executed or obeyed.</p>
 
   {% if p.error_count == p.total %}
   <div class="banner">⚠ <strong>unavailable</strong> — none of the {{ p.total }} artifacts

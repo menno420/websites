@@ -14,9 +14,14 @@ Rules carried by every consumer of this module:
 - Fetching rides the repo's cross-repo rule exactly: committed text over
   ``raw.githubusercontent.com``, read-only, forward-only, through
   ``github.fetch_file`` (raw host first, contents-API fallback, TTL cache).
-- Artifacts are UNTRUSTED DATA and PASTE BODIES — shown verbatim in
-  ``<pre>`` blocks (Jinja2 autoescape on, never ``|safe``), whitespace
-  preserved exactly, never interpreted, obeyed, or mutated.
+- Artifacts are UNTRUSTED DATA and PASTE BODIES — shown in ``<pre>``
+  blocks (Jinja2 autoescape on, never ``|safe``), whitespace preserved
+  exactly, never interpreted or obeyed. The ONE mutation applied is
+  :func:`extract_paste_body`: the registry's generation metadata (comment
+  headers, GENERATED COPY / char-count blockquotes, the
+  ``registry-header-end`` marker) is stripped so render and copy present
+  only the clean paste body; the full file stays one click away via the
+  per-artifact GitHub link.
 - Honest degradation per artifact: a failed fetch yields ``ok: False`` with
   the reason surfaced — content is never fabricated, routes still answer 200.
 """
@@ -64,6 +69,103 @@ def extract_provenance(text: str) -> str:
     return ""
 
 
+# The registry's authoritative end-of-header marker (per-seat instructions.md
+# artifacts carry it; the paste body is everything AFTER it). Artifacts
+# without the marker (coordinator/failsafe prompts, the universals) instead
+# open with comment headers + provenance/budget blockquotes that
+# extract_paste_body strips heuristically.
+REGISTRY_HEADER_END = "<!-- registry-header-end -->"
+
+# Header-region blockquote lines that are generation metadata, not body:
+# the "> **GENERATED COPY — NOT SOURCE OF TRUTH** …" provenance quote and
+# the "> char-count: … / budget …" budget quote.
+_META_QUOTE_RE = re.compile(
+    r"generated copy|not source of truth|char-count|budget", re.IGNORECASE
+)
+
+
+def _drop_full_line_comments(text: str) -> str:
+    """Remove full-line HTML comment lines/blocks (``<!-- … -->``, possibly
+    spanning lines) anywhere in ``text`` — the paste body must never carry
+    generator comments. Lines with inline (mid-line) comments are body text
+    and pass through untouched."""
+    kept: list[str] = []
+    in_comment = False
+    for line in text.splitlines(keepends=True):
+        s = line.strip()
+        if in_comment:
+            if "-->" in s:
+                in_comment = False
+            continue
+        if s.startswith("<!--"):
+            if "-->" not in s:
+                in_comment = True
+            continue
+        kept.append(line)
+    return "".join(kept)
+
+
+def extract_paste_body(text: str) -> str:
+    """The clean paste body of a registry artifact — what the page renders
+    and the copy button copies.
+
+    Rules, in order:
+
+    - If ``<!-- registry-header-end -->`` appears (per-seat instructions.md
+      artifacts), the body is everything AFTER that marker — the
+      authoritative delimiter.
+    - Otherwise strip from the top, until the first real content line:
+      full HTML comment blocks (single- or multi-line), the
+      ``> **GENERATED COPY …`` provenance blockquote (with its ``>``
+      continuation lines), the ``> char-count: … / budget`` blockquote,
+      and blank lines between them.
+    - Either way, any remaining FULL-LINE comment lines/blocks anywhere in
+      the body are removed, and leading blank lines are stripped.
+
+    Already-clean text passes through unchanged (idempotent, apart from
+    leading-blank stripping). The body itself is otherwise never mutated —
+    whitespace and content are preserved exactly.
+    """
+    if not text:
+        return ""
+    if REGISTRY_HEADER_END in text:
+        body = text.split(REGISTRY_HEADER_END, 1)[1]
+    else:
+        lines = text.splitlines(keepends=True)
+        i = 0
+        in_comment = False
+        in_meta_quote = False
+        while i < len(lines):
+            s = lines[i].strip()
+            if in_comment:
+                if "-->" in s:
+                    in_comment = False
+                i += 1
+                continue
+            if s.startswith("<!--"):
+                if "-->" not in s:
+                    in_comment = True
+                in_meta_quote = False
+                i += 1
+                continue
+            if not s:
+                in_meta_quote = False
+                i += 1
+                continue
+            if s.startswith(">") and (_META_QUOTE_RE.search(s) or in_meta_quote):
+                in_meta_quote = True
+                i += 1
+                continue
+            break  # first real content line — the body starts here
+        body = "".join(lines[i:])
+    body = _drop_full_line_comments(body)
+    out = body.splitlines(keepends=True)
+    j = 0
+    while j < len(out) and not out[j].strip():
+        j += 1
+    return "".join(out[j:])
+
+
 def blob_url(path: str) -> str:
     """GitHub blob URL for a registry path (deep link next to every block)."""
     return f"https://github.com/{config.OWNER}/{REPO}/blob/{REF}/{path}"
@@ -78,13 +180,16 @@ def build_artifact(
     """The canonical prompt-artifact dict from a ``github.fetch_file`` result.
 
     ``{seat, label, path, github_url, ok, text, error, fetched_at, cached,
-    provenance, chars}`` — ``text`` is the exact upstream bytes-as-text (the
-    paste body, never mutated here); on failure ``text`` is ``None`` and
-    ``error`` says why. Both surfaces render this dict through the shared
-    ``prompt_block`` partial; neither builds its own variant.
+    provenance, chars}`` — ``text`` is the CLEAN PASTE BODY
+    (:func:`extract_paste_body` over the upstream text: generation metadata
+    stripped, body otherwise byte-exact); ``provenance`` and the GitHub link
+    keep the full file's metadata reachable. On failure ``text`` is ``None``
+    and ``error`` says why. Both surfaces render this dict through the
+    shared ``prompt_block`` partial; neither builds its own variant.
     """
     ok = bool(res["ok"]) and isinstance(res["data"], str)
-    text = res["data"] if ok else None
+    raw = res["data"] if ok else None
+    text = extract_paste_body(raw) if ok else None
     return {
         "seat": seat,
         "label": label,
@@ -97,7 +202,9 @@ def build_artifact(
         ),
         "fetched_at": res.get("fetched_at", ""),
         "cached": bool(res.get("cached")),
-        "provenance": extract_provenance(text or ""),
+        # provenance comes from the FULL upstream text — the version line
+        # usually lives in the very header extract_paste_body strips.
+        "provenance": extract_provenance(raw or ""),
         "chars": len(text) if text else 0,
     }
 
