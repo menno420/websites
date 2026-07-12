@@ -30,15 +30,22 @@
 > exists; botsite DATABASE_URL: `/submit` still the labeled stub, the
 > Railway-mutation policy wall stands (`docs/RAILWAY-SAFETY.md`).
 
-```markdown
-⚑ OWNER-ACTION
-WHAT: Create the fourth Railway service so the new program-review site (built for Anthropic reviewers) goes live.
-WHERE: railway.app → project superbot-websites → New → Service → GitHub repo menno420/websites.
-HOW: set Root Directory = review (the service's own Dockerfile at review/Dockerfile is picked up automatically, exactly like botsite/dashboard); branch = main; no environment variables needed (the service is read-only and network-free). After the first deploy, check <service-url>/healthz returns {"status":"ok"} and /version shows the deployed sha.
-WHY-IT-MATTERS: the review site — process, growth charts, successes, an honest problems page, and (since the 2026-07-11 expansion) the fleet index, continuous review editions with a subscribable Atom feed, and the evidence-backed questionnaire — exists on main but has no URL until the service exists.
-UNBLOCKS: a shareable live URL for Anthropic reviewers (including /reviews/feed.xml they can subscribe to); the board's deploy-drift row and scripts/healthcheck.py can then also add the fourth service. The scheduled review-bake workflow already refreshes the site's committed data daily, so the service goes live self-updating.
-VERIFIED-NEEDED: service creation is a Railway account mutation — the Railway-safety policy (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger) forbids agent-initiated Railway mutations without your explicit go, so this was deliberately not attempted (the same policy wall as the Postgres ask; no new attempt/error needed).
-```
+> **Re-verified 2026-07-12T16:49Z (records reconcile, main @ `c5abd3e`):**
+> the review-service ask is now **SATISFIED** — the fourth Railway service
+> is LIVE: cold fetch `https://review-production-f027.up.railway.app/`
+> returns HTTP 200 unauthenticated, `/healthz` returns
+> `{"status":"ok","service":"review"}`, `/version` reports sha `c5abd3ee`
+> (= main HEAD at verification). Moved to **Decided row J** (ask text kept
+> verbatim below the Decided table). The remaining asks in this block were
+> re-checked and REMAIN OPEN: Q-0004 still `open` + `blocking` with
+> "Maintainer answer: (unanswered)" (`docs/question-router.md`); Discord
+> OAuth + armed service still gated on Q-0004; botsite `/submit` still
+> serves the labeled stub (live fetch HTTP 200 with "Stub — not wired"),
+> so the DATABASE_URL ask stands.
+
+**STRUCK 2026-07-12T16:49Z (records reconcile — SATISFIED, moved to
+Decided row J below; the six-field ask text is kept verbatim under the
+Decided table, per "do not delete, move").**
 
 **PAT side-note (updated 2026-07-12 — the control-plane GITHUB_TOKEN ask
 itself is RESOLVED, Decided row H):** the remaining optional payoff is a
@@ -105,7 +112,7 @@ the click — the follow-up is the single ask below).
 WHAT: Allow GitHub Actions to create pull requests on menno420/websites, so the daily review-bake can land its data refresh.
 WHERE: github.com/menno420/websites → Settings → Actions → General → "Workflow permissions" → check "Allow GitHub Actions to create and approve pull requests" → Save.
 HOW: one checkbox + Save. Optionally afterwards: Actions → review-bake → "Run workflow" (branch main) to land the first bake immediately instead of waiting for the daily cron.
-WHY-IT-MATTERS: the review-bake workflow has now run TWICE and failed BOTH times at the same wall — run 29167034060 (event: workflow_dispatch, 2026-07-11T20:26:33Z, your manual run) and run 29184552812 (event: schedule, 2026-07-12T07:38:28Z — the daily cron IS firing). Each run baked the data fine (snapshot + fleet + stats: "17/18 repos with live stats"), was correctly ruleset-blocked from pushing to main, pushed its fallback branch, then died at `gh pr create` with: "GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)". Until the toggle flips, every daily bake fails and review/data/stats.json stays absent from main.
+WHY-IT-MATTERS: the review-bake workflow has now run TWICE and failed BOTH times at the same wall — run 29167034060 (event: workflow_dispatch, 2026-07-11T20:26:33Z, your manual run) and run 29184552812 (event: schedule, 2026-07-12T07:38:28Z — the daily cron IS firing). Each run baked the data fine (snapshot + fleet + stats: "17/18 repos with live stats"), was correctly ruleset-blocked from pushing to main, pushed its fallback branch, then died at `gh pr create` with: "GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)". Until the toggle flips, every daily bake fails. (Staleness fix 2026-07-12T16:49Z: review/data/stats.json is no longer absent from main — an agent session landed it manually via ORDER 017 A, PR #175 — but the AUTOMATED daily loop is still dead: the workflow's run history still shows exactly the same 2 runs, both failed; no run has succeeded since.)
 UNBLOCKS: the self-updating review-site data loop (snapshot/fleet/stats refreshed daily via [bake] PRs that auto-merge on green); also makes the two orphan branches the failed runs pushed (bake/review-data-20260711-202653, bake/review-data-20260712-073843 — stale, safe to delete) stop accumulating.
 VERIFIED-NEEDED: the "Allow GitHub Actions to create and approve pull requests" setting is repo-console-only (Settings → Actions), owner-held; agents hold no path to it. Failure verified by event type from both runs' logs 2026-07-12 (ORDER 012); exact error string quoted above.
 ```
@@ -190,6 +197,18 @@ UNBLOCKS: console writeback commits land in git — assistance requests append r
 VERIFIED-NEEDED: submit a note on /owner/queue (reachable from /queue) and see a commit SHA link in the banner and audit log instead of "queued". Deliberately not attempted by agents: PAT minting is owner-held (no agent credential exists) and Railway variable mutations are policy-walled (docs/RAILWAY-SAFETY.md — same wall as the standing asks above).
 ```
 
+### ⚑ Ask added by the 2026-07-12 records reconcile (`/owner/environments` live half — ORDER 016 follow-through)
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Mint a Railway token scoped to the superbot-websites project ONLY (prefer the most read-only scope Railway offers — the page issues GraphQL queries exclusively, no mutation strings exist in app/railway.py) and set it as RAILWAY_TOKEN on the control-plane Railway service, so /owner/environments shows live deploy/variable data.
+WHERE: railway.app → project superbot-websites → Settings → Tokens → create a PROJECT-scoped token (never the account key, never the ambient production RAILWAY_*_ID trio — docs/RAILWAY-SAFETY.md); then railway.app → superbot-websites → service control-plane → Variables → New Variable RAILWAY_TOKEN.
+HOW: create the project token, copy it once, paste it as RAILWAY_TOKEN on the control-plane service (the value never goes in the repo). The read layer picks it up on the service's automatic redeploy; then open /owner/environments — the live half should flip from the "not-configured" owner-errand banner to per-service variable NAMES (names + presence only, never values — app/railway.py drops values at the client boundary).
+WHY-IT-MATTERS: the gated /owner/environments page (PR #166, ORDER 016 slice 1) is live behind the owner gate (HTTP 401 unauthenticated, verified 2026-07-12) but its live half renders "not-configured" while RAILWAY_TOKEN is unset — you only see the committed facts, not what is actually configured where; the owner decided 2026-07-11 to mint this token but it has not landed (docs/CAPABILITIES.md 2026-07-12 wall entry).
+UNBLOCKS: live env-var-name visibility across all four services from one gated page, and first real-API verification of the GraphQL read path (UNVERIFIED until the token exists, per the capability ledger).
+VERIFIED-NEEDED: code path confirmed 2026-07-12 — app/config.py reads RAILWAY_TOKEN from the env; app/railway.py renders state "not-configured" while it is unset and the CAPABILITIES ledger records the token as NOT provisioned (session env + deployed service, 2026-07-12). Token minting + Railway variable mutations are owner-held / policy-walled for agents (docs/RAILWAY-SAFETY.md — deliberately not attempted; same wall as the asks above).
+```
+
 ## 🟢 Decided / resolved
 
 | # | Item | Decision | Provenance |
@@ -203,6 +222,19 @@ VERIFIED-NEEDED: submit a note on /owner/queue (reachable from /queue) and see a
 | G | **One manual review-bake dispatch** (was the archive-consolidated run-once ask) | **DONE by owner — but the run failed on a repo setting.** Run `29167034060` (`event: workflow_dispatch`) fired 2026-07-11T20:26:33Z; the first `schedule` fire `29184552812` followed 2026-07-12T07:38:28Z (the cron works). Both failed at `gh pr create`: "GitHub Actions is not permitted to create or approve pull requests". Follow-up = the single toggle ask above. | Both run logs, read 2026-07-12 (ORDER 012); run history: 2 runs total, both failed. |
 | H | **Control-plane GITHUB_TOKEN** (was the standing PAT ask) | **DONE by owner** — the live board now returns authenticated-only cells (Actions-secret counts `known: true`, `auto_merge.allowed` known), impossible anonymously; deploy-drift row reads all three services `in_sync`. | Live `/api/readiness.json` verified 2026-07-12 (ORDER 012); wall history in `docs/CAPABILITIES.md` (2026-07-09 entry + 2026-07-12 resolution). |
 | I | **Tester payout rail (ORDER 018)** | **PayPal Payouts confirmed** as the v1 rail — no longer a decision ask; only the setup remains (the ⚑ ask above). Dry-run payout module + kill switch + caps shipped in ORDER 018 PR1. | Owner live via the coordinator session, relayed 2026-07-12; `.sessions/2026-07-12-order-018-testing-platform-pr1.md`. |
+| J | **Review Railway service** (was the standing fourth-service ⚑ ask) | **DONE by owner** — the review service is LIVE at `https://review-production-f027.up.railway.app`: `/` returns HTTP 200 unauthenticated, `/healthz` returns `{"status":"ok","service":"review"}`, `/version` reports sha `c5abd3ee` (= main HEAD at verification — the service is deploy-current). Follow-ups now unblocked (not owner-gated): add the fourth service to the board's deploy-drift row + `scripts/healthcheck.py`. | Cold fetches 2026-07-12T16:49Z (records reconcile); ask text kept verbatim below. |
+
+### Satisfied ask — kept verbatim (Decided row J, satisfied by 2026-07-12)
+
+```markdown
+⚑ OWNER-ACTION — SATISFIED 2026-07-12 (Decided row J; kept for the record)
+WHAT: Create the fourth Railway service so the new program-review site (built for Anthropic reviewers) goes live.
+WHERE: railway.app → project superbot-websites → New → Service → GitHub repo menno420/websites.
+HOW: set Root Directory = review (the service's own Dockerfile at review/Dockerfile is picked up automatically, exactly like botsite/dashboard); branch = main; no environment variables needed (the service is read-only and network-free). After the first deploy, check <service-url>/healthz returns {"status":"ok"} and /version shows the deployed sha.
+WHY-IT-MATTERS: the review site — process, growth charts, successes, an honest problems page, and (since the 2026-07-11 expansion) the fleet index, continuous review editions with a subscribable Atom feed, and the evidence-backed questionnaire — exists on main but has no URL until the service exists.
+UNBLOCKS: a shareable live URL for Anthropic reviewers (including /reviews/feed.xml they can subscribe to); the board's deploy-drift row and scripts/healthcheck.py can then also add the fourth service. The scheduled review-bake workflow already refreshes the site's committed data daily, so the service goes live self-updating.
+VERIFIED-NEEDED: service creation is a Railway account mutation — the Railway-safety policy (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger) forbids agent-initiated Railway mutations without your explicit go, so this was deliberately not attempted (the same policy wall as the Postgres ask; no new attempt/error needed).
+```
 
 ## How to use this doc
 
