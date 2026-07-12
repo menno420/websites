@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}owner · environments hub{% endblock %}
+{% block headright %}🔒 owner · <a href="/owner">board</a> · <a href="/owner/environments">live env page</a> · <a href="/owner/environments-hub?refresh=1">refresh now</a>{% endblock %}
+
+{% block content %}
+
+<div class="card" style="border-color:var(--purple);">
+  <h2>🔒 environments hub <span class="dim small">— THE environments home: every fleet environment, and where each is managed</span></h2>
+  <p class="small dim">ORDER 021 slice 1 — the single front door for
+  environment info, consolidating three views: <strong>(1)</strong> the
+  fleet-wide inventory below (committed registry
+  <code>app/data/environments.json</code>, as of {{ hub.as_of }}, updatable by
+  PR) — one row per surface: what it holds (<strong>variable names — never
+  values</strong>) + a deep link to where it is managed;
+  <strong>(2)</strong> live Railway variable names for superbot-websites,
+  merged into the estate rows (full per-variable purpose + runtime presence
+  on the <a href="/owner/environments">live estate detail sub-view</a>);
+  <strong>(3)</strong> the fleet-manager claude.ai schema registry, indexed
+  <a href="#schemas">below</a> (full copyable render on the
+  <a href="/environments">schema registry sub-view</a>, public).</p>
+
+  <p class="small jump">jump to:
+    {%- for s in sections %}
+    <a class="b" href="#{{ s.anchor }}">{{ s.group.title }} · {{ s.rows | length }}</a>
+    {%- endfor %}
+    <a class="b" href="#schemas">claude.ai schemas · {{ hub.schemas.files | length }}</a>
+  </p>
+
+  {% if hub.live.state == 'not-configured' %}
+  <p class="banner">⚑ live Railway names unavailable — {{ hub.live.reason }}
+    Committed registry names below are unaffected.</p>
+  {% elif hub.live.state == 'unavailable' %}
+  <p class="banner">live Railway read failed (token is set): {{ hub.live.reason }} —
+    committed registry names below are unaffected; nothing here is fabricated.</p>
+  {% else %}
+  <p class="small dim">live names merged for <strong>{{ hub.live.project_name }}</strong>
+    · fetched {{ hub.live.fetched_at }}{{ ' (cached)' if hub.live.cached }}</p>
+  {% endif %}
+</div>
+
+{# ORDER 019: the centralized filter/sort/search widget (app/listfilter.py) —
+   each project group doubles as a filter, so any group is reviewable alone. #}
+{% include "_listfilter.html" %}
+
+{% for s in sections %}
+<details class="grp" open id="{{ s.anchor }}">
+  <summary>{{ s.group.title }} <span class="b">{{ s.rows | length }}</span>
+    <span class="dim small">{{ s.group.purpose }}</span></summary>
+  {% if s.group.notes %}<p class="dim small">{{ s.group.notes }}</p>{% endif %}
+  <table>
+    <tr><th>surface</th><th>holds (variable names)</th><th>managed at</th></tr>
+    {% for row in s.rows %}
+    <tr>
+      <td>
+        {% if row.surface.url %}<a href="{{ row.surface.url }}">{{ row.surface.name }}</a>
+        {% else %}{{ row.surface.name }}{% endif %}
+        <span class="b design">{{ row.surface.kind }}</span>
+        <div class="dim small">{{ row.surface.purpose }}</div>
+      </td>
+      <td class="small">
+        {% if row.live_names is not none %}
+        <span class="b ok">{{ row.live_names | length }} set (live)</span>
+        {% for name in row.live_names %}<code>{{ name }}</code> {% endfor %}
+        {% elif row.live_error %}
+        <span class="b unknown">live read failed</span>
+        <span class="dim">{{ row.live_error }}</span>
+        {% elif row.surface.variable_names %}
+        {% for name in row.surface.variable_names %}<code>{{ name }}</code> {% endfor %}
+        <span class="dim">(committed registry)</span>
+        {% else %}
+        <span class="dim">names not recorded in this repo — manage at the link</span>
+        {% endif %}
+        {% if row.surface.notes %}<div class="dim">{{ row.surface.notes }}</div>{% endif %}
+      </td>
+      <td class="small"><a href="{{ row.manage.url }}">{{ row.manage.label }} →</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</details>
+{% endfor %}
+
+<div class="card" id="schemas">
+  <h2>claude.ai environment schemas <span class="dim small">— fleet-manager registry index</span></h2>
+  <p class="small dim">Setup scripts + env-var schemas for creating/editing a
+  claude.ai environment, stored in
+  <a href="{{ hub.schemas.repo_url }}">fleet-manager <code>environments/</code> ↗</a>.
+  Full copyable render (file bodies + copy buttons):
+  <a href="/environments">schema registry sub-view</a>.</p>
+  {% if hub.schemas.state == 'not-configured' %}
+  <p class="banner">⚠ <strong>not configured</strong> — {{ hub.schemas.reason }}.</p>
+  {% elif hub.schemas.state == 'unavailable' %}
+  <p class="banner">⚠ <strong>unavailable</strong> — {{ hub.schemas.reason }} ·
+    <a href="{{ hub.schemas.repo_url }}">view on GitHub ↗</a></p>
+  {% else %}
+  <table>
+    <tr><th>file</th><th>open</th></tr>
+    {% for f in hub.schemas.files %}
+    <tr>
+      <td><code>{{ f.name }}</code></td>
+      <td class="small"><a href="/environments">rendered (sub-view)</a> ·
+        <a href="{{ f.github_url }}">GitHub ↗</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% for err in hub.schemas.listing_errors %}
+  <p class="dim small">⚠ {{ err }}</p>
+  {% endfor %}
+  {% endif %}
+</div>
+
+<p class="dim small">🔒 secret values are never stored in the registry, fetched,
+or rendered — names and links only (the registry loader rejects value-like
+fields). Slice 2 (create-complete-environment manifests per project group)
+follows separately. To correct or extend this inventory, edit
+<code>app/data/environments.json</code> by PR.</p>
+{% endblock %}
