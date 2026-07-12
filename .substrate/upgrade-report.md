@@ -2,7 +2,7 @@
 
 > Generated 2026-07-12 by `bootstrap.py upgrade`. Rollback: `python3 bootstrap.py upgrade --rollback`.
 
-**Docs:** consumer-edited: 15 · diverged: 2 · missing: 1 · template-improved: 1 · unchanged: 4
+**Docs:** consumer-edited: 15 · diverged: 2 · template-improved: 1 · unchanged: 5
 
 | planted doc | class | note |
 |---|---|---|
@@ -20,7 +20,7 @@
 | docs/current-state.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | docs/question-router.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | docs/CAPABILITIES.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
-| docs/SKILLS.md | missing | absent — upgrade's adopt pass replants it |
+| docs/SKILLS.md | unchanged | template identical across versions |
 | docs/ideas/README.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | .session-journal.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
 | control/README.md | consumer-edited | template unchanged — consumer-owned, nothing to apply |
@@ -33,6 +33,10 @@
 ## Carve-out scan
 
 - carve-out scan: ran — no kit-owned live workflow installed, nothing to scan.
+
+## Applied (--apply-docs)
+
+- applied: .claude/CLAUDE.md (template@new, hash re-recorded)
 
 ## Template deltas for diverged docs
 
