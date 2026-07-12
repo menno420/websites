@@ -703,17 +703,39 @@
   currently depends on manual reconciles (ORDER 022 flipped mineverse by
   hand) to notice drift.
 
-- **Probe download-availability arcade URLs too** · `captured` — the /arcade
-  page renders an outbound link for `availability: download` entries with a
-  URL (`has_link` covers live AND download), but the new healthcheck drift
-  probe (PR #214) only cold-fetches `live` entries — the moment Lumen
-  Drift's GitHub Release lands and its card flips to `download`, its link
-  re-enters the unverified-drift class this probe was built to close. One
-  more availability value in the probe's filter (plus expecting 200-or-302
-  for release-asset URLs) extends the guarantee. Worth having because the
-  first `download` flip is already queued (lumen-drift's release is one
-  owner click away) and it would silently re-open the exact hole just
-  closed. Source: `.sessions/2026-07-12-arcade-url-drift-probe.md` 💡.
+- **Probe download-availability arcade URLs too** · `built` (2026-07-12,
+  PR #220 — `botsite/arcade_probe.py` `PROBED_AVAILABILITIES = ("live",
+  "download")` drives the filter; `probe_live_urls` renamed
+  `probe_registry_urls`, rows carry `availability`, healthcheck label/output
+  updated; final-200 semantics unchanged — redirect chains ending in 200
+  count healthy via the existing `follow_redirects=True`, a FINAL redirect
+  status stays flagged, a redirect loop degrades to a flagged
+  `TooManyRedirects` finding; new MockTransport coverage for download
+  200 / 302→200 / 404 / timeout / redirect loop / no-URL / mixed registry)
+  — original capture: the /arcade page renders an outbound link for
+  `availability: download` entries with a URL (`has_link` covers live AND
+  download), but the healthcheck drift probe (PR #214) only cold-fetched
+  `live` entries — the moment Lumen Drift's GitHub Release lands and its
+  card flips to `download`, its link re-enters the unverified-drift class
+  this probe was built to close. Worth having because the first `download`
+  flip is already queued (lumen-drift's release is one owner click away)
+  and it would silently re-open the exact hole just closed. Source:
+  `.sessions/2026-07-12-arcade-url-drift-probe.md` 💡.
+
+- **Single source of truth for link-bearing arcade availabilities** ·
+  `captured` (2026-07-12, arcade download-probe session 💡) — the /arcade
+  page's `has_link` hardcodes `("live", "download")` in `botsite/arcade.py`
+  and the drift probe now duplicates the same tuple as
+  `arcade_probe.PROBED_AVAILABILITIES` — two copies of the doctrine "which
+  availabilities carry outbound links" that nothing pins together. Move the
+  tuple to ONE constant in `botsite/arcade.py` (e.g. `LINKED_AVAILABILITIES`),
+  consume it from both `has_link` and the probe, and add a pin test asserting
+  the probe's coverage equals the set the page links. Worth having because
+  the probe's whole guarantee is "coverage never disagrees with the page" —
+  today that agreement is by coincidence of two literals, and the next new
+  availability value (a "beta" that gets links, say) would silently
+  under-cover exactly like the `download` gap just closed. Source:
+  `.sessions/2026-07-12-arcade-download-probe.md` 💡.
 
 - **review-bake self-janitor for stale bake branches** — captured 2026-07-12
   (docs truth sweep session). The review-bake workflow's token can now
