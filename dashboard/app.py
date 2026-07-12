@@ -96,6 +96,10 @@ async def _base_ctx(request: Request, active: str) -> dict[str, Any]:
         "data": data,
         "data_ok": res.get("ok", False),
         "data_error": res.get("error", ""),
+        # Cross-repo schema pin: '' when the fetched feed matches the version this
+        # consumer was built against; an honest drift message otherwise (base.html
+        # banners it on every page — never a crash, never a silent misrender).
+        "schema_warning": ds.dashboard_schema_issue(data) if res.get("ok", False) else "",
         "fetched_at": res.get("fetched_at", ""),
         "build": ds.build(data),
         "counts": ds.counts(data),
