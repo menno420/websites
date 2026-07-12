@@ -194,3 +194,27 @@ above came from the fleet's lived 2026-07 findings; local ones go here.)
   gen_roster.py` LANES + generated `docs/roster.md`) · consequence: treat
   cron timing as ±hours, never gate anything on a cron slot; the lane-source
   repoint shipped the same wake.
+- 2026-07-12 · capability (RESOLVES the 2026-07-09 GITHUB_TOKEN wall) ·
+  **The live control-plane now runs with a working `GITHUB_TOKEN`** — the
+  deployed board returns authenticated-only cells: Actions-secret counts
+  `status 200, known: true` per repo (e.g. superbot "5 secret(s)" — the
+  secrets-list endpoint is never anonymous), `auto_merge.allowed` known,
+  and the deploy-drift row all-`in_sync` at `b9250728` · evidence: live
+  `/api/readiness.json` fetched 2026-07-12T10:4xZ (ORDER 012 reconcile) ·
+  consequence: the "unknown (token lacks admin scope)" degradation era is
+  over; the owner set the token — OWNER-ACTIONS Decided row H.
+- 2026-07-12 · wall · **The Actions runner cannot create pull requests on
+  this repo** — both review-bake runs failed at the same line: run
+  29167034060 (`event: workflow_dispatch`, 2026-07-11T20:26:33Z) and run
+  29184552812 (`event: schedule`, 2026-07-12T07:38:28Z; the daily cron IS
+  firing) baked their data fine, were ruleset-blocked from pushing main
+  (GH013, expected), pushed fallback branches, then died at `gh pr create`
+  with the exact error: "GraphQL: GitHub Actions is not permitted to
+  create or approve pull requests (createPullRequest)" · evidence: both
+  runs' job logs via MCP get_job_logs 2026-07-12 · workaround: none
+  in-repo — the fix is the owner console toggle (Settings → Actions →
+  General → "Allow GitHub Actions to create and approve pull requests"),
+  filed as the active six-field ask in docs/owner/OWNER-ACTIONS.md; a PAT
+  Actions-secret would also bypass it. Side-effect to clean up once fixed:
+  orphan branches bake/review-data-20260711-202653 and
+  bake/review-data-20260712-073843.
