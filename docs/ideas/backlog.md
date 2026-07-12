@@ -625,12 +625,32 @@
   having because privacy compliance shouldn't depend on remembering which
   surface to grep.
 
-- **Arcade live-URL drift probe** — captured 2026-07-12 (ORDER 022 drift
-  session). A network-marked test or CI cron step that cold-fetches every
-  `availability: live` URL in `botsite/data/arcade.json` and flags when one
-  stops returning 200, so a dead game link never quietly outlives its card.
-  Worth having because the arcade honesty doctrine currently depends on
-  manual reconciles (ORDER 022 flipped mineverse by hand) to notice drift.
+- **Arcade live-URL drift probe** · `built` (2026-07-12, PR #214 —
+  `botsite/arcade_probe.py` cold-fetches every `availability: live` URL via
+  a new `check_arcade_urls` pass in `scripts/healthcheck.py` (the 6-hourly
+  healthcheck.yml schedule); flags non-200 / timeout / connection error /
+  malformed or missing URL, prints explicit "not probed" lines for non-live
+  entries, fail-soft per URL, folds into the script's exit-1-on-failure
+  idiom; the required `quality` gate stays network-free — probe logic is
+  unit-tested against `httpx.MockTransport`) — original capture 2026-07-12
+  (ORDER 022 drift session): a network-marked test or CI cron step that
+  cold-fetches every `availability: live` URL in `botsite/data/arcade.json`
+  and flags when one stops returning 200, so a dead game link never quietly
+  outlives its card. Worth having because the arcade honesty doctrine
+  currently depends on manual reconciles (ORDER 022 flipped mineverse by
+  hand) to notice drift.
+
+- **Probe download-availability arcade URLs too** · `captured` — the /arcade
+  page renders an outbound link for `availability: download` entries with a
+  URL (`has_link` covers live AND download), but the new healthcheck drift
+  probe (PR #214) only cold-fetches `live` entries — the moment Lumen
+  Drift's GitHub Release lands and its card flips to `download`, its link
+  re-enters the unverified-drift class this probe was built to close. One
+  more availability value in the probe's filter (plus expecting 200-or-302
+  for release-asset URLs) extends the guarantee. Worth having because the
+  first `download` flip is already queued (lumen-drift's release is one
+  owner click away) and it would silently re-open the exact hole just
+  closed. Source: `.sessions/2026-07-12-arcade-url-drift-probe.md` 💡.
 
 - **review-bake self-janitor for stale bake branches** — captured 2026-07-12
   (docs truth sweep session). The review-bake workflow's token can now

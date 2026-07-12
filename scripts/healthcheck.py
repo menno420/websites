@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Post-deploy healthcheck: GET /healthz and / on the three live services, plus
-the `/fleet` registry live-parse smoke check.
+the `/fleet` registry live-parse smoke check and the arcade live-URL drift
+probe.
 
 ──────────────────────────────────────────────────────────────────────────────
 PROVENANCE / KILL-SWITCH HEADER
@@ -27,9 +28,21 @@ to anyone not looking at the page. This check is what alerts a registry
 reformat/move instead of letting it degrade unnoticed (it caught the
 2026-07-11 manifest supersession live, on schedule run 2).
 
+The arcade pass (docs/ideas/backlog.md "Arcade live-URL drift probe", ORDER
+022 drift session) cold-fetches every `availability: "live"` URL in
+`botsite/data/arcade.json` via `botsite.arcade_probe` and FLAGS any that stop
+returning 200 (bad status / timeout / connection error / malformed or missing
+URL — each with its reason). The /arcade page itself only renders links it
+believes in; this pass is what notices when reality drifts out from under a
+committed "live". Fail-soft per URL: a dead link is a FLAGGED finding folded
+into the exit code below, never a traceback. Live fetches run ONLY here (and
+the 6-hourly healthcheck.yml schedule) — the required `quality` gate tests the
+probe against `httpx.MockTransport`, network-free.
+
 Usage:  python3 scripts/healthcheck.py
 Exit 0 = every checked endpoint returned its expected status AND the registry
-parsed to a non-empty lane set; exit 1 = any of those fail.
+parsed to a non-empty lane set AND no live arcade URL was flagged; exit 1 =
+any of those fail.
 """
 
 from __future__ import annotations
@@ -42,6 +55,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import config, fleet  # noqa: E402  (path setup must run first)
+from botsite import arcade_probe  # noqa: E402  (path setup must run first)
 
 # (label, base URL). Endpoints checked per service: /healthz and / (both expect
 # 200 now that all three are public).
@@ -99,6 +113,27 @@ def check_fleet_registry() -> tuple[bool, str]:
     return True, f"{len(lanes)} lanes parsed"
 
 
+def check_arcade_urls() -> tuple[bool, list[str]]:
+    """Cold-fetch every live-availability arcade URL (botsite.arcade_probe)
+    and flag drift — a dead game link must never quietly outlive its card.
+    Returns (ok, printable lines). Never raises: per-URL failures are FLAGGED
+    findings inside the probe, and a probe bug itself degrades to a FAIL line
+    (defensive, same stance as check_fleet_registry's parse guard)."""
+    try:
+        result = arcade_probe.probe_live_urls()
+    except Exception as exc:  # defensive: a probe bug shouldn't crash the check
+        return False, [f"probe raised {type(exc).__name__}: {exc}"]
+
+    lines: list[str] = []
+    for row in result["rows"]:
+        mark = "PASS" if row["ok"] else "FLAGGED"
+        lines.append(f"{row['slug']:12}  {mark:7}  {row['url'] or '<no url>'}  ({row['note']})")
+    for entry in result["skipped"]:
+        lines.append(f"{entry['slug']:12}  not probed (availability: {entry['availability']})")
+    lines.append(result["note"])
+    return result["ok"], lines
+
+
 def main() -> int:
     rows: list[tuple[str, str, int, bool, str]] = []
     ok_all = True
@@ -122,6 +157,13 @@ def main() -> int:
     ok_all = ok_all and registry_ok
     print()
     print(f"fleet-registry live parse: {'PASS' if registry_ok else 'FAIL'} ({registry_note})")
+
+    arcade_ok, arcade_lines = check_arcade_urls()
+    ok_all = ok_all and arcade_ok
+    print()
+    print(f"arcade live-URL drift probe: {'PASS' if arcade_ok else 'FAIL'}")
+    for line in arcade_lines:
+        print(f"  {line}")
 
     print()
     print("RESULT:", "all healthy" if ok_all else "ONE OR MORE DOWN")
