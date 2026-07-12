@@ -226,6 +226,40 @@ def headline(item: dict[str, Any]) -> str:
     return item.get("what") or item.get("text") or ""
 
 
+# Age-section metadata for the default /queue view (list-IA, 2026-07-12):
+# stable bucket key -> (anchor slug, section label). Anchors are jump targets
+# from the page's summary header; slugs are fixed here so the header links
+# and the sections can never drift apart.
+AGE_GROUP_META = {
+    "<24h": ("age-fresh", "last 24 hours"),
+    "1-7d": ("age-week", "1–7 days old"),
+    ">7d": ("age-old", "older than 7 days"),
+    "undated": ("age-undated", "undated"),
+}
+
+
+def group_by_age(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Partition an (already ordered) item list into age-bucket sections.
+
+    Order-preserving within each bucket, buckets in fixed freshest-first
+    order, empty buckets omitted. Meant for the DEFAULT newest-first view
+    only — the newest-first sort keys on the same min source age, so the
+    sections read contiguously; the route skips grouping the moment any
+    filter/sort/search is active (an explicit ordering beats sections)."""
+    buckets: dict[str, list[dict[str, Any]]] = {k: [] for k in AGE_BUCKETS}
+    for it in items:
+        buckets[age_bucket(it)].append(it)
+    groups = []
+    for key in AGE_BUCKETS:
+        if not buckets[key]:
+            continue
+        anchor, label = AGE_GROUP_META[key]
+        groups.append(
+            {"key": key, "anchor": anchor, "label": label, "items": buckets[key]}
+        )
+    return groups
+
+
 def _sort_key_oldest(item: dict[str, Any]) -> tuple:
     """Oldest dated first; undated items still last (their age is unknown,
     not infinite)."""

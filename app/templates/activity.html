@@ -2,38 +2,12 @@
 {% block title %}activity timeline{% endblock %}
 {% block head %}<link rel="alternate" type="application/atom+xml" title="SuperBot fleet activity{{ (' — ' ~ a.repo_filter) if a.repo_filter and not a.unknown_repo else '' }}" href="/activity.xml{{ ('?repo=' ~ a.repo_filter) if a.repo_filter and not a.unknown_repo else '' }}">{% endblock %}
 {% block headright %}{% set feed_suffix = ('?repo=' ~ a.repo_filter) if a.repo_filter and not a.unknown_repo else '' %}<a href="/activity.xml{{ feed_suffix }}">subscribe (Atom)</a> · <a href="/activity{{ ('?repo=' ~ a.repo_filter ~ '&refresh=1') if a.repo_filter and not a.unknown_repo else '?refresh=1' }}">refresh now</a>{% endblock %}
-{% block content %}
-{% set feed_suffix = ('?repo=' ~ a.repo_filter) if a.repo_filter and not a.unknown_repo else '' %}
-<div class="card">
-  <h2>cross-repo activity{% if a.repo_filter and not a.unknown_repo %} — {{ a.repo_filter }}{% endif %}</h2>
-  <p class="dim small">Recent pull requests
-    {% if a.repo_filter and not a.unknown_repo %}for <strong>{{ a.repo_filter }}</strong>
-    {% else %}across the fleet
-    ({{ a.repos_ok|join(', ') if a.repos_ok else 'no repos reachable' }}){% endif %},
-    merged into one reverse-chronological stream. Each item deep-links to GitHub.
-    Newest {{ a['items']|length }} of {{ a.total }} shown.
-    <a href="/activity.xml{{ feed_suffix }}">Subscribe (Atom{% if a.repo_filter and not a.unknown_repo %} — this repo only{% endif %}) ↗</a></p>
 
-  <p class="small">filter:
-    <a href="/activity" class="{{ 'b repo' if not a.repo_filter else '' }}">all repos</a>
-    {% for r in a.known_repos %}
-    · <a href="/activity?repo={{ r }}" class="{{ 'b repo' if a.repo_filter == r else '' }}">{{ r }}</a>
-    {% endfor %}</p>
-
-  {% if a.unknown_repo %}
-  <div class="banner">⚠ unknown repo <code>{{ a.repo_filter }}</code> — not in the fleet set.
-    Pick one of the filters above, or <a href="/activity">show all repos</a>.</div>
-  {% endif %}
-
-  {% for e in a.errors %}
-  <div class="banner">⚠ {{ e.repo }}: could not fetch PRs — {{ e.error }}
-     (HTTP {{ e.status }}) · <a href="{{ e.url }}">open on GitHub ↗</a></div>
-  {% endfor %}
-
-  {% if a['items'] %}
+{#- One timeline table (header row + item rows) — used by every date section. -#}
+{% macro tl_table(items) %}
   <table class="tl">
     <tr><th>when</th><th>repo</th><th>state</th><th>pull request</th></tr>
-    {% for it in a['items'] %}
+    {% for it in items %}
     <tr>
       <td class="when">{{ it.date }}{% if it.time %} {{ it.time }}{% endif %}</td>
       <td><a href="/activity?repo={{ it.repo }}"><span class="b repo">{{ it.repo }}</span></a></td>
@@ -45,6 +19,63 @@
     </tr>
     {% endfor %}
   </table>
+{% endmacro %}
+
+{% block content %}
+{% set feed_suffix = ('?repo=' ~ a.repo_filter) if a.repo_filter and not a.unknown_repo else '' %}
+<div class="card">
+  <h2>cross-repo activity{% if a.repo_filter and not a.unknown_repo %} — {{ a.repo_filter }}{% endif %}</h2>
+
+  <p class="small">
+    <span class="b repo">{{ a['items']|length }} of {{ a.total }} shown</span>
+    {%- for state, n in state_counts.items() %}
+    <span class="b {{ 'ok' if state == 'merged' else ('warn' if state == 'open' else ('bad' if state == 'closed' else 'unknown')) }}">{{ n }} {{ state }}</span>
+    {%- endfor %}
+  </p>
+  {% if groups %}
+  <p class="small jump">jump to:
+    {%- for g in groups %}
+    <a class="b" href="#{{ g.anchor }}">{{ g.label }} · {{ g['items'] | length }}</a>
+    {%- endfor %}
+  </p>
+  {% endif %}
+
+  <p class="small">filter:
+    <a href="/activity" class="{{ 'b repo' if not a.repo_filter else '' }}">all repos</a>
+    {% for r in a.known_repos %}
+    · <a href="/activity?repo={{ r }}" class="{{ 'b repo' if a.repo_filter == r else '' }}">{{ r }}</a>
+    {% endfor %}</p>
+
+  <details class="pagehelp">
+    <summary>what this page is</summary>
+    <p class="dim small">Recent pull requests
+      {% if a.repo_filter and not a.unknown_repo %}for <strong>{{ a.repo_filter }}</strong>
+      {% else %}across the fleet
+      ({{ a.repos_ok|join(', ') if a.repos_ok else 'no repos reachable' }}){% endif %},
+      merged into one reverse-chronological stream. Each item deep-links to GitHub.
+      Newest {{ a['items']|length }} of {{ a.total }} shown.
+      <a href="/activity.xml{{ feed_suffix }}">Subscribe (Atom{% if a.repo_filter and not a.unknown_repo %} — this repo only{% endif %}) ↗</a></p>
+  </details>
+
+  {% if a.unknown_repo %}
+  <div class="banner">⚠ unknown repo <code>{{ a.repo_filter }}</code> — not in the fleet set.
+    Pick one of the filters above, or <a href="/activity">show all repos</a>.</div>
+  {% endif %}
+
+  {% for e in a.errors %}
+  <div class="banner">⚠ {{ e.repo }}: could not fetch PRs — {{ e.error }}
+     (HTTP {{ e.status }}) · <a href="{{ e.url }}">open on GitHub ↗</a></div>
+  {% endfor %}
+
+  {% if groups %}
+  {#- Date sections, newest first; "older" starts collapsed — it is the bulk
+      of the scroll and the least likely target. Anchored for the jump row. -#}
+  {% for g in groups %}
+  <details class="grp" {{ 'open' if g.key != 'older' }} id="{{ g.anchor }}">
+    <summary>{{ g.label }} <span class="b">{{ g['items'] | length }}</span></summary>
+    {{ tl_table(g['items']) }}
+  </details>
+  {% endfor %}
   {% elif not a.errors and not a.unknown_repo %}
   <p class="dim small">no recent pull requests{% if a.repo_filter %} in {{ a.repo_filter }}{% endif %}.</p>
   {% endif %}

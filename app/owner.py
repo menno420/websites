@@ -25,7 +25,16 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from . import config, github, owner_assist, owner_queue, railway, readiness, writeback
+from . import (
+    config,
+    github,
+    nav,
+    owner_assist,
+    owner_queue,
+    railway,
+    readiness,
+    writeback,
+)
 
 router = APIRouter(prefix="/owner")
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -33,6 +42,13 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 # (prefix-matched in app/railway.py) — exposed as a filter so the template
 # needs no hand-kept link table.
 templates.env.filters["manage_link"] = railway.manage_link
+# Nav manifest globals, mirroring app/main.py: this module renders base.html
+# through its OWN Jinja env, so without these the /owner pages served an
+# EMPTY header nav (Jinja iterates an undefined global as nothing). Same
+# single source (app/nav.py) — the two envs cannot drift.
+templates.env.globals["NAV_PRIMARY"] = nav.PRIMARY
+templates.env.globals["NAV_GROUPED"] = nav.GROUPED
+templates.env.globals["NAV_SECTIONS"] = nav.section_map()
 
 _UNAUTH_HEADERS = {"WWW-Authenticate": 'Basic realm="owner area"'}
 

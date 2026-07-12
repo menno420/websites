@@ -1,19 +1,57 @@
 {% extends "base.html" %}
 {% block title %}owner queue{% endblock %}
 {% block headright %}<a href="/owner/queue">🔒 act on these (owner)</a> · <a href="/queue?refresh=1">refresh now</a>{% endblock %}
+
+{#- One ask card, used by both the sectioned default view and the flat
+    filtered view — one markup source, zero drift. -#}
+{% macro ask_card(it) %}
+<div class="card">
+  <h2>{% if it.what %}{{ it.what }}{% else %}{{ it.text }}{% endif %}</h2>
+  <p class="small">
+    {% for s in it.sources %}
+    <span class="b repo">{{ s.label }}</span>
+    <span class="dim small">{% if s.kind == 'lane' %}heartbeat {{ s.age_human }}{% else %}{{ s.age_human }}{% endif %}
+      · <a href="{{ s.url }}">source ↗</a></span>
+    {% endfor %}
+  </p>
+  {% if it.fields %}
+  <table>
+    {% for key, label in q.field_order %}
+    {% if it.fields[key] %}<tr><th>{{ label }}</th><td>{{ it.fields[key] }}</td></tr>{% endif %}
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endmacro %}
+
 {% block content %}
 <div class="card">
   <h2>owner queue — everything waiting on you, one list</h2>
-  <p class="dim small">Every fleet lane's <code>⚑ needs-owner</code> asks (parsed from the same
-    heartbeat files as <a href="/fleet">/fleet</a>) plus the manager's curated
-    <a href="{{ q.fleet_manager.url }}">fleet-manager owner-queue ↗</a>, deduplicated into one
-    newest-first list. Items in the fleet's six-field OWNER-ACTION format show their
-    WHAT/WHERE/HOW/WHY/UNBLOCKS fields; anything else renders as an honest free-text ask.</p>
   <p class="small">
     <span class="b repo">{{ q.summary.total }} ask{{ 's' if q.summary.total != 1 }}</span>
     <span class="b unknown">{{ q.summary.lanes_with_asks }}/{{ q.summary.lanes_total }} lanes asking</span>
     {% if q.summary.deduped %}<span class="b ok">{{ q.summary.deduped }} duplicate{{ 's' if q.summary.deduped != 1 }} merged</span>{% endif %}
   </p>
+  {% if q.groups %}
+  <p class="small jump">jump to:
+    {%- for g in q.groups %}
+    <a class="b" href="#{{ g.anchor }}">{{ g.label }} · {{ g['items'] | length }}</a>
+    {%- endfor %}
+  </p>
+  {% set stuck = (q.groups | selectattr('key', 'equalto', '>7d') | list | first) %}
+  {% if stuck %}
+  <div class="banner">⚑ needs attention: {{ stuck['items'] | length }} ask{{ 's' if stuck['items'] | length != 1 }}
+    waiting <strong>more than 7 days</strong> — <a href="#{{ stuck.anchor }}">jump there</a>.</div>
+  {% endif %}
+  {% endif %}
+  <details class="pagehelp">
+    <summary>what this page is</summary>
+    <p class="dim small">Every fleet lane's <code>⚑ needs-owner</code> asks (parsed from the same
+      heartbeat files as <a href="/fleet">/fleet</a>) plus the manager's curated
+      <a href="{{ q.fleet_manager.url }}">fleet-manager owner-queue ↗</a>, deduplicated into one
+      newest-first list. Items in the fleet's six-field OWNER-ACTION format show their
+      WHAT/WHERE/HOW/WHY/UNBLOCKS fields; anything else renders as an honest free-text ask.</p>
+  </details>
 
   {% if q.fleet_manager.state == 'not-configured' %}
   <div class="banner">⚠ fleet-manager owner-queue: <strong>not configured</strong> —
@@ -42,25 +80,18 @@
 </div>
 {% endif %}
 
-{% for it in q.filter['items'] %}
-<div class="card">
-  <h2>{% if it.what %}{{ it.what }}{% else %}{{ it.text }}{% endif %}</h2>
-  <p class="small">
-    {% for s in it.sources %}
-    <span class="b repo">{{ s.label }}</span>
-    <span class="dim small">{% if s.kind == 'lane' %}heartbeat {{ s.age_human }}{% else %}{{ s.age_human }}{% endif %}
-      · <a href="{{ s.url }}">source ↗</a></span>
-    {% endfor %}
-  </p>
-  {% if it.fields %}
-  <table>
-    {% for key, label in q.field_order %}
-    {% if it.fields[key] %}<tr><th>{{ label }}</th><td>{{ it.fields[key] }}</td></tr>{% endif %}
-    {% endfor %}
-  </table>
-  {% endif %}
-</div>
+{% if q.groups %}
+{#- Default view: age sections (freshest first), every group open — all of
+    these wait on the owner. Anchored for the summary header's jump links. -#}
+{% for g in q.groups %}
+<details class="grp" open id="{{ g.anchor }}">
+  <summary>{{ g.label }} <span class="b">{{ g['items'] | length }}</span></summary>
+  {% for it in g['items'] %}{{ ask_card(it) }}{% endfor %}
+</details>
 {% endfor %}
+{% else %}
+{% for it in q.filter['items'] %}{{ ask_card(it) }}{% endfor %}
+{% endif %}
 
 {% if q.lane_notes %}
 <div class="card">

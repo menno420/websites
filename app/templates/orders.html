@@ -1,33 +1,80 @@
 {% extends "base.html" %}
 {% block title %}fleet orders{% endblock %}
 {% block headright %}<a href="/orders?refresh=1">refresh now</a>{% endblock %}
+
+{#- One order table-row, used by the live table and the collapsed done
+    section — one markup source, zero drift. -#}
+{% macro order_row(ord) %}
+    <tr>
+      <th>ORDER {{ ord.id }}
+        {% if ord.state == 'open' %}<span class="b warn">open</span>
+        {% elif ord.state == 'claimed' %}<span class="b design">claimed</span>{% if ord.pickup_latency_human %} <span class="b" title="filed→claimed pickup latency">picked up in {{ ord.pickup_latency_human | replace(' ago','') }}</span>{% endif %}{% if ord.claim_stale %} <span class="b warn">claim stale? ({{ ord.claim_age_human }})</span>{% endif %}
+        {% elif ord.state == 'done' %}<span class="b ok">done</span>
+        {% else %}<span class="b unknown">unknown</span>{% endif %}</th>
+      <td>
+        <span class="dim small">{{ ord.issued }}{% if ord.fields.priority %} · {{ ord.fields.priority }}{% endif %}
+          {% if ord.provenance_unverified %}<span class="b dim" title="advisory only — neither provenance: nor from: names a session/coordinator identity (cse_/session_/coordinator/manager/URL); the order's state is unaffected">provenance unverified</span> {% endif %}{% if ord.state == 'done' and ord.state_by %} · done by {{ ord.state_by }}{% endif %}
+          {% if ord.state == 'claimed' %} · {{ ord.state_by }}{% endif %}</span><br>
+        {{ (ord.fields.do or '')[:280] }}{% if (ord.fields.do or '')|length > 280 %}…{% endif %}
+        <details><summary class="dim small">full order text</summary>
+          <div class="md">{{ ord.body_html | safe }}</div></details>
+      </td>
+    </tr>
+{% endmacro %}
+
 {% block content %}
+{#- Sectioned default view vs flat explicit view: with no filter/search and
+    the default inbox sort, each card tucks its done orders into a collapsed
+    details (the live work stays on top); the moment the owner picks a
+    filter, search, or sort, the list renders flat exactly as asked. -#}
+{% set grouped = not o.filter.active and o.filter.sort == 'inbox' %}
 <div class="card">
   <h2>fleet orders — every repo's inbox, cross-referenced with its heartbeat</h2>
-  <p class="dim small">The fleet protocol keeps every <code>control/inbox.md</code> order at
-    <code>status: new</code> forever — execution truth lives only in each lane's
-    <code>control/status*.md</code> <code>orders: acked=… done=…</code> line. This page does
-    that cross-reference: each order badges <span class="b warn">open</span> /
-    <span class="b design">claimed</span> / <span class="b ok">done</span> from the repo's own
-    heartbeat lines, or <span class="b unknown">unknown</span> when no status file is readable
-    (never guessed). Read-only; same live manifest lane set as
-    <a href="/fleet">/fleet</a>.</p>
+  <p class="small">
+    <span class="b repo">{{ o.summary.repos }} repos</span>
+    <a class="b {{ 'warn' if o.summary.open else 'ok' }}" href="/orders?state=open">{{ o.summary.open }} open</a>
+    {% if o.summary.claimed %}<a class="b design" href="/orders?state=claimed">{{ o.summary.claimed }} claimed</a>{% endif %}
+    {% if o.summary.pickup %}<span class="b" title="filed→claimed pickup latency over {{ o.summary.pickup.count }} measurable claim(s)">pickup: median {{ o.summary.pickup.median_human | replace(' ago','') }} · slowest {{ o.summary.pickup.max_human | replace(' ago','') }}</span>{% endif %}
+    <a class="b ok" href="/orders?state=done">{{ o.summary.done }} done</a>
+    {% if o.summary.unknown %}<a class="b unknown" href="/orders?state=unknown">{{ o.summary.unknown }} state unknown</a>{% endif %}
+    {% if o.summary.stale_claims %}<span class="b warn">{{ o.summary.stale_claims }} stale claim{{ 's' if o.summary.stale_claims != 1 }}</span>{% endif %}
+    {% if o.summary.errored %}<span class="b bad">{{ o.summary.errored }} unreachable</span>{% endif %}
+  </p>
+
+  {% set attn = o.cards | selectattr('open_count') | list %}
+  {% if attn or o.summary.errored %}
+  <div class="banner">⚑ needs attention:
+    {%- if attn %} open orders in
+    {%- for c in attn %} <a href="#repo-{{ c.repo }}">{{ c.repo }} ({{ c.open_count }})</a>{{ ',' if not loop.last }}{% endfor %}{% endif %}
+    {%- if attn and o.summary.errored %} · {% endif %}
+    {%- if o.summary.errored %}{{ o.summary.errored }} repo inbox{{ 'es' if o.summary.errored != 1 }} unreachable{% endif %}</div>
+  {% endif %}
+
+  {% set carded = o.cards | selectattr('orders') | list %}
+  {% if grouped and carded %}
+  <p class="small jump">jump to:
+    {%- for c in carded %}
+    <a class="b" href="#repo-{{ c.repo }}">{{ c.repo }} · {{ c.orders | length }}</a>
+    {%- endfor %}
+  </p>
+  {% endif %}
+
+  <details class="pagehelp">
+    <summary>how to read this page</summary>
+    <p class="dim small">The fleet protocol keeps every <code>control/inbox.md</code> order at
+      <code>status: new</code> forever — execution truth lives only in each lane's
+      <code>control/status*.md</code> <code>orders: acked=… done=…</code> line. This page does
+      that cross-reference: each order badges <span class="b warn">open</span> /
+      <span class="b design">claimed</span> / <span class="b ok">done</span> from the repo's own
+      heartbeat lines, or <span class="b unknown">unknown</span> when no status file is readable
+      (never guessed). Read-only; same live manifest lane set as
+      <a href="/fleet">/fleet</a>.</p>
+  </details>
 
   {% if o.lane_source.source != 'manifest' %}
   <div class="banner">⚠ lane set: <strong>cached fallback list</strong> —
     ({{ o.lane_source.reason }}); repo SET may be stale until the manifest is reachable.</div>
   {% endif %}
-
-  <p class="small">
-    <span class="b repo">{{ o.summary.repos }} repos</span>
-    <span class="b {{ 'warn' if o.summary.open else 'ok' }}">{{ o.summary.open }} open</span>
-    {% if o.summary.claimed %}<span class="b design">{{ o.summary.claimed }} claimed</span>{% endif %}
-    {% if o.summary.pickup %}<span class="b" title="filed→claimed pickup latency over {{ o.summary.pickup.count }} measurable claim(s)">pickup: median {{ o.summary.pickup.median_human | replace(' ago','') }} · slowest {{ o.summary.pickup.max_human | replace(' ago','') }}</span>{% endif %}
-    <span class="b ok">{{ o.summary.done }} done</span>
-    {% if o.summary.unknown %}<span class="b unknown">{{ o.summary.unknown }} state unknown</span>{% endif %}
-    {% if o.summary.stale_claims %}<span class="b warn">{{ o.summary.stale_claims }} stale claim{{ 's' if o.summary.stale_claims != 1 }}</span>{% endif %}
-    {% if o.summary.errored %}<span class="b bad">{{ o.summary.errored }} unreachable</span>{% endif %}
-  </p>
 </div>
 
 {# ORDER 019: the same centralized filter widget /queue uses (reuse proof).
@@ -39,7 +86,7 @@
 
 {% for c in o.cards %}
 {% if not o.filter.active or c.shown_orders or c.fetch_error %}
-<div class="card">
+<div class="card" id="repo-{{ c.repo }}">
   <h2>{{ c.repo }}
     {% if c.open_count %}<span class="b warn">{{ c.open_count }} open</span>{% endif %}
     {% if c.claimed_count %}<span class="b design">{{ c.claimed_count }} claimed</span>{% endif %}
@@ -59,25 +106,23 @@
   <div class="banner">⚠ no readable <code>control/status*.md</code> — execution state of these
     orders is <strong>unknown</strong>, not assumed.</div>
   {% endif %}
+  {% set done_rows = (c.shown_orders | selectattr('state', 'equalto', 'done') | list) if grouped else [] %}
+  {% set live_rows = (c.shown_orders | rejectattr('state', 'equalto', 'done') | list) if grouped else c.shown_orders %}
+  {% if live_rows %}
   <table>
-    {% for ord in c.shown_orders %}
-    <tr>
-      <th>ORDER {{ ord.id }}
-        {% if ord.state == 'open' %}<span class="b warn">open</span>
-        {% elif ord.state == 'claimed' %}<span class="b design">claimed</span>{% if ord.pickup_latency_human %} <span class="b" title="filed→claimed pickup latency">picked up in {{ ord.pickup_latency_human | replace(' ago','') }}</span>{% endif %}{% if ord.claim_stale %} <span class="b warn">claim stale? ({{ ord.claim_age_human }})</span>{% endif %}
-        {% elif ord.state == 'done' %}<span class="b ok">done</span>
-        {% else %}<span class="b unknown">unknown</span>{% endif %}</th>
-      <td>
-        <span class="dim small">{{ ord.issued }}{% if ord.fields.priority %} · {{ ord.fields.priority }}{% endif %}
-          {% if ord.provenance_unverified %}<span class="b dim" title="advisory only — neither provenance: nor from: names a session/coordinator identity (cse_/session_/coordinator/manager/URL); the order's state is unaffected">provenance unverified</span> {% endif %}{% if ord.state == 'done' and ord.state_by %} · done by {{ ord.state_by }}{% endif %}
-          {% if ord.state == 'claimed' %} · {{ ord.state_by }}{% endif %}</span><br>
-        {{ (ord.fields.do or '')[:280] }}{% if (ord.fields.do or '')|length > 280 %}…{% endif %}
-        <details><summary class="dim small">full order text</summary>
-          <div class="md">{{ ord.body_html | safe }}</div></details>
-      </td>
-    </tr>
-    {% endfor %}
+    {% for ord in live_rows %}{{ order_row(ord) }}{% endfor %}
   </table>
+  {% elif done_rows %}
+  <p class="dim small">nothing live here — every order is done (collapsed below).</p>
+  {% endif %}
+  {% if done_rows %}
+  <details>
+    <summary class="dim small">{{ done_rows | length }} done order{{ 's' if done_rows | length != 1 }} — collapsed</summary>
+    <table>
+      {% for ord in done_rows %}{{ order_row(ord) }}{% endfor %}
+    </table>
+  </details>
+  {% endif %}
   {% endif %}
 </div>
 {% endif %}

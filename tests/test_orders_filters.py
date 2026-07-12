@@ -1,8 +1,9 @@
 """Offline tests for the ORDER 019 /orders filters — the REUSE proof for the
 centralized listfilter widget: repo / status / priority dimensions, search,
 date+status sorts, cards without matching orders hiding while a filter is
-active, honest unknown values, and a no-param page identical to before
-(including the /orders.json contract staying untouched).
+active, honest unknown values, and a no-param page carrying every order
+(live rows on top, done rows collapsed — the list-IA default; the
+/orders.json contract stays untouched).
 """
 
 import sys
@@ -65,19 +66,22 @@ def _world(monkeypatch):
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
 
 
-def test_orders_default_page_unchanged_plus_widget(monkeypatch):
+def test_orders_default_page_grouped_plus_widget(monkeypatch):
     _world(monkeypatch)
     client = TestClient(app)
     r = client.get("/orders")
     assert r.status_code == 200
-    # everything renders as before: all orders, inbox order, absent repos
+    # everything renders: all orders counted, absent repos honest
     assert "3 of 3" in r.text
     assert "full order text" in r.text
     assert "no <code>control/inbox.md</code>" in r.text  # missing-inbox cards
+    # list-IA default view: live orders keep inbox order on top; the done
+    # order tucks into a collapsed <details> below them (still in the DOM).
     i1 = r.text.index("ORDER 001")
     i2 = r.text.index("ORDER 002")
     i3 = r.text.index("ORDER 003")
-    assert i1 < i2 < i3  # default keeps inbox order (no re-sort)
+    assert i2 < i3 < i1  # 001 is done -> renders in the collapsed section
+    assert "1 done order — collapsed" in r.text
     # the same widget /queue uses (same partial markup)
     assert 'href="/orders?state=open"' in r.text
     assert "no items match" not in r.text
