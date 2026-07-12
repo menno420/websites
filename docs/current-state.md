@@ -123,6 +123,14 @@ Deployment (all three services): `docs/deployment.md` + each service's doc.
 
 ## Recently shipped (newest first)
 
+- **2026-07-12 ORDER 016: cross-repo website-plans discovery inventory**
+  (branch `claude/order-016-discovery-inventory`) — the order's done-when
+  artifact: **`docs/plans/discovery-inventory.md`** inventories every
+  website-related plan found across websites@0101b93,
+  fleet-manager@8724b29, substrate-kit@bf1fc80 and superbot@85a2ec0, with
+  each important one executed or explicitly ledgered (owner-gated /
+  superseded / deferred) with a cited reason.
+
 - **2026-07-12 shipped wave** (each merge verified on `main` via
   `git log`, 2026-07-12 docs truth sweep) — landed over the day, newest
   first: **prompt-render fix** (#208 — `extract_paste_body` strips
