@@ -10,7 +10,15 @@
 ## Captured / planned (pick highest-value buildable first)
 
 - **Manifest completeness diff — "what is missing to finish this
-  environment"** · `captured` — the ORDER 021 slice-2 manifest page
+  environment"** · `built` (2026-07-12, PR #216 —
+  `envhub.annotate_completeness` badges every manifest schema row against
+  the slice-1 `railway.live_overview` NAME read: set-live / missing-live,
+  honest `unknown` when the token is unset, the read fails, a per-service
+  fetch errors, or the group is outside the token's scope — never a
+  fabricated green/red; a service absent from a successful live read is
+  honestly missing-live ("not created yet"); group summary "X/Y set live";
+  the copyable plan blocks stay pure committed-registry output) — original
+  capture: the ORDER 021 slice-2 manifest page
   (`/owner/environments-hub/manifest/{group}`) renders the owner-executed
   plan (names + placeholders); merging the slice-1 live variable-NAME read
   (superbot-websites group, project-scoped `RAILWAY_TOKEN`) would badge
@@ -21,6 +29,20 @@
   one is documented-vs-live on `/owner/environments`; this is
   manifest-vs-live per project group). Source:
   `.sessions/2026-07-12-environments-hub-slice2.md` 💡.
+
+- **Completeness chip on the environments-hub group headers** · `captured`
+  — the hub (`/owner/environments-hub`) links each group's manifest but
+  gives no hint which environment is unfinished; reusing PR #216's
+  `envhub.annotate_completeness` to render the group summary ("18/25 set
+  live" / "live status unknown") as a chip next to each group's
+  create-complete-environment manifest link would surface "which
+  environment needs finishing" on the front door itself. Worth having
+  because the checklist is one click deep per group — the hub index is
+  where the owner actually decides where to spend the next console visit.
+  Deduped against this backlog + the queue-state NEXT list: nothing
+  touches hub-level summaries (the projects-registry completeness bullet
+  is a different page and data source). Source:
+  `.sessions/2026-07-12-envhub-completeness-diff.md` 💡.
 
 - **/owner/environments drift check: documented vs live variable names** ·
   `captured` — once the owner's project-scoped `RAILWAY_TOKEN` lands, the
