@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}web directory{% endblock %}
+{% block headright %}<a href="/directory?refresh=1">refresh now</a>{% endblock %}
+
+{%- macro health_badge(h) -%}
+  {%- if h.state == 'live' -%}
+    <span class="b ok" data-health="live">live</span>
+  {%- elif h.state == 'degraded' -%}
+    <span class="b warn" data-health="degraded">{{ h.label }}</span>
+  {%- elif h.state == 'down' -%}
+    <span class="b bad" data-health="down">down</span>
+  {%- elif h.state == 'pending' -%}
+    <span class="b unknown" data-health="pending">pending publish</span>
+  {%- else -%}
+    <span class="b unknown" data-health="{{ h.state }}">{{ h.label }}</span>
+  {%- endif -%}
+{%- endmacro -%}
+
+{% block content %}
+<div class="card">
+  <h2>web directory — every web surface we own</h2>
+  <p class="dim small">Single source of truth:
+    <code>app/data/web_presence.json</code> (committed registry — add rows by PR;
+    rendered at request time). Health is probed live through the shared TTL cache
+    (~{{ ttl }}s); a failed probe or a missing URL renders its honest state,
+    never a green badge or a dead button.
+    {% if d.as_of %}Inventory as of <strong>{{ d.as_of }}</strong>.{% endif %}</p>
+  {% if not d.ok %}
+  <div class="banner">⚠ <strong>registry unreadable</strong> — {{ d.error }}. The
+    directory renders empty rather than guessing.</div>
+  {% endif %}
+</div>
+
+<div class="card" id="our-sites">
+  <h2>our sites</h2>
+  {% for g in d.our_sites_groups %}
+  <h3>{{ g.project }}</h3>
+  {% if g.note %}<p class="dim small">{{ g.note }}</p>{% endif %}
+  <table>
+    <tr><th>site</th><th>url</th><th>health</th><th>as of</th><th>notes</th></tr>
+    {% for r in g.rows %}
+    <tr data-row-id="{{ r.id }}">
+      <td>
+        <span class="idea-title">{{ r.title }}</span>
+        {% if r.status == 'duplicate' %}
+        <span class="b design" data-status="duplicate">duplicate (pending consolidation)</span>
+        {% elif r.status == 'url-unrecorded' %}
+        <span class="b unknown" data-status="url-unrecorded">url unrecorded</span>
+        {% endif %}
+        <div class="idea-sum">{{ r.description }} <span class="dim">· {{ r.kind }}</span></div>
+      </td>
+      <td>
+        {% if r.url %}<a href="{{ r.url }}">{{ r.url | replace('https://', '') }} ↗</a>
+        {% else %}<span class="dim">—</span>{% endif %}
+      </td>
+      <td>{{ health_badge(r.health) }}
+        <div class="small dim">{{ r.health.detail }}</div></td>
+      <td class="small dim">{{ r.health.as_of or '—' }}{% if r.health.cached %} (cached){% endif %}</td>
+      <td class="small dim">{{ r.notes }}
+        {%- if r.duplicate_of %} <span class="note">copy of “{{ r.duplicate_of }}”.</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endfor %}
+  {% if d.ok and not d.our_sites %}<p class="dim">No sites registered yet.</p>{% endif %}
+</div>
+
+<div class="card" id="external">
+  <h2>external business surfaces</h2>
+  <p class="dim small">Storefronts, pages, releases, and articles OUTSIDE our own
+    hosting — first-class here even while empty of live rows. Surface classes:
+    Gumroad / Lemon Squeezy listing, itch.io page, published article, GitHub Release.</p>
+  <table>
+    <tr><th>surface</th><th>class</th><th>status</th><th>what unblocks it</th></tr>
+    {% for r in d.external %}
+    <tr data-row-id="{{ r.id }}">
+      <td><span class="idea-title">{{ r.title }}</span>
+        <div class="idea-sum">{{ r.description }}</div></td>
+      <td class="small">{{ r.kind }}</td>
+      <td>{{ health_badge(r.health) }}
+        {% if r.url %}<div class="small"><a href="{{ r.url }}">{{ r.url | replace('https://', '') }} ↗</a></div>{% endif %}</td>
+      <td class="small dim">{{ r.unblocked_by or '—' }}
+        {% if r.notes %}<div>{{ r.notes }}</div>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if d.ok and not d.external %}<p class="dim">No external surfaces registered yet.</p>{% endif %}
+</div>
+
+{% if d.unclassified %}
+<div class="card">
+  <h2>unclassified rows</h2>
+  <div class="banner">⚠ {{ d.unclassified | length }} registry row(s) carry an unknown
+    <code>section</code> — shown here rather than dropped silently.</div>
+  <table>
+    {% for r in d.unclassified %}
+    <tr><td>{{ r.id }}</td><td>{{ r.title }}</td><td>{{ r.section }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<div class="card" id="health">
+  <h2>health</h2>
+  <p class="dim small">Probed <strong>{{ d.counts.probed }}</strong> of
+    {{ d.counts.total }} rows this request (rows with a recorded URL and
+    <code>probe: true</code>) — live {{ d.counts.live }} ·
+    degraded {{ d.counts.degraded }} · down {{ d.counts.down }}
+    {% if d.probe_as_of %}· as of <strong>{{ d.probe_as_of }}</strong>{% endif %}.
+    Same TTL-cached raw fetch the readiness board's deploy-drift cell uses; the
+    raw client sends no credentials to the probed hosts. Unprobed rows state why
+    inline — liveness is never fabricated.</p>
+  <table>
+    <tr><th>target</th><th>result</th><th>detail</th><th>as of</th></tr>
+    {% for r in d.probed %}
+    <tr>
+      <td>{{ r.title }}</td>
+      <td>{{ health_badge(r.health) }}</td>
+      <td class="small dim">{{ r.health.detail }}</td>
+      <td class="small dim">{{ r.health.as_of or '—' }}{% if r.health.cached %} (cached){% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if not d.probed %}<p class="dim">No probeable rows in the registry.</p>{% endif %}
+</div>
+{% endblock %}
