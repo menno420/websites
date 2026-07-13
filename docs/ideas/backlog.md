@@ -183,7 +183,14 @@
   the testing catalog. Source:
   `.sessions/2026-07-12-order-018-testing-platform-pr1.md` 💡.
 
-- **Guide chat transcript as exit-review evidence** · `captured` — the
+- **Guide chat transcript as exit-review evidence** · `built` (2026-07-13,
+  PR #292 — `guide_exchanges` table in `botsite/testing_store.py`;
+  successful chat exchanges persist per claim, bounded by the existing
+  guide cap, and attach to the submission: grade + re-grade prompts carry
+  an `<untrusted_guide_chat_transcript>` engagement-evidence block, the
+  owner queue and tester status page render it, the JSON export carries
+  it; the frame path stays write-free and the guide page discloses the
+  persistence) — original capture: the
   guided-walkthrough side panel (ORDER 018 PR3) generates a per-step Q&A
   between tester and AI guide, but it evaporates when the tab closes: the
   exit reviewer grades the final answers blind to how the tester actually
@@ -1194,3 +1201,19 @@
   notes cover status.md/inbox/claims kit-owned grammars; no bullet touches
   the fast lane's gate set. Source:
   `.sessions/2026-07-13-outbox-grammar-pin.md` 💡.
+
+- **Abandoned guided sessions surfaced on the owner queue** · `captured`
+  (2026-07-13, guide-transcript-evidence session 💡) — a claim that chats
+  with the AI guide but never submits now leaves persisted transcript rows
+  (PR #292) the owner can never see: the owner queue iterates submissions,
+  so drop-off evidence — where testers engaged, got confused, and gave
+  up — is stored but invisible. A small owner-queue section listing
+  claimed-but-never-submitted claims with guide-chat activity (exchange
+  count + last exchange time, transcript behind the same collapsed
+  details) would turn silent abandonment into product feedback: the
+  walkthrough step where chats cluster before a claim dies is exactly the
+  step that needs rewriting. Deduped against this backlog + the
+  queue-state NEXT list: the transcript bullet above covers submissions
+  only; the tester-task URL liveness bullet probes product URLs; nothing
+  touches unsubmitted-claim visibility or drop-off signals. Source:
+  `.sessions/2026-07-13-guide-transcript-evidence.md` 💡.
