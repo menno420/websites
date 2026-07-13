@@ -42,16 +42,13 @@
       {{ icon("search", 15) }}<kbd class="sb-kbd">⌘K</kbd>
     </button>
     <button class="sb-iconbtn" data-theme-toggle aria-label="Toggle theme" aria-pressed="false"></button>
-    <a class="sb-btn sb-btn-soft sb-btn-sm" href="/console"{% if active == 'console' %} aria-current="page"{% endif %}>Console</a>
     <button class="sb-iconbtn sb-menubtn" data-menu-toggle aria-expanded="false" aria-controls="sb-drawer" aria-label="Open menu"></button>
   </div>
   <div class="sb-drawer" id="sb-drawer" data-drawer>
     {% for id, label, href in nav %}
     <a class="sb-nav-link" href="{{ href }}"{% if active == id %} aria-current="page"{% endif %}>{{ label }}</a>
     {% endfor %}
-    <a class="sb-nav-link" href="/aliases">Aliases</a>
     <a class="sb-nav-link" href="/status">Status</a>
-    <a class="sb-nav-link" href="/console">Console</a>
     <a class="sb-nav-link" href="/admin">Control panel (dry-run)</a>
   </div>
 </header>

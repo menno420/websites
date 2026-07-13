@@ -277,6 +277,16 @@ def test_owner_401_on_missing_or_wrong_password(client, monkeypatch):
     assert client.get("/testing/owner", auth=("owner", "wrong")).status_code == 401
 
 
+def test_owner_queue_states_what_it_is(client, monkeypatch):
+    """Clarity: the owner queue names itself (h1) and says what it does up front."""
+    monkeypatch.setenv("SITE_PASSWORD", PW)
+    r = client.get("/testing/owner", auth=("owner", PW))
+    assert r.status_code == 200
+    assert "<h1>Tester program — review queue</h1>" in r.text
+    assert "review queue for paid tester submissions" in r.text
+    assert "approve" in r.text.lower() and "mark paid" in r.text.lower()
+
+
 def test_owner_queue_renders_with_ephemerality_warning(client, monkeypatch):
     monkeypatch.setenv("SITE_PASSWORD", PW)
     r = client.get("/testing/owner", auth=("owner", PW))

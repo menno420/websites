@@ -77,6 +77,14 @@ def test_arcade_source_repo_links(client):
         assert f'href="https://github.com/{repo}"' in r.text
 
 
+def test_arcade_lede_defines_the_fleet(client):
+    """Clarity: a first-time visitor learns what 'the fleet' is from the lede."""
+    r = client.get("/arcade")
+    assert r.status_code == 200
+    assert "family of bots, sites, and" in r.text
+    assert "built around SuperBot" in r.text
+
+
 def test_nav_includes_arcade(client):
     r = client.get("/")
     assert 'href="/arcade"' in r.text
