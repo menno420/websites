@@ -543,7 +543,7 @@ a.sb-bar-row:hover, .sb-bar-row:hover { background: var(--sb-surface-soft); }
 
 /* ── 16. footer ──────────────────────────────────────────── */
 .sb-footer { border-top: 1px solid var(--sb-line); margin-top: var(--sb-s-8); }
-.sb-footer-in { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sb-s-3); padding: var(--sb-s-6) 0; font-size: 13px; color: var(--sb-ink-4); }
+.sb-footer-in { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sb-s-3); padding: var(--sb-s-6) var(--sb-gutter); font-size: 13px; color: var(--sb-ink-4); }
 .sb-footer-in .right { margin-left: auto; font-family: var(--sb-font-mono); font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
 .sb-footer-in a:hover { color: var(--sb-brand-hi); }
 
