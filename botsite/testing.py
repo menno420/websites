@@ -908,6 +908,15 @@ def _guide_step_index(raw: Any, steps: list[dict[str, Any]]) -> int:
     return max(0, min(idx, len(steps) - 1))
 
 
+def _step_title(steps: list[dict[str, Any]], step_index: int) -> str:
+    """The step's title, untruncated ('' when out of range or untitled) —
+    the exact text the guide-exchange provenance pin snapshots at persist
+    time, and the CURRENT-script side of the digest's staleness compare."""
+    if not (0 <= step_index < len(steps)):
+        return ""
+    return str(steps[step_index].get("title") or "").strip()
+
+
 @router.post("/s/{token}/guide/chat")
 async def testing_guide_chat(
     request: Request, token: str, _: None = Depends(guard_state_change)
@@ -954,7 +963,12 @@ async def testing_guide_chat(
     # disclosed on the guide page. Only successful replies land here, so the
     # per-claim guide cap bounds the row count; degraded copy carries no
     # coaching and is never stored. The frame route stays write-free.
-    store.add_guide_exchange(claim["id"], step_index, message, reply)
+    # step_title pins the step AS THE ASKER SAW IT (untruncated) — step_index
+    # alone re-attributes history the moment the script is rewritten.
+    store.add_guide_exchange(
+        claim["id"], step_index, message, reply,
+        step_title=_step_title(steps, step_index),
+    )
     return _guide_panel_json(claim, ok=True, reply=reply)
 
 
@@ -1043,12 +1057,40 @@ def _heatmap_step_text(steps: list[dict[str, Any]], step_index: int) -> str:
     """The walkthrough step's title for a heatmap cell tooltip, truncated so
     long titles don't bloat the attribute. Empty when the task/index has no
     step text — the cell then falls back to the bare step number."""
-    if not (0 <= step_index < len(steps)):
-        return ""
-    text = str(steps[step_index].get("title") or "").strip()
+    text = _step_title(steps, step_index)
     if len(text) > HEATMAP_STEP_TEXT_MAX:
         text = text[: HEATMAP_STEP_TEXT_MAX - 1].rstrip() + "…"
     return text
+
+
+def _digest_question(
+    q: dict[str, Any], steps: list[dict[str, Any]], step_index: int
+) -> dict[str, Any]:
+    """One digest question with its step provenance resolved for display.
+
+    The store pins the step's title at ask time (``step_title`` on the
+    exchange row); comparing that pin against the CURRENT script says
+    whether "step N" still means what the asker was looking at:
+
+    - the pin matches the current title → attribution holds, no flag;
+    - the pin differs (the script was rewritten or reordered since) →
+      ``stale`` + ``pinned_title`` (truncated like the tooltips) so the
+      owner reads the step as the asker saw it instead of a misattribution;
+    - no pin (rows persisted before the snapshot existed, ``.get`` default
+      per the legacy-row convention) → ``unpinned``: the honest "wording at
+      ask time not recorded" state — never guessed from the current script.
+    """
+    pinned = str(q.get("step_title") or "").strip()
+    stale = bool(pinned) and pinned != _step_title(steps, step_index)
+    title = pinned if stale else ""
+    if len(title) > HEATMAP_STEP_TEXT_MAX:
+        title = title[: HEATMAP_STEP_TEXT_MAX - 1].rstrip() + "…"
+    return {
+        "text": _digest_question_text(q["message"]),
+        "stale": stale,
+        "pinned_title": title,
+        "unpinned": not pinned,
+    }
 
 
 async def _owner_page(
@@ -1147,15 +1189,23 @@ async def _owner_page(
     # cell; truncated here, rendered collapsed behind the cell and escaped
     # by autoescape — untrusted tester input, same framing as the
     # transcript blocks. Padded never-reached cells stay question-free.
+    # Each question resolves its step provenance (`_digest_question`): the
+    # row's pinned ask-time title vs the CURRENT script, so a rewritten or
+    # reordered walkthrough flags old questions instead of silently
+    # re-attributing them to whatever text now sits at that index.
     step_questions = store.guided_step_questions()
     for strip in (dropoff_heatmap, finisher_hotspots):
         for t in strip:
             cells = step_questions.get(t["task_id"], {})
+            step_script = task_steps(task_by_id(t["task_id"]))
             for st in t["steps"]:
                 cell = cells.get(st["step_index"])
                 st["question_total"] = cell["total"] if cell else 0
                 st["questions"] = (
-                    [_digest_question_text(q) for q in cell["questions"]]
+                    [
+                        _digest_question(q, step_script, st["step_index"])
+                        for q in cell["questions"]
+                    ]
                     if cell
                     else []
                 )

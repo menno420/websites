@@ -1504,8 +1504,15 @@
   Source: `.sessions/2026-07-13-finisher-hotspots.md` 💡.
 
 - **Guide-question step provenance — pin what the step SAID when the
-  question was asked** · `captured` (2026-07-13, step-question-digest
-  session 💡) — `guide_exchanges` rows pin only `step_index`, so the
+  question was asked** · `built` (2026-07-13, step-provenance session —
+  `guide_exchanges.step_title` snapshots the step's title at persist time
+  (`add_guide_exchange` + an in-place column retrofit for pre-pin DB
+  files, rows before the pin honestly keep `''`); the owner-queue digest
+  resolves each question via `testing._digest_question` — pin == current
+  title renders clean, a differing pin renders "asked when this step said
+  …" with the ask-time title, a pinned-free legacy row says the wording
+  wasn't recorded instead of guessing; captured 2026-07-13,
+  step-question-digest session 💡) — `guide_exchanges` rows pin only `step_index`, so the
   digest (PR #304) and both strips (#294/#298/#303) attribute every
   persisted question to whatever text CURRENTLY sits at that index: the
   moment a walkthrough script inserts, removes, or reorders a step,

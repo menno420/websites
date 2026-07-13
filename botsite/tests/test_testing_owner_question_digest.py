@@ -16,6 +16,15 @@ outcome, newest-first with a per-cell cap + total) and the collapsed
 Network-free, same fixture as the heatmap suite. The no-auth 401 pin for
 /testing/owner already lives in
 ``test_testing.py::test_owner_401_on_missing_or_wrong_password``.
+
+Step provenance (the backlog promotion on top of the digest): each exchange
+row pins the step's TITLE at ask time (``step_title``), so a rewritten or
+reordered walkthrough script flags old questions ("asked when this step
+said …") instead of silently re-attributing them to whatever text now sits
+at that index; rows persisted before the pin existed render an honest
+"wording not recorded" label, never a guess. Covers the store pin (persist +
+legacy '' default + the in-place column retrofit for pre-pin DB files) and
+the ``_digest_question`` resolve (clean / stale / unpinned) on the page.
 """
 
 from __future__ import annotations
@@ -95,10 +104,14 @@ def test_questions_group_by_task_and_step_across_outcomes(client):
     digest = testing_store.guided_step_questions()
     assert set(digest) == {GUIDED_TASK}
     cells = digest[GUIDED_TASK]
-    assert cells[0] == {"total": 1, "questions": ["where is it?"]}
-    assert cells[1] == {
-        "total": 2, "questions": ["same toggle?", "toggle broken?"]
+    assert cells[0] == {
+        "total": 1,
+        "questions": [{"message": "where is it?", "step_title": ""}],
     }
+    assert cells[1]["total"] == 2
+    assert [q["message"] for q in cells[1]["questions"]] == [
+        "same toggle?", "toggle broken?"
+    ]
     replies = str(digest)
     assert "header" not in replies and "flip" not in replies
 
@@ -112,7 +125,7 @@ def test_questions_cap_keeps_newest_and_counts_total(client):
     cell = testing_store.guided_step_questions()[GUIDED_TASK][2]
     assert testing_store.QUESTION_DIGEST_CAP == 5
     assert cell["total"] == 7
-    assert cell["questions"] == [
+    assert [q["message"] for q in cell["questions"]] == [
         "digestq-7", "digestq-6", "digestq-5", "digestq-4", "digestq-3"
     ]
 
@@ -131,10 +144,10 @@ def test_questions_group_tasks_separately(client):
     testing_store.add_guide_exchange(z["id"], 3, "zeta q", "r")
     digest = testing_store.guided_step_questions()
     assert digest["walkthrough-alpha"] == {
-        0: {"total": 1, "questions": ["alpha q"]}
+        0: {"total": 1, "questions": [{"message": "alpha q", "step_title": ""}]}
     }
     assert digest["walkthrough-zeta"] == {
-        3: {"total": 1, "questions": ["zeta q"]}
+        3: {"total": 1, "questions": [{"message": "zeta q", "step_title": ""}]}
     }
 
 
@@ -228,3 +241,152 @@ def test_digest_question_text_truncates_and_bounds():
     assert testing._digest_question_text("  short?  ") == "short?"
     assert testing._digest_question_text("") == ""
     assert testing._digest_question_text(None) == ""
+
+
+# --- step provenance: the ask-time title pin ------------------------------------
+
+def current_title(idx):
+    """The committed catalog's CURRENT title at a step index."""
+    return testing.task_steps(testing.task_by_id(GUIDED_TASK))[idx]["title"]
+
+
+def test_store_pins_step_title_at_persist_time(client):
+    # the pin rides the row end to end: insert return value, the per-claim
+    # transcript, the digest cell, and the export backup valve
+    c = make_claim("pinned@example.com")
+    row = testing_store.add_guide_exchange(
+        c["id"], 1, "which card?", "any", step_title="Features"
+    )
+    assert row["step_title"] == "Features"
+    transcript = testing_store.guide_transcript_for_claim(c["id"])
+    assert transcript[0]["step_title"] == "Features"
+    cell = testing_store.guided_step_questions()[GUIDED_TASK][1]
+    assert cell["questions"] == [
+        {"message": "which card?", "step_title": "Features"}
+    ]
+    export = testing_store.export_all()
+    assert export["guide_exchanges"][0]["step_title"] == "Features"
+
+
+def test_store_step_title_defaults_empty_for_legacy_writes(client):
+    # a write without the snapshot (the pre-pin call shape) stays '' — the
+    # honest "no snapshot was taken" state, never backfilled
+    c = make_claim("legacy@example.com")
+    row = testing_store.add_guide_exchange(c["id"], 0, "old q", "r")
+    assert row["step_title"] == ""
+
+
+def test_store_retrofits_step_title_onto_pre_pin_db(tmp_path, monkeypatch):
+    # a DB file created BEFORE the pin existed (no step_title column) gains
+    # the column in place on connect; its rows keep '' — CREATE TABLE IF NOT
+    # EXISTS alone never retrofits, so this is the migration pin
+    import sqlite3
+
+    db = tmp_path / "pre-pin.sqlite3"
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "CREATE TABLE guide_exchanges ("
+        " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        " claim_id INTEGER NOT NULL,"
+        " step_index INTEGER NOT NULL DEFAULT 0,"
+        " message TEXT NOT NULL, reply TEXT NOT NULL,"
+        " created_at TEXT NOT NULL)"
+    )
+    conn.execute(
+        "INSERT INTO guide_exchanges"
+        " (claim_id, step_index, message, reply, created_at)"
+        " VALUES (1, 2, 'pre-pin q', 'r', '2026-07-12T00:00:00Z')"
+    )
+    conn.commit()
+    conn.close()
+    monkeypatch.setenv("TESTING_DB_PATH", str(db))
+    rows = testing_store.guide_transcript_for_claim(1)
+    assert rows[0]["step_title"] == ""  # honest: not guessed, not backfilled
+    assert rows[0]["message"] == "pre-pin q"
+
+
+def test_digest_matching_pin_renders_clean(client, monkeypatch):
+    # pin == the script's current title at that index → attribution holds,
+    # neither provenance label renders
+    c = make_claim("clean@example.com")
+    testing_store.add_guide_exchange(
+        c["id"], 1, "which card should I open?", "any",
+        step_title=current_title(1),
+    )
+    html = owner_page(client, monkeypatch)
+    assert "· which card should I open?" in html
+    assert "asked when this step said" not in html
+    assert "step wording at ask time not recorded" not in html
+
+
+def test_digest_flags_stale_pin_with_the_ask_time_title(client, monkeypatch):
+    # the script was rewritten since: the pin differs from the current title,
+    # so the digest shows the step AS THE ASKER SAW IT instead of silently
+    # re-attributing the question to the new wording
+    c = make_claim("stale@example.com")
+    testing_store.add_guide_exchange(
+        c["id"], 1, "where is the pricing table?", "look left",
+        step_title="Pricing page",
+    )
+    html = owner_page(client, monkeypatch)
+    assert "· where is the pricing table?" in html
+    assert "asked when this step said “Pricing page”" in html
+
+
+def test_digest_reorder_shows_old_step_not_current_index_text(
+    client, monkeypatch
+):
+    # a reorder moves 'Homepage first impression' away from index 1: the old
+    # question keeps pointing at the step it was actually asked about — the
+    # pinned title renders, the title now sitting at index 1 does not
+    c = make_claim("reorder@example.com")
+    testing_store.add_guide_exchange(
+        c["id"], 1, "is the hero image broken?", "check it",
+        step_title=current_title(0),
+    )
+    html = owner_page(client, monkeypatch)
+    assert (
+        f"asked when this step said “{current_title(0)}”" in html
+    )
+    assert f"asked when this step said “{current_title(1)}”" not in html
+
+
+def test_digest_labels_legacy_rows_honestly(client, monkeypatch):
+    # a pre-pin row (step_title '') never guesses: the digest says the
+    # wording wasn't recorded instead of dressing the current title up as
+    # provenance
+    c = make_claim("prepin@example.com")
+    testing_store.add_guide_exchange(c["id"], 0, "where do I start?", "top")
+    html = owner_page(client, monkeypatch)
+    assert "· where do I start?" in html
+    assert "step wording at ask time not recorded (pre-provenance row)" in html
+    assert "asked when this step said" not in html
+
+
+def test_digest_question_helper_resolves_provenance():
+    # pure helper: clean (pin == current), stale (pin differs — pinned title
+    # carried, truncated like the tooltips), unpinned (no snapshot)
+    steps = [{"title": "Homepage"}, {"title": "Features"}]
+    clean = testing._digest_question(
+        {"message": "q?", "step_title": "Features"}, steps, 1
+    )
+    assert clean == {
+        "text": "q?", "stale": False, "pinned_title": "", "unpinned": False
+    }
+    stale = testing._digest_question(
+        {"message": "q?", "step_title": "Pricing"}, steps, 1
+    )
+    assert stale["stale"] is True and stale["pinned_title"] == "Pricing"
+    long_pin = testing._digest_question(
+        {"message": "q?", "step_title": "T" * 200}, steps, 1
+    )
+    assert len(long_pin["pinned_title"]) == testing.HEATMAP_STEP_TEXT_MAX
+    assert long_pin["pinned_title"].endswith("…")
+    legacy = testing._digest_question({"message": "q?"}, steps, 1)
+    assert legacy["unpinned"] is True and legacy["stale"] is False
+    # out-of-range index (the script shrank): a pinned row is stale, an
+    # unpinned one stays just unpinned
+    gone = testing._digest_question(
+        {"message": "q?", "step_title": "Features"}, steps, 9
+    )
+    assert gone["stale"] is True and gone["pinned_title"] == "Features"
