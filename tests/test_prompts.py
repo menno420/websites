@@ -412,3 +412,286 @@ def test_drift_empty_registry_is_real_drift_not_unknown(monkeypatch):
     assert "pinned list drifted" in r.text
     assert "−8 no longer present" in r.text
     assert "drift unknown" not in r.text
+
+
+# --------------------------------------------------------------------------- #
+# deployed-vs-canonical drift row (ORDER 022 item 3): canonical version
+# identity (in-paste line / Provenance) vs the fleet's committed deployment
+# records — meta.md Deployed-state tables (prose → recorded + stale/
+# unverified, NEVER "in sync") and telemetry/triggers-snapshot.json (verbatim
+# trigger export → byte-compared in sync/drift for failsafes only).
+# Fixtures are modeled on the REAL committed shapes (fleet-manager@4124d7d).
+# --------------------------------------------------------------------------- #
+
+import json  # noqa: E402
+
+_FAILSAFE_PROMPT = (
+    "FAILSAFE WAKE (Websites, Q-0265): send_later chain alive → verify in "
+    "one line, end. Stalled → resume the work loop (sync HEAD → inbox → "
+    "slice after slice, landed per LANDING), re-arm the chain (~15 min), "
+    "and write your heartbeat (control/status.md, per-seat grammar) as the "
+    "deliberate last step."
+)
+
+_CANON_CI = (
+    "<!-- v6 · 2026-07-13 · fleet-manager projects registry — GENERATED "
+    "COPY, do not edit -->\n"
+    "<!-- registry-header-end -->\n"
+    "v3.5 {seat} CI — dictionary+router. DRIFT CHECK: quote this line on "
+    "ask; older than fm:projects/{seat}/instructions.md = stale.\n\n"
+    "You are a session in the seat.\n\n"
+    "Provenance: v3.5 2026-07-13 · core@95b5c8f · UNIVERSAL v4@16161af · "
+    "seat repos @ 2026-07-12.\n"
+)
+
+_CANON_STARTUP = (
+    "<!-- v7 · 2026-07-13 · fleet-manager projects registry — GENERATED "
+    "COPY -->\n"
+    "v3.5 · 2026-07-13 · EXPANDED startup (coordinator brief) · {seat}\n"
+    "DRIFT CHECK: when asked, QUOTE the version line above verbatim.\n"
+    "You are the coordinator.\n"
+)
+
+_CANON_FAILSAFE = (
+    "<!-- v6 · 2026-07-13 · fleet-manager projects registry — GENERATED "
+    "COPY -->\n"
+    "<!-- registry-header-end -->\n"
+    "# Seat — failsafe cron (dead-man wake, Q-0265)\n\n"
+    "- **Routine name:** `Websites failsafe wake`\n"
+    "- **cron:** `45 */2 * * *`\n\n"
+    "## Prompt text (create_trigger `prompt`, EXACTLY — single-sourced "
+    "from the seat's v3.4 startup, BOOT step 3a (D-2))\n\n"
+    "```\n" + _FAILSAFE_PROMPT + "\n```\n\n"
+    "## Cutover (BOOT step 4 — rebind-then-delete)\n\n"
+    "More doc text after the block.\n"
+)
+
+# Real 4-column restructure-seat shape (websites meta.md, condensed cells).
+_META_WEBSITES = """# websites — package meta
+
+## Deployed-state per part (2026-07-10)
+
+| Part | This package file | Deployed today | Citation |
+|---|---|---|---|
+| 1 instructions | `instructions.md` — repo body @ `fc8354e` | **DEPLOYED, but an OLDER text:** the fm gen-2 fitted version (7,496 chars) was pasted 2026-07-10 (~02:05Z). No paste record exists for the repo file itself. **Re-paste needed** | fm `docs/proposals/instructions/websites.md` §"Deployed fitted version" L324 |
+| 2 wake prompt (= coordinator prompt for this fresh-session lane) | `coordinator-prompt.md` v3 (slice-2 re-sync) | **NOT the deployed text** as of the last record: live trigger carries the v1-era prompt. Owner may have re-pasted v2 — **UNVERIFIED** | `docs/owner/OWNER-ACTIONS.md` row E |
+| 3 setup script | `setup-script.sh` | Owner-paste convention, **no paste record** | `docs/project/README.md` |
+| 4 wake cron text | `failsafe-prompt.md` v2 | **DEPLOYED trigger verified in registry** (`trig_017H9Qb9oxtLgUy6sw2gnSHg`, `0 */4 * * *`) | CAPABILITIES append log |
+
+## Sources
+"""
+
+# Real 2-column fleet-manager shape (no dates; claims name v3 → unverified).
+_META_FM = """# fleet-manager — package meta
+
+## Deployed-state per package part
+
+| Part | State |
+|---|---|
+| `coordinator-prompt.md` | **DEPLOYED** — owner-pasted as the chat's first message at boot (runbook §2b v3 FINAL, ~13:45Z) |
+| `failsafe-prompt.md` | **DEPLOYED + VERIFIED** — `trig_014odnv5h1tkJAFRhix3tGLq`, cron `30 */2 * * *` |
+| `instructions.md` | **NEVER DEPLOYED as such** — the field carries the runbook §2a v3 text pasted at boot |
+| `setup-script.sh` | **UNKNOWN** — owner-side UI the manager cannot read |
+"""
+
+_SEAT_HUMAN = {
+    "fleet-manager": "Fleet Manager", "venture-lab": "Venture Lab",
+    "superbot-world": "SuperBot World", "superbot-2.0": "SuperBot 2.0",
+    "ideas-lab": "Ideas Lab", "game-lab": "Game Lab",
+    "self-improvement": "Self Improvement", "websites": "Websites",
+}
+
+
+def _snapshot_json(prompt=_FAILSAFE_PROMPT, seats=None,
+                   captured="2026-07-13T00:39:53Z"):
+    """Real triggers-snapshot.json record shape (fleet-manager telemetry)."""
+    data = []
+    for i, seat in enumerate(seats if seats is not None else prompts.SEATS):
+        data.append({
+            "created_at": "2026-07-12T20:55:37.881104Z",
+            "created_via": "meta_mcp",
+            "cron_expression": "45 */2 * * *",
+            "enabled": True,
+            "id": f"trig_test{i:02d}",
+            "job_config": {"ccr": {"events": [{"data": {"message": {
+                "content": prompt, "role": "user"}}}]}},
+            "last_fired_at": None,
+            "name": f"{_SEAT_HUMAN[seat]} failsafe wake",
+            "next_run_at": "2026-07-13T02:45:00Z",
+        })
+    return json.dumps({"capture_notes": "verbatim list_triggers export",
+                       "captured_at": captured, "data": data})
+
+
+def _patch_fleet(monkeypatch, meta=None, snapshot=None,
+                 meta_res=None, snap_res=None):
+    """Route github.fetch_file by path: canonical artifacts get realistic
+    registry copies; meta.md gets ``meta`` (dict per seat or one text;
+    None → 404); the snapshot gets ``snapshot`` text (None → 404).
+    ``meta_res``/``snap_res`` override the whole result (failure cases)."""
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        assert repo == "fleet-manager" and ref == "main"
+        if path == prompts.SNAPSHOT_PATH:
+            if snap_res is not None:
+                return snap_res
+            if snapshot is None:
+                return _res(ok=False, status=404, data=None, error="Not Found")
+            return _res(data=snapshot)
+        if path.endswith("/meta.md"):
+            if meta_res is not None:
+                return meta_res
+            seat = path.split("/")[1]
+            text = meta.get(seat) if isinstance(meta, dict) else meta
+            if text is None:
+                return _res(ok=False, status=404, data=None, error="Not Found")
+            return _res(data=text)
+        if path.startswith("projects/"):
+            seat, fname = path.split("/")[1], path.rsplit("/", 1)[-1]
+            if fname == "instructions.md":
+                return _res(data=_CANON_CI.format(seat=seat))
+            if fname == "coordinator-prompt.md":
+                return _res(data=_CANON_STARTUP.format(seat=seat))
+            return _res(data=_CANON_FAILSAFE)
+        # the two universals
+        return _res(data="<!-- v3.3 · 2026-07-12 · provenance: x -->\n"
+                         "universal body\n")
+
+    monkeypatch.setattr(github, "fetch_file", fake_fetch)
+
+
+def _seat_rows(dep, seat):
+    return {r["label"]: r for s in dep["seats"] if s["name"] == seat
+            for r in s["rows"]}
+
+
+def test_deployed_meta_table_parse_recorded_stale(monkeypatch):
+    """(a) A real-shaped meta.md Deployed-state table parses into honest
+    ``recorded: …`` rows — stale (older date / pre-v3 generation named),
+    NEVER "in sync" from prose alone."""
+    _patch_fleet(monkeypatch, meta=_META_WEBSITES, snapshot=_snapshot_json())
+    dep = asyncio.run(prompts.overview())["deployed"]
+    rows = _seat_rows(dep, "websites")
+
+    ci = rows["Custom Instructions"]
+    assert ci["state"] == "stale"
+    assert ci["deployed"].startswith("recorded: ")
+    assert "gen-2 fitted version" in ci["deployed"]
+    assert ci["as_of"] == "2026-07-10"  # cell date, older than canonical
+    assert ci["canonical"].startswith("v3.5 websites CI")
+    # startup/coordinator row: v1-era named → stale
+    co = rows["coordinator prompt"]
+    assert co["state"] == "stale"
+    assert "NOT the deployed text" in co["deployed"]
+    assert co["canonical"].startswith("v3.5 · 2026-07-13 · EXPANDED startup")
+    # meta.md never yields a green
+    assert ci["state"] != "in sync" and co["state"] != "in sync"
+
+
+def test_deployed_meta_two_column_shape_is_unverified(monkeypatch):
+    """fleet-manager's 2-column | Part | State | table (no dates, v3 named)
+    parses too — recorded but unverifiable, never green."""
+    _patch_fleet(monkeypatch, meta=_META_FM, snapshot=_snapshot_json())
+    dep = asyncio.run(prompts.overview())["deployed"]
+    rows = _seat_rows(dep, "fleet-manager")
+    assert rows["Custom Instructions"]["state"] == "unverified"
+    assert "NEVER DEPLOYED as such" in rows["Custom Instructions"]["deployed"]
+    assert rows["coordinator prompt"]["state"] == "unverified"
+
+
+def test_deployed_meta_missing_or_unparseable_is_not_recorded(monkeypatch):
+    """(b) 404 meta.md and meta.md without the table both degrade to an
+    honest ``not recorded`` — no guessed record."""
+    _patch_fleet(monkeypatch, meta=None, snapshot=_snapshot_json())
+    dep = asyncio.run(prompts.overview())["deployed"]
+    rows = _seat_rows(dep, "websites")
+    for label in ("Custom Instructions", "coordinator prompt"):
+        assert rows[label]["state"] == "not recorded"
+        assert "no meta.md" in rows[label]["reason"]
+        assert rows[label]["deployed"] == ""
+
+    _patch_fleet(monkeypatch, meta="# meta\n\nprose only, no ledger\n",
+                 snapshot=_snapshot_json())
+    dep = asyncio.run(prompts.overview())["deployed"]
+    rows = _seat_rows(dep, "ideas-lab")
+    assert rows["Custom Instructions"]["state"] == "not recorded"
+    assert "no parseable Deployed-state table" in rows["Custom Instructions"]["reason"]
+
+
+def test_deployed_failsafe_snapshot_in_sync(monkeypatch):
+    """(c) Snapshot prompt body byte-matches the registry copy's Prompt-text
+    block → in sync, as-of the snapshot's captured_at."""
+    _patch_fleet(monkeypatch, meta=None, snapshot=_snapshot_json())
+    dep = asyncio.run(prompts.overview())["deployed"]
+    for s in dep["seats"]:
+        fs = {r["label"]: r for r in s["rows"]}["failsafe prompt"]
+        assert fs["state"] == "in sync", s["name"]
+        assert fs["as_of"] == "2026-07-13T00:39:53Z"
+        assert "failsafe wake" in fs["deployed"]
+    assert dep["snapshot"]["ok"] and dep["counts"]["in sync"] == 8
+
+
+def test_deployed_failsafe_snapshot_drift_and_missing_seat(monkeypatch):
+    """(d) A differing snapshot body → drift; a seat absent from the
+    snapshot → not recorded (never an assumed green)."""
+    snap = _snapshot_json(prompt="FAILSAFE WAKE (old v1 text): do the ritual.",
+                          seats=[s for s in prompts.SEATS if s != "game-lab"])
+    _patch_fleet(monkeypatch, meta=None, snapshot=snap)
+    dep = asyncio.run(prompts.overview())["deployed"]
+    fs = _seat_rows(dep, "websites")["failsafe prompt"]
+    assert fs["state"] == "drift"
+    assert "differs" in fs["reason"]
+    missing = _seat_rows(dep, "game-lab")["failsafe prompt"]
+    assert missing["state"] == "not recorded"
+    assert "no failsafe trigger" in missing["reason"]
+    assert dep["counts"]["drift"] == 7
+
+
+def test_deployed_fetch_failures_degrade_to_unreachable(monkeypatch):
+    """(e) Network-failed meta.md/snapshot fetches → unreachable rows, the
+    route still answers 200 — mirror of registry_drift's degradation."""
+    fail = _res(ok=False, status=0, data=None,
+                error="ConnectError: unreachable")
+    _patch_fleet(monkeypatch, meta_res=fail, snap_res=fail)
+    dep = asyncio.run(prompts.overview())["deployed"]
+    rows = _seat_rows(dep, "websites")
+    for label in ("Custom Instructions", "coordinator prompt",
+                  "failsafe prompt"):
+        assert rows[label]["state"] == "unreachable"
+    assert not dep["snapshot"]["ok"]
+    assert "ConnectError" in dep["snapshot"]["error"]
+
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert "unreachable" in r.text
+
+
+def test_deployed_universals_not_recorded(monkeypatch):
+    """(f) The two per-session universals have no deployed record anywhere
+    in the fleet — honest ``not recorded``, canonical stamp still shown."""
+    _patch_fleet(monkeypatch, meta=None, snapshot=_snapshot_json())
+    dep = asyncio.run(prompts.overview())["deployed"]
+    assert [u["label"] for u in dep["universals"]] == [
+        "Universal Startup", "Universal Session-Ender"]
+    for u in dep["universals"]:
+        assert u["state"] == "not recorded"
+        assert "no deployed record" in u["reason"]
+        assert u["canonical"].startswith("v3.3 · 2026-07-12")
+    assert dep["total"] == 26
+
+
+def test_deployed_route_renders_drift_section(monkeypatch):
+    """(g) Template smoke: the section renders self-contained with chips,
+    the snapshot as-of stamp, and per-row states."""
+    _patch_fleet(monkeypatch, meta=_META_WEBSITES, snapshot=_snapshot_json())
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert 'id="deployed-drift"' in r.text
+    assert "Deployed vs canonical" in r.text
+    assert "captured 2026-07-13T00:39:53Z" in r.text
+    assert "in sync" in r.text          # failsafes byte-match
+    assert "recorded: DEPLOYED, but an OLDER text:" in r.text
+    assert "not recorded" in r.text     # universals
+    assert "v3.5 websites CI" in r.text  # canonical identity in the table
+    # summary chips carry counts (8 failsafes green in this fixture)
+    assert "8 in sync" in r.text
