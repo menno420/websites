@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Post-deploy healthcheck: GET /healthz and / on the three live services, plus
+"""Post-deploy healthcheck: GET /healthz and / on the four live services, plus
 the `/fleet` registry live-parse smoke check, the arcade URL drift probe
 (live+download) and the tester-task URL liveness guard (open tasks).
 
@@ -7,8 +7,10 @@ the `/fleet` registry live-parse smoke check, the arcade URL drift probe
 PROVENANCE / KILL-SWITCH HEADER
   Why:   "Merge = deploy" — each service auto-redeploys on merge to main. This
          is the reusable post-deploy verification habit: one command confirms
-         all three Railway services answer `/healthz` and serve their public
-         `/` with HTTP 200. Beats hand-curling three URLs after every merge.
+         all four Railway services answer `/healthz` and serve their public
+         `/` with HTTP 200. Beats hand-curling four URLs after every merge.
+         (review joined 2026-07-13 — the service went LIVE 2026-07-12 but the
+         SERVICES table was never extended; gap found by a prior session.)
   Added: 2026-07-09 (websites hardening pass, PR #19, [D-0015]).
   Trust: DETERMINISTIC (pure stdlib urllib) — but UNVERIFIED as a habit; sanity
          check its verdict against a manual curl a few times before trusting.
@@ -17,7 +19,8 @@ PROVENANCE / KILL-SWITCH HEADER
          convenience helper, not infrastructure.
 ──────────────────────────────────────────────────────────────────────────────
 
-All three services are PUBLIC (2026-07-09 auth-drop), so `/` is expected 200.
+All four services are PUBLIC (2026-07-09 auth-drop; botsite and review were
+always public), so `/` is expected 200.
 
 The registry check (retro A3 / queue-state NEXT item 2) fetches the manager's
 LIVE registry (menno420/fleet-manager scripts/gen_roster.py) and asserts the SAME parser
@@ -71,11 +74,15 @@ from app import config, fleet  # noqa: E402  (path setup must run first)
 from botsite import arcade_probe, testing_probe  # noqa: E402  (path setup must run first)
 
 # (label, base URL). Endpoints checked per service: /healthz and / (both expect
-# 200 now that all three are public).
+# 200 now that all four are public). The review URL is the canonical f027
+# deployment documented in docs/current-state.md + app/config.py (the fc91
+# copy is the labeled "parallel copy" in app/data/web_presence.json — not
+# probed here).
 SERVICES = [
     ("control-plane", "https://control-plane-production-abb0.up.railway.app"),
     ("botsite", "https://botsite-production-cfd7.up.railway.app"),
     ("dashboard", "https://dashboard-production-a91b.up.railway.app"),
+    ("review", "https://review-production-f027.up.railway.app"),
 ]
 ENDPOINTS = ("/healthz", "/")
 EXPECTED = 200
