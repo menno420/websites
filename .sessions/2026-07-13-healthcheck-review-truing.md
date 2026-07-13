@@ -1,6 +1,8 @@
 # 2026-07-13 — healthcheck: probe review service + true current-state figures
 
-> **Status:** `in-progress`
+> **Status:** `complete` — branch `claude/healthcheck-review-truing-0713`,
+> PR #291 opened READY (not draft) against main; merge is the auto-merge
+> lane / owner's call — this worker opens, never merges.
 
 - **📊 Model:** Claude 5 family · worker · build
 
@@ -42,10 +44,42 @@ Status badge within the first 12 lines.
   `git log`). Status badge stays on line 3 (within the first-12-lines
   docs-gate rule). Surgical — nothing else rewritten.
 
+- Verified: `python3 -m pytest tests/ botsite/tests dashboard/tests
+  review/tests -q` — `1255 passed, 1 warning in 67.34s` (was 1252; +3 new
+  pins); `python3 bootstrap.py check --strict` — green apart from this
+  card's designed born-red hold, released at this flip. The truing edits
+  briefly tripped the kit's orientation-budget gate (boot set 7120 > 7000
+  words); resolved by compressing the two already-Done "Next steps" items
+  and the verbose kit-version upgrade chain in the same file.
+- Pre-session note: the workspace carried uncommitted
+  `.substrate/state.json` churn at boot; banked on rescue branch
+  `claude/rescue-2026-07-13-healthcheck-presync` (`d64a537`) before the
+  hard-sync to `origin/main` @ `6360263`.
+
+⚑ Self-initiated: no — assigned two-task change; contained + reversible
+(one list entry + a pin test + doc truing; revert the PR to undo).
+
 ## 💡 Session idea
 
-- (pending close-out)
+**Service-URL inventory consistency pin** — the four production base URLs
+now live hand-kept in at least four places (`scripts/healthcheck.py`
+`SERVICES`, `app/config.py` `SERVICE_DEPLOY_TARGETS`, `app/railway.py`
+`SERVICES`, `app/data/web_presence.json`); a small cross-check test in the
+`tests/test_inventory_consistency.py` mold (assert every deploy-target
+service appears in the healthcheck table with the same host, fc91
+parallel-copy excluded) would have caught this session's exact gap — the
+review service was documented in config on 2026-07-12 yet the healthcheck
+table lagged a full day. Worth having because hand-kept URL copies drift
+silently and the estate keeps adding services. Deduped against
+`docs/ideas/backlog.md` (healthcheck bullets probe live URLs; the
+inventory-consistency bullet covers env-var names, not service URLs) and
+`.sessions/` cards — no existing capture.
 
 ## ⟲ Previous-session review
 
-- (pending close-out)
+The webhook-analyzer session (.sessions/2026-07-13-webhook-analyzer.md,
+PR #266) did well: its born-red → build → flip ritual and honest
+grounding-tier discipline transplanted cleanly here; what it left behind
+is still open — its own card flags that the 💡 backlog bullet was never
+added to `docs/ideas/backlog.md`, and as of this session that follow-up
+has still not landed.
