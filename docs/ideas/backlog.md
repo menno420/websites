@@ -1111,8 +1111,19 @@
   `.sessions/2026-07-13-env-hardening.md` 💡.
 
 - **Self-deriving poison list — pin the hostile-env smoke's ENV_VARS
-  against a live source sweep** · `captured` (2026-07-13, hostile-env-smoke
-  session 💡) — `tests/test_hostile_env_smoke.py` (PR #287) poisons a
+  against a live source sweep** · `built` (2026-07-13, branch
+  `claude/env-poison-pin-0713` — `tests/test_env_poison_pin.py` AST-sweeps
+  the SAME files the smoke discovers (service dirs + exclusions imported
+  from the smoke module, one source of truth) and fails BY NAME + read site
+  when source reads a name `ENV_VARS` misses; resolves literal reads,
+  module-constant `ENV_*` indirection, and guarded-wrapper call sites
+  (`_env_int("X", …)`); non-derivable reads must sit on an explicit
+  per-entry-justified dynamic allowlist with a stale-entry check (currently
+  one entry: `app/railway.py` `_committed_services`, a presence-only read
+  of committed-inventory names); per-service nonzero meta-test so a lost
+  read shape can't blank the sweep; red-proven on a planted unpoisoned
+  read; original capture 2026-07-13, hostile-env-smoke session 💡) —
+  `tests/test_hostile_env_smoke.py` (PR #287) poisons a
   hand-collected 38-name literal; a companion assertion (AST or regex sweep
   of `os.environ`/`os.getenv`/`ENV_* =` over app/, botsite/, dashboard/,
   review/ at test time, same exclusions as the smoke) failing when source
