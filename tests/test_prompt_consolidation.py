@@ -94,7 +94,7 @@ def test_single_source_of_truth_no_forked_helpers():
 def test_seat_roster_single_source_and_order():
     """The seat roster lives ONCE (``app/roster.py``) — the /prompts library
     and the /projects dispatch order both derive from it, pinned to the
-    owner's 8 seats so the two surfaces can never drift."""
+    owner's seats so the two surfaces can never drift."""
     assert prompts.SEATS is roster.SEATS
     assert projects._START_ORDER is roster.START_ORDER
     assert prompts.SEATS == (
@@ -106,6 +106,7 @@ def test_seat_roster_single_source_and_order():
         "game-lab",
         "self-improvement",
         "websites",
+        "curious-research",
     )
     assert prompts.SEATS == tuple(a[0] for a in projects._START_ORDER)
     assert [projects.start_rank(s) for s in prompts.SEATS] == list(

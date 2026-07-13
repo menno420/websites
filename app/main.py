@@ -34,6 +34,7 @@ from . import (
     owner,
     owner_queue,
     projects,
+    prompt_history,
     prompts,
     readiness,
     reviews,
@@ -526,6 +527,31 @@ async def prompts_page(request: Request):
     data = await prompts.overview(refresh=_refresh(request))
     return templates.TemplateResponse(
         request, "prompts.html", {"p": data, "active": "prompts"}
+    )
+
+
+@app.get("/prompts/history/{seat}", response_class=HTMLResponse)
+async def prompt_history_page(request: Request, seat: str):
+    """ORDER 041: per-seat prompt VERSION HISTORY — the version ladder derived
+    live from the git history of the seat's authored prompt sources in the
+    fleet-manager registry (docs/prompts/v3/per-project/), each version
+    viewable/copyable at its commit sha, any two versions diffable
+    server-side (?file=ci|startup&a=<sha>&b=<sha>). GET-only, read-only,
+    single source of truth upstream; honest degradation ("history not
+    available" / "version body unavailable") — never a fabricated ladder.
+    Unknown seat or file key → 404; everything else answers 200."""
+    qp = request.query_params
+    data = await prompt_history.history(
+        seat,
+        file_key=qp.get("file", "ci"),
+        a=qp.get("a", ""),
+        b=qp.get("b", ""),
+        refresh=_refresh(request),
+    )
+    if data is None:
+        return HTMLResponse("unknown seat or prompt file", status_code=404)
+    return templates.TemplateResponse(
+        request, "prompt_history.html", {"h": data, "active": "prompts"}
     )
 
 

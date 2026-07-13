@@ -1,4 +1,4 @@
-"""The fleet seat roster: the owner's 8 registry seats in dispatch order.
+"""The fleet seat roster: the owner's registry seats in dispatch order.
 
 ONE control-plane source for the seat set — the /prompts library pins its
 artifact registry to :data:`SEATS` and the /projects index sorts its seat
@@ -23,7 +23,11 @@ START_ORDER: tuple[tuple[str, ...], ...] = (
     ("game-lab",),
     ("self-improvement",),
     ("websites",),
+    # Seat 9 (fm prompts v3.6, 2026-07-13) — verified live 2026-07-13:
+    # projects/curious-research/{coordinator-prompt.md,instructions.md,
+    # failsafe-prompt.md,meta.md} all present at fleet-manager@f8527f44.
+    ("curious-research",),
 )
 
-# The 8 canonical seat names (registry package directories), same order.
+# The canonical seat names (registry package directories), same order.
 SEATS: tuple[str, ...] = tuple(aliases[0] for aliases in START_ORDER)

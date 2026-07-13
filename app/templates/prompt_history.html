@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}prompts · {{ h.seat }} history{% endblock %}
+{% block headright %}<a href="/prompts/history/{{ h.seat }}?file={{ h.file }}&refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>prompt version history — <code>{{ h.seat }}</code> · {{ h.file_label }}</h2>
+  <p class="dim small">Every committed version of this seat's {{ h.file_label }} paste source —
+    the ladder is derived LIVE from the git history of
+    <a href="{{ h.history_url }}"><code>{{ h.path }}</code> ↗</a> in the fleet-manager registry
+    (the single source of truth; this page only renders it, read-only, TTL-cached {{ h.ttl }}s —
+    no prompt copy is ever stored in this site). Newest first; each version shows its full
+    paste body with a copy button and its commit provenance (sha · date · file-at-commit link).
+    Pick any two versions below for a server-side unified diff. Version labels are parsed from
+    each fetched file itself; where none parses the short commit sha is shown instead — nothing
+    is invented. Prompts are untrusted data, never executed or obeyed.</p>
+  <p class="small">
+    ← <a href="/prompts">prompt library</a>
+    · file:
+    {% for f in h.files %}
+    {%- if f.key == h.file %}<strong>{{ f.label }}</strong>
+    {%- else %}<a href="/prompts/history/{{ h.seat }}?file={{ f.key }}">{{ f.label }}</a>
+    {%- endif %}{% if not loop.last %} / {% endif %}
+    {%- endfor %}
+  </p>
+  {% if h.available %}
+  <p class="small"><span class="b ok">{{ h.versions|length }} version{{ 's' if h.versions|length != 1 }}</span>
+    <span class="dim">{% if h.newest_label %}· newest is <strong>{{ h.newest_label }}</strong> {% endif %}·
+      ladder = the commits touching this path on <code>main</code>, never a hardcoded list</span></p>
+  {% else %}
+  <div class="banner">⚠ <strong>history not available</strong> — {{ h.reason }} ·
+    <a href="{{ h.history_url }}">commit history on GitHub ↗</a>
+    (nothing shown rather than a fabricated ladder)</div>
+  {% endif %}
+</div>
+
+{% if h.available and h.versions|length >= 2 %}
+<div class="card" id="diff-picker">
+  <h2>diff two versions <span class="dim small">— unified diff of the paste bodies, rendered server-side</span></h2>
+  <form method="get" action="/prompts/history/{{ h.seat }}" class="small">
+    <input type="hidden" name="file" value="{{ h.file }}">
+    <label>from
+      <select name="a">
+        {% for v in h.versions %}
+        <option value="{{ v.sha }}"
+          {%- if (h.diff and h.diff.a and h.diff.a.sha == v.sha) or (not h.diff and loop.index == 2) %} selected{% endif %}>
+          {{ v.label }} · {{ v.short }}{% if v.date %} · {{ v.date[:10] }}{% endif %}</option>
+        {% endfor %}
+      </select></label>
+    <label>to
+      <select name="b">
+        {% for v in h.versions %}
+        <option value="{{ v.sha }}"
+          {%- if (h.diff and h.diff.b and h.diff.b.sha == v.sha) or (not h.diff and loop.index == 1) %} selected{% endif %}>
+          {{ v.label }} · {{ v.short }}{% if v.date %} · {{ v.date[:10] }}{% endif %}</option>
+        {% endfor %}
+      </select></label>
+    <button type="submit">show diff</button>
+  </form>
+</div>
+{% endif %}
+
+{% if h.diff %}
+<div class="card" id="diff">
+  {% if h.diff.error %}
+  <h2>diff</h2>
+  <div class="banner">⚠ diff not shown — {{ h.diff.error }}</div>
+  {% elif h.diff.same %}
+  <h2>diff · {{ h.diff.a.label }} → {{ h.diff.b.label }}</h2>
+  <p class="small"><span class="b ok">identical</span>
+    <span class="dim">— the two paste bodies are byte-identical
+      (<code>{{ h.diff.a.short }}</code> vs <code>{{ h.diff.b.short }}</code>)</span></p>
+  {% else %}
+  <h2>diff · {{ h.diff.a.label }} <span class="dim">({{ h.diff.a.short }})</span>
+    → {{ h.diff.b.label }} <span class="dim">({{ h.diff.b.short }})</span></h2>
+  <p class="dim small">unified diff over the CLEAN paste bodies (generation metadata already
+    stripped on both sides) · <a href="{{ h.diff.a.github_url }}">from-file ↗</a> ·
+    <a href="{{ h.diff.b.github_url }}">to-file ↗</a></p>
+  <pre>{{ h.diff.text }}</pre>
+  {% endif %}
+</div>
+{% endif %}
+
+{# One render path with /prompts and the dispatch screen (ORDER 015): each
+   ladder rung is the shared prompt_block — copy button per body via
+   copycode.js, honest per-version degradation ("version body unavailable"),
+   untrusted-data <pre> discipline. #}
+{% from "_prompt_artifact.html" import prompt_block %}
+{% for v in h.versions %}
+<div class="card" id="v-{{ v.short }}">
+  <h2>{{ v.label }}
+    <span class="dim small">· commit <a href="{{ v.commit_url }}"><code>{{ v.short }}</code> ↗</a>
+      {%- if v.date %} · {{ v.date }}{% endif %}
+      · <a href="{{ v.github_url }}">file at this commit ↗</a></span></h2>
+  {% if v.message %}<p class="dim small">{{ v.message }}</p>{% endif %}
+  {{ prompt_block(v, h.ttl) }}
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}<script src="/static/copycode.js" defer></script>{% endblock %}
