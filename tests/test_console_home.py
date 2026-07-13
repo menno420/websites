@@ -23,6 +23,7 @@ from app.main import app  # noqa: E402
 ALL_FEATURE_ROUTES = [
     "/",
     "/fleet",
+    "/freshness",
     "/work",
     "/queue",
     "/orders",

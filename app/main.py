@@ -24,6 +24,7 @@ from . import (
     config,
     environments,
     fleet,
+    freshness,
     github,
     ideas,
     journal,
@@ -392,6 +393,26 @@ async def fleet_heartbeat_json(request: Request):
     # tests/test_fleet_json_contract.py).
     payload["coverage"] = cov
     return JSONResponse(payload)
+
+
+@app.get("/freshness", response_class=HTMLResponse)
+async def repo_freshness(request: Request):
+    """Per-repo movement across the fleet — last commit, last session card,
+    open PRs, heartbeat age — with amber staleness past the thresholds and
+    honest per-cell unknowns (app/freshness.py)."""
+    data = await freshness.overview(refresh=_refresh(request))
+    return templates.TemplateResponse(
+        request,
+        "freshness.html",
+        {"f": data, "active": "freshness"},
+    )
+
+
+@app.get("/freshness.json")
+async def repo_freshness_json(request: Request):
+    """Machine twin of /freshness — the same overview payload (the rows
+    carry no rendered HTML, so nothing is stripped; the /fleet.json idiom)."""
+    return JSONResponse(await freshness.overview(refresh=_refresh(request)))
 
 
 @app.get("/queue", response_class=HTMLResponse)
