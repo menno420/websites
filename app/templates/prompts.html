@@ -56,6 +56,71 @@
   </p>
 </div>
 
+{# Deployed-vs-canonical drift row (ORDER 022 item 3 — the reboot enabler).
+   CANONICAL = the registry copies rendered below (in-paste version line /
+   Provenance line). DEPLOYED = the fleet's only committed deployment
+   records: each seat's meta.md Deployed-state table (prose — proves
+   staleness, never byte-equality, so its best verdict is stale/unverified)
+   and the manager's triggers-snapshot.json (verbatim trigger export —
+   failsafe prompts are deliberately unstamped so this pair IS
+   byte-comparable). Honest states only; fetch failures degrade per row. #}
+<div class="card" id="deployed-drift">
+  <h2>Deployed vs canonical
+    <span class="dim small">— what is actually pasted/armed, per seat</span></h2>
+  <p class="dim small">The blocks below are the CANONICAL paste source (fleet-manager registry);
+    a deployed text with no committed twin is drift. This table sets each canonical version
+    stamp against the fleet's last <em>committed record</em> of what is deployed:
+    <code>projects/&lt;seat&gt;/meta.md</code> "Deployed-state" tables (prose — can prove a
+    record stale, never byte-equal, so its best state is <em>recorded</em> →
+    <span class="b warn">stale</span> / <span class="b unknown">unverified</span>) and the
+    trigger registry export <a href="{{ p.deployed.snapshot.url }}"><code>{{ p.deployed.snapshot.path }}</code> ↗</a>
+    (failsafe prompts are deliberately unstamped, so that pair is byte-compared →
+    <span class="b ok">in sync</span> / <span class="b bad">drift</span>). No record anywhere →
+    <span class="b unknown">not recorded</span>; a failed fetch →
+    <span class="b warn">unreachable</span>. Equality is never invented.</p>
+  <p class="small">
+    {%- for c in p.deployed.chips %}
+    <span class="b {{ c.cls }}">{{ c.count }} {{ c.state }}</span>
+    {%- endfor %}
+    <span class="dim">· {{ p.deployed.total }} rows</span>
+  </p>
+  <p class="dim small">failsafe snapshot:
+    {% if p.deployed.snapshot.ok %}captured {{ p.deployed.snapshot.captured_at }}
+    (deployed truth is as of this capture, not now)
+    {%- else %}unavailable — {{ p.deployed.snapshot.error }}{% endif %}</p>
+  <table class="small">
+    <tr><th>seat</th><th>artifact</th><th>canonical (registry @ main)</th>
+      <th>deployed record</th><th>state</th></tr>
+    {% for s in p.deployed.seats %}
+    {%- for r in s.rows %}
+    <tr>
+      {% if loop.first %}<td rowspan="{{ s.rows|length }}"><code>{{ s.name }}</code></td>{% endif %}
+      <td>{{ r.label }}</td>
+      <td>{% if r.canonical %}{{ r.canonical }}
+        {%- elif not r.canonical_ok %}<span class="dim">registry copy could not be fetched</span>
+        {%- else %}<code>{{ r.path }}</code> — <span class="dim">version line missing</span>{% endif %}</td>
+      <td>{% if r.deployed %}{{ r.deployed }}
+        {%- if r.as_of %} <span class="dim">(as of {{ r.as_of }})</span>{% endif %}
+        {%- if r.reason %} <span class="dim">· {{ r.reason }}</span>{% endif %}
+        {%- else %}<span class="dim">{{ r.reason }}</span>{% endif %}</td>
+      <td><span class="b {{ r.cls }}">{{ r.state }}</span></td>
+    </tr>
+    {%- endfor %}
+    {% endfor %}
+    {% for r in p.deployed.universals %}
+    <tr>
+      {% if loop.first %}<td rowspan="{{ p.deployed.universals|length }}"><span class="dim">fleet-wide</span></td>{% endif %}
+      <td>{{ r.label }}</td>
+      <td>{% if r.canonical %}{{ r.canonical }}
+        {%- elif not r.canonical_ok %}<span class="dim">registry copy could not be fetched</span>
+        {%- else %}<code>{{ r.path }}</code> — <span class="dim">version line missing</span>{% endif %}</td>
+      <td><span class="dim">{{ r.reason }}</span></td>
+      <td><span class="b {{ r.cls }}">{{ r.state }}</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
 {# The block itself is the shared partial (ORDER 015) — one render path with
    the /projects/{package} dispatch screen. #}
 {% from "_prompt_artifact.html" import prompt_block %}
