@@ -210,6 +210,26 @@
       {% endfor %}
     </div>
     {% endif %}
+    {% if finisher_hotspots %}
+    <div style="margin-bottom:14px">
+      <p class="sb-hint">Finisher question hotspots — tasks with zero drop-offs where finishers still asked the guide. Per step: how many finishers' chats touched it. No lethality here — everyone made it — but a step half the finishers asked about is the cheapest UX fix available, visible before the first drop-off ever happens.</p>
+      {% for t in finisher_hotspots %}
+      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:8px">
+        <span class="sb-badge sb-mono">{{ t.task_id }}</span>
+        <span class="sb-hint">{{ t.finisher_count }} finisher(s) chatted · no drop-offs{% if t.script_len %} · of {{ t.script_len }} steps{% endif %}</span>
+        {% for st in t.steps %}
+        {% if st.finished %}
+        <span class="sb-mono" style="padding:2px 8px; border-radius:4px; border:1px solid color-mix(in oklab, var(--sb-info) 35%, transparent); background:var(--sb-info-tint)"
+          title="step {{ st.step_index + 1 }}{% if st.step_text %} — {{ st.step_text }}{% endif %}: {{ st.finished }} finisher(s) asked here and pushed through">step {{ st.step_index + 1 }} · {{ st.finished }} asked</span>
+        {% else %}
+        <span class="sb-mono sb-hint" style="padding:2px 8px; border-radius:4px; border:1px dashed color-mix(in oklab, var(--sb-info) 35%, transparent); background:transparent; opacity:0.65"
+          title="step {{ st.step_index + 1 }}{% if st.step_text %} — {{ st.step_text }}{% endif %}: no finisher asked here">step {{ st.step_index + 1 }} · 0 asked</span>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
     {% for d in dropoffs %}
     <div class="sb-card" style="margin-bottom:14px; padding:16px">
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">

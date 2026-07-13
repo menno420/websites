@@ -1108,6 +1108,26 @@ async def _owner_page(
                 }
             )
         t["script_len"] = len(step_script)
+    # Finisher-question hotspots: the same strip mechanics for tasks with
+    # ZERO drop-offs — every tester finished, but their persisted chats
+    # (PR #292) still say which steps needed hints. Tasks with any drop-off
+    # stay off this list (the heatmap above already shows their finisher
+    # counts as contrast). Same step-text join and full-length padding;
+    # no lethality anywhere — nobody died, the counts are the signal.
+    finisher_hotspots = store.guided_finisher_hotspots()
+    for t in finisher_hotspots:
+        step_script = task_steps(task_by_id(t["task_id"]))
+        for st in t["steps"]:
+            st["step_text"] = _heatmap_step_text(step_script, st["step_index"])
+        for idx in range(len(t["steps"]), len(step_script)):
+            t["steps"].append(
+                {
+                    "step_index": idx,
+                    "finished": 0,
+                    "step_text": _heatmap_step_text(step_script, idx),
+                }
+            )
+        t["script_len"] = len(step_script)
     # ORDER 019 PR2: filter/sort/search over the submissions queue (the
     # centralized listfilter core; state lives in the GET query string, so
     # POST-action re-renders simply show the unfiltered default).
@@ -1119,6 +1139,7 @@ async def _owner_page(
             "submissions_filter": submissions_filter,
             "dropoffs": dropoffs,
             "dropoff_heatmap": dropoff_heatmap,
+            "finisher_hotspots": finisher_hotspots,
             "tasks": shaped_tasks(),
             "claims": store.list_claims(),
             "submissions": submissions,
