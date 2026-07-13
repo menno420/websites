@@ -285,6 +285,49 @@ def test_zero_entry_registry_is_a_flagged_condition(tmp_path):
     assert "ZERO entries" in result["note"]
 
 
+# --- single source of truth: probe coverage IS the page's linked set -------------
+
+
+def test_probe_coverage_is_the_pages_linked_set():
+    """THE pin this slice exists for: the probe's coverage tuple IS the page's
+    link-bearing tuple (``arcade.LINKED_AVAILABILITIES``) — one object, not
+    two literals that happen to agree — so a new link-bearing availability
+    can never be linked on /arcade yet silently unprobed (or vice versa)."""
+    from botsite import arcade
+
+    assert arcade_probe.PROBED_AVAILABILITIES is arcade.LINKED_AVAILABILITIES
+    assert set(arcade_probe.PROBED_AVAILABILITIES) == set(arcade.LINKED_AVAILABILITIES)
+
+
+def test_linked_availabilities_are_valid_and_exclude_unavailable():
+    """Sanity pins on the constant itself: every linked availability is a real
+    registry availability, none repeats, and ``unavailable`` never links."""
+    from botsite import arcade
+
+    assert set(arcade.LINKED_AVAILABILITIES) <= set(arcade.AVAILABILITIES)
+    assert len(set(arcade.LINKED_AVAILABILITIES)) == len(arcade.LINKED_AVAILABILITIES)
+    assert "unavailable" not in arcade.LINKED_AVAILABILITIES
+
+
+def test_probe_partitions_registry_exactly_by_linked_availabilities(tmp_path):
+    """Behavior pin: with one URL-bearing entry per registry availability, the
+    probed/skipped partition is EXACTLY the linked/non-linked split — driven
+    by the shared constant, not by any list hardcoded here."""
+    from botsite import arcade
+
+    reg = _registry(tmp_path, [
+        _entry(f"g-{a}", a, "https://example.com/g") for a in arcade.AVAILABILITIES
+    ])
+    with _client(lambda req: httpx.Response(200)) as c:
+        result = arcade_probe.probe_registry_urls(reg, client=c)
+    assert [r["slug"] for r in result["rows"]] == [
+        f"g-{a}" for a in arcade.AVAILABILITIES if a in arcade.LINKED_AVAILABILITIES
+    ]
+    assert [s["slug"] for s in result["skipped"]] == [
+        f"g-{a}" for a in arcade.AVAILABILITIES if a not in arcade.LINKED_AVAILABILITIES
+    ]
+
+
 def test_committed_registry_linked_set_matches_probe_coverage():
     """Coverage pin against the committed registry (no network: nothing is
     fetched, we only assert WHAT WOULD BE probed): exactly the entries the

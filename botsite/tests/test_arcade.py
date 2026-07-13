@@ -151,6 +151,25 @@ def test_loader_adds_attribution_ref(tmp_path):
     assert game["link_url"] == "https://example.com/play?ref=fleet-arcade"
 
 
+def test_has_link_covers_exactly_the_linked_availabilities(tmp_path):
+    """Behavior pin on ``LINKED_AVAILABILITIES`` (the single source of truth
+    shared with the drift probe): a URL-bearing entry gets ``has_link`` and a
+    ``link_url`` for EVERY linked availability and for NO other one."""
+    reg = tmp_path / "arcade.json"
+    reg.write_text(json.dumps([
+        {"slug": f"g-{a}", "name": a.title(), "tagline": "t", "description": "d",
+         "maturity": "beta", "availability": a, "url": "https://example.com/g",
+         "source_repo": "menno420/x", "status_note": "n"}
+        for a in arcade.AVAILABILITIES
+    ]), encoding="utf-8")
+    games = arcade.load_games(reg)
+    assert len(games) == len(arcade.AVAILABILITIES)
+    for game in games:
+        linked = game["availability"] in arcade.LINKED_AVAILABILITIES
+        assert game["has_link"] is linked
+        assert (game["link_url"] is not None) is linked
+
+
 def test_committed_registry_is_honest():
     """The committed registry loads, has all three games; mineverse is live
     (ORDER 022) and the other two stay honestly unavailable with notes."""

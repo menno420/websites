@@ -819,18 +819,21 @@
   `.sessions/2026-07-12-arcade-url-drift-probe.md` 💡.
 
 - **Single source of truth for link-bearing arcade availabilities** ·
-  `captured` (2026-07-12, arcade download-probe session 💡) — the /arcade
-  page's `has_link` hardcodes `("live", "download")` in `botsite/arcade.py`
-  and the drift probe now duplicates the same tuple as
-  `arcade_probe.PROBED_AVAILABILITIES` — two copies of the doctrine "which
-  availabilities carry outbound links" that nothing pins together. Move the
-  tuple to ONE constant in `botsite/arcade.py` (e.g. `LINKED_AVAILABILITIES`),
-  consume it from both `has_link` and the probe, and add a pin test asserting
-  the probe's coverage equals the set the page links. Worth having because
-  the probe's whole guarantee is "coverage never disagrees with the page" —
-  today that agreement is by coincidence of two literals, and the next new
-  availability value (a "beta" that gets links, say) would silently
-  under-cover exactly like the `download` gap just closed. Source:
+  `built` (2026-07-13, branch `claude/arcade-link-truth-0713` —
+  `botsite/arcade.py` now owns `LINKED_AVAILABILITIES = ("live", "download")`
+  as the ONE constant; `has_link` consumes it and
+  `arcade_probe.PROBED_AVAILABILITIES` is defined AS it (identity, not a
+  duplicate literal); pin tests assert the probe's coverage tuple IS the
+  page's link-bearing tuple, that the constant is a valid non-`unavailable`
+  subset of `AVAILABILITIES`, and that both `has_link` and the probe's
+  probed/skipped partition track the constant for every registry
+  availability) — original capture 2026-07-12 (arcade download-probe session
+  💡): two copies of the doctrine "which availabilities carry outbound links"
+  that nothing pins together. Worth having because the probe's whole
+  guarantee is "coverage never disagrees with the page" — that agreement was
+  by coincidence of two literals, and the next new availability value (a
+  "beta" that gets links, say) would silently under-cover exactly like the
+  `download` gap just closed. Source:
   `.sessions/2026-07-12-arcade-download-probe.md` 💡.
 
 - **review-bake self-janitor for stale bake branches** — captured 2026-07-12
