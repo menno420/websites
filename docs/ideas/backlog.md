@@ -724,16 +724,25 @@
   because the order itself says the question log "feeds the Q&A page" —
   this closes that loop.
 
-- **Site-wide privacy lint for the review service** — captured 2026-07-12
-  (ORDER 017 D private-lane-filter session). Today's regression tests pin
-  `/`, `/fleet`, `/fleet.json` and the committed mirrors; a single test (or
-  bake-time lint) that walks EVERY GET route in `review/app.py` plus every
-  committed `review/data/**` file and asserts no private-lane token
-  (accent-aware: `pok[eé]mon…`) would catch the next leak on a page nobody
-  thought to pin — today's escapees were the accented "Pokémon" in a template
-  footnote and an evidence table that plain `grep -i pokemon` missed. Worth
-  having because privacy compliance shouldn't depend on remembering which
-  surface to grep.
+- **Site-wide privacy lint for the review service** · `built` (2026-07-13,
+  PR #233 — `review/tests/test_privacy_lint.py` (5 tests, zero network)
+  walks EVERY GET route in `review/app.py` via TestClient — parameterized
+  routes expanded to every concrete variant from the committed data (all
+  fleet repos incl. the private lane's 404 probe, all edition slugs, all
+  static assets, the catch-all 404) — plus every committed
+  `review/data/**` file as raw text, asserting no private-lane token;
+  matching is accent-aware per this bullet's `pok[eé]mon…` spec
+  (NFKD-strip combining marks + casefold on both haystack and tokens),
+  token list = the stem + `fleetdata.PRIVATE_LANES` so a new private lane
+  is linted automatically; explicit per-entry-justified allowlist
+  (currently empty) with stale-entry rejection, and a completeness guard
+  failing any future parameterized route/mount without a registered
+  expansion; proven red on planted accented leaks in both directions, no
+  real leak found on main) — original capture 2026-07-12 (ORDER 017 D
+  private-lane-filter session): today's escapees were the accented
+  "Pokémon" in a template footnote and an evidence table that plain
+  `grep -i pokemon` missed. Worth having because privacy compliance
+  shouldn't depend on remembering which surface to grep.
 
 - **Arcade live-URL drift probe** · `built` (2026-07-12, PR #214 —
   `botsite/arcade_probe.py` cold-fetches every `availability: live` URL via
