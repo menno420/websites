@@ -268,3 +268,15 @@ END ORDER TEXT
 Context (coordinator note, not owner text): (1) open invitation for control-plane improvements — coordinator proposed a composed owner morning-briefing page and dispatched it decide-and-flag; (2) credentials question answered live in chat (values are owner-chosen/owner-retrieved, set in Railway variables; paste-ready steps in docs/owner/OWNER-ACTIONS.md; /owner/environments-hub shows missing-live per group).
 why: open owner invitation to keep improving the control-plane website, plus a repeat credentials question that needs durable, findable guidance.
 done-when: improvement slice(s) landed + credentials guidance delivered (chat + ledger current).
+
+## ORDER 026 · 2026-07-13T10:45Z · status: new
+priority: P1
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-13 ~10:45Z, landed verbatim by the coordinator
+do: RAILWAY ENV-VAR PLACEHOLDERS — the owner's ask VERBATIM between the markers:
+BEGIN ORDER TEXT
+can you create the placeholders for me on railway
+END ORDER TEXT
+Context (coordinator note, not owner text): pre-create the missing env-var entries on Railway services so the owner only pastes values. Coordinator dispatched with discovery protocol (Railway write capability untested) + safety rails: empty values only where the app treats empty as unset; no fake auth values; DATABASE_URL excluded (requires Postgres provisioning = cost/infra, stays owner-click).
+why: the owner wants the missing env-var entries pre-created on Railway so filling credentials is a paste-values-only step.
+done-when: writable → placeholders created + verified by name via the existing read path + envhub honesty preserved; unwritable → exact denial recorded in docs/CAPABILITIES.md + six-field fallback ask.
