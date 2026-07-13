@@ -10,8 +10,14 @@
 ## Captured / planned (pick highest-value buildable first)
 
 - **Hostile-env import smoke — dynamically import every service module
-  under a poisoned environment** · `captured` (2026-07-13, env-guard-gate
-  session 💡) — the dynamic complement to `tests/test_env_guard_gate.py`
+  under a poisoned environment** · `built` (2026-07-13, PR #287 —
+  `tests/test_hostile_env_smoke.py` imports every runtime module of all
+  four services in a subprocess per service per poison mode (every
+  documented env var set to `""`, then to garbage; 8 subprocesses, poison
+  passed via `subprocess.run(env=...)` so nothing leaks into pytest;
+  failures name the module + carry the subprocess traceback); zero real
+  crash sites found — PR #282/#285 hardening held; captured 2026-07-13,
+  env-guard-gate session 💡) — the dynamic complement to `tests/test_env_guard_gate.py`
   (PR #285): set every documented env var (the envhub manifest knows the
   names) to "" and "garbage", then `importlib.import_module` every module
   in app/, botsite/, dashboard/, review/, proving no import-time crash of
@@ -1093,3 +1099,19 @@
   (PR #282) pass. Self-tests seed a violation fixture and prove the
   scanner catches it without touching real service modules. Source:
   `.sessions/2026-07-13-env-hardening.md` 💡.
+
+- **Self-deriving poison list — pin the hostile-env smoke's ENV_VARS
+  against a live source sweep** · `captured` (2026-07-13, hostile-env-smoke
+  session 💡) — `tests/test_hostile_env_smoke.py` (PR #287) poisons a
+  hand-collected 38-name literal; a companion assertion (AST or regex sweep
+  of `os.environ`/`os.getenv`/`ENV_* =` over app/, botsite/, dashboard/,
+  review/ at test time, same exclusions as the smoke) failing when source
+  reads a name the list misses would make the poison
+  self-updating-or-loud. Worth having because a new env-var read added
+  after PR #287 is silently unpoisoned — the exact rot class the smoke
+  exists to close, reopened one variable at a time. Deduped against this
+  backlog: the code-vs-inventory bullets (#227 and its per-service
+  generalization) check env-var NAME *documentation* completeness against
+  docs tables, never the smoke's poison list; the env-guard gate covers
+  only bare `int()`/`float()` casts. Source:
+  `.sessions/2026-07-13-hostile-env-smoke.md` 💡.
