@@ -446,3 +446,44 @@ def test_site_js_is_served_and_calls_init_chrome():
     assert "SBDS.initChrome()" in r.text
     # guarded — a page never throws if ds.js failed to load
     assert "if (!window.SBDS) return;" in r.text
+
+
+# ---------------------------------------------------------------------------
+# Cold pass #2 (2026-07-13, second crawl of the live site): F1 the missing
+# favicon was the site's only console error (Chromium auto-requests
+# /favicon.ico when no icon link is declared); F2 the mobile hamburger
+# rendered EMPTY until first tap (initChrome set aria-label but never painted
+# the glyph — the residue of cold-pass F1 above, which wired initChrome but
+# left the initial icon unpainted); F3 .sb-footer-in's `padding: … 0`
+# overrode .sb-wrap-wide's gutter on the same element, leaving footer text
+# flush against the viewport edge.
+# ---------------------------------------------------------------------------
+def test_favicon_is_linked_and_served():
+    """Every page declares an icon link (stops the /favicon.ico 404) and the
+    linked SVG actually exists under /static."""
+    html = client.get("/").text
+    assert '<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">' in html
+    r = client.get("/static/favicon.svg")
+    assert r.status_code == 200
+    assert "svg" in r.headers["content-type"]
+
+
+def test_ds_js_paints_initial_hamburger_glyph():
+    """initChrome must set the menu button's icon at wiring time — not only
+    inside the click-driven setMenu — or the button is blank until first tap."""
+    ds = client.get("/static/ds/ds.js").text
+    wiring = ds[ds.index("function initChrome") :]
+    init_paint = 'menuBtn.innerHTML = icon("menu", "currentColor", 17);'
+    toggle_paint = 'menuBtn.innerHTML = icon(open ? "x" : "menu"'
+    assert init_paint in wiring and toggle_paint in wiring
+    # the init-time paint sits OUTSIDE setMenu: it must appear after the
+    # toggle-time paint in source order (setMenu is defined first)
+    assert wiring.index(init_paint) > wiring.index(toggle_paint)
+
+
+def test_footer_keeps_horizontal_gutter():
+    """.sb-footer-in shares its element with .sb-wrap-wide and wins the
+    cascade — so its own padding must carry the horizontal gutter."""
+    css = client.get("/static/ds/components.css").text
+    rule = next(line for line in css.splitlines() if line.startswith(".sb-footer-in {"))
+    assert "var(--sb-gutter)" in rule
