@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Stripe Webhook Gotchas — SuperBot{% endblock %}
+{% block description %}Six real Stripe checkout-webhook gotchas, each as symptom and fix — the free companion checklist to the Stripe Webhook Test Kit ($29 on Gumroad).{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ page.gotchas|length }} gotchas · free</span>
+    <div class="head-row"><h1>Stripe Webhook Gotchas</h1></div>
+    <p class="sb-lead">Six real Stripe checkout-webhook gotchas, each as symptom → fix. This page
+      is the free companion checklist to the <strong>Stripe Webhook Test Kit</strong> — everything
+      below comes straight from the kit's own material (committed here with its provenance), not
+      from marketing copy. The kit itself is a $29 test harness that runs four automated checks
+      against your webhook endpoint; the checklist is yours either way, free.</p>
+    {% if page.framing %}
+    <p class="sb-muted" style="margin:8px 0 0"><em>{{ page.framing }}</em></p>
+    {% endif %}
+  </section>
+
+  {% if page.gotchas %}
+  <section class="section-sm">
+    {% for g in page.gotchas %}
+    <article class="sb-card" style="margin:0 0 14px;padding:16px" id="{{ g.id }}">
+      <h3 style="margin:0 0 6px;font-size:var(--sb-text-lg)">{{ loop.index }}. {{ g.title }}</h3>
+      <p style="margin:0 0 6px"><strong>Symptom:</strong> {{ g.symptom }}</p>
+      {% if g.why %}
+      <p style="margin:0 0 6px"><strong>Why:</strong> {{ g.why }}</p>
+      {% endif %}
+      <p style="margin:0"><strong>Fix:</strong> {{ g.fix }}</p>
+      {% if g.code %}
+      <pre class="sb-mono" style="margin:10px 0 0;padding:12px;overflow-x:auto;font-size:var(--sb-text-xs);border:1px solid var(--sb-border, #333);border-radius:8px"><code>{{ g.code }}</code></pre>
+      {% endif %}
+    </article>
+    {% endfor %}
+    {% if page.provenance %}
+    <p class="sb-muted" style="margin:0;font-size:var(--sb-text-xs)">Curated verbatim-faithfully
+      from {{ page.provenance.repo }}
+      ({% for p in page.provenance.paths %}{{ p }}{% if not loop.last %}, {% endif %}{% endfor %})
+      @ {{ page.provenance.commit[:7] }} (full sha {{ page.provenance.commit }}),
+      retrieved {{ page.provenance.retrieved }}.</p>
+    {% endif %}
+  </section>
+  {% else %}
+  <div class="sb-empty section-sm"><span class="ico">{{ icon("layers", 20) }}</span><h4>Gotchas unavailable right now</h4>
+    <p>The committed gotchas data is missing or unreadable, so nothing renders. Nothing is faked
+      here — see the <a href="/products">fleet store</a> for the kit itself.</p></div>
+  {% endif %}
+
+  <section class="section-sm">
+    <h2 style="margin:0 0 4px">Test for these automatically</h2>
+    {% if swtk %}
+    <p style="margin:0 0 8px"><strong>{{ swtk.name }}</strong> — {{ swtk.price }}.
+      {{ swtk.tagline }}</p>
+    {% if page.kit_checks %}
+    <p style="margin:0 0 4px">The kit runs four checks against your endpoint:</p>
+    <ul style="margin:0 0 8px">
+      {% for c in page.kit_checks %}
+      <li><span class="sb-mono">{{ c.name }}</span> — {{ c.line }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <p style="margin:0 0 8px">Stdlib-only, Python 3.8+ / Node 14+, no Stripe account, no
+      dependencies.</p>
+    {% if page.kit_limits %}
+    <p class="sb-muted" style="margin:0 0 8px"><strong>Honest limits:</strong>
+      {% for l in page.kit_limits %}{{ l }}{% if not loop.last %}; {% endif %}{% endfor %}.</p>
+    {% endif %}
+    {% if swtk.has_link %}
+    <p style="margin:0 0 8px">
+      <a class="sb-btn sb-btn-primary sb-btn-sm" href="{{ swtk.link_url }}" target="_blank" rel="noopener">
+        Buy on Gumroad — {{ swtk.price }} {{ icon("external", 13) }}
+      </a>
+    </p>
+    {% elif swtk.status_note %}
+    <p class="sb-muted" style="margin:0 0 8px"><em>{{ swtk.status_note }}</em> No buy link renders
+      until the kit is really purchasable.</p>
+    {% endif %}
+    <p class="sb-muted" style="margin:0;font-size:var(--sb-text-xs)">Product facts per the
+      committed registry ({{ swtk.source }}, as of {{ swtk.as_of }}).</p>
+    {% else %}
+    <p style="margin:0">The Stripe Webhook Test Kit is not in the committed product registry right
+      now, so there is nothing to buy from this page. Nothing is faked here — see the
+      <a href="/products">fleet store</a> for what is really purchasable today.</p>
+    {% endif %}
+  </section>
+
+  <section class="section-sm">
+    <p class="sb-muted">More from the fleet: the <a href="/products">fleet store</a> lists
+      everything really purchasable today, the <a href="/field-manual">Agent Fleet Field
+      Manual</a> page carries a full free chapter, and the
+      <a href="/agent-pr-check">agent-PR diagnostic tree</a> walks the fleet's merge-wall lore.</p>
+  </section>
+</div>
+{% endblock %}

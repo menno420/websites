@@ -1,0 +1,65 @@
+{
+  "provenance": {
+    "repo": "menno420/venture-lab",
+    "commit": "0679327a463c063dcd9fc62b33ffb9a3789fa7d3",
+    "paths": [
+      "candidates/stripe-webhook-test-kit/GOTCHAS.md",
+      "docs/launch/stripe-webhook-test-kit/gotcha-article.md",
+      "docs/launch/stripe-webhook-test-kit/one-pager.md"
+    ],
+    "retrieved": "2026-07-13"
+  },
+  "framing": "The reason these bugs survive to production is that they don't show up unless you test against the actual shape Stripe sends — a payload you typed from memory won't have the null customer_email, so your test passes and production doesn't.",
+  "kit_checks": [
+    {"name": "fire", "line": "your handler ACCEPTS a correctly-signed real event (HTTP 2xx)"},
+    {"name": "fire --forge", "line": "your handler REJECTS a forged/badly-signed event (HTTP 4xx)"},
+    {"name": "check-email", "line": "buyer email is read from customer_details.email"},
+    {"name": "lint-url", "line": "success_url uses ONLY {CHECKOUT_SESSION_ID}"}
+  ],
+  "kit_limits": [
+    "does not talk to the real Stripe API",
+    "does not validate your business logic",
+    "not a substitute for stripe listen"
+  ],
+  "gotchas": [
+    {
+      "id": "null-customer-email",
+      "title": "customer_email is null on checkout.session.completed",
+      "symptom": "On a normal Checkout completion the top-level customer_email is null; the buyer's address is at customer_details.email. Reading only customer_email silently drops the sale — the payment goes through, the customer is charged, and the handler has no idea who to deliver to.",
+      "why": "Stripe Checkout does not put the buyer's email in the top-level customer_email field on a normal completion. It collects the email during checkout and puts it in customer_details.email. The top-level customer_email is only populated when you set it yourself when creating the session (pre-filled from a logged-in user), or on some older/legacy integrations.",
+      "fix": "Read customer_details.email first, fall back to customer_email (the pre-filled/legacy case).",
+      "code": "def resolve_buyer_email(session_obj):\n    details = session_obj.get(\"customer_details\") or {}\n    email = details.get(\"email\")\n    if email:\n        return email\n    # Fallback: populated only when you pre-set it, or on legacy integrations.\n    return session_obj.get(\"customer_email\")\n\n# in your webhook handler:\nobj = event[\"data\"][\"object\"]\nbuyer_email = resolve_buyer_email(obj)\nif not buyer_email:\n    # don't 200-and-forget: log/flag so no paid order is silently lost\n    ..."
+    },
+    {
+      "id": "success-url-placeholder",
+      "title": "success_url only expands {CHECKOUT_SESSION_ID}",
+      "symptom": "Any other placeholder (e.g. {CHECKOUT_EMAIL}) is passed through literally — the buyer's browser lands on a URL with a raw {CHECKOUT_EMAIL} in it. ({CHECKOUT_EMAIL} is not a real placeholder.)",
+      "fix": "Use only {CHECKOUT_SESSION_ID}, then resolve the buyer server-side from the session id."
+    },
+    {
+      "id": "verify-signature",
+      "title": "Verify the Stripe-Signature header",
+      "symptom": "A handler that skips verification accepts forged events from anyone who knows the endpoint URL.",
+      "why": "The signature is HMAC-SHA256 over \"{t}.\" + raw_body, keyed by your whsec_ secret.",
+      "fix": "Recompute the HMAC, constant-time compare against each v1=, reject on mismatch."
+    },
+    {
+      "id": "timestamp-tolerance",
+      "title": "Enforce the 300-second timestamp tolerance",
+      "symptom": "Without it, a captured request can be replayed indefinitely.",
+      "fix": "Reject events whose t= timestamp is more than 300s from now."
+    },
+    {
+      "id": "raw-bytes",
+      "title": "Sign/verify over the RAW request bytes",
+      "symptom": "Re-serialising the JSON (different key order or whitespace) changes the bytes and breaks the signature.",
+      "fix": "Verify against the exact body received; do not parse-then-reserialise before verifying."
+    },
+    {
+      "id": "ack-fast-idempotent",
+      "title": "Return 2xx fast, and process idempotently",
+      "symptom": "Stripe retries on any non-2xx, so slow or failing handlers get the same event again.",
+      "fix": "Acknowledge quickly, dedupe on event.id, and do heavy work out-of-band."
+    }
+  ]
+}
