@@ -43,6 +43,7 @@ from typing import Any
 import httpx
 
 from . import config
+from .github import short_reason
 
 GRAPHQL_URL = "https://backboard.railway.app/graphql/v2"
 
@@ -187,6 +188,16 @@ def clear_cache() -> int:
     return n
 
 
+def _make_client() -> httpx.AsyncClient:
+    """The one-shot client ``_graphql`` posts through.
+
+    A seam, not a feature: tests hand the REAL ``_graphql`` an
+    ``httpx.MockTransport`` client here (the #240 idiom — stubbing
+    ``_graphql`` itself would bypass the reason-bounding under test).
+    """
+    return httpx.AsyncClient(timeout=15.0, trust_env=True)
+
+
 async def _graphql(query: str, variables: dict | None = None) -> dict[str, Any]:
     """One GraphQL query against Railway. Returns {ok, data, error}.
 
@@ -198,7 +209,11 @@ async def _graphql(query: str, variables: dict | None = None) -> dict[str, Any]:
     ``services.edges[].node{id,name}``; ``variables(projectId:,
     environmentId:, serviceId:)`` returns a name→value JSON map (names kept,
     values dropped in ``_names_only``). Any future shape/auth mismatch still
-    surfaces as an honest ``unavailable`` reason, never a 500.
+    surfaces as an honest ``unavailable`` reason, never a 500 — and every
+    reason minted here rides ``app.github.short_reason`` (the PR #240
+    envelope bound: 140 chars, single line, markup bodies replaced), so the
+    owner environments/envhub/envdrift pages can never render an upstream
+    error DOCUMENT as a banner.
     """
     headers = {
         "Project-Access-Token": config.RAILWAY_TOKEN,
@@ -209,24 +224,39 @@ async def _graphql(query: str, variables: dict | None = None) -> dict[str, Any]:
     if variables:
         payload["variables"] = variables
     try:
-        async with httpx.AsyncClient(timeout=15.0, trust_env=True) as client:
+        async with _make_client() as client:
             resp = await client.post(GRAPHQL_URL, json=payload, headers=headers)
     except httpx.HTTPError as exc:
-        return {"ok": False, "data": None, "error": f"{type(exc).__name__}: {exc}"}
-    try:
-        body = resp.json()
-    except ValueError:
+        # Exception text is upstream-shaped (may be long/multiline) — same
+        # 140-char single-line bound as the GitHub envelopes (PR #240).
         return {
             "ok": False,
             "data": None,
-            "error": f"HTTP {resp.status_code}: non-JSON response",
+            "error": short_reason(f"{type(exc).__name__}: {exc}"),
+        }
+    try:
+        body = resp.json()
+    except ValueError:
+        # The body is an upstream document, not a reason — as before, only
+        # the status is exposed (never body text); short_reason keeps the
+        # phrase on the same single-line bounded contract as the rest.
+        return {
+            "ok": False,
+            "data": None,
+            "error": short_reason(f"HTTP {resp.status_code}: non-JSON response"),
         }
     if resp.status_code >= 300 or (isinstance(body, dict) and body.get("errors")):
         errors = body.get("errors") if isinstance(body, dict) else None
         msg = (
-            "; ".join(str(e.get("message", e)) for e in errors)[:300]
+            # Replaces the old bare [:300] cap: the joined GraphQL error
+            # messages ride the same short_reason bound as every GitHub
+            # envelope (140 chars, single line, markup stripped).
+            short_reason(
+                "; ".join(str(e.get("message", e)) for e in errors),
+                status=resp.status_code if resp.status_code >= 300 else None,
+            )
             if isinstance(errors, list)
-            else f"HTTP {resp.status_code}"
+            else short_reason(f"HTTP {resp.status_code}")
         )
         return {"ok": False, "data": None, "error": msg}
     return {"ok": True, "data": body.get("data") if isinstance(body, dict) else None, "error": ""}

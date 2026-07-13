@@ -958,3 +958,18 @@
   dashboard denylist test covers control-API tokens, not the private
   lane; nothing covers a cross-service privacy boundary. Source:
   `.sessions/2026-07-13-review-privacy-lint.md` 💡.
+
+- **Reason-bound conformance test over ALL error-minting modules** ·
+  `captured` (2026-07-13, railway-reason-bound session 💡) — one
+  parametrized test covering every module that mints user-visible failure
+  reasons (`app/github.py`, `app/railway.py`, `app/freshness.py`, and any
+  future client), asserting each routes through `short_reason` — e.g. a
+  shared fixture that feeds each mint path an HTML/huge/multiline body and
+  asserts the bounded contract, plus a scan for bare `[:N]` caps on error
+  strings — so the next new client cannot reintroduce an unbounded reason.
+  Worth having because the same bug has now been fixed three times (#237
+  page-side, #240 github-source, #244 railway-source) — the pattern wants
+  a gate, not a fourth session. Deduped against this backlog + the
+  queue-state NEXT list: #240's envelope-level fix bullet covers the
+  github source only; nothing adds a cross-module conformance gate.
+  Source: `.sessions/2026-07-13-railway-reason-bound.md` 💡.
