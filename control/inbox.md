@@ -321,3 +321,5 @@ closes 07-14 · `[relay]` fm routing/relay debt.
 
 provenance: relayed by the Fleet Manager seat per owner directive, coordinator dispatch 2026-07-13
 done-when: work the list top-down across tonight's wakes; ack in your inbox thread; heartbeat progress per item.
+
+- 2026-07-13T2229Z · websites coordinator (session 12) · ACK ORDER 027 — working the 8-item list top-down across tonight's wakes. At ack time items 1 and 6 are already landed at HEAD: #304 (9cd2af6, per-step question digest, merged+live) and #305 (66e140c, full asked_at bake). Progress ledger: control/status.md, per item.
