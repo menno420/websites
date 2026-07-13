@@ -1,1 +1,0 @@
-- `claude/webhook-analyzer` · **botsite /webhook-analyzer** — client-side webhook payload analyzer page (last batch-2 marker) · botsite/** + botsite/tests · 2026-07-13
