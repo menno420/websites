@@ -1,0 +1,94 @@
+{
+  "exhibits": [
+    {
+      "slug": "sky-mirror",
+      "emoji": "🪞",
+      "name_en": "Sky Mirror",
+      "name_nl": "de Luchtspiegel",
+      "name_de": "der Himmelsspiegel",
+      "description": "A puddle so still it holds the whole sky — clouds, birds and all. The only mirror in the world you look down into to see up.",
+      "source": "venture-lab docs/publishing/vetting/the-puddle-museum.md @ 467d619",
+      "as_of": "2026-07-13"
+    },
+    {
+      "slug": "upside-down-tree",
+      "emoji": "🌳",
+      "name_en": "Upside-Down Tree",
+      "name_nl": "de Ondersteboven-Boom",
+      "name_de": "der Kopfüber-Baum",
+      "description": "The famous one: a whole tree growing downward into the ground. At least, that is how it looks in the puddle — and the puddle is the exhibit.",
+      "source": "venture-lab docs/publishing/vetting/the-puddle-museum.md @ 467d619",
+      "as_of": "2026-07-13"
+    },
+    {
+      "slug": "worm-rescue-wing",
+      "emoji": "🪱",
+      "name_en": "Worm Rescue Wing",
+      "name_nl": "de Afdeling Wormenredding",
+      "name_de": "die Wurmrettungs-Abteilung",
+      "description": "The museum's working wing. Worms stranded on the pavement after the rain are carried gently back to the grass — every visitor is allowed to help.",
+      "source": "venture-lab docs/publishing/vetting/the-puddle-museum.md @ 467d619",
+      "as_of": "2026-07-13"
+    },
+    {
+      "slug": "splash-gallery",
+      "emoji": "💦",
+      "name_en": "Splash Gallery",
+      "name_nl": "de Spetterzaal",
+      "name_de": "die Platsch-Galerie",
+      "description": "The one gallery where touching the art is not just allowed but required. Boots recommended. The art changes with every jump.",
+      "source": "venture-lab docs/publishing/vetting/the-puddle-museum.md @ 467d619",
+      "as_of": "2026-07-13"
+    },
+    {
+      "slug": "puddle-of-many-colors",
+      "emoji": "🌈",
+      "name_en": "Puddle of Many Colors",
+      "description": "Plain gray water wearing a shimmer of every color at once. Nobody at the museum can explain it, and nobody needs to.",
+      "source": "venture-lab docs/publishing/vetting/the-puddle-museum.md @ 467d619",
+      "as_of": "2026-07-13"
+    },
+    {
+      "slug": "the-whale",
+      "emoji": "🐋",
+      "name_en": "The Whale",
+      "name_nl": "de Walvis",
+      "name_de": "der Wal",
+      "description": "The museum's greatest treasure: a puddle exactly the shape of a whale. You will want to see it before lunchtime — the sun has opinions.",
+      "source": "venture-lab docs/publishing/vetting/the-puddle-museum.md @ 467d619",
+      "as_of": "2026-07-13"
+    }
+  ],
+  "editions": [
+    {
+      "lang": "en",
+      "title": "The Puddle Museum",
+      "language": "English",
+      "availability": "coming-soon",
+      "url": null,
+      "status_note": "Manuscript complete (13 spreads) — illustration and publication are owner-gated.",
+      "source": "venture-lab candidates/childrens-books/the-puddle-museum/the-puddle-museum.en.md @ 467d619 (PR #121)",
+      "as_of": "2026-07-13"
+    },
+    {
+      "lang": "nl",
+      "title": "Het Regenplassenmuseum",
+      "language": "Nederlands",
+      "availability": "coming-soon",
+      "url": null,
+      "status_note": "Manuscript complete (13 spreads) — illustration and publication are owner-gated.",
+      "source": "venture-lab candidates/childrens-books/the-puddle-museum/the-puddle-museum.nl.md @ 467d619 (PR #121)",
+      "as_of": "2026-07-13"
+    },
+    {
+      "lang": "de",
+      "title": "Das Pfützenmuseum",
+      "language": "Deutsch",
+      "availability": "coming-soon",
+      "url": null,
+      "status_note": "Manuscript complete (13 spreads) — illustration and publication are owner-gated.",
+      "source": "venture-lab candidates/childrens-books/the-puddle-museum/the-puddle-museum.de.md @ 467d619 (PR #121)",
+      "as_of": "2026-07-13"
+    }
+  ]
+}

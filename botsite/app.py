@@ -35,6 +35,7 @@ from . import arcade as arcade_registry
 from . import catalog as catalog_registry
 from . import data_source as ds
 from . import products as products_registry
+from . import puddle_museum as puddle_museum_registry
 from . import listfilter
 from . import testing
 
@@ -48,6 +49,7 @@ NAV = [
     ("testing", "Testing", "/testing"),
     ("changelog", "Changelog", "/changelog"),
     ("status", "Status", "/status"),
+    ("puddle-museum", "Puddle Museum", "/puddle-museum"),
 ]
 
 
@@ -254,6 +256,20 @@ async def products_catalog(request: Request):
         }
     )
     return templates.TemplateResponse(request, "catalog.html", ctx)
+
+
+@app.get("/puddle-museum", response_class=HTMLResponse)
+async def puddle_museum(request: Request):
+    """The Puddle Museum — marketing + concept page for venture-lab's
+    rainy-day picture book (ORDER 022 item 4 venture WEBSITE-IDEA intake).
+    Data is the committed ``botsite/data/puddle_museum.json`` read from disk
+    at request time (``botsite/puddle_museum.py``) — cross-repo data arrives
+    only as committed JSON, never a live import. GET-only: no forms, no
+    state-changing routes, and no buy links until an edition is really live."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "puddle-museum", res)
+    ctx.update({"museum": puddle_museum_registry.load_museum()})
+    return templates.TemplateResponse(request, "puddle_museum.html", ctx)
 
 
 @app.get("/changelog", response_class=HTMLResponse)
