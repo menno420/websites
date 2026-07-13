@@ -1,14 +1,31 @@
 # websites · status
-updated: 2026-07-13T11:31:00Z
-phase: SESSION CLOSED — coordinator ender heartbeat for the 2026-07-12 ~20:50Z → 2026-07-13 ~11:05Z sitting. THE SITTING IN ONE LINE: 63 PRs merged (#209–#275 span, every window commit a PR squash), suite 757 → 1206 passed, zero bad merges, every deploy-bearing merge /version-verified; ORDER 022 night run EXECUTED (tally #252), 023 SERVED (#265), 024 DONE (#264+#267), 025 DONE (#273 /owner/briefing + creds guidance), 026 RESOLVED create-nothing (#275); both bot bake PRs landed (#259 = bcf2943, #270 = 5b9c6f7) and the bake pipeline is proven end-to-end with the BAKE_PAT ask filed (#274). Retro card: .sessions/2026-07-13-coordinator-sitting.md (this ender's PR #276); durable ledger refreshed: docs/current-state.md (trued 2026-07-13). Successor boots from HANDOFF.md → docs/current-state.md → this file.
-health: green (main verified at 5b9c6f7 = #270 at ender write; python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q → 1206 passed; bootstrap check --strict green apart from the ender card's designed born-red hold until its flip commit)
-kit: v1.15.0 · check: green · engaged: yes
-last-shipped: #275 = cedca1e (ORDER 026 create-nothing resolution) + bake PR #270 = 5b9c6f7 (fleet data refresh, review-merged); top deploy-bearing page merge #266 = f24df4e (/webhook-analyzer — batch-2 complete).
+
+updated: 2026-07-13T22:46:00Z
+phase: EAP FINAL NIGHT — ORDER 027 in progress (coordinator session 12)
+health: green (this commit restores the parseable heartbeat field grammar dropped by #307 — tests/test_own_heartbeat.py + full four-suite run green on this branch; main red between f47f7ce and this fix's merge)
+last-shipped: #305 = 66e140c (full asked_at timestamp — ORDER 027 item 6) · #304 = 9cd2af6 (per-step question digest), both MERGED+LIVE.
 blockers: none
-orders: acked=001-026 done=001-019,023-026 (020 owner-gated — remaining = the owner contents:write PAT paste, then live writeback verification. 021 owner-gated — remaining = the Discord-auth DECISION/Q-0004, then the gate build. 022 EXECUTED to the buildable limit — tally posted #252; batch-2 intake complete incl. webhook analyzer #266; remainder owner-gated (creds asks + photo-packs originals); standing until owner review. Fleet-manager ledger: fm 035 standing — clarity bar CI-ENFORCED by the 123-route gate #241; fm 041 SHIPPED-IN-FULL (#236+#239); fm 042 SATISFIED (#253); fm 019/021/022 done; fm 022-amendment CLOSED — first scheduled bake SUCCESS run 29235587736.)
-routine: armed · FAILSAFE cron "Websites failsafe wake" trig_019cGrUpfHSMv4qLk5tn2hgr · 45 */2 * * * · enabled — LEFT ARMED deliberately as the successor bridge; verified via list_triggers at this ender (enabled=true, next fire 2026-07-13T12:45Z). Pending coordinator pacemaker tick trig_016CQoxoBh97cgsTSiDyC56Z DELETED — verified ABSENT at this ender (3×100-entry list_triggers pages covering every trigger created since 2026-07-12T16:52Z; no enabled send_later is bound to the coordinator session). Bake-bridge trigger self-retired 05:33Z — intended end-state, do NOT re-arm. The review-bake cron is a repo GH workflow (not a Routine), first scheduled SUCCESS recorded. No uncloseable ids.
-landing: pushed-unmerged claude/coordinator-ender-2026-07-13 — this ender's own PR #276 (retro card + docs truth + outbox proposals + this heartbeat + flip; READY, lands via the enabler on green — this session never self-arms/self-merges). Only other open PRs: the three draft kit-stub lifeboats #245/#249/#257 (do-not-merge by design; landing path = owner-click close, content is kit churn). ZERO seams otherwise.
-deployed: LIVE URLs — pointers only; the durable ledger lives in docs/current-state.md (trued 2026-07-13, incl. the bake-pipeline reality section). Review https://review-production-f027.up.railway.app · control-plane https://control-plane-production-abb0.up.railway.app (incl. /owner/briefing + restructured /prompts) · botsite (batch-2 complete through /webhook-analyzer) · dashboard. Every deploy-bearing merge of the sitting /version-verified at its landing.
-rung: order
-⚑ needs-owner: pointer — canonical six-field blocks live in docs/owner/OWNER-ACTIONS.md ONLY. EIGHT asks open there, newest = BAKE_PAT (the bake-PR durable fix, filed #274): ORDER 020 contents:write PAT · BAKE_PAT · Q-0004 · Discord OAuth (redirect-URI + client secret) · armed-service control-API token · botsite SITE_PASSWORD · botsite Postgres/DATABASE_URL · PayPal Payouts creds.
-notes: NEUTRAL pointers only. Boot from main: HANDOFF.md → docs/current-state.md → this file; retro = .sessions/2026-07-13-coordinator-sitting.md; owner asks in docs/owner/OWNER-ACTIONS.md; capability walls in docs/CAPABILITIES.md (incl. the measured 405 required-check wall). NEXT-2 baton: (1) the owner-gated decisions queue (8 ⚑ asks) + the two env leads from #275 (dashboard's undocumented SITE_PASSWORD; possible ANTHROPIC_API_KEY on the parallel botsite copy); (2) close/dispose the parked drafts #245/#249/#257 + a fresh intake sweep (venture outbox WEBSITE-IDEA markers + fm inbox). Manager-addressed proposals appended to control/outbox.md this ender (worker-brief standing lines; kit born-red "hold" word-boundary fix). FENCES through 2026-07-14: do not move or rename review-production-f027 or any live URL; do not consolidate the duplicate Railway projects (parked OQ-RAILWAY-PROJECT-SPLIT).
+orders: acked=001-027 done=001-019,023-026 (020/021 owner-gated; 022 standing — its item 5 cold-browser pass runs tonight as ORDER 027 item 3). ORDER 027 (P1, fm ORDER 045 relay) ACKED 2026-07-13 — night ledger below.
+routine: armed · failsafe cron trig_01GV8kBK92CSZWEWwNZo1rhk · 45 */2 * * * · bound live · pacemaker send_later chain ~15 min, one pending.
+notes: ORDER 027 night ledger, day tally, open PRs and asks in the body sections below.
+
+## ORDER 027 night ledger (top-down)
+1. #304 shepherd + follow-on — #304 MERGED+LIVE pre-order (9cd2af6); follow-on (step-provenance pin, backlog) queued as a night slice. STATUS: half-done, follow-on in queue.
+2. truing pass — heartbeat: THIS commit (fast-lane to main); current-state truing dispatched as its own slice. STATUS: in progress.
+3. cold-browser review-site pass (ORDER 022 item 5, deadline 07-14) — dispatched. STATUS: in progress.
+4. #275 env-lead read-path check — largely landed pre-order by #282 (dashboard does NOT read SITE_PASSWORD, set-but-unused drift, docs/dashboard.md:127; ANTHROPIC_API_KEY recorded "not measured — walled", docs/botsite.md env table). Night slice will verify + close with citations. STATUS: queued.
+5. suite-level token pin in tests/conftest.py — queued.
+6. full asked_at timestamp — DONE pre-order: #305 (66e140c) MERGED+LIVE. STATUS: done.
+7. outbox grammar gate on the control fast lane — queued.
+8. idea-engine build-direct slice (review-queue row auto-check OR open-PR awareness at wake) — queued.
+Blocked (per order, not scheduled): ORDER 020 PAT · ORDER 021 Discord decision · lifeboat disposal (owner-click: #245 #249 #257 #278 #279 #280 #300) · photo-pack originals.
+
+## day tally (pre-order sitting, all merged+live-verified)
+23 merges #277→#305; suite 1206→1336+. FENCE holds through 07-14: no live-URL moves, no Railway consolidation.
+
+## open PRs
+#281 coordinator session PR (born-red card, flips at session end). Draft lifeboats owner-close: #245 #249 #257 #278 #279 #280 #300.
+
+## asks
+8 open ⚑ in docs/owner/OWNER-ACTIONS.md — highest-leverage: botsite SITE_PASSWORD (unlocks the whole /testing/owner surface built today).
+kit: v1.15.0
