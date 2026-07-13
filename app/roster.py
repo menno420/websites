@@ -31,3 +31,15 @@ START_ORDER: tuple[tuple[str, ...], ...] = (
 
 # The canonical seat names (registry package directories), same order.
 SEATS: tuple[str, ...] = tuple(aliases[0] for aliases in START_ORDER)
+
+
+def seat_for(name: str) -> str:
+    """The canonical seat a package name maps to, or ``""`` when it maps to
+    none (retired stubs, unknown directories — the caller degrades honestly,
+    never guesses a seat). Same normalization as ``projects.start_rank``:
+    lowercased, ``_``→``-``, matched against each slot's aliases."""
+    norm = (name or "").strip().lower().replace("_", "-")
+    for aliases in START_ORDER:
+        if norm in aliases:
+            return aliases[0]
+    return ""

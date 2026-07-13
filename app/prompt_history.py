@@ -40,7 +40,7 @@ from urllib.parse import quote
 
 from . import config, github
 from .prompt_artifacts import REPO, extract_paste_body, extract_provenance
-from .roster import SEATS  # noqa: F401  (validates the {seat} path segment)
+from .roster import SEATS, seat_for  # noqa: F401  (validates {seat} paths)
 
 # The two authored per-seat prompt sources whose git history IS the version
 # ladder — keyed by the ``?file=`` query value.
@@ -262,3 +262,57 @@ async def history(
     if a and b:
         out["diff"] = _diff(a, b, out["versions"], path)
     return out
+
+
+# How many ladder rungs the dispatch-screen strip names inline before
+# deferring to the full history page.
+STRIP_MAX_LABELS = 6
+
+
+async def strip(package: str, refresh: bool = False) -> Optional[dict[str, Any]]:
+    """The dispatch screen's compact prompt-versions strip (ORDER 041
+    remainder): the seat's version ladder (this module's :func:`history` —
+    the ONE data path /prompts/history renders) plus its
+    deployed-vs-canonical rows (``prompts.seat_drift`` — the same row model
+    the /prompts drift table renders). Views over one source; no second
+    fetch path, no prompt copy stored.
+
+    ``None`` when the package maps to no roster seat (retired stubs,
+    unknown directories) — the strip is only ever shown for a real seat.
+    Otherwise never raises: an unavailable ladder keeps ``available: False``
+    with the reason (the strip SAYS history is unavailable rather than
+    hiding), and drift rows degrade per row exactly as they do on /prompts.
+    """
+    from . import prompts  # local import — prompts pulls in projects lazily
+
+    seat = seat_for(package)
+    if not seat:
+        return None
+    hist, drift = await asyncio.gather(
+        history(seat, "ci", refresh=refresh),
+        prompts.seat_drift(seat, refresh=refresh),
+    )
+    versions = hist["versions"]
+    return {
+        "seat": seat,
+        "package": package,
+        "file_label": hist["file_label"],
+        "path": hist["path"],
+        "history_link": f"/prompts/history/{seat}",
+        "available": hist["available"],
+        "reason": hist["reason"],
+        "current": hist["newest_label"],  # "" when the newest is unstamped
+        "labels": [v["label"] for v in versions[:STRIP_MAX_LABELS]],
+        "more": max(0, len(versions) - STRIP_MAX_LABELS),
+        "total": len(versions),
+        "rows": drift["rows"],
+        "stale": drift["stale"],
+        "version_line": next(
+            (
+                r["version_line"]
+                for r in drift["rows"]
+                if r["label"] == "Custom Instructions" and r["version_line"]
+            ),
+            "",
+        ),
+    }
