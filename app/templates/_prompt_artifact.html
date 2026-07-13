@@ -8,8 +8,12 @@
    this macro) — the copy button copies exactly what the <pre> shows; the
    GitHub link keeps the full file with metadata reachable. The copy button
    comes from /static/copycode.js — include it in the page's scripts
-   block. #}
-{% macro prompt_block(a, ttl) %}
+   block. `copyable=False` (the /prompts Historical-reference section, owner
+   order 2026-07-13) removes the copy affordance for do-not-paste files: the
+   <pre> gains class `nocopy` (copycode.js skips it) and the freshness note
+   says so — the body stays visible and selectable, never fabricated
+   away. #}
+{% macro prompt_block(a, ttl, copyable=True) %}
   {% if a.ok %}
   {% if a.superseded %}
   {# Supersession marker found in the artifact's OWN raw header (shared
@@ -36,14 +40,19 @@
   <p class="dim small">fetched {{ a.fetched_at }}
     {%- if a.cached %} · served from cache (TTL {{ ttl }}s — age ≤ TTL){% else %} · live fetch{% endif %}
     · {{ a.chars }} chars
-    {%- if a.superseded %}
+    {%- if not copyable %}
+    · generation metadata hidden — <strong>copy button removed: not a paste
+    source</strong> (historical reference; the body stays selectable)
+    {%- elif a.superseded %}
     · generation metadata hidden — <strong>copy gives the paste-ready body of a
     SUPERSEDED file</strong> (its own header says do not paste)
     {%- else %}
     · generation metadata hidden — copy gives the paste-ready body
     {%- endif %}
     (<a href="{{ a.github_url }}">full file on GitHub ↗</a>)</p>
-  <pre{% if a.superseded %} class="superseded"{% endif %}>{{ a.text }}</pre>
+  {%- set pre_cls = ((('superseded ' if a.superseded else '')
+      ~ ('' if copyable else 'nocopy'))|trim) %}
+  <pre{% if pre_cls %} class="{{ pre_cls }}"{% endif %}>{{ a.text }}</pre>
   {% else %}
   <div class="banner">⚠ could not fetch <code>{{ a.path }}</code> — {{ a.error }} ·
     <a href="{{ a.github_url }}">view on GitHub ↗</a> (nothing shown rather than a stale

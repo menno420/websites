@@ -67,8 +67,17 @@ raw-content pattern (:func:`deployed_drift`):
   "## Prompt text" block → ``in sync`` / ``drift``, as-of ``captured_at``.
 
 Everything else — Custom-Instructions/startup pastes without receipts, the
-two per-session universals — is honestly ``not recorded``; a failed
+per-session universal ender — is honestly ``not recorded``; a failed
 fleet-manager fetch renders ``unreachable``; equality is never invented.
+
+Current-primary restructure (owner order 2026-07-13): the page leads with
+the CURRENT paste sources — the per-seat registry copies (the v3.6
+generated copies of the authored per-seat startups/CI, per-project README
+v3.6) and the still-canonical Universal Session-Ender — while files whose
+OWN header says superseded/do-not-paste (:data:`HISTORICAL`) are demoted to
+a collapsed "Historical reference" section at the bottom: warning banner
+kept, copy affordance removed, excluded from the deployed-vs-canonical rows
+(they are not paste sources, so no paste/armed claim is honest for them).
 """
 
 from __future__ import annotations
@@ -111,30 +120,58 @@ SEAT_FILES: tuple[tuple[str, str], ...] = (
     ("failsafe-prompt.md", "failsafe prompt"),
 )
 
-# The two fleet-wide UNIVERSAL artifacts, as (path, human label). Labeled
-# "Universal …" verbatim (owner feedback 2026-07-12: he
+# The fleet-wide UNIVERSAL artifacts that are CURRENT, as (path, human
+# label). Labeled "Universal …" verbatim (owner feedback 2026-07-12: he
 # searches for "universal session-ender" and the bare "session ender" label
 # drowned among the per-seat prompts, which repeat that phrase in their
-# bodies); the /prompts page surfaces this group FIRST, above the seats.
+# bodies). The session-ender's own header says "THIS file stays the
+# canonical single source" (v3.3, verified live 2026-07-13) — current.
 FLEET_WIDE: tuple[tuple[str, str], ...] = (
-    ("docs/prompts/v3/universal-startup.md", "Universal Startup"),
     ("docs/prompts/v3/session-ender.md", "Universal Session-Ender"),
 )
 
-# How many artifacts the page promises (the order's done-when counts them).
-TOTAL_ARTIFACTS = len(SEATS) * len(SEAT_FILES) + len(FLEET_WIDE)
+# Registry files SUPERSEDED BY THEIR OWN HEADER (owner order 2026-07-13:
+# current files primary, superseded demoted). universal-startup.md line 5:
+# "⚠ v3.3 (2026-07-12): SUPERSEDED AS THE GENERATION SOURCE — historical
+# template … Do not paste this file; do not regenerate from it." (verified
+# live 2026-07-13; the v3.3 rebuild made every per-project/<seat>-startup.md
+# an AUTHORED, EXPANDED per-seat file — the projects/<seat>/ registry copies
+# rendered above ARE those current paste sources, regenerated at v3.6).
+# These render at the BOTTOM of /prompts, collapsed under "Historical
+# reference": banner kept, copy affordance removed, never a primary card.
+HISTORICAL: tuple[tuple[str, str], ...] = (
+    ("docs/prompts/v3/universal-startup.md", "Universal Startup"),
+)
+
+# How many artifacts the page promises (the order's done-when counts them) —
+# current paste sources plus the demoted historical-reference files.
+TOTAL_ARTIFACTS = (
+    len(SEATS) * len(SEAT_FILES) + len(FLEET_WIDE) + len(HISTORICAL)
+)
 
 
 def _artifact_spec() -> list[dict[str, Any]]:
-    """The pinned artifact registry as (seat, label, path) dicts."""
+    """The pinned artifact registry as (seat, label, path, historical)
+    dicts — ``historical`` marks the demoted Historical-reference files."""
     spec: list[dict[str, Any]] = []
     for seat in SEATS:
         for filename, label in SEAT_FILES:
             spec.append(
-                {"seat": seat, "label": label, "path": f"projects/{seat}/{filename}"}
+                {
+                    "seat": seat,
+                    "label": label,
+                    "path": f"projects/{seat}/{filename}",
+                    "historical": False,
+                }
             )
     for path, label in FLEET_WIDE:
-        spec.append({"seat": None, "label": label, "path": path})
+        spec.append(
+            {"seat": None, "label": label, "path": path, "historical": False}
+        )
+    for path, label in HISTORICAL:
+        spec.append(
+            {"seat": None, "label": label, "path": path, "historical": True}
+        )
     return spec
 
 
@@ -593,9 +630,14 @@ def _build_deployed(
             rows.append(row)
         seats_out.append({"name": seat, "rows": rows})
 
+    # Universals: CURRENT fleet-wide artifacts only. Historical-reference
+    # files (superseded by their own header, owner order 2026-07-13) are not
+    # paste sources, so a "pasted per session" row for them would be a false
+    # claim — the drift table tracks what is actually pasted/armed; the
+    # Historical section says its own honest state on the page.
     universals = []
     for a in artifacts:
-        if a["seat"] is None:
+        if a["seat"] is None and not a.get("historical"):
             row = _row(None, a, _canonical_identity(a))
             _finish(
                 row,
@@ -774,8 +816,10 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
 
         {
           "seats": [{"name", "anchor", "github_url", "artifacts": [...]}, ...],
-          "fleet_wide": [ artifact, ... ],
-          "total", "ok_count", "error_count",
+          "fleet_wide": [ artifact, ... ]   (CURRENT universals only),
+          "historical": [ artifact, ... ]   (superseded-by-own-header files,
+                                             demoted to Historical reference),
+          "total", "ok_count", "error_count", "current_count",
           "drift": registry_drift() result (pinned-vs-registry chip),
           "deployed": deployed_drift() result (deployed-vs-canonical rows),
           "ttl": CACHE_TTL_SECONDS, "repo_url",
@@ -803,6 +847,9 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
     )
     for i, a in enumerate(artifacts):
         a["anchor"] = f"artifact-{i}"
+        # statically-pinned demotion flag (HISTORICAL) — carried on the
+        # artifact so the template and the drift rows key on one source.
+        a["historical"] = spec[i]["historical"]
 
     # Deployed-vs-canonical rows: canonical side reuses the artifacts just
     # fetched; the deployed-record fetches (per-seat meta.md + the snapshot)
@@ -820,14 +867,19 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
         }
         for seat in SEATS
     ]
-    fleet_wide = [a for a in artifacts if a["seat"] is None]
+    fleet_wide = [
+        a for a in artifacts if a["seat"] is None and not a["historical"]
+    ]
+    historical = [a for a in artifacts if a["historical"]]
     ok_count = sum(1 for a in artifacts if a["ok"])
     return {
         "seats": seats,
         "fleet_wide": fleet_wide,
+        "historical": historical,
         "total": len(artifacts),
         "ok_count": ok_count,
         "error_count": len(artifacts) - ok_count,
+        "current_count": len(artifacts) - len(historical),
         # Artifacts whose OWN raw header carries a supersession/do-not-paste
         # marker (shared detection: prompt_artifacts.extract_supersession) —
         # each is banner-flagged on its card; 0 renders no chip (no noise).

@@ -1,8 +1,10 @@
 """Offline unit tests for /prompts (ORDER 014): the fleet prompt library —
 all 29 registry paste artifacts (9 seats x coordinator/instructions/failsafe
-+ the 2 fleet-wide docs) rendered inline from fleet-manager main over the
-raw-content pattern (generation metadata stripped to the clean paste body;
-the body itself verbatim).
++ the fleet-wide session-ender + 1 historical-reference doc) rendered inline
+from fleet-manager main over the raw-content pattern (generation metadata
+stripped to the clean paste body; the body itself verbatim). Current paste
+sources render first; files superseded by their OWN header are demoted to a
+collapsed Historical reference section (owner order 2026-07-13).
 
 Covered per the order + seat conventions: the pinned registry's shape, the
 happy path rendering every seat and both fleet-wide artifacts with
@@ -69,20 +71,30 @@ def _registry_matches_by_default(monkeypatch):
 # --------------------------------------------------------------------------- #
 
 
-def test_registry_shape_is_9_seats_x_3_plus_2():
+def test_registry_shape_is_9_seats_x_3_plus_ender_plus_historical():
     assert len(prompts.SEATS) == 9
     assert len(prompts.SEAT_FILES) == 3
-    assert len(prompts.FLEET_WIDE) == 2
+    assert len(prompts.FLEET_WIDE) == 1
+    assert len(prompts.HISTORICAL) == 1
     assert prompts.TOTAL_ARTIFACTS == 29
     spec = prompts._artifact_spec()
     assert len(spec) == 29
     # per-seat paths follow the registry layout; fleet-wide ones the v3 home
     assert {"seat": "websites", "label": "coordinator prompt",
-            "path": "projects/websites/coordinator-prompt.md"} in spec
-    assert any(s["path"] == "docs/prompts/v3/session-ender.md" for s in spec)
-    assert any(
-        s["path"] == "docs/prompts/v3/universal-startup.md" for s in spec
+            "path": "projects/websites/coordinator-prompt.md",
+            "historical": False} in spec
+    # the session-ender is CURRENT ("THIS file stays the canonical single
+    # source"); universal-startup is pinned HISTORICAL — its own header says
+    # "SUPERSEDED AS THE GENERATION SOURCE … Do not paste this file"
+    # (both verified live against fleet-manager@main, 2026-07-13)
+    ender = next(
+        s for s in spec if s["path"] == "docs/prompts/v3/session-ender.md"
     )
+    assert ender["historical"] is False
+    startup = next(
+        s for s in spec if s["path"] == "docs/prompts/v3/universal-startup.md"
+    )
+    assert startup["historical"] is True
 
 
 def test_extract_provenance_formats_and_honest_absence():
@@ -150,10 +162,17 @@ def test_overview_happy_covers_all_seats_and_fleet_wide(monkeypatch):
             assert a["ok"] and a["text"].endswith(f"BODY OF {a['path']}\n")
             assert a["provenance"] == "v7 · 2026-07-12 · reg copy"
             assert a["error"] == "" and a["chars"] == len(a["text"])
+    # fleet_wide carries only CURRENT universals; superseded files ride the
+    # separate historical list (both still fetched + counted in total)
     assert [a["path"] for a in out["fleet_wide"]] == [
-        "docs/prompts/v3/universal-startup.md",
         "docs/prompts/v3/session-ender.md",
     ]
+    assert [a["path"] for a in out["historical"]] == [
+        "docs/prompts/v3/universal-startup.md",
+    ]
+    assert out["current_count"] == 28
+    assert all(a["historical"] for a in out["historical"])
+    assert not any(a["historical"] for a in out["fleet_wide"])
 
 
 def test_overview_text_is_clean_paste_body_rest_verbatim(monkeypatch):
@@ -204,25 +223,59 @@ def test_prompts_route_happy_renders_everything(monkeypatch):
     assert 'href="/console"' in r.text
 
 
-def test_universal_prompts_group_renders_first(monkeypatch):
-    """Owner feedback 2026-07-12: the session-ender was buried at the bottom
-    of ~26 artifacts and labeled just 'session ender' (a phrase the per-seat
-    coordinator prompts repeat in their bodies). Pin the fix: the two
-    fleet-wide prompts are labeled Universal … and their group renders at
-    the TOP of the page, before any per-seat section."""
+def test_current_files_first_superseded_demoted_last(monkeypatch):
+    """Owner order 2026-07-13: current files primary. The per-seat sections
+    (each seat's startup/coordinator prompt leading, per SEAT_FILES order)
+    render FIRST, the still-canonical Universal Session-Ender keeps its own
+    labeled group after them, and universal-startup.md — whose OWN header
+    says SUPERSEDED / do-not-paste — is demoted to the clearly-labeled
+    Historical reference section at the very bottom."""
     _happy(monkeypatch)
     client = TestClient(app)
     r = client.get("/prompts")
     assert r.status_code == 200
-    assert 'id="universal"' in r.text
-    assert "Universal Startup" in r.text
-    assert "Universal Session-Ender" in r.text
-    universal_pos = r.text.find('id="universal"')
-    ender_body_pos = r.text.find("BODY OF docs/prompts/v3/session-ender.md")
     first_seat_pos = r.text.find('id="seat-')
-    assert universal_pos != -1 and ender_body_pos != -1 and first_seat_pos != -1
-    assert universal_pos < first_seat_pos
-    assert ender_body_pos < first_seat_pos
+    universal_pos = r.text.find('id="universal"')
+    historical_pos = r.text.find('id="historical"')
+    ender_body_pos = r.text.find("BODY OF docs/prompts/v3/session-ender.md")
+    startup_body_pos = r.text.find(
+        "BODY OF docs/prompts/v3/universal-startup.md"
+    )
+    assert -1 not in (first_seat_pos, universal_pos, historical_pos,
+                      ender_body_pos, startup_body_pos)
+    # seats (current paste sources) < ender group < Historical reference,
+    # with each group's body inside its own section
+    assert first_seat_pos < universal_pos < historical_pos
+    assert universal_pos < ender_body_pos < historical_pos
+    assert historical_pos < startup_body_pos
+    # the owner-feedback labels survive the restructure (2026-07-12: the
+    # bare 'session ender' label drowned among the per-seat prompts)
+    assert "Universal Session-Ender" in r.text
+    assert "Historical reference" in r.text
+    # the header card jump-links reach both trailing groups
+    assert 'href="#universal"' in r.text
+    assert 'href="#historical"' in r.text
+
+
+def test_historical_section_collapsed_no_copy_still_readable(monkeypatch):
+    """The demoted file stays ON the page (version history covers
+    provenance) but never as a primary card: collapsed <details>, copy
+    affordance removed (pre.nocopy — copycode.js skips it), body still
+    readable and honestly labeled."""
+    _happy(monkeypatch)
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    hist = r.text[r.text.find('id="historical"'):]
+    # collapsed by default — a <details> without the open attribute
+    assert "<details" in hist and "<details open" not in hist
+    # copy affordance removed for the do-not-paste file, and said plainly
+    assert 'class="nocopy"' in hist
+    assert "copy button removed: not a paste source" in " ".join(hist.split())
+    # the body itself is still served — demoted, never deleted
+    assert "BODY OF docs/prompts/v3/universal-startup.md" in hist
+    # no current artifact loses its copy affordance
+    current = r.text[: r.text.find('id="historical"')]
+    assert 'class="nocopy"' not in current
 
 
 def test_prompts_route_cache_indicator(monkeypatch):
@@ -729,18 +782,23 @@ def test_deployed_fetch_failures_degrade_to_unreachable(monkeypatch):
     assert "unreachable" in r.text
 
 
-def test_deployed_universals_not_recorded(monkeypatch):
-    """(f) The two per-session universals have no deployed record anywhere
-    in the fleet — honest ``not recorded``, canonical stamp still shown."""
+def test_deployed_universals_current_only_not_recorded(monkeypatch):
+    """(f) The per-session universal ender has no deployed record anywhere
+    in the fleet — honest ``not recorded``, canonical stamp still shown.
+    HISTORICAL files are excluded from the drift rows entirely: they are
+    not paste sources (their own header says do not paste), so a
+    "pasted per session" row for them would be an invented claim — the
+    drift table stays honest about what is actually pasted/armed."""
     _patch_fleet(monkeypatch, meta=None, snapshot=_snapshot_json())
     dep = asyncio.run(prompts.overview())["deployed"]
     assert [u["label"] for u in dep["universals"]] == [
-        "Universal Startup", "Universal Session-Ender"]
+        "Universal Session-Ender"]
     for u in dep["universals"]:
         assert u["state"] == "not recorded"
         assert "no deployed record" in u["reason"]
         assert u["canonical"].startswith("v3.3 · 2026-07-12")
-    assert dep["total"] == 29
+    # 27 per-seat rows + the ender; the historical file is not a row
+    assert dep["total"] == 28
 
 
 def test_deployed_rows_are_version_aware(monkeypatch):
