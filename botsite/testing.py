@@ -1026,6 +1026,17 @@ async def testing_guide_frame(
 # owner queue (auth + same guards on state changes)
 # --------------------------------------------------------------------------
 HEATMAP_STEP_TEXT_MAX = 80
+QUESTION_DIGEST_TEXT_MAX = 160
+
+
+def _digest_question_text(message: str) -> str:
+    """A tester question for the per-step digest, truncated so one long
+    message can't swallow the strip. The text stays raw untrusted tester
+    input otherwise — escaping is the template's (autoescape) job."""
+    text = str(message or "").strip()
+    if len(text) > QUESTION_DIGEST_TEXT_MAX:
+        text = text[: QUESTION_DIGEST_TEXT_MAX - 1].rstrip() + "…"
+    return text
 
 
 def _heatmap_step_text(steps: list[dict[str, Any]], step_index: int) -> str:
@@ -1128,6 +1139,26 @@ async def _owner_page(
                 }
             )
         t["script_len"] = len(step_script)
+    # Per-step question digest: the strips above say WHERE chats cluster
+    # ("step 3 · 4 asked"); this joins WHAT was asked — the persisted
+    # guide_exchanges message text (tester side only, never the guide's
+    # replies) grouped by (task, step) across ALL claims, drop-offs and
+    # finishers alike. The store keeps the newest QUESTION_DIGEST_CAP per
+    # cell; truncated here, rendered collapsed behind the cell and escaped
+    # by autoescape — untrusted tester input, same framing as the
+    # transcript blocks. Padded never-reached cells stay question-free.
+    step_questions = store.guided_step_questions()
+    for strip in (dropoff_heatmap, finisher_hotspots):
+        for t in strip:
+            cells = step_questions.get(t["task_id"], {})
+            for st in t["steps"]:
+                cell = cells.get(st["step_index"])
+                st["question_total"] = cell["total"] if cell else 0
+                st["questions"] = (
+                    [_digest_question_text(q) for q in cell["questions"]]
+                    if cell
+                    else []
+                )
     # ORDER 019 PR2: filter/sort/search over the submissions queue (the
     # centralized listfilter core; state lives in the GET query string, so
     # POST-action re-renders simply show the unfiltered default).
