@@ -9,6 +9,26 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Hostile-env import smoke — dynamically import every service module
+  under a poisoned environment** · `built` (2026-07-13, PR #287 —
+  `tests/test_hostile_env_smoke.py` imports every runtime module of all
+  four services in a subprocess per service per poison mode (every
+  documented env var set to `""`, then to garbage; 8 subprocesses, poison
+  passed via `subprocess.run(env=...)` so nothing leaks into pytest;
+  failures name the module + carry the subprocess traceback); zero real
+  crash sites found — PR #282/#285 hardening held; captured 2026-07-13,
+  env-guard-gate session 💡) — the dynamic complement to `tests/test_env_guard_gate.py`
+  (PR #285): set every documented env var (the envhub manifest knows the
+  names) to "" and "garbage", then `importlib.import_module` every module
+  in app/, botsite/, dashboard/, review/, proving no import-time crash of
+  ANY kind. Worth having because the static gate only sees `int()`/
+  `float()` — `json.loads`, date parsing, `.split()[0]`, or a `Path`
+  read over an env var at module level are the same crash class and
+  invisible to an AST cast-scan; a real import under hostile values
+  catches them all. Deduped: `test_env_parse_hardening.py` reloads only
+  `app.config` with hostile INT_VARS; the healthcheck bullets probe live
+  `/healthz`, never imports. Source:
+  `.sessions/2026-07-13-env-guard-gate.md` 💡.
 - **Suite-level token pin in `tests/conftest.py` — ambient-env independence
   as structure, not discipline** · `captured` (2026-07-13) — there is no
   `tests/conftest.py`; an autouse fixture pinning `config.GITHUB_TOKEN`
@@ -1076,18 +1096,32 @@
   `.sessions/2026-07-13-coordinator-sitting.md` 💡.
 
 - **Structural no-bare-numeric-env-parse gate — make the int("") class
-  unshippable, not just fixed** · `captured` (2026-07-13, env-hardening
-  session 💡) — a small static test scanning app/, botsite/, dashboard/,
-  review/ (excluding bootstrap.py/.substrate) and failing on any
-  MODULE-LEVEL `int(`/`float(` wrapped directly around
-  `os.environ`/`os.getenv` that doesn't go through an `_env_int`-style
-  guard (PR #282 introduced one per affected module). Worth having because
-  PR #282 fixed six sites by hand, but nothing stops the seventh — the
-  same discipline-vs-structure gap the clarity gate (PR #241) closed for
-  page headers. Deduped against this backlog + the queue-state NEXT list:
-  the code-vs-inventory bullets (#227 and its per-service generalization)
-  check env-var NAME documentation completeness, never parse safety.
-  Source: `.sessions/2026-07-13-env-hardening.md` 💡.
+  unshippable, not just fixed** — shipped 2026-07-13 (PR #285):
+  `tests/test_env_guard_gate.py` AST-scans app/, botsite/, dashboard/,
+  review/ (excluding bootstrap.py/.substrate, tests dirs, and the
+  review/gen_*.py offline bakers) and fails on any IMPORT-TIME bare
+  `int(`/`float(` over `os.environ`/`os.getenv` — module scope, top-level
+  if/try blocks, class bodies, and function defaults all count; function
+  bodies are exempt, which is exactly what lets `_env_int`-guarded sites
+  (PR #282) pass. Self-tests seed a violation fixture and prove the
+  scanner catches it without touching real service modules. Source:
+  `.sessions/2026-07-13-env-hardening.md` 💡.
+
+- **Self-deriving poison list — pin the hostile-env smoke's ENV_VARS
+  against a live source sweep** · `captured` (2026-07-13, hostile-env-smoke
+  session 💡) — `tests/test_hostile_env_smoke.py` (PR #287) poisons a
+  hand-collected 38-name literal; a companion assertion (AST or regex sweep
+  of `os.environ`/`os.getenv`/`ENV_* =` over app/, botsite/, dashboard/,
+  review/ at test time, same exclusions as the smoke) failing when source
+  reads a name the list misses would make the poison
+  self-updating-or-loud. Worth having because a new env-var read added
+  after PR #287 is silently unpoisoned — the exact rot class the smoke
+  exists to close, reopened one variable at a time. Deduped against this
+  backlog: the code-vs-inventory bullets (#227 and its per-service
+  generalization) check env-var NAME *documentation* completeness against
+  docs tables, never the smoke's poison list; the env-guard gate covers
+  only bare `int()`/`float()` casts. Source:
+  `.sessions/2026-07-13-hostile-env-smoke.md` 💡.
 
 - **Outbox REPORT grammar drift pin — parse the committed outbox at HEAD
   in CI** · `captured` (2026-07-13, briefing-outbox session 💡) — a small
