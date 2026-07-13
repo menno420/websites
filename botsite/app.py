@@ -39,6 +39,7 @@ from . import field_manual as field_manual_registry
 from . import graveyard as graveyard_registry
 from . import products as products_registry
 from . import puddle_museum as puddle_museum_registry
+from . import rubric as rubric_registry
 from . import stripe_gotchas as stripe_gotchas_registry
 from . import listfilter
 from . import testing
@@ -58,6 +59,7 @@ NAV = [
     ("graveyard", "Graveyard", "/graveyard"),
     ("agent-pr-check", "PR Check", "/agent-pr-check"),
     ("stripe-gotchas", "Stripe Gotchas", "/stripe-gotchas"),
+    ("should-i-build-it", "Rubric Scorer", "/should-i-build-it"),
 ]
 
 
@@ -383,6 +385,36 @@ async def stripe_gotchas(request: Request):
         }
     )
     return templates.TemplateResponse(request, "stripe_gotchas.html", ctx)
+
+
+@app.get("/should-i-build-it", response_class=HTMLResponse)
+async def should_i_build_it(request: Request):
+    """"Should I build it?" rubric scorer — an interactive form of
+    **venture-eval-001**, the venture lane's REAL distribution-first vetting
+    rubric (ORDER 022 item 4, venture WEBSITE-IDEA batch-2 intake; marker:
+    "'Should I build it?' rubric scorer"). The five weighted axes, 0–5
+    anchors, verdict bands, and anti-gaming rules are the ones venture-lab's
+    candidate intakes actually score on. Data is the committed
+    ``botsite/data/rubric.json`` read from disk at request time
+    (``botsite/rubric.py``, provenance recorded in-file: venture-lab @
+    0679327) — cross-repo data arrives only as committed JSON, never a live
+    fetch on the request path. GET-only with ZERO server state: the verdict
+    is computed entirely in the visitor's browser by vanilla JS
+    (``static/rubric_scorer.js``) over a config serialized from the SAME
+    loaded rubric — no POST, no storage, nothing submitted anywhere. The
+    rubric's own honesty caveat (comparative, not absolute — no magic pass
+    mark) renders with the verdict, and the cross-link points at
+    /products/catalog, where the packets this rubric really vetted live."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "should-i-build-it", res)
+    rubric = rubric_registry.load_rubric()
+    ctx.update(
+        {
+            "rubric": rubric,
+            "scorer_config": rubric_registry.scorer_config(rubric),
+        }
+    )
+    return templates.TemplateResponse(request, "should_i_build_it.html", ctx)
 
 
 @app.get("/changelog", response_class=HTMLResponse)
