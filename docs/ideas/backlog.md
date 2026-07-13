@@ -30,16 +30,19 @@
   `/healthz`, never imports. Source:
   `.sessions/2026-07-13-env-guard-gate.md` 💡.
 - **Suite-level token pin in `tests/conftest.py` — ambient-env independence
-  as structure, not discipline** · `captured` (2026-07-13) — there is no
-  `tests/conftest.py`; an autouse fixture pinning `config.GITHUB_TOKEN`
-  (and `RAILWAY_TOKEN`) to a known sentinel for every test would make the
-  unpinned-reason-assertion flake class impossible (a test's meaning could
-  never again change with whether the runner exports a token — this dev
-  container proxy-injects one, CI may not), while rung-specific tests keep
-  monkeypatching explicitly as they already do. Worth having because
-  PR #251's sweep shows the protection today is per-test discipline — the
-  next unpinned assertion reintroduces the both-rungs bug #250 flagged.
-  Source: `.sessions/2026-07-13-tighten-ladder-pins.md` 💡.
+  as structure, not discipline** · `built` (2026-07-13, PR #309 —
+  new `tests/conftest.py` autouse fixture
+  pins every control-plane test to the unset rung: `config.GITHUB_TOKEN`/
+  `config.RAILWAY_TOKEN` forced to `""` plus both env vars deleted, on a
+  private `pytest.MonkeyPatch` instance so a test-level `monkeypatch.undo()`
+  can't strip the pin; rung-specific tests keep opting in explicitly and
+  their patches win. The unpinned-reason-assertion flake class is now
+  impossible — a test's meaning can never again change with whether the
+  runner exports a token (this dev container proxy-injects one, CI may
+  not). botsite/dashboard/review suites verified token-free (review's only
+  runtime read is stubbed at the `fetch_issues` seam), so the pin lives in
+  `tests/` only. Full four-suite run proven identical with tokens exported
+  and deleted. Source: `.sessions/2026-07-13-tighten-ladder-pins.md` 💡.
 - **Manifest completeness diff — "what is missing to finish this
   environment"** · `built` (2026-07-12, PR #216 —
   `envhub.annotate_completeness` badges every manifest schema row against
