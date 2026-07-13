@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import github, prompts  # noqa: E402
+from app import config, github, prompts  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -395,6 +395,38 @@ def test_drift_unknown_when_listing_unavailable_never_false_green(monkeypatch):
     out = asyncio.run(prompts.registry_drift())
     assert out["state"] == "unknown" and "not landed" in out["reason"]
     assert out["missing"] == []
+
+
+def test_drift_unknown_reason_names_missing_token(monkeypatch):
+    """Token-unset + non-404 listing failure: the chip stays 'unknown' (its
+    vocabulary is unchanged) but the reason now NAMES the missing token —
+    the shared github.classify_listing ladder's honest improvement over the
+    bare fetch reason this page used to echo."""
+    _happy(monkeypatch)
+    _patch_registry(monkeypatch, ok=False, status=403, error="rate limited")
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "")
+    out = asyncio.run(prompts.registry_drift())
+    assert out["state"] == "unknown"
+    assert out["reason"] == (
+        "GITHUB_TOKEN is not set on this service and the fleet-manager "
+        "`projects/` listing failed (fetch: rate limited)"
+    )
+    assert out["added"] == [] and out["missing"] == []
+
+
+def test_drift_unknown_on_non_list_2xx_payload(monkeypatch):
+    """An ok envelope whose data is not a directory listing is unknown with
+    the shared 'unexpected listing payload' reason — never judged as drift."""
+    _happy(monkeypatch)
+
+    async def fake_api(repo, subpath="", refresh=False):
+        return _res(ok=True, status=200, data="<!doctype html>oops")
+
+    monkeypatch.setattr(github, "repo_api", fake_api)
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
+    out = asyncio.run(prompts.registry_drift())
+    assert out["state"] == "unknown"
+    assert out["reason"] == "unexpected listing payload (HTTP 200)"
 
 
 def test_drift_empty_registry_is_real_drift_not_unknown(monkeypatch):

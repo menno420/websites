@@ -166,14 +166,20 @@ async def registry_drift(refresh: bool = False) -> dict[str, Any]:
     listing = await github.repo_api(
         REPO, f"/contents/{_REGISTRY_ROOT}", refresh=refresh
     )
-    if not (listing["ok"] and isinstance(listing["data"], list)):
+    # Shared honesty ladder (github.classify_listing): ANY non-ok state maps
+    # to "unknown" here — the chip's vocabulary stays ok/drift/unknown — but
+    # the classifier's reason is kept, so a missing token now names itself.
+    state, reason = github.classify_listing(
+        listing,
+        on_404="unknown",
+        reason_404=(
+            f"`{_REGISTRY_ROOT}/` does not exist upstream yet "
+            "(registry not landed)"
+        ),
+        subject=f"the {REPO} `{_REGISTRY_ROOT}/` listing",
+    )
+    if state != "ok":
         out["state"] = "unknown"
-        reason = listing.get("error") or f"HTTP {listing.get('status')}"
-        if listing.get("status") == 404:
-            reason = (
-                f"`{_REGISTRY_ROOT}/` does not exist upstream yet "
-                "(registry not landed)"
-            )
         out["reason"] = reason
         return out
 
