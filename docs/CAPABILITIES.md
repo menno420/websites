@@ -99,6 +99,33 @@ above came from the fleet's lived 2026-07 findings; local ones go here.)
   attempt, 2026-07-13 · workaround: the owner pastes REAL values directly —
   `/owner/environments` already lists exactly which names are missing per
   service, and its badge flips to `set-live` only when a real value lands.
+
+- 2026-07-13 · wall · **A dispatch-chained `quality` check run does NOT
+  satisfy the main-branch ruleset's required `quality` context on a
+  GITHUB_TOKEN-created bake PR** — the full chain, measured: (i)
+  Actions-`GITHUB_TOKEN`-created PRs get NO `pull_request`-event check runs
+  (GitHub's recursion guard; verified on PR #259 — 0 check runs on its head
+  until a session closed/reopened it); (ii) the PR #269 workaround
+  (review-bake dispatches `quality.yml` on the bake branch) DOES put a GREEN
+  check run named `quality` on the bake PR's head — quality run 29242891214,
+  `event: workflow_dispatch`, on head `48cef208`, and GitHub associates the
+  run with bake PR #270 — but the ruleset still refuses: merge attempts
+  return verbatim `405 Repository rule violations found` / `Required status
+  check "quality" is expected.`, `mergeable_state` stays `blocked`, and armed
+  auto-merge never fires (the ruleset wants the required context from a
+  `pull_request`-event run, not a same-named dispatch run) · evidence:
+  review-bake run 29242851190 (manual dispatch, conclusion=success) →
+  PR #270 (head `48cef2080d90fa6ea2477ee33865cfc288f1e79a`, data-only diff)
+  → quality run 29242891214 green on that head → the 405 verbatim above on
+  every merge attempt, 2026-07-13 · workaround (interim, precedent PR #259):
+  a session — i.e. any non-GITHUB_TOKEN actor — closes and reopens the bake
+  PR, which fires a REAL `pull_request` quality run the ruleset accepts;
+  PR #270 is currently parked open with auto-merge armed awaiting exactly
+  this · durable fix: the bake PR must be CREATED by a non-GITHUB_TOKEN
+  credential (fine-grained PAT as an Actions secret, review-bake's
+  `GH_TOKEN` switched to it) — filed as the ⚑ OWNER-ACTION row in
+  `docs/owner/OWNER-ACTIONS.md` (2026-07-13, extends the ORDER 020 PAT ask).
+
 - 2026-07-12 · wall · **`RAILWAY_TOKEN` is NOT provisioned** — neither in
   this agent session's environment (`printenv | grep -i railway` shows only
   the ambient production trio + `RAILWAY_API_KEY`, none of which
