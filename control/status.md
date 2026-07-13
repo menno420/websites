@@ -1,14 +1,32 @@
-# websites · status
-updated: 2026-07-13T11:31:00Z
-phase: SESSION CLOSED — coordinator ender heartbeat for the 2026-07-12 ~20:50Z → 2026-07-13 ~11:05Z sitting. THE SITTING IN ONE LINE: 63 PRs merged (#209–#275 span, every window commit a PR squash), suite 757 → 1206 passed, zero bad merges, every deploy-bearing merge /version-verified; ORDER 022 night run EXECUTED (tally #252), 023 SERVED (#265), 024 DONE (#264+#267), 025 DONE (#273 /owner/briefing + creds guidance), 026 RESOLVED create-nothing (#275); both bot bake PRs landed (#259 = bcf2943, #270 = 5b9c6f7) and the bake pipeline is proven end-to-end with the BAKE_PAT ask filed (#274). Retro card: .sessions/2026-07-13-coordinator-sitting.md (this ender's PR #276); durable ledger refreshed: docs/current-state.md (trued 2026-07-13). Successor boots from HANDOFF.md → docs/current-state.md → this file.
-health: green (main verified at 5b9c6f7 = #270 at ender write; python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q → 1206 passed; bootstrap check --strict green apart from the ender card's designed born-red hold until its flip commit)
-kit: v1.15.0 · check: green · engaged: yes
-last-shipped: #275 = cedca1e (ORDER 026 create-nothing resolution) + bake PR #270 = 5b9c6f7 (fleet data refresh, review-merged); top deploy-bearing page merge #266 = f24df4e (/webhook-analyzer — batch-2 complete).
-blockers: none
-orders: acked=001-026 done=001-019,023-026 (020 owner-gated — remaining = the owner contents:write PAT paste, then live writeback verification. 021 owner-gated — remaining = the Discord-auth DECISION/Q-0004, then the gate build. 022 EXECUTED to the buildable limit — tally posted #252; batch-2 intake complete incl. webhook analyzer #266; remainder owner-gated (creds asks + photo-packs originals); standing until owner review. Fleet-manager ledger: fm 035 standing — clarity bar CI-ENFORCED by the 123-route gate #241; fm 041 SHIPPED-IN-FULL (#236+#239); fm 042 SATISFIED (#253); fm 019/021/022 done; fm 022-amendment CLOSED — first scheduled bake SUCCESS run 29235587736.)
-routine: armed · FAILSAFE cron "Websites failsafe wake" trig_019cGrUpfHSMv4qLk5tn2hgr · 45 */2 * * * · enabled — LEFT ARMED deliberately as the successor bridge; verified via list_triggers at this ender (enabled=true, next fire 2026-07-13T12:45Z). Pending coordinator pacemaker tick trig_016CQoxoBh97cgsTSiDyC56Z DELETED — verified ABSENT at this ender (3×100-entry list_triggers pages covering every trigger created since 2026-07-12T16:52Z; no enabled send_later is bound to the coordinator session). Bake-bridge trigger self-retired 05:33Z — intended end-state, do NOT re-arm. The review-bake cron is a repo GH workflow (not a Routine), first scheduled SUCCESS recorded. No uncloseable ids.
-landing: pushed-unmerged claude/coordinator-ender-2026-07-13 — this ender's own PR #276 (retro card + docs truth + outbox proposals + this heartbeat + flip; READY, lands via the enabler on green — this session never self-arms/self-merges). Only other open PRs: the three draft kit-stub lifeboats #245/#249/#257 (do-not-merge by design; landing path = owner-click close, content is kit churn). ZERO seams otherwise.
-deployed: LIVE URLs — pointers only; the durable ledger lives in docs/current-state.md (trued 2026-07-13, incl. the bake-pipeline reality section). Review https://review-production-f027.up.railway.app · control-plane https://control-plane-production-abb0.up.railway.app (incl. /owner/briefing + restructured /prompts) · botsite (batch-2 complete through /webhook-analyzer) · dashboard. Every deploy-bearing merge of the sitting /version-verified at its landing.
-rung: order
-⚑ needs-owner: pointer — canonical six-field blocks live in docs/owner/OWNER-ACTIONS.md ONLY. EIGHT asks open there, newest = BAKE_PAT (the bake-PR durable fix, filed #274): ORDER 020 contents:write PAT · BAKE_PAT · Q-0004 · Discord OAuth (redirect-URI + client secret) · armed-service control-API token · botsite SITE_PASSWORD · botsite Postgres/DATABASE_URL · PayPal Payouts creds.
-notes: NEUTRAL pointers only. Boot from main: HANDOFF.md → docs/current-state.md → this file; retro = .sessions/2026-07-13-coordinator-sitting.md; owner asks in docs/owner/OWNER-ACTIONS.md; capability walls in docs/CAPABILITIES.md (incl. the measured 405 required-check wall). NEXT-2 baton: (1) the owner-gated decisions queue (8 ⚑ asks) + the two env leads from #275 (dashboard's undocumented SITE_PASSWORD; possible ANTHROPIC_API_KEY on the parallel botsite copy); (2) close/dispose the parked drafts #245/#249/#257 + a fresh intake sweep (venture outbox WEBSITE-IDEA markers + fm inbox). Manager-addressed proposals appended to control/outbox.md this ender (worker-brief standing lines; kit born-red "hold" word-boundary fix). FENCES through 2026-07-14: do not move or rename review-production-f027 or any live URL; do not consolidate the duplicate Railway projects (parked OQ-RAILWAY-PROJECT-SPLIT).
+# Websites seat — coordinator heartbeat
+
+updated: Mon Jul 13 14:46:05 UTC 2026 · phase: ACTIVE (coordinator session 12, mid-sitting refresh)
+
+## routine
+- failsafe cron: trig_01GV8kBK92CSZWEWwNZo1rhk "Websites failsafe wake" · 45 */2 * * * · enabled, bound to the live coordinator session. Predecessor bridge trig_019cGrUpfHSMv4qLk5tn2hgr deleted at boot cutover 2026-07-13 (verified via list_triggers, account-wide pagination).
+- pacemaker: send_later chain live, ~15 min cadence, one pending at a time.
+
+## orders
+acked=001-026 done=001-019,023-026 (020/021 owner-gated; 022 executed, standing until owner review). No new ORDERs this sitting.
+
+## shipped this sitting (all merged via quality-green auto-merge; merge = deploy)
+- #277 intake sweep — venture markers honest null; 2 fm items recorded (docs/plans/discovery-inventory.md)
+- #282 env hardening — 6 int(env) import-crash sites guarded, +15 tests; live-verified /version=096202c7 on all four services
+- #284 fm ORDER 038 / VERDICT-016 reviewer-authenticity gate reflected (docs/collaboration-model.md)
+- #285 env-guard AST gate (tests/test_env_guard_gate.py)
+- #286 /owner/briefing REPORTS card (newest control/outbox.md REPORT)
+- #287 hostile-env import smoke (62 modules, 38 vars poisoned, zero crashes)
+- #288 arcade link-bearing availabilities single source of truth
+Suite 1206 → 1228+. Healthcheck 09:47Z red = transient cold-cache timeout; rerun green 13:09Z.
+
+## open PRs
+- #281 coordinator session PR (carries this heartbeat + the born-red card; flips complete at session end) — landing path: enabler on green after flip.
+- Draft lifeboats, owner-close whenever: #245 #249 #257 #278 #279 #280.
+
+## asks
+8 open ⚑ in docs/owner/OWNER-ACTIONS.md (newest: BAKE_PAT) — re-verified at boot, unchanged.
+
+## next-2
+1. Further console/arcade increments from docs/ideas/backlog.md (two new captured ideas: outbox grammar drift pin; self-deriving poison list).
+2. Ender housekeeping: sweep stale claim control/claims/2026-07-13-railway-placeholders.md (ORDER 026 terminal via #275).
+kit: v1.15.0
