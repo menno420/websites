@@ -41,7 +41,22 @@ CONSOLE_JSON_URL = os.environ.get(
     "CONSOLE_JSON_URL",
     "https://raw.githubusercontent.com/menno420/superbot/main/botsite/data/console.json",
 )
-CACHE_TTL_SECONDS = int(os.environ.get("DATA_CACHE_TTL_SECONDS", "180"))
+def _env_int(name: str, default: int) -> int:
+    """Parse an integer env var, falling back to ``default``.
+
+    Unset, empty-string and malformed values ALL fall back. On Railway an
+    empty entry is NOT "unset" — a bare module-level ``int("")`` would crash
+    the whole service at import (docs/CAPABILITIES.md, 2026-07-13 ORDER 026
+    finding). Local by design: services share code by convention, never by
+    cross-service import.
+    """
+    try:
+        return int(os.environ.get(name) or default)
+    except ValueError:
+        return default
+
+
+CACHE_TTL_SECONDS = _env_int("DATA_CACHE_TTL_SECONDS", 180)
 
 # Link back to the bot repo for "view source" affordances (env map locations, etc.).
 SUPERBOT_REPO = os.environ.get("SUPERBOT_REPO", "menno420/superbot")

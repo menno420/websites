@@ -103,7 +103,9 @@ was never passed; no destructive mutation was ever issued. Same guardrails as
 | `PORT` | injected by Railway | Do not set manually. |
 | `SITE_JSON_URL` | not set (default superbot@main) | Optional override of the data feed. |
 | `ADD_TO_DISCORD_URL` | not set (default) | Optional override of the install link. |
-| `SITE_CACHE_TTL_SECONDS` | not set (default 180) | Optional feed cache TTL. |
+| `SITE_CACHE_TTL_SECONDS` | not set (default 180) | Optional feed cache TTL. Empty/malformed values fall back to the default at import (`_env_int`, 2026-07-13 hardening) — an empty Railway entry can no longer crash the service. |
+| `SITE_PASSWORD` | **not set** (open ⚑ owner ask, `docs/owner/OWNER-ACTIONS.md`) | Gates ONLY the tester-program owner queue `/testing/owner*` (`botsite/testing.py`, HTTP Basic, any username, constant-time compare). Unset → those routes fail closed 503; the whole public site keeps working and never reads it. |
+| `ANTHROPIC_API_KEY` | **absent on superbot-websites/botsite** (ORDER 026 names-only read, 2026-07-13) | Read at runtime (never import) by `botsite/testing_ai.py` for the tester-program AI exit-review/guide; absent → the AI features degrade honestly. Whether the key sits on the **parallel botsite copy in the production-bot project** is **not measured — walled**: the only documented Railway read path is scoped to `superbot-websites`, and `docs/RAILWAY-SAFETY.md` bans passing the ambient production-bot IDs to any Railway call, reads included. |
 
 The public surface deliberately carries **no secret**. When the submissions pipeline is
 provisioned (below), the one secret it may ever hold is an **INSERT-only**

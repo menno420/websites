@@ -34,7 +34,22 @@ ADD_TO_DISCORD_URL = os.environ.get(
     "ADD_TO_DISCORD_URL",
     "https://discord.com/oauth2/authorize?client_id=1403818430758654132",
 )
-CACHE_TTL_SECONDS = int(os.environ.get("SITE_CACHE_TTL_SECONDS", "180"))
+def _env_int(name: str, default: int) -> int:
+    """Parse an integer env var, falling back to ``default``.
+
+    Unset, empty-string and malformed values ALL fall back. On Railway an
+    empty entry is NOT "unset" — a bare module-level ``int("")`` would crash
+    the whole service at import (docs/CAPABILITIES.md, 2026-07-13 ORDER 026
+    finding). Local by design: services share code by convention, never by
+    cross-service import.
+    """
+    try:
+        return int(os.environ.get(name) or default)
+    except ValueError:
+        return default
+
+
+CACHE_TTL_SECONDS = _env_int("SITE_CACHE_TTL_SECONDS", 180)
 
 # ---------------------------------------------------------------------------
 # Live fetch with a small in-memory TTL cache (mirrors the control-plane's model:

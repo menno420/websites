@@ -435,7 +435,7 @@ itself, and never uses the account key or the ambient production IDs
 | `SITE_PASSWORD` | for `/owner` | Gates ONLY the `/owner` area (HTTP Basic, any username). The public site never reads it. Unset → `/owner*` fails closed 503; the public site still works. |
 | `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; the Actions **secrets count** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)`. Secret *names* are exposed only through the gated `/owner` area; `actions:write` is needed for the `/owner` re-run-CI action. Also the only credential that can read `menno420/fleet-manager` when its contents aren't anonymously reachable — unset, `/queue`'s fleet-manager half and `/environments` show an honest **not configured** banner ([D-0027]). |
 | `PORT` | Railway sets it | bind port (default 8000) |
-| `CACHE_TTL_SECONDS` | no | server-side GitHub cache TTL, default `180` |
+| `CACHE_TTL_SECONDS` | no | server-side GitHub cache TTL, default `180`. Empty/malformed values fall back to the default at import (`_env_int`, 2026-07-13 hardening — same for `AUTOREFRESH_SECONDS`/`FLEET_STALE_HOURS`/`CLAIM_STALE_HOURS`); an empty Railway entry can no longer crash the service. |
 | `AUTOREFRESH_SECONDS` | no | client poll interval for the board `/` + `/fleet` live-monitoring auto-refresh, default `45` ([D-0023]) |
 | `GITHUB_API_BASE` | no | REST base override (testing behind restricted egress) |
 | `GITHUB_RAW_BASE` | no | raw-content base override |
