@@ -1,0 +1,153 @@
+"""Owner-queue drop-off step heatmap: per-task aggregate over guide_exchanges.
+
+Backlog promotion ("Drop-off step heatmap on the owner queue", 2026-07-13,
+#293's session 💡): the Drop-offs section shows each abandoned claim's
+transcript individually; the rankable signal — the walkthrough step where
+chats cluster before a claim dies — needs a per-step aggregate. Covers the
+``guided_step_dropoff()`` store accessor (touched/died-here counts, dense
+steps, per-task grouping, same scope as ``abandoned_guided_claims()``) and
+the heatmap strip rendered inside the Drop-offs section on GET
+/testing/owner. Network-free, same fixture as the drop-offs suite. The
+no-auth 401 pin for /testing/owner already lives in
+``test_testing.py::test_owner_401_on_missing_or_wrong_password``.
+"""
+
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+from botsite import app as app_module
+from botsite import data_source as ds
+from botsite import testing, testing_ai, testing_store
+
+PW = "owner-pass"
+GUIDED_TASK = "walkthrough-botsite-first-visit"
+
+
+@pytest.fixture()
+def client(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESTING_DB_PATH", str(tmp_path / "testing.sqlite3"))
+    for var in (
+        "SITE_PASSWORD",
+        "TESTING_AUTOPAY_ENABLED",
+        "PAYPAL_CLIENT_ID",
+        "PAYPAL_CLIENT_SECRET",
+        "TESTING_BOUNTY_CAP_USD",
+        "ANTHROPIC_API_KEY",  # no key in tests → degraded mode, zero network
+        "TESTING_AI_MODEL",
+        "TESTING_AI_DAILY_CAP",
+        "TESTING_AI_GUIDE_CAP",
+        "TESTING_AUTOPAY_MIN_SCORE",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    testing.reset_rate_limits()
+    testing_ai.reset_ai_state()
+    ds.clear_cache()
+    ds.prime_cache({})
+    ds.set_client(ds.make_client())  # never actually hit (cache is warm)
+    with TestClient(app_module.app) as c:
+        yield c
+    ds.clear_cache()
+
+
+def make_claim(email, name="Wanda", task_id=GUIDED_TASK):
+    """Store-level claim (status 'claimed'); token just has to be unique."""
+    return testing_store.create_claim(
+        task_id, name, email, "", f"token-{email}"
+    )
+
+
+def owner_page(client, monkeypatch):
+    monkeypatch.setenv("SITE_PASSWORD", PW)
+    r = client.get("/testing/owner", auth=("owner", PW))
+    assert r.status_code == 200
+    return r.text
+
+
+# --- store accessor -----------------------------------------------------------
+
+def test_heatmap_counts_touched_and_died_across_claims(client):
+    # three drop-offs on one task with differing max steps:
+    #   c1 touches 0,1,3 (dies at 3) · c2 touches 0,1 (dies at 1, two
+    #   exchanges at step 1 — still ONE claim) · c3 touches only 2 (dies at 2)
+    c1 = make_claim("one@example.com")
+    c2 = make_claim("two@example.com")
+    c3 = make_claim("three@example.com")
+    for step in (0, 1, 3):
+        testing_store.add_guide_exchange(c1["id"], step, "stuck", "try this")
+    testing_store.add_guide_exchange(c2["id"], 0, "hello?", "hi")
+    testing_store.add_guide_exchange(c2["id"], 1, "still stuck", "ok")
+    testing_store.add_guide_exchange(c2["id"], 1, "really stuck", "hm")
+    testing_store.add_guide_exchange(c3["id"], 2, "toggle?", "flip it")
+    rows = testing_store.guided_step_dropoff()
+    assert len(rows) == 1
+    task = rows[0]
+    assert task["task_id"] == GUIDED_TASK
+    assert task["claim_count"] == 3
+    # dense 0..3 — step 2 appears even though only one claim touched it
+    assert [s["step_index"] for s in task["steps"]] == [0, 1, 2, 3]
+    assert [s["touched"] for s in task["steps"]] == [2, 2, 1, 1]
+    assert [s["died_here"] for s in task["steps"]] == [0, 1, 1, 1]
+
+
+def test_heatmap_groups_by_task_ordered_by_task_id(client):
+    b = make_claim("b@example.com", task_id="walkthrough-zeta")
+    a = make_claim("a@example.com", task_id="walkthrough-alpha")
+    testing_store.add_guide_exchange(b["id"], 1, "where?", "there")
+    testing_store.add_guide_exchange(a["id"], 0, "how?", "so")
+    rows = testing_store.guided_step_dropoff()
+    assert [t["task_id"] for t in rows] == [
+        "walkthrough-alpha", "walkthrough-zeta"
+    ]
+    assert rows[0]["claim_count"] == 1
+    # zeta's claim only chatted at step 1 — step 0 renders as a zero cell
+    assert rows[1]["steps"] == [
+        {"step_index": 0, "touched": 0, "died_here": 0},
+        {"step_index": 1, "touched": 1, "died_here": 1},
+    ]
+
+
+def test_heatmap_empty_without_any_guided_dropoff(client):
+    make_claim("silent@example.com")  # claimed, but never chatted
+    assert testing_store.guided_step_dropoff() == []
+
+
+def test_heatmap_excludes_submitted_claims(client):
+    # same scope as abandoned_guided_claims(): a submission row (and status
+    # flip) takes the claim out of the drop-off aggregate entirely
+    done = make_claim("finisher@example.com")
+    testing_store.add_guide_exchange(done["id"], 0, "How?", "Like this.")
+    testing_store.create_submission(done["id"], {"q": "a"}, "found nothing")
+    testing_store.set_claim_status(done["id"], "submitted")
+    stuck = make_claim("walker@example.com")
+    testing_store.add_guide_exchange(stuck["id"], 2, "lost", "step by step")
+    rows = testing_store.guided_step_dropoff()
+    assert len(rows) == 1
+    assert rows[0]["claim_count"] == 1
+    assert rows[0]["steps"][2] == {"step_index": 2, "touched": 1, "died_here": 1}
+
+
+# --- owner page rendering -------------------------------------------------------
+
+def test_heatmap_strip_renders_with_expected_counts(client, monkeypatch):
+    c1 = make_claim("one@example.com")
+    c2 = make_claim("two@example.com")
+    testing_store.add_guide_exchange(c1["id"], 0, "start?", "header")
+    testing_store.add_guide_exchange(c1["id"], 1, "then?", "footer")
+    testing_store.add_guide_exchange(c2["id"], 0, "hm", "ok")
+    html = owner_page(client, monkeypatch)
+    assert "Step heatmap" in html
+    assert "2 drop-off(s)" in html
+    # steps display 1-based, matching the transcript block's "[step N]"
+    assert "step 1 · 2 touched · 1 died" in html
+    assert "step 2 · 1 touched · 1 died" in html
+    # cell shading scales with the died-here share (1/2 → 0.7 * 0.5)
+    assert "background:rgba(214,69,49,0.35)" in html
+
+
+def test_heatmap_absent_when_no_dropoffs(client, monkeypatch):
+    make_claim("silent@example.com", name="Sil")  # no chat → no heatmap
+    html = owner_page(client, monkeypatch)
+    assert "No drop-offs" in html
+    assert "Step heatmap" not in html
