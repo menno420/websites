@@ -27,8 +27,9 @@ buy link only for the one product that is really purchasable.
 - `botsite/tests/test_products.py` — page render, live-link, no-dead-link,
   degradation, loader, and committed-registry honesty tests.
 - Verified: `python3 -m pytest tests/ botsite/tests dashboard/tests
-  review/tests -q` — [[fill: counts]]; `python3 bootstrap.py check --strict`
-  — [[fill: verdict]].
+  review/tests -q` — 927 passed (was 915; +12 new products tests);
+  `python3 bootstrap.py check --strict` — green apart from this card's own
+  designed born-red hold.
 
 ⚑ Self-initiated: yes — ORDER 022 item 4 generative mandate; contained (new
 page + registry inside botsite, no existing behavior changed, GET-only, no
