@@ -7,7 +7,9 @@ chats cluster before a claim dies — needs a per-step aggregate. Covers the
 ``guided_step_dropoff()`` store accessor (touched/died-here counts, dense
 steps, per-task grouping, same scope as ``abandoned_guided_claims()``) and
 the heatmap strip rendered inside the Drop-offs section on GET
-/testing/owner. Network-free, same fixture as the drop-offs suite. The
+/testing/owner, and the step-text join (step_index → the walkthrough
+step's title in the cell tooltip, bare-number fallback for unknown
+tasks). Network-free, same fixture as the drop-offs suite. The
 no-auth 401 pin for /testing/owner already lives in
 ``test_testing.py::test_owner_401_on_missing_or_wrong_password``.
 """
@@ -151,3 +153,41 @@ def test_heatmap_absent_when_no_dropoffs(client, monkeypatch):
     html = owner_page(client, monkeypatch)
     assert "No drop-offs" in html
     assert "Step heatmap" not in html
+
+
+# --- step text labels (step_index → walkthrough step title join) ----------------
+
+def test_heatmap_tooltip_carries_step_text(client, monkeypatch):
+    # GUIDED_TASK is a real catalog task — its walkthrough step titles join
+    # into the cell tooltip so the owner reads WHAT the step asks, not just
+    # its number ("step 1 — Homepage first impression" instead of "step 1")
+    c = make_claim("texty@example.com")
+    testing_store.add_guide_exchange(c["id"], 0, "start?", "header")
+    testing_store.add_guide_exchange(c["id"], 1, "then?", "footer")
+    html = owner_page(client, monkeypatch)
+    assert "step 1 — Homepage first impression: 1 chat(s) touched it" in html
+    assert "step 2 — Features: 1 chat(s) touched it, 1 died here" in html
+    # the visible cell stays compact — numbers + counts, no title text
+    assert "step 1 · 1 touched · 0 died" in html
+
+
+def test_heatmap_tooltip_falls_back_to_bare_number(client, monkeypatch):
+    # a task with no catalog entry has no step script — step_text stays
+    # empty and the tooltip keeps the pre-join bare-number form
+    c = make_claim("ghost@example.com", task_id="walkthrough-unknown-task")
+    testing_store.add_guide_exchange(c["id"], 1, "where?", "there")
+    html = owner_page(client, monkeypatch)
+    assert 'title="step 2: 1 chat(s) touched it, 1 died here"' in html
+    assert "step 2 —" not in html
+
+
+def test_heatmap_step_text_truncates_and_bounds():
+    # pure helper: long titles truncate to the cap with an ellipsis; an
+    # out-of-range index or a text-less step falls back to empty
+    steps = [{"title": "x" * 200}, {"instruction": "no title key"}]
+    text = testing._heatmap_step_text(steps, 0)
+    assert len(text) == testing.HEATMAP_STEP_TEXT_MAX
+    assert text.endswith("…")
+    assert testing._heatmap_step_text(steps, 1) == ""
+    assert testing._heatmap_step_text(steps, 5) == ""
+    assert testing._heatmap_step_text(steps, -1) == ""

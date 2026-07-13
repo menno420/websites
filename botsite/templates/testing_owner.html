@@ -199,7 +199,7 @@
         <span class="sb-hint">{{ t.claim_count }} drop-off(s)</span>
         {% for st in t.steps %}
         <span class="sb-mono" style="padding:2px 8px; border-radius:4px; border:1px solid rgba(214,69,49,0.35); background:rgba(214,69,49,{{ '%.2f'|format(0.7 * st.died_here / t.claim_count) }})"
-          title="step {{ st.step_index + 1 }}: {{ st.touched }} chat(s) touched it, {{ st.died_here }} died here">step {{ st.step_index + 1 }} · {{ st.touched }} touched · {{ st.died_here }} died</span>
+          title="step {{ st.step_index + 1 }}{% if st.step_text %} — {{ st.step_text }}{% endif %}: {{ st.touched }} chat(s) touched it, {{ st.died_here }} died here">step {{ st.step_index + 1 }} · {{ st.touched }} touched · {{ st.died_here }} died</span>
         {% endfor %}
       </div>
       {% endfor %}

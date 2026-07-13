@@ -1247,8 +1247,11 @@
   nothing aggregates guide-chat activity per step. Source:
   `.sessions/2026-07-13-owner-queue-dropoff.md` 💡.
 
-- **Step text labels on the drop-off heatmap** · `captured` (2026-07-13,
-  dropoff-heatmap session 💡) — the heatmap strip (PR #294) names steps by
+- **Step text labels on the drop-off heatmap** · `built` (2026-07-13,
+  PR #295 — `_owner_page` joins each heatmap cell's step_index against
+  the guided task's walkthrough step titles, truncated at 80 chars, and
+  the cell tooltip carries the text; unknown task / out-of-range index
+  keeps the bare number) — the heatmap strip (PR #294) names steps by
   number only; the guided tasks' walkthrough step texts already live in
   the tester-facing task data (`shaped_tasks()` / `task_by_id(...)` feed
   the guide with the step list), so joining `step_index` against the
@@ -1261,3 +1264,18 @@
   and heatmap bullets above (both now built) cover surfacing and
   aggregating; nothing joins step_index back to the walkthrough step
   text. Source: `.sessions/2026-07-13-dropoff-heatmap.md` 💡.
+
+- **Heatmap tail — render the walkthrough's full length, not just the
+  observed steps** · `captured` (2026-07-13, heatmap-step-labels session
+  💡) — `guided_step_dropoff()` densifies cells from 0 to the highest
+  step any drop-off's chat touched, so steps no tester ever reached are
+  invisible: dying at step 2 of a 6-step script renders the same strip
+  as dying at step 2 of 2. The script's real length is already in
+  `_owner_page` since the step-text join (`task_steps(task_by_id(...))`),
+  so padding the strip with zero cells out to `len(steps)` is a few
+  lines. Worth having because distance-to-finish is the severity signal
+  the strip currently hides — "died 4 steps from the end" and "died at
+  the last step" should not read the same. Deduped against this backlog:
+  the heatmap bullet (built) aggregates observed steps only, the
+  step-text bullet (built) covers labels; nothing covers the unreached
+  tail. Source: `.sessions/2026-07-13-heatmap-step-labels.md` 💡.
