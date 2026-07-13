@@ -1,7 +1,11 @@
 # 2026-07-13 — build-direct: wake-ritual open-work sweep doc step + drift guard
 
-> **Status:** `in-progress` — branch `claude/build-direct-0713`; flips to
-> `complete` + PR number as the deliberate LAST code step.
+> **Status:** `complete` — PR #315, branch `claude/build-direct-0713`; the
+> wake ritual's two paste-ready docs now carry the open-work sweep as a
+> required pre-rung step with `scripts/open_work.py`'s real states, and
+> `tests/test_wake_ritual_docs.py` reddens any PR that renames a
+> classifier state without updating the docs; lands via the enabler on
+> green `quality`.
 
 - **📊 Model:** Fable 5 · worker · order-slice (ORDER 027 item 8, build-direct)
 
