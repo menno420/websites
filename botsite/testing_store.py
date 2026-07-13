@@ -520,6 +520,73 @@ def guided_step_dropoff() -> list[dict[str, Any]]:
     return out
 
 
+def guided_finisher_hotspots() -> list[dict[str, Any]]:
+    """Per-task step aggregate over FINISHER chats on tasks with NO drop-offs.
+
+    The complement of ``guided_step_dropoff()``'s survival contrast: that
+    strip only renders tasks that HAVE drop-offs, so a task where every
+    tester finished but half of them asked the guide about one step surfaces
+    nothing — the "needs a hint" signal is invisible exactly where it's
+    purest. This aggregate covers the leftover tasks: at least one finisher
+    claim (a submission row EXISTS — same scope as the contrast side of the
+    drop-off strip) with guide-chat activity, and zero drop-off claims
+    (status 'claimed', no submission, ≥1 exchange — tasks with any drop-off
+    already show their finisher counts as contrast on the heatmap).
+
+    For each task and each step_index: ``finished`` counts finisher claims
+    whose chat has ≥1 exchange at that step (claims, not exchanges — same
+    counting rule as the heatmap). Steps run dense from 0 to the task's
+    highest observed step so gaps render as zeros; tasks are ordered by
+    task_id. ``finisher_count`` is the task's total of finisher claims with
+    any guide chat. No lethality here — nobody died; the counts alone are
+    the hotspot signal."""
+    with closing(_connect()) as conn:
+        finisher_rows = conn.execute(
+            "SELECT c.task_id, g.claim_id, g.step_index"
+            " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
+            " WHERE EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
+            " GROUP BY c.task_id, g.claim_id, g.step_index"
+        ).fetchall()
+        dropoff_tasks = {
+            r["task_id"]
+            for r in conn.execute(
+                "SELECT DISTINCT c.task_id"
+                " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
+                " WHERE c.status = 'claimed'"
+                " AND NOT EXISTS"
+                " (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
+            ).fetchall()
+        }
+    fin_by_claim: dict[tuple[str, int], set[int]] = {}
+    for r in finisher_rows:
+        if r["task_id"] in dropoff_tasks:
+            continue  # already on the drop-off strip as contrast
+        key = (r["task_id"], r["claim_id"])
+        fin_by_claim.setdefault(key, set()).add(int(r["step_index"]))
+    finishers_by_task: dict[str, list[set[int]]] = {}
+    for (task_id, _claim_id), steps in fin_by_claim.items():
+        finishers_by_task.setdefault(task_id, []).append(steps)
+    out: list[dict[str, Any]] = []
+    for task_id in sorted(finishers_by_task):
+        fin_steps = finishers_by_task[task_id]
+        top = max(max(steps) for steps in fin_steps)
+        steps_out = [
+            {
+                "step_index": idx,
+                "finished": sum(1 for s in fin_steps if idx in s),
+            }
+            for idx in range(top + 1)
+        ]
+        out.append(
+            {
+                "task_id": task_id,
+                "finisher_count": len(fin_steps),
+                "steps": steps_out,
+            }
+        )
+    return out
+
+
 # --- payout ledger ----------------------------------------------------------
 
 def add_ledger_entry(

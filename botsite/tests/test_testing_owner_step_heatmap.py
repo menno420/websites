@@ -14,7 +14,11 @@ out to the script's real length with hollow cells + an "of N steps"
 label; unknown tasks stay observed-only), and the survival contrast
 (per-step ``finished`` finisher counts + ``died_share`` lethality over
 ALL touchers — finishers' persisted chats fold into the same cells so
-"hard but passable" and "wall" stop rendering identically).
+"hard but passable" and "wall" stop rendering identically), and the
+finisher-question hotspots (``guided_finisher_hotspots()`` + its strip:
+tasks with ZERO drop-offs whose finishers still asked the guide surface
+per-step ``finished`` counts — no lethality, nobody died — under the
+heatmap; tasks with any drop-off stay on the heatmap side as contrast).
 Network-free, same fixture as the drop-offs suite. The
 no-auth 401 pin for /testing/owner already lives in
 ``test_testing.py::test_owner_401_on_missing_or_wrong_password``.
@@ -335,6 +339,107 @@ def test_heatmap_absent_when_only_finishers_chatted(client, monkeypatch):
     html = owner_page(client, monkeypatch)
     assert "No drop-offs" in html
     assert "Step heatmap" not in html
+
+
+# --- finisher-question hotspots (tasks with zero drop-offs) ---------------------
+
+def test_hotspots_surface_finisher_only_task(client):
+    # a task where EVERY tester finished never appears on the drop-off
+    # heatmap — the finisher-only aggregate surfaces its hint-heavy steps:
+    # f1 asks at 0,1,3 (two exchanges at 1 — still ONE claim), f2 at 1
+    f1 = make_claim("f1@example.com")
+    for step in (0, 1, 1, 3):
+        testing_store.add_guide_exchange(f1["id"], step, "hm?", "like so")
+    testing_store.create_submission(f1["id"], {"q": "a"}, "made it")
+    testing_store.set_claim_status(f1["id"], "submitted")
+    make_finisher("f2@example.com", [1])
+    assert testing_store.guided_step_dropoff() == []
+    rows = testing_store.guided_finisher_hotspots()
+    assert len(rows) == 1
+    task = rows[0]
+    assert task["task_id"] == GUIDED_TASK
+    assert task["finisher_count"] == 2
+    # dense 0..3 — step 2 renders as a zero cell even though nobody asked
+    assert task["steps"] == [
+        {"step_index": 0, "finished": 1},
+        {"step_index": 1, "finished": 2},
+        {"step_index": 2, "finished": 0},
+        {"step_index": 3, "finished": 1},
+    ]
+
+
+def test_hotspots_exclude_tasks_with_dropoffs_and_order_by_task_id(client):
+    # a task with ANY drop-off stays off the hotspot list — its finisher
+    # chats already fold into the heatmap above as contrast; the leftover
+    # finisher-only tasks list ordered by task_id
+    stuck = make_claim("stuck@example.com", task_id="walkthrough-mixed")
+    testing_store.add_guide_exchange(stuck["id"], 1, "lost", "go on")
+    make_finisher("m@example.com", [0], task_id="walkthrough-mixed")
+    make_finisher("z@example.com", [0], task_id="walkthrough-zeta")
+    make_finisher("a@example.com", [2], task_id="walkthrough-alpha")
+    rows = testing_store.guided_finisher_hotspots()
+    assert [t["task_id"] for t in rows] == [
+        "walkthrough-alpha", "walkthrough-zeta"
+    ]
+    # the mixed task keeps its finisher on the heatmap side instead
+    heatmap = testing_store.guided_step_dropoff()
+    assert [t["task_id"] for t in heatmap] == ["walkthrough-mixed"]
+    assert heatmap[0]["finisher_count"] == 1
+
+
+def test_hotspots_empty_without_finisher_chats(client):
+    # nothing at all → []; a chatless claim and a drop-off-only task add
+    # nothing either — finishers with chat are the only subject here
+    assert testing_store.guided_finisher_hotspots() == []
+    make_claim("silent@example.com")  # claimed, never chatted
+    stuck = make_claim("stuck@example.com", task_id="walkthrough-zeta")
+    testing_store.add_guide_exchange(stuck["id"], 0, "lost", "step one")
+    assert testing_store.guided_finisher_hotspots() == []
+
+
+def test_hotspots_strip_renders_without_any_dropoff(client, monkeypatch):
+    # the whole point: the owner page surfaces hint-needing steps even when
+    # the Drop-offs section is otherwise empty. GUIDED_TASK's walkthrough is
+    # 6 steps; two finishers asked at steps 0–1 → 2 observed cells with the
+    # step-text tooltip join, 4 padded zero cells, an "of 6 steps" label
+    make_finisher("f1@example.com", [0, 1])
+    make_finisher("f2@example.com", [1])
+    html = owner_page(client, monkeypatch)
+    assert "No drop-offs" in html
+    assert "Step heatmap" not in html
+    assert "Finisher question hotspots" in html
+    assert "2 finisher(s) chatted · no drop-offs · of 6 steps" in html
+    assert "step 1 · 1 asked" in html
+    assert "step 2 · 2 asked" in html
+    for n in (3, 4, 5, 6):
+        assert f"step {n} · 0 asked" in html
+    assert (
+        "step 2 — Features: 2 finisher(s) asked here and pushed through"
+        in html
+    )
+    assert "step 6 — Theme and phone width: no finisher asked here" in html
+
+
+def test_hotspots_absent_when_task_has_dropoffs(client, monkeypatch):
+    # rendering twin of the store exclusion: a task with drop-offs renders
+    # the heatmap (finisher folded in as contrast), never a hotspot row
+    stuck = make_claim("stuck@example.com")
+    testing_store.add_guide_exchange(stuck["id"], 1, "lost", "go on")
+    make_finisher("f1@example.com", [1])
+    html = owner_page(client, monkeypatch)
+    assert "Step heatmap" in html
+    assert "Finisher question hotspots" not in html
+
+
+def test_hotspots_unknown_task_keeps_observed_only_strip(client, monkeypatch):
+    # no catalog entry → empty step script: no padding, no "of N steps"
+    make_finisher("ghost@example.com", [1], task_id="walkthrough-unknown-task")
+    html = owner_page(client, monkeypatch)
+    assert "Finisher question hotspots" in html
+    assert "1 finisher(s) chatted · no drop-offs" in html
+    assert "· of " not in html
+    assert "step 2 · 1 asked" in html
+    assert 'title="step 2: 1 finisher(s) asked here and pushed through"' in html
 
 
 def test_heatmap_step_text_truncates_and_bounds():
