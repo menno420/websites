@@ -1,7 +1,6 @@
 # 2026-07-13 — review-site cold pass: fix findings ahead of EAP close (ORDER 022 item 5)
 
-> **Status:** `in-progress` — branch `claude/review-cold-pass`; flips to `complete`
-> + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/review-cold-pass`, PR #228.
 
 - **📊 Model:** Claude Fable 5 · worker · cold-pass review + fixes
 
