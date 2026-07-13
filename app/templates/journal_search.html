@@ -4,6 +4,8 @@
 {% block content %}
 <div class="card">
   <h2>search the journal</h2>
+  <p class="dim small">greps every repo's committed session logs, ledgers &amp; routers
+    at once — hits link to the in-app render and to GitHub.</p>
   <form class="searchbox" action="/journal/search" method="get" role="search">
     <input type="search" name="q" value="{{ s.q }}" placeholder="search all four repos' session logs, ledgers &amp; routers…" aria-label="search journal" autofocus>
     <button type="submit">search</button>

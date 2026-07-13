@@ -3,13 +3,23 @@
 {% block headright %}<a href="/journal/{{ j.repo }}?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
 <div class="card">
-  <h2>{{ j.repo }} <span class="dim small">· <a href="{{ j.github_url }}">github</a> ·
-      <a href="{{ j.github_url }}/commits/main">commit history</a></span></h2>
+  <h2>{{ j.repo }} journal — session logs, ledgers, PRs &amp; commits
+      <span class="dim small">· <a href="{{ j.github_url }}">github</a> ·
+      <a href="{{ j.github_url }}/commits/main">commit history</a></span>
+      <span class="refresh small"><a href="/journal">← back to all journals</a></span></h2>
+  <p class="dim small">this repo's committed session logs, doc ledgers &amp; routers,
+    recent pull requests and commits — read live from GitHub.</p>
   <p class="dim small">{{ j.note }}</p>
+  <p class="small jump">jump to:
+    {% if j.has_sessions %}<a class="b" href="#sessions">session logs</a>{% endif %}
+    {% if j.docs %}<a class="b" href="#docs">ledgers &amp; routers</a>{% endif %}
+    <a class="b" href="#prs">pull requests</a>
+    <a class="b" href="#commits">commits</a>
+  </p>
 </div>
 
 {% if j.has_sessions %}
-<div class="card">
+<div class="card" id="sessions">
   <h3>session logs (.sessions/) — newest first</h3>
   {% if j.sessions %}
   <table>
@@ -28,7 +38,7 @@
 {% endif %}
 
 {% if j.docs %}
-<div class="card">
+<div class="card" id="docs">
   <h3>ledgers &amp; routers</h3>
   <table>
     {% for d in j.docs %}
@@ -42,7 +52,7 @@
 </div>
 {% endif %}
 
-<div class="card">
+<div class="card" id="prs">
   <h3>recent pull requests</h3>
   {% if j.pulls %}
   <table>
@@ -61,7 +71,7 @@
   <p class="small"><a href="{{ j.github_url }}/pulls?q=is%3Apr">all PRs on GitHub ↗</a></p>
 </div>
 
-<div class="card">
+<div class="card" id="commits">
   <h3>recent commits (main)</h3>
   {% if j.commits %}
   <table>

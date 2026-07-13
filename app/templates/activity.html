@@ -25,6 +25,8 @@
 {% set feed_suffix = ('?repo=' ~ a.repo_filter) if a.repo_filter and not a.unknown_repo else '' %}
 <div class="card">
   <h2>cross-repo activity{% if a.repo_filter and not a.unknown_repo %} — {{ a.repo_filter }}{% endif %}</h2>
+  <p class="dim small">recent pull requests across every fleet repo, merged into one
+    reverse-chronological stream — filter by repo, subscribe by Atom.</p>
 
   <p class="small">
     <span class="b repo">{{ a['items']|length }} of {{ a.total }} shown</span>

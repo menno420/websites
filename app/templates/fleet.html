@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}fleet heartbeat{% endblock %}
-{% block headright %}<a href="/fleet?refresh=1">refresh now</a>{% endblock %}
+{% block headright %}<a href="/fleet.json">json</a> · <a href="/fleet?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
 {% include "_autorefresh.html" %}
 <div id="live-content">

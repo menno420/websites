@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}readiness board{% endblock %}
-{% block headright %}cache TTL {{ ttl }}s · <a href="/?refresh=1">refresh now</a>{% endblock %}
+{% block title %}control plane — overview{% endblock %}
+{% block headright %}cache TTL {{ ttl }}s · <a href="/api/readiness.json">json</a> · <a href="/?refresh=1">refresh now</a>{% endblock %}
 
 {% macro badge(state, text) -%}
 <span class="b {{ state }}">{{ text }}</span>

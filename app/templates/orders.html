@@ -29,7 +29,7 @@
     filter, search, or sort, the list renders flat exactly as asked. -#}
 {% set grouped = not o.filter.active and o.filter.sort == 'inbox' %}
 <div class="card">
-  <h2>fleet orders — every repo's inbox, cross-referenced with its heartbeat</h2>
+  <h2>fleet orders — every repo's inbox, open work on top</h2>
   <p class="small">
     <span class="b repo">{{ o.summary.repos }} repos</span>
     <a class="b {{ 'warn' if o.summary.open else 'ok' }}" href="/orders?state=open">{{ o.summary.open }} open</a>

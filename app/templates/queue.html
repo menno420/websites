@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}owner queue{% endblock %}
-{% block headright %}<a href="/owner/queue">🔒 act on these (owner)</a> · <a href="/queue?refresh=1">refresh now</a>{% endblock %}
+{% block headright %}<a href="/owner/queue">🔒 act on these (owner)</a> · <a href="/queue.json">json</a> · <a href="/queue?refresh=1">refresh now</a>{% endblock %}
 
 {#- One ask card, used by both the sectioned default view and the flat
     filtered view — one markup source, zero drift. -#}
