@@ -461,3 +461,41 @@ def test_lane_view_passes_head_through_and_page_renders_it():
     r = client.get("/fleet")
     assert "latest commit" in r.text
     assert "git transport, at bake time" in r.text
+
+
+# ---------------------------------------------------------------------------
+# 2026-07-13 cold pass F2: never OFFER a facet pill that matches nothing.
+# Real committed data — assertions derive counts from the mirror, never pin
+# bake values (today: 0 hub-disposition lanes, so "hub · 0" was offered).
+# ---------------------------------------------------------------------------
+def test_fleet_offers_no_zero_count_facet_pills():
+    res = fleetdata.load_fleet()
+    assert res["ok"], res["error"]
+    lanes = res["data"]["lanes"]
+    counts = {
+        v: sum(1 for ln in lanes if (ln.get("disposition") or "") == v)
+        for v in ("live", "hub", "registry-only", "archived")
+    }
+    html = client.get("/fleet").text
+    offered_nonzero = 0
+    for value, count in counts.items():
+        if count:
+            assert f">{value} · {count}</a>" in html  # nonzero: still offered
+            offered_nonzero += 1
+        else:
+            assert f">{value} · 0</a>" not in html  # zero-count: never offered
+    assert offered_nonzero  # the row itself did render
+
+
+def test_fleet_zero_count_facet_stays_removable_when_active():
+    """A deep link selecting a zero-count value (/fleet?disposition=hub with
+    today's mirror) must keep its 'on' pill and removable chip so the user
+    can always un-filter."""
+    res = fleetdata.load_fleet()
+    assert res["ok"], res["error"]
+    hub = sum(1 for ln in res["data"]["lanes"]
+              if (ln.get("disposition") or "") == "hub")
+    r = client.get("/fleet?disposition=hub")
+    assert r.status_code == 200
+    assert f">hub · {hub}</a>" in r.text  # selected option kept, even at 0
+    assert "disposition: hub ✕" in r.text  # removable chip
