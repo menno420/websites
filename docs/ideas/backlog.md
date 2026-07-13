@@ -866,3 +866,49 @@
   this backlog + the queue-state NEXT list: nothing touches the clarity bar
   or a header-idiom gate. Source:
   `.sessions/2026-07-13-clarity-control-plane.md` 💡.
+
+- **Code-consumed env names vs the committed inventories (the third
+  inventory is the code itself)** · `built` (2026-07-13, PR #227 — both
+  inventories now document every genuinely code-consumed name: botsite
+  gains its 12 undocumented names (`TESTING_AI_MODEL` /
+  `TESTING_AI_DAILY_CAP` / `TESTING_AI_GUIDE_CAP`, `SITE_PASSWORD`,
+  `TESTING_DB_PATH`, `TESTING_BOUNTY_CAP_USD`, the four
+  `TESTING_AUTOPAY_*`/`TESTING_PAYOUT_*` knobs, the `PAYPAL_*` credential
+  pair — names only), control-plane gains 5 (`ANTHROPIC_API_KEY`,
+  `OWNER_ASSIST_*`, `WRITEBACK_*`); the #225 pin grows a third leg in
+  `tests/test_inventory_consistency.py`: `botsite/testing_ai.py`'s consumed
+  names, read from its own `ENV_*` constants, must be ⊆ BOTH documented
+  sets, with an explicit justified allowlist + stale-entry check, plus a
+  completeness guard that every environ read in that file goes through an
+  `ENV_*` constant; backfilled here as a capture-miss repair — the #225
+  session's card carried this 💡 but never landed the bullet) — original
+  capture: `botsite/testing_ai.py` reads `TESTING_AI_MODEL`,
+  `TESTING_AI_DAILY_CAP`, and `TESTING_AI_GUIDE_CAP` (all optional,
+  defaulted in code), but neither `railway.SERVICES` nor the envhub
+  registry lists them for botsite — review's equivalents ARE documented, so
+  the omission is inconsistent, not a policy. Either document the three
+  names in both inventories, or grow the consistency pin a third leg:
+  assert every code-consumed name is documented (or explicitly allowlisted
+  as internal). Worth having because the #225 pin only proves the two
+  ledgers agree with each other — they can still agree on an incomplete
+  picture, and the incompleteness found that day was found by accident.
+  Source: `.sessions/2026-07-13-inventory-consistency-pin.md` 💡.
+
+- **Generalize the code-vs-inventory leg to every service module** ·
+  `captured` (2026-07-13, testing-ai-inventory session 💡) — the PR #227
+  pin covers ONE file (`botsite/testing_ai.py`, the module with importable
+  `ENV_*` constants throughout); the other 14 undocumented names that
+  session fixed were found by hand-grepping `os.environ` across
+  `botsite/testing*.py`, `app/owner_assist.py` and `app/writeback.py`. A
+  per-service scan (module `ENV_*` constants where they exist + a
+  literal-string regex over each service package) asserting every
+  code-consumed name is documented in both inventories or explicitly
+  allowlisted (platform-injected `GIT_SHA`/`RAILWAY_GIT_COMMIT_SHA`,
+  gen-script build-time reads) would make the next
+  `testing_payouts.py`-style knob impossible to ship undocumented. Worth
+  having because that session's completeness was restored by a one-off
+  manual grep — the shipped pin only holds for the one module it watches.
+  Deduped against this backlog + the queue-state NEXT list: the bullet
+  above (built) covers `testing_ai.py` only; nothing covers a repo-wide
+  code-consumption scan. Source:
+  `.sessions/2026-07-13-testing-ai-inventory.md` 💡.

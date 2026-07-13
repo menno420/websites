@@ -21,7 +21,8 @@
       </div>
       {% if feature.is_game %}<span class="sb-badge sb-badge-flag sb-right">{{ icon("gamepad", 11) }} game</span>{% endif %}
     </div>
-    <p class="tagline">{{ feature.description }}</p>
+    <p class="tagline">One of SuperBot's {{ counts.features }} feature areas — what it does{% if area_commands %} and the {{ area_commands|length }} command{{ 's' if area_commands|length != 1 }} it ships{% endif %}, straight from the bot's own registry.</p>
+    <p class="tagline" style="margin-top:6px">{{ feature.description }}</p>
     {% if feature.tags %}
     <div class="tags">
       {% for t in feature.tags %}<span class="sb-chip">{{ t }}</span>{% endfor %}

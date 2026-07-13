@@ -203,6 +203,16 @@ def test_aliases_taken_map_embedded(client):
     assert "taken-map" in r.text  # collision map embedded for the client checker
 
 
+def test_nav_includes_console_and_aliases(client):
+    """Clarity: /console and /aliases are discoverable from the primary nav.
+    The aria-current marker proves they are real NAV entries, not drawer extras."""
+    r = client.get("/")
+    assert 'class="sb-nav-link" href="/aliases"' in r.text
+    assert 'class="sb-nav-link" href="/console"' in r.text
+    assert 'href="/aliases" aria-current="page"' in client.get("/aliases").text
+    assert 'href="/console" aria-current="page"' in client.get("/console").text
+
+
 # --- the control panel: DRY-RUN management UX (consciously updated from the
 # --- four-inert-cards stub — the honest labels are pinned here) ------------
 def test_admin_is_honestly_labeled_dry_run(client):
@@ -362,6 +372,16 @@ def test_admin_login_page_is_honest(client):
 
 def test_unknown_settings_domain_404(client):
     assert client.get("/admin/settings/not-a-domain").status_code == 404
+
+
+def test_settings_domain_lede_says_what_it_does(client):
+    """Clarity: the domain page says what you can DO here — browse typed keys and
+    stage a dry-run change — on top of the schema-fed purpose line."""
+    r = client.get("/admin/settings/economy")
+    assert r.status_code == 200
+    assert "Economy settings." in r.text  # the domain purpose stays
+    assert "Browse each key" in r.text
+    assert "nothing is ever written to the bot" in r.text
 
 
 # --- honest degradation --------------------------------------------------

@@ -26,12 +26,14 @@ allowlist entry (exempting a variable that is no longer one-sided) fails
 too, so exemptions cannot outlive their reason. No silent exemptions.
 """
 
+import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import envhub, railway  # noqa: E402
+from botsite import testing_ai  # noqa: E402
 
 # The envhub registry group that mirrors railway.SERVICES. The registry's
 # other groups (reliable-grace, superbot-mineverse, github-actions,
@@ -110,6 +112,94 @@ def test_urls_match_per_service():
             f"{name}: URL drifted — registry says {reg[name]['url']!r}, "
             f"railway.SERVICES says {svc[name]['url']!r}"
         )
+
+
+# --------------------------------------------------------------------------
+# Third leg (this PR): code-vs-inventory — the code is the THIRD inventory.
+# The two committed ledgers can agree with each other on an INCOMPLETE
+# picture (proven 2026-07-13: botsite/testing_ai.py consumed TESTING_AI_MODEL
+# / TESTING_AI_DAILY_CAP / TESTING_AI_GUIDE_CAP and neither ledger listed
+# them). This leg pins botsite/testing_ai.py's consumed env NAMES ⊆ both
+# documented sets, reading the module's own ENV_* constants — never values.
+# --------------------------------------------------------------------------
+
+# Env names consumed by botsite/testing_ai.py that are DELIBERATELY absent
+# from the committed inventories. Every entry MUST carry a comment saying
+# why the omission is legitimate. Currently empty: all four names the module
+# consumes are owner-relevant knobs and are documented in both ledgers.
+TESTING_AI_ALLOWED_UNDOCUMENTED: set[str] = set()
+
+
+def _testing_ai_consumed_names() -> set[str]:
+    """The env NAMES botsite/testing_ai.py consumes — from the module's own
+    ENV_* constants (its declared env-name registry), not source scraping."""
+    return {
+        value
+        for key, value in vars(testing_ai).items()
+        if key.startswith("ENV_") and isinstance(value, str)
+    }
+
+
+def test_testing_ai_reads_env_only_via_declared_constants():
+    """Completeness guard for the constant scan: every environ read in
+    botsite/testing_ai.py must go through an ENV_* module constant, so a
+    future literal-string read cannot dodge the code-vs-inventory pin."""
+    source = (
+        Path(__file__).resolve().parents[1] / "botsite" / "testing_ai.py"
+    ).read_text(encoding="utf-8")
+    reads = re.findall(r"os\.(?:environ\.get|getenv)\(\s*([^),\s]+)", source)
+    assert reads, "botsite/testing_ai.py no longer reads env vars — retire this pin"
+    offenders = [arg for arg in reads if not arg.startswith("ENV_")]
+    assert not offenders, (
+        "botsite/testing_ai.py reads the environment without an ENV_* "
+        f"constant: {offenders} — declare the name as a module-level ENV_* "
+        "constant so the code-vs-inventory pin sees it"
+    )
+
+
+def test_testing_ai_consumed_names_documented_in_both_inventories():
+    """Every env name botsite/testing_ai.py consumes is documented for the
+    botsite service in BOTH committed inventories (minus the explicit
+    allowlist of deliberate omissions)."""
+    consumed = _testing_ai_consumed_names() - TESTING_AI_ALLOWED_UNDOCUMENTED
+    reg_names = set(_registry_surfaces()["botsite"]["variable_names"])
+    svc_names = {v["name"] for v in _services()["botsite"]["env_vars"]}
+    missing_reg = sorted(consumed - reg_names)
+    missing_svc = sorted(consumed - svc_names)
+    problems: list[str] = []
+    if missing_reg:
+        problems.append(
+            f"consumed by botsite/testing_ai.py but missing from "
+            f"app/data/environments.json (botsite surface): {missing_reg}"
+        )
+    if missing_svc:
+        problems.append(
+            f"consumed by botsite/testing_ai.py but missing from "
+            f"app/railway.py SERVICES (botsite entry): {missing_svc}"
+        )
+    assert not problems, (
+        "code-vs-inventory drift — document the name in both inventories "
+        "(names + purpose + manage link ONLY, never a value), or allowlist "
+        "it in TESTING_AI_ALLOWED_UNDOCUMENTED with a justification:\n"
+        + "\n".join(problems)
+    )
+
+
+def test_testing_ai_allowlist_carries_no_stale_entries():
+    """An allowlist entry for a name the module no longer consumes — or one
+    that is now documented anyway — would silently mask the next drift."""
+    consumed = _testing_ai_consumed_names()
+    reg_names = set(_registry_surfaces()["botsite"]["variable_names"])
+    svc_names = {v["name"] for v in _services()["botsite"]["env_vars"]}
+    stale = [
+        name
+        for name in sorted(TESTING_AI_ALLOWED_UNDOCUMENTED)
+        if name not in consumed or (name in reg_names and name in svc_names)
+    ]
+    assert not stale, (
+        "stale TESTING_AI_ALLOWED_UNDOCUMENTED entries (remove them): "
+        f"{stale}"
+    )
 
 
 def test_allowlists_carry_no_stale_entries():

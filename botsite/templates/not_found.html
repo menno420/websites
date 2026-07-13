@@ -6,7 +6,7 @@
 <div class="wrap">
   <div class="sb-empty section" style="padding:80px 16px">
     <span class="ico">{{ icon("search", 22) }}</span>
-    <h4>Page not found</h4>
+    <h1 style="font-size:var(--sb-text-2xl); font-weight:800; letter-spacing:var(--sb-track-tight); color:var(--sb-ink-2); margin-bottom:6px">Page not found</h1>
     <p>{% if key %}No {{ what or 'feature' }} named <code>{{ key }}</code>.{% else %}That page doesn't exist.{% endif %}</p>
     <div class="act"><a class="sb-btn sb-btn-ghost sb-btn-sm" href="/">{{ icon("back", 15) }} Back home</a></div>
   </div>

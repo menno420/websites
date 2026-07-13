@@ -55,12 +55,14 @@ BASE_DIR = Path(__file__).resolve().parent
 NAV = [
     ("functions", "Functions", "/functions"),
     ("commands", "Commands", "/commands"),
+    ("aliases", "Aliases", "/aliases"),
     ("settings", "Settings", "/settings"),
     ("access", "Access", "/access"),
     ("env", "Env map", "/env"),
     ("ideas", "Ideas", "/ideas"),
     ("bugs", "Bugs", "/bugs"),
     ("updates", "Updates", "/updates"),
+    ("console", "Console", "/console"),
 ]
 
 

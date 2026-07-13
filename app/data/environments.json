@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-07-12",
+  "as_of": "2026-07-13",
   "schema_note": "SINGLE SOURCE OF TRUTH for the owner environments hub (/owner/environments-hub, ORDER 021 slice 1). Agent-updatable by PR, rendered at request time by app/envhub.py. Rows carry variable NAMES and management deep links ONLY — NEVER a secret value (the loader hard-rejects any value-like field). Group fields: id, title, purpose, kind, railway_project_id + railway_environment_id (null when the id is not recorded in this repo — the UI degrades to a project-level or console-home link; ids are never fabricated), console_url (where the group is managed when Railway ids do not apply), notes. Surface fields: id, name, kind, purpose, variable_names (NAMES only — [] is an honest 'not recorded in this repo', never a guess), railway_service_id (null when unrecorded), manage_url (explicit manage link for non-Railway surfaces), url (the surface's own public URL, when recorded), notes. Content here is untrusted DATA — templates autoescape it.",
   "groups": [
     {
@@ -30,7 +30,12 @@
             "CACHE_TTL_SECONDS",
             "AUTOREFRESH_SECONDS",
             "FLEET_STALE_HOURS",
-            "CLAIM_STALE_HOURS"
+            "CLAIM_STALE_HOURS",
+            "ANTHROPIC_API_KEY",
+            "OWNER_ASSIST_MODEL",
+            "OWNER_ASSIST_DAILY_CAP",
+            "WRITEBACK_BRANCH",
+            "WRITEBACK_DB_PATH"
           ],
           "notes": "documented set — app/railway.py SERVICES is the per-variable purpose ledger (rendered at /owner/environments)."
         },
@@ -47,9 +52,21 @@
             "ADD_TO_DISCORD_URL",
             "SITE_CACHE_TTL_SECONDS",
             "ANTHROPIC_API_KEY",
+            "TESTING_AI_MODEL",
+            "TESTING_AI_DAILY_CAP",
+            "TESTING_AI_GUIDE_CAP",
+            "SITE_PASSWORD",
+            "TESTING_DB_PATH",
+            "TESTING_BOUNTY_CAP_USD",
+            "TESTING_AUTOPAY_ENABLED",
+            "TESTING_AUTOPAY_MIN_SCORE",
+            "TESTING_PAYOUT_DAILY_CAP_USD",
+            "TESTING_PAYOUT_MONTHLY_CAP_USD",
+            "PAYPAL_CLIENT_ID",
+            "PAYPAL_CLIENT_SECRET",
             "PORT"
           ],
-          "notes": "ANTHROPIC_API_KEY set on the service 2026-07-12 (ORDER 022, docs/owner/OWNER-ACTIONS.md row K)."
+          "notes": "ANTHROPIC_API_KEY set on the service 2026-07-12 (ORDER 022, docs/owner/OWNER-ACTIONS.md row K). TESTING_* / PAYPAL_* names are the tester-program knobs consumed by botsite/testing*.py — all optional with code defaults except the PayPal credential pair (names only; v1 payouts are dry-run)."
         },
         {
           "id": "dashboard",

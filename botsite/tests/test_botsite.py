@@ -134,6 +134,15 @@ def test_command_detail_renders_real_fields(client):
     assert "Daily streak bonus idea" in r.text  # linked idea surfaced
 
 
+def test_command_detail_states_discord_context(client):
+    """Clarity: the page says up front these are Discord chat commands."""
+    r = client.get("/commands/daily")
+    assert r.status_code == 200
+    assert "A SuperBot chat command" in r.text
+    assert "default prefix" in r.text
+    assert "Daily reward." in r.text  # the per-command description stays
+
+
 def test_command_detail_url_safe_name(client):
     # ``+prize`` must resolve via its percent-encoded path
     r = client.get("/commands/%2Bprize")
@@ -146,6 +155,14 @@ def test_command_detail_unknown_404(client):
     assert r.status_code == 404
     assert "not found" in r.text.lower()
     assert "does-not-exist" in r.text
+
+
+def test_not_found_page_has_real_h1(client):
+    """Clarity: the 404 page carries an h1-level heading, not just a card h4."""
+    r = client.get("/commands/does-not-exist")
+    assert r.status_code == 404
+    assert ">Page not found</h1>" in r.text
+    assert "Back home" in r.text  # the escape hatch stays
 
 
 def test_command_detail_omits_absent_fields(client):
@@ -193,6 +210,16 @@ def test_feature_detail_ok_and_404(client):
     r = client.get("/features/nope-nope")
     assert r.status_code == 404
     assert "not found" in r.text.lower()
+
+
+def test_feature_detail_framing_lede(client):
+    """Clarity: /features/{key} frames itself as one of SuperBot's feature areas,
+    with the real command count, while the fragment descriptor stays."""
+    r = client.get("/features/economy")
+    assert r.status_code == 200
+    assert "One of SuperBot's 2 feature areas" in r.text  # counts.features
+    assert "the 2 commands it ships" in r.text  # daily + +prize
+    assert "Coins, shop, and daily rewards." in r.text  # existing descriptor stays
 
 
 def test_games_only_games(client):
