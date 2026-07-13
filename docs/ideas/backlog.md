@@ -1067,3 +1067,17 @@
   Deduped against this backlog (no briefing/outbox bullet) and against
   `app/briefing.py` at HEAD. Source:
   `.sessions/2026-07-13-coordinator-sitting.md` 💡.
+
+- **Structural no-bare-numeric-env-parse gate — make the int("") class
+  unshippable, not just fixed** · `captured` (2026-07-13, env-hardening
+  session 💡) — a small static test scanning app/, botsite/, dashboard/,
+  review/ (excluding bootstrap.py/.substrate) and failing on any
+  MODULE-LEVEL `int(`/`float(` wrapped directly around
+  `os.environ`/`os.getenv` that doesn't go through an `_env_int`-style
+  guard (PR #282 introduced one per affected module). Worth having because
+  PR #282 fixed six sites by hand, but nothing stops the seventh — the
+  same discipline-vs-structure gap the clarity gate (PR #241) closed for
+  page headers. Deduped against this backlog + the queue-state NEXT list:
+  the code-vs-inventory bullets (#227 and its per-service generalization)
+  check env-var NAME documentation completeness, never parse safety.
+  Source: `.sessions/2026-07-13-env-hardening.md` 💡.

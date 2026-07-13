@@ -124,11 +124,11 @@ never passed; no destructive mutation was ever issued. Same guardrails as
 
 | Var | Set? | Notes |
 |---|---|---|
-| `SITE_PASSWORD` | left set but **unused** | The Basic-auth gate was removed (2026-07-09 auth-drop decision); the app no longer reads this. Left set in Railway is harmless and reversible. |
+| `SITE_PASSWORD` | left set but **unused** | The Basic-auth gate was removed (2026-07-09 auth-drop decision); the app no longer reads this — `rg SITE_PASSWORD dashboard/` matches nothing. Its continued live presence was re-confirmed by the ORDER 026 names-only read (2026-07-13, the "undocumented drift" lead in `docs/owner/OWNER-ACTIONS.md` row K — this row is its documentation). Left set in Railway is harmless and reversible. |
 | `PORT` | injected by Railway | Do not set manually. |
 | `DASHBOARD_JSON_URL` | not set (default superbot@main) | Optional override of the oversight feed. |
 | `CONSOLE_JSON_URL` | not set (default superbot@main) | Optional override of the console feed. |
-| `DATA_CACHE_TTL_SECONDS` | not set (default 180) | Optional feed cache TTL. |
+| `DATA_CACHE_TTL_SECONDS` | not set (default 180) | Optional feed cache TTL. Empty/malformed values fall back to the default at import (`_env_int`, 2026-07-13 hardening) — an empty Railway entry can no longer crash the service. |
 
 This service deliberately carries **no** bot control credential — no control-API token, no
 Discord OAuth secret. Those are what the control-panel stub is a stub *about*.
