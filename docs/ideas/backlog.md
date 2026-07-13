@@ -1099,3 +1099,19 @@
   (PR #282) pass. Self-tests seed a violation fixture and prove the
   scanner catches it without touching real service modules. Source:
   `.sessions/2026-07-13-env-hardening.md` 💡.
+
+- **Self-deriving poison list — pin the hostile-env smoke's ENV_VARS
+  against a live source sweep** · `captured` (2026-07-13, hostile-env-smoke
+  session 💡) — `tests/test_hostile_env_smoke.py` (PR #287) poisons a
+  hand-collected 38-name literal; a companion assertion (AST or regex sweep
+  of `os.environ`/`os.getenv`/`ENV_* =` over app/, botsite/, dashboard/,
+  review/ at test time, same exclusions as the smoke) failing when source
+  reads a name the list misses would make the poison
+  self-updating-or-loud. Worth having because a new env-var read added
+  after PR #287 is silently unpoisoned — the exact rot class the smoke
+  exists to close, reopened one variable at a time. Deduped against this
+  backlog: the code-vs-inventory bullets (#227 and its per-service
+  generalization) check env-var NAME *documentation* completeness against
+  docs tables, never the smoke's poison list; the env-guard gate covers
+  only bare `int()`/`float()` casts. Source:
+  `.sessions/2026-07-13-hostile-env-smoke.md` 💡.
