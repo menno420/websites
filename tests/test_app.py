@@ -955,7 +955,13 @@ def test_ideas_no_ideas_dir_is_absence_not_error(monkeypatch):
 
 
 def test_ideas_listing_error_surfaces(monkeypatch):
-    """A non-404 listing failure surfaces as an honest listing_error banner."""
+    """A non-404 listing failure surfaces as an honest listing_error banner.
+
+    Token PINNED set: this asserts the token-set rung of the ladder — the
+    bare fetch reason, verbatim. (Unpinned, this test passed on BOTH rungs:
+    the token-unset composed text also contains the substring — #250's 💡.)
+    The token-unset rung is pinned distinctly by the
+    ``names_missing_token`` test below."""
 
     async def fake_repo_api(repo, subpath="", refresh=False):
         return {"ok": False, "status": 403, "data": None, "error": "rate limited",
@@ -963,11 +969,12 @@ def test_ideas_listing_error_surfaces(monkeypatch):
 
     async def run():
         monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
         return await ideas.repo_ideas("superbot")
 
     out = asyncio.run(run())
     assert out["missing"] is False and out["has_dir"] is False
-    assert out["listing_error"] and "rate limited" in out["listing_error"]
+    assert out["listing_error"] == "rate limited"
 
 
 def test_ideas_listing_error_names_missing_token(monkeypatch):
