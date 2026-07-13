@@ -864,7 +864,7 @@
   gate/checker for model-line shape. Source:
   `.sessions/2026-07-13-model-line-hygiene.md` 💡.
 
-- **Structural clarity-bar gate** · `built` (2026-07-13, PR #NNN — landed
+- **Structural clarity-bar gate** · `built` (2026-07-13, PR #241 — landed
   across ALL FOUR services, not just the control-plane: one route-walking
   `test_clarity_structure.py` per service in tests/, botsite/tests/,
   dashboard/tests/, review/tests/, each asserting its own header idiom (h2 +
