@@ -32,6 +32,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import arcade as arcade_registry
+from . import catalog as catalog_registry
 from . import data_source as ds
 from . import products as products_registry
 from . import listfilter
@@ -223,8 +224,36 @@ async def products(request: Request):
     GET-only, no payment handling — buy links go out to Gumroad."""
     res = await ds.fetch_site(refresh=_refresh(request))
     ctx = _base_ctx(request, "products", res)
-    ctx.update({"products": products_registry.load_products()})
+    ctx.update(
+        {
+            "products": products_registry.load_products(),
+            "catalog_count": len(catalog_registry.load_catalog()),
+        }
+    )
     return templates.TemplateResponse(request, "products.html", ctx)
+
+
+@app.get("/products/catalog", response_class=HTMLResponse)
+async def products_catalog(request: Request):
+    """Vetting catalog — the FULL venture-lab publishing pipeline (ORDER 022
+    item 4, venture WEBSITE-IDEA intake). Where /products is the 4-item
+    store, this subpage curates all 22 vetting packets + the derived
+    OWNER-QUEUE into honest per-title states (live / publish-ready /
+    hard-gated / parked). Data is the committed ``botsite/data/catalog.json``
+    read from disk at request time — no network; cross-repo data arrives
+    only as committed JSON. A buy link renders only for an entry that is
+    really purchasable (live on Gumroad with a URL). GET-only, no payment
+    handling — sales happen on Gumroad."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "products", res)
+    entries = catalog_registry.load_catalog()
+    ctx.update(
+        {
+            "catalog": entries,
+            "catalog_groups": catalog_registry.group_by_status(entries),
+        }
+    )
+    return templates.TemplateResponse(request, "catalog.html", ctx)
 
 
 @app.get("/changelog", response_class=HTMLResponse)

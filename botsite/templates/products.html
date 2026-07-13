@@ -45,5 +45,13 @@
   <div class="sb-empty section"><span class="ico">{{ icon("coins", 20) }}</span><h4>No products registered yet</h4>
     <p>The product registry is empty or unavailable right now. Nothing is faked here.</p></div>
   {% endif %}
+
+  {% if catalog_count %}
+  <section class="section-sm">
+    <p class="sb-muted">This store lists what is for sale (or about to be). The whole venture
+      publishing pipeline — books and products in every honest state — lives on the
+      <a href="/products/catalog">full vetting catalog — {{ catalog_count }} titles &amp; products</a>.</p>
+  </section>
+  {% endif %}
 </div>
 {% endblock %}
