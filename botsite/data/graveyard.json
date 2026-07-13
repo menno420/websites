@@ -1,26 +1,26 @@
 {
- "as_of": "2026-07-13T06:47:16Z",
+ "as_of": "2026-07-13T10:28:43Z",
  "source": "https://github.com/menno420/trading-strategy/blob/main/experiments/index.jsonl",
- "source_sha": "de5a477ee38c0793f3e44b339231f837f4d2e895",
+ "source_sha": "d5597457b10fb42ae646ccb2c8fc61690671d52a",
  "source_sha_reason": "",
  "verdict_rule": "derived at bake time from the ledger's own fields \u2014 KEEP (dev-candidate only) when a run's stitched-OOS Sharpe beats its same-window buy-and-hold benchmark, KILL otherwise; PROMOTED requires the lab's closed validation protocol (holdout spent) and is 0 by the program's own record",
  "aggregate": {
-  "runs": 551,
-  "config_evals": 7771,
+  "runs": 566,
+  "config_evals": 7846,
   "skipped_ledger_lines": 0,
   "verdicts": {
    "promoted": 0,
-   "keep": 190,
-   "kill": 361
+   "keep": 191,
+   "kill": 375
   },
-  "strategies": 24,
+  "strategies": 25,
   "instruments": 17,
   "timeframes": [
    "daily",
    "hourly"
   ],
   "best_sharpe": 2.332,
-  "median_sharpe": 0.724,
+  "median_sharpe": 0.719,
   "worst_sharpe": -1.243,
   "holdout_unlocked_runs": 13,
   "data_start": "1980-12-12 00:00:00",
@@ -652,6 +652,16 @@
    "best_sharpe": 1.276,
    "best_cagr": 0.365,
    "worst_max_drawdown": -0.445
+  },
+  {
+   "strategy": "weekday_long",
+   "runs": 15,
+   "config_evals": 75,
+   "keep": 1,
+   "kill": 14,
+   "best_sharpe": 1.075,
+   "best_cagr": 0.186,
+   "worst_max_drawdown": -0.685
   },
   {
    "strategy": "buy_and_hold",
