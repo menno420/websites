@@ -1266,8 +1266,13 @@
   text. Source: `.sessions/2026-07-13-dropoff-heatmap.md` 💡.
 
 - **Heatmap tail — render the walkthrough's full length, not just the
-  observed steps** · `captured` (2026-07-13, heatmap-step-labels session
-  💡) — `guided_step_dropoff()` densifies cells from 0 to the highest
+  observed steps** · `built` (2026-07-13, PR #296 — `_owner_page` pads
+  each task's heatmap cells with zero-count `reached: False` entries out
+  to `len(step_script)` after the step-text join; the template renders
+  never-reached cells hollow with a "never reached" tooltip plus an
+  "of N steps" label; the store aggregate stays observed-data-only,
+  unknown tasks keep the observed-only strip) — original capture:
+  `guided_step_dropoff()` densifies cells from 0 to the highest
   step any drop-off's chat touched, so steps no tester ever reached are
   invisible: dying at step 2 of a 6-step script renders the same strip
   as dying at step 2 of 2. The script's real length is already in
@@ -1279,3 +1284,24 @@
   the heatmap bullet (built) aggregates observed steps only, the
   step-text bullet (built) covers labels; nothing covers the unreached
   tail. Source: `.sessions/2026-07-13-heatmap-step-labels.md` 💡.
+
+- **Heatmap survival contrast — fold finishers' guide chats into the
+  strip** · `captured` (2026-07-13, heatmap-tail session 💡) — the
+  drop-off heatmap aggregates ONLY abandoned claims
+  (`guided_step_dropoff()` scopes to status='claimed' with no submission
+  row), so a step where ten finishers also chatted heavily but pushed
+  through renders identically to one where every toucher died: the strip
+  can't distinguish "hard but passable" from "wall". The finished
+  claims' guide exchanges are already persisted (PR #292 stores them
+  regardless of outcome; the heatmap scope merely excludes them), so a
+  per-step survivor count ("N finishers also asked here") joined into
+  the same cells — or a shading that scales by died-share among ALL
+  touchers, not just drop-offs — would rank rewrite urgency by lethality
+  rather than raw death count. Worth having because a step everyone
+  asks about but everyone passes needs a hint, while a step half its
+  touchers die on needs a rewrite — today both read the same. Deduped
+  against this backlog: the drop-off, heatmap, step-text, and tail
+  bullets (all built) aggregate abandoned claims only; the transcript
+  bullet covers submissions' transcripts per claim, not per-step
+  aggregates; nothing folds finished claims' guide activity into the
+  step strip. Source: `.sessions/2026-07-13-heatmap-tail.md` 💡.
