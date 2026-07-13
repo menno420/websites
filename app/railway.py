@@ -115,6 +115,7 @@ SERVICES: list[dict[str, Any]] = [
             _var("SITE_JSON_URL", "committed site.json content source (raw.githubusercontent)"),
             _var("ADD_TO_DISCORD_URL", "the bot's OAuth invite link"),
             _var("SITE_CACHE_TTL_SECONDS", "content cache TTL (default 180)"),
+            _var("ANTHROPIC_API_KEY", "Claude API key for the tester-program AI exit review (botsite/testing_ai.py; set on the service 2026-07-12, ORDER 022 — docs/owner/OWNER-ACTIONS.md row K)"),
             _var("PORT", "bind port (Railway injects it)"),
         ],
     },
