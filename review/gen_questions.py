@@ -12,7 +12,10 @@ issue whose TITLE contains ``[program-review]`` (case-insensitive) is a
 reviewer question. PR objects (the issues API interleaves them, marked by a
 ``pull_request`` key) are excluded. Each match maps to a ledger record —
 ``asked`` (created_at date), ``title``, ``url``, ``status`` (open/closed),
-plus ``closed_at`` (the issue's own timestamp) only while closed.
+``asked_at`` (the full created_at timestamp — same field, full precision,
+so the /questions latency stat can resolve sub-day turnarounds while
+``asked`` stays the table's display date), plus ``closed_at`` (the issue's
+own timestamp) only while closed.
 
 Merge, keyed by issue url, into the COMMITTED file — never a rebuild:
 
@@ -117,6 +120,11 @@ def issue_record(issue: dict[str, Any]) -> dict[str, Any]:
         "url": str(issue.get("html_url") or ""),
         "status": "closed" if str(issue.get("state") or "open") == "closed" else "open",
     }
+    if created:
+        # the SAME created_at, full precision — ``asked`` stays the table's
+        # display date; ``asked_at`` gives the latency stat sub-day
+        # resolution. Never fabricated from an empty payload field.
+        rec["asked_at"] = created
     closed_at = str(issue.get("closed_at") or "")
     if rec["status"] == "closed" and closed_at:
         # same REST response, one more field — the answer-debt clock starts

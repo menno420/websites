@@ -72,10 +72,35 @@ def test_record_maps_title_url_asked_date_and_open_status():
         "title": "[program-review] How does the merge gate work?",
         "url": "https://github.com/menno420/websites/issues/301",
         "status": "open",
+        "asked_at": "2026-07-12T09:30:00Z",
     }
     # the emitted record satisfies the /questions filter semantics as-is
     assert story.question_status(rec) == "open"
     assert story.question_answer_state(rec) == "pending"
+
+
+def test_record_stamps_full_asked_at_alongside_the_display_date():
+    rec = gen_questions.issue_record(_issue())
+    # SAME created_at, both precisions: ``asked`` for the table,
+    # ``asked_at`` for the latency stat's sub-day resolution
+    assert rec["asked"] == "2026-07-12"
+    assert rec["asked_at"] == "2026-07-12T09:30:00Z"
+    # never fabricated when the payload lacks the timestamp
+    assert "asked_at" not in gen_questions.issue_record(_issue(created_at=None))
+    assert "asked_at" not in gen_questions.issue_record(_issue(created_at=""))
+
+
+def test_merge_never_backfills_asked_at_onto_existing_records():
+    # committed pre-``asked_at`` records stay byte-identical through the
+    # merge — the bake only owns status + closed_at on existing records
+    existing = [{
+        "asked": "2026-07-12",
+        "title": "[program-review] How does the merge gate work?",
+        "url": "https://github.com/menno420/websites/issues/301",
+        "status": "open",
+    }]
+    merged = gen_questions.merge_questions(existing, [_issue()])
+    assert merged == existing
 
 
 def test_closed_issue_state_maps_to_closed_status():

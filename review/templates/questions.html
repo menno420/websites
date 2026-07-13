@@ -30,7 +30,7 @@
     {% if q_latency %}
     <p class="sb-muted">
       <strong>{{ q_latency.count }} answered question{{ "s" if q_latency.count != 1 }}</strong> resolved in a median of
-      <strong>{{ q_latency.median_days }} day{{ "s" if q_latency.median_days != 1 }}</strong>
+      <strong>{{ q_latency.median_label }}</strong>
       (asked → closed, from the ledger's baked timestamps).
     </p>
     {% endif %}

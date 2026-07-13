@@ -855,26 +855,69 @@ def answer_debt(
     return nag
 
 
-def answer_latency_days(q: dict[str, Any]) -> int | None:
-    """Whole days from a record's ``asked`` date to its bake-stamped
-    ``closed_at``, UTC — the question's real resolution time.
+def answer_latency_days(q: dict[str, Any]) -> int | float | None:
+    """Days from a record's asked stamp to its bake-stamped ``closed_at``,
+    UTC — the question's real resolution time.
 
-    ``None`` when either timestamp is missing or unparseable — committed
-    ledgers baked before the stamp existed (and hand-mangled fields) are
-    ignored, never guessed. Clamped at 0 so a same-day answer (or clock
-    skew between the two stamps) never reads negative."""
-    raw_asked = str(q.get("asked") or "").strip()
+    Prefers the full-precision ``asked_at`` timestamp when it parses
+    (fractional days, so a same-day answer resolves to real hours instead
+    of flooring to 0; int when whole) and falls back to the date-precision
+    ``asked`` (whole days, exactly the pre-``asked_at`` arithmetic) so
+    committed ledgers baked before the stamp existed compute unchanged.
+    ``None`` when the timestamps are missing or unparseable — old records
+    and hand-mangled fields are ignored, never guessed. Clamped at 0 so
+    clock skew between the two stamps never reads negative."""
     raw_closed = str(q.get("closed_at") or "").strip()
-    if not raw_asked or not raw_closed:
+    if not raw_closed:
         return None
     try:
-        asked = dt.date.fromisoformat(raw_asked)
         closed = dt.datetime.fromisoformat(raw_closed.replace("Z", "+00:00"))
     except ValueError:
         return None
     if closed.tzinfo is None:
         closed = closed.replace(tzinfo=dt.timezone.utc)
-    return max((closed.astimezone(dt.timezone.utc).date() - asked).days, 0)
+    closed = closed.astimezone(dt.timezone.utc)
+    raw_asked_at = str(q.get("asked_at") or "").strip()
+    if raw_asked_at:
+        try:
+            asked_at = dt.datetime.fromisoformat(raw_asked_at.replace("Z", "+00:00"))
+        except ValueError:
+            asked_at = None  # unparseable stamp degrades to the date fallback
+        if asked_at is not None:
+            if asked_at.tzinfo is None:
+                asked_at = asked_at.replace(tzinfo=dt.timezone.utc)
+            days = max((closed - asked_at).total_seconds() / 86400.0, 0.0)
+            return int(days) if days.is_integer() else days
+    raw_asked = str(q.get("asked") or "").strip()
+    if not raw_asked:
+        return None
+    try:
+        asked = dt.date.fromisoformat(raw_asked)
+    except ValueError:
+        return None
+    return max((closed.date() - asked).days, 0)
+
+
+def latency_label(median: int | float) -> str:
+    """Human wording for a median latency in days — honest at the resolution
+    the data has, byte-identical to the pre-``asked_at`` wording for the
+    whole/half-day medians date-precision records can produce.
+
+    Whole days say "N days"; sub-day medians say hours ("under an hour"
+    below one); anything else rounds to one decimal ("1.3 days")."""
+    if float(median).is_integer():
+        n = int(median)
+        return f"{n} day" + ("" if n == 1 else "s")
+    hours = round(median * 24)
+    if hours < 1:
+        return "under an hour"
+    if hours < 24:
+        return f"{hours} hour" + ("" if hours == 1 else "s")
+    days = round(median, 1)
+    if float(days).is_integer():
+        n = int(days)
+        return f"{n} day" + ("" if n == 1 else "s")
+    return f"{days} days"
 
 
 def answer_latency(records: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -885,7 +928,9 @@ def answer_latency(records: list[dict[str, Any]]) -> dict[str, Any] | None:
     ``None`` until at least one answered record carries both parseable
     timestamps (honest absence — the stat is hidden, never fabricated).
     ``median_days`` is an int when the median is whole, else the exact
-    half-day float (even-count medians). Pure read: records untouched."""
+    float (fractional once ``asked_at`` records resolve sub-day);
+    ``median_label`` is the display wording (``latency_label``). Pure
+    read: records untouched."""
     days = []
     for q in records:
         if question_answer_state(q) != "answered":
@@ -898,7 +943,11 @@ def answer_latency(records: list[dict[str, Any]]) -> dict[str, Any] | None:
     median = statistics.median(days)
     if float(median).is_integer():
         median = int(median)
-    return {"count": len(days), "median_days": median}
+    return {
+        "count": len(days),
+        "median_days": median,
+        "median_label": latency_label(median),
+    }
 
 
 QUESTIONS_FILTER_SPEC = listfilter.ListSpec(
