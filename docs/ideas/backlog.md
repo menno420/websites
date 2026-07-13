@@ -30,8 +30,8 @@
   `/healthz`, never imports. Source:
   `.sessions/2026-07-13-env-guard-gate.md` 💡.
 - **Suite-level token pin in `tests/conftest.py` — ambient-env independence
-  as structure, not discipline** · `built` (2026-07-13, branch
-  `claude/conftest-token-pin-0713` — new `tests/conftest.py` autouse fixture
+  as structure, not discipline** · `built` (2026-07-13, PR #309 —
+  new `tests/conftest.py` autouse fixture
   pins every control-plane test to the unset rung: `config.GITHUB_TOKEN`/
   `config.RAILWAY_TOKEN` forced to `""` plus both env vars deleted, on a
   private `pytest.MonkeyPatch` instance so a test-level `monkeypatch.undo()`
