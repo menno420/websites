@@ -1,0 +1,1 @@
+- `claude/venture-vetting-catalog` · **botsite vetting catalog** — venture vetting/*.md + OWNER-QUEUE curated into committed catalog JSON + /products/catalog page · botsite/** · 2026-07-13
