@@ -1160,6 +1160,24 @@
   grammar or a parse-the-committed-file pin for it. Source:
   `.sessions/2026-07-13-briefing-outbox.md` 💡.
 
+- **Environ-mention accounting leg for the poison pin** · `captured`
+  (2026-07-13, env-poison-pin session 💡) — `tests/test_env_poison_pin.py`
+  derives env-var names from a recognized-shape list
+  (`_name_expr_of_read`: get/getenv/subscript/in/pop/setdefault, constant
+  indirection, wrapper call sites), so aliasing (`e = os.environ` then
+  `e.get("X")`) or a novel access idiom is silently ignored rather than
+  loud. A completeness guard asserting every AST occurrence of
+  `environ`/`getenv` in service source is accounted for — consumed by a
+  recognized name-read, part of a whole-env use (`{**os.environ}` /
+  `dict(os.environ)`), or explicitly allowlisted — would make the
+  scanner's own shape coverage self-checking. Worth having because the
+  pin's guarantee is only as strong as its shape list, and an unrecognized
+  idiom today slips beneath it — the same silent-rot class, one level up.
+  Deduped against this backlog: the code-vs-inventory bullets check
+  documentation completeness against docs tables; nothing checks the
+  sweep's own shape coverage. Source:
+  `.sessions/2026-07-13-env-poison-pin.md` 💡.
+
 - **Outbox grammar gate in the CI control fast lane — run the pin on the
   PRs that write the outbox** · `captured` (2026-07-13, outbox-grammar-pin
   session 💡) — `quality.yml`'s control fast lane short-circuits GREEN on a
