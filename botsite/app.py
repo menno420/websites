@@ -33,6 +33,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import arcade as arcade_registry
 from . import data_source as ds
+from . import products as products_registry
 from . import listfilter
 from . import testing
 
@@ -42,6 +43,7 @@ NAV = [
     ("commands", "Commands", "/commands"),
     ("games", "Games", "/games"),
     ("arcade", "Arcade", "/arcade"),
+    ("products", "Products", "/products"),
     ("testing", "Testing", "/testing"),
     ("changelog", "Changelog", "/changelog"),
     ("status", "Status", "/status"),
@@ -208,6 +210,21 @@ async def arcade(request: Request):
         }
     )
     return templates.TemplateResponse(request, "arcade.html", ctx)
+
+
+@app.get("/products", response_class=HTMLResponse)
+async def products(request: Request):
+    """Fleet store — the storefront face for venture-lab's products (ORDER 022
+    item 4). Data is the committed ``botsite/data/products.json`` read from
+    disk at request time — no network; cross-repo data arrives only as
+    committed JSON, curated from venture-lab launch copy. Honest labels: a
+    buy link renders only for a product that is really purchasable (live on
+    Gumroad with a URL); coming-soon cards carry their status note instead.
+    GET-only, no payment handling — buy links go out to Gumroad."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "products", res)
+    ctx.update({"products": products_registry.load_products()})
+    return templates.TemplateResponse(request, "products.html", ctx)
 
 
 @app.get("/changelog", response_class=HTMLResponse)

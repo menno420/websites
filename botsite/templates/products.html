@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Products — SuperBot{% endblock %}
+{% block description %}Fleet store: software kits built by the agent fleet, sold on Gumroad, with honest live / coming-soon labels.{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ products|length }} products</span>
+    <div class="head-row"><h1>Fleet Store</h1></div>
+    <p class="sb-lead">The fleet's product storefront: software kits and guides built by the agent
+      fleet — the family of bots, sites, and experiments built around SuperBot — and sold on
+      Gumroad. Each card says what the product does, what it costs, and whether it is really
+      purchasable right now: a buy link only appears when a product is live.</p>
+  </section>
+
+  {% if products %}
+  <div class="card-grid section-sm">
+    {% for p in products %}
+    <article class="sb-card sb-feat">
+      <div class="sb-feat-top">
+        <span class="sb-tile sb-tile-emoji">{{ icon("coins", 22) }}</span>
+        <h3 style="font-size:var(--sb-text-lg)">{{ p.name }}</h3>
+        <span class="sb-badge {{ 'sb-badge-ok' if p.is_live else 'sb-badge-neutral' }}">{{ "live" if p.is_live else "coming soon" }}</span>
+      </div>
+      <p class="sb-muted" style="margin:6px 0 0">{{ p.tagline }}</p>
+      <div class="feat-desc">{{ p.description }}</div>
+      <p style="margin:10px 0 0"><strong>{{ p.price }}</strong></p>
+      {% if p.has_link %}
+      <p style="margin:10px 0 0">
+        <a class="sb-btn sb-btn-primary sb-btn-sm" href="{{ p.link_url }}" target="_blank" rel="noopener">
+          Buy on Gumroad {{ icon("external", 13) }}
+        </a>
+      </p>
+      {% elif p.status_note %}
+      <p class="sb-muted" style="margin:10px 0 0"><em>{{ p.status_note }}</em></p>
+      {% endif %}
+      <div class="sb-feat meta">
+        <span class="sb-muted" style="font-size:var(--sb-text-xs)">Curated from {{ p.source }}, as of {{ p.as_of }}</span>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="sb-empty section"><span class="ico">{{ icon("coins", 20) }}</span><h4>No products registered yet</h4>
+    <p>The product registry is empty or unavailable right now. Nothing is faked here.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

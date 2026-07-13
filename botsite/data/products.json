@@ -1,0 +1,50 @@
+[
+  {
+    "slug": "stripe-webhook-test-kit",
+    "name": "Stripe Webhook Test Kit v0.1",
+    "tagline": "Fire real-shape signed Stripe events at your local webhook endpoint and prove your handler behaves. Stdlib only. No account, no dependencies.",
+    "description": "Catches the four checkout-webhook gotchas that ship to production: null buyer email, forged events accepted, broken success_url, replayable requests. Ships swtk.py + swtk.js, real-shape fixtures with provenance, an HTTP-layer test suite, and GOTCHAS.md. Python 3.8+ or Node 14+; no Stripe account needed.",
+    "price": "$29 one-time",
+    "availability": "live",
+    "url": "https://mennomagic01.gumroad.com/l/stripe-webhook-test-kit",
+    "status_note": "Live on Gumroad since 2026-07-12.",
+    "source": "venture-lab docs/launch/stripe-webhook-test-kit/LISTING.md @ e01fa01",
+    "as_of": "2026-07-13"
+  },
+  {
+    "slug": "membership-site-boilerplate-kit",
+    "name": "Membership-Site Boilerplate Kit v0.2",
+    "tagline": "Stdlib-only Python starter for paid memberships: checkout → webhook → grant → gated access, pre-wired, tested against real-shape Stripe payloads over HTTP. Mock mode by default: zero accounts.",
+    "description": "A complete membership flow you don't have to wire yourself: 36 bundled tests, native Stripe-Signature verification, and it fails closed. Mock mode by default means you can run the whole flow with zero accounts.",
+    "price": "$49 one-time",
+    "availability": "coming-soon",
+    "url": null,
+    "status_note": "Publish click queued to the owner — not yet purchasable.",
+    "source": "venture-lab docs/launch/membership-kit/listing-copy.md @ e01fa01",
+    "as_of": "2026-07-13"
+  },
+  {
+    "slug": "agent-workflow-template-pack",
+    "name": "Agent-Workflow Template Pack v0.1",
+    "tagline": "A drop-in Markdown + shell scaffold for agent-session discipline: constitution, session-log card, one-page playbook, and three advisory (fail-open) Claude Code hooks. No deps, no runtime.",
+    "description": "The working agreements a disciplined agent session runs on, packaged: a constitution template, a session-log card, a one-page playbook, and three advisory hooks that warn without ever blocking. Drop it into any repo — no dependencies, no runtime.",
+    "price": "Pay what you want — $19 suggested",
+    "availability": "coming-soon",
+    "url": null,
+    "status_note": "Publish click queued to the owner — not yet purchasable.",
+    "source": "venture-lab docs/launch/template-packs/listing-copy.md @ e01fa01",
+    "as_of": "2026-07-13"
+  },
+  {
+    "slug": "agent-fleet-field-manual",
+    "name": "Agent Fleet Field Manual v0.1",
+    "tagline": "The scar tissue of running an agent fleet, written down and cited to real artifacts — so your fleet stops manufacturing confident, unverified claims.",
+    "description": "Eleven chapters of field-tested practice for running a fleet of coding agents, every claim cited to a real artifact. Includes two free sample chapters and three templates.",
+    "price": "$39 one-time",
+    "availability": "coming-soon",
+    "url": null,
+    "status_note": "Publish click queued to the owner — not yet purchasable.",
+    "source": "venture-lab docs/launch/agent-fleet-field-manual/LISTING.md @ e01fa01",
+    "as_of": "2026-07-13"
+  }
+]
