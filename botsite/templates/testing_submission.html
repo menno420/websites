@@ -132,6 +132,17 @@
     <p class="sb-mono" style="white-space:pre-wrap">{{ submission.findings }}</p>
   </div>
   {% endif %}
+  {% if guide_transcript %}
+  <div class="section-sm">
+    <h3>Your guide chat, as stored</h3>
+    <p class="sb-hint">Saved with your submission as review evidence — the automated reviewer and the
+      owner can read it. Shared-screen frames were never stored.</p>
+    {% for e in guide_transcript %}
+    <p class="sb-hint" style="margin-top:6px"><strong>You (step {{ e.step_index + 1 }}):</strong> {{ e.message }}<br>
+      <strong>Guide:</strong> {{ e.reply }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% endif %}
 </div>
 {% endblock %}

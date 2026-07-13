@@ -91,6 +91,14 @@ CREATE TABLE IF NOT EXISTS screenshots (
     data BLOB NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS guide_exchanges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    claim_id INTEGER NOT NULL REFERENCES claims(id),
+    step_index INTEGER NOT NULL DEFAULT 0,
+    message TEXT NOT NULL,
+    reply TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS payout_ledger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     claim_id INTEGER NOT NULL,
@@ -372,6 +380,38 @@ def screenshot_by_id(shot_id: int) -> Optional[dict[str, Any]]:
     return dict(row) if row else None
 
 
+# --- guide chat transcript (TEXT only — never screen frames) -----------------
+# One row per successful tester↔guide chat exchange. Bounded per claim by the
+# guide-message cap (writes happen only after ai.consume_guide_call succeeded
+# and a reply came back), and per row by the route's input cap + the guide's
+# reply cap. The screen-frame path stays write-free (test-pinned privacy
+# contract) — nothing derived from a shared screen ever lands here.
+
+def add_guide_exchange(
+    claim_id: int, step_index: int, message: str, reply: str
+) -> dict[str, Any]:
+    with closing(_connect()) as conn, conn:
+        cur = conn.execute(
+            "INSERT INTO guide_exchanges (claim_id, step_index, message,"
+            " reply, created_at) VALUES (?, ?, ?, ?, ?)",
+            (claim_id, step_index, message, reply, _now()),
+        )
+        row = conn.execute(
+            "SELECT * FROM guide_exchanges WHERE id = ?", (cur.lastrowid,)
+        ).fetchone()
+    return dict(row)
+
+
+def guide_transcript_for_claim(claim_id: int) -> list[dict[str, Any]]:
+    """The claim's chat transcript, oldest first (the conversation order)."""
+    with closing(_connect()) as conn:
+        rows = conn.execute(
+            "SELECT * FROM guide_exchanges WHERE claim_id = ? ORDER BY id",
+            (claim_id,),
+        ).fetchall()
+    return _rows(rows)
+
+
 # --- payout ledger ----------------------------------------------------------
 
 def add_ledger_entry(
@@ -452,6 +492,9 @@ def export_all() -> dict[str, Any]:
         shots = _rows(
             conn.execute("SELECT * FROM screenshots ORDER BY id").fetchall()
         )
+        guide_exchanges = _rows(
+            conn.execute("SELECT * FROM guide_exchanges ORDER BY id").fetchall()
+        )
         ledger = _rows(
             conn.execute("SELECT * FROM payout_ledger ORDER BY id").fetchall()
         )
@@ -469,5 +512,6 @@ def export_all() -> dict[str, Any]:
         "submissions": submissions,
         "ai_reviews": ai_reviews,
         "screenshots": shots,
+        "guide_exchanges": guide_exchanges,
         "payout_ledger": ledger,
     }
