@@ -1583,3 +1583,22 @@
   per the working agreement. Deduped against this backlog + the
   queue-state NEXT list: no orientation-budget/headroom bullet exists.
   Source: `.sessions/2026-07-13-env-leads-close.md` 💡.
+
+- **Import valve for the testing-DB export — restore `export.json` after a
+  redeploy wipe** · `captured` (2026-07-13, step-provenance session 💡) —
+  the ephemeral-disk mitigation is half a lifeboat: `GET
+  /testing/owner/export.json` (owner-auth) dumps the full tester-program
+  DB before a redeploy, but nothing can put the backup BACK — after the
+  wipe the owner holds a JSON file and the queue starts empty (claims,
+  transcripts, ledger, provenance pins all gone until Postgres lands). An
+  owner-auth import valve (upload the export, rows re-inserted with the
+  same honest `.get`-default handling this session used for pre-pin rows,
+  so old backups without newer columns restore cleanly) would close the
+  loop the export half-opened. Worth having because every backup valve
+  that can't restore is a promise the disaster will break — and the
+  Postgres ask it bridges to is still an OPEN owner action. Deduped
+  against this backlog + the queue-state NEXT list: the export valve
+  itself shipped with the store module and appears only as prose in its
+  docstring; no import/restore bullet exists anywhere; the
+  submissions-Postgres OWNER-ACTIONS ask is infrastructure, not this
+  repo-side bridge. Source: `.sessions/2026-07-13-step-provenance.md` 💡.
