@@ -335,3 +335,101 @@ def test_no_signals_at_all_is_unknown(monkeypatch):
     assert row["state"] == "unknown" and row["stale"] is False
     assert row["last_commit"]["ok"] is False
     assert row["card"]["reason"] == "no .sessions/ on main (HTTP 404)"
+
+
+# --------------------------------------------------------------------------- #
+# (f) reason hygiene: an upstream error DOCUMENT never floods a cell
+# (observed live: a transient GitHub failure returned a full HTML error
+# page, rendered wholesale as "unknown — <!DOCTYPE html> <!-- Hello ...")
+# --------------------------------------------------------------------------- #
+
+# What github._get puts in the envelope for a non-JSON error body:
+# data = resp.text, error = str(data)[:200] — a raw multi-line HTML chunk.
+HTML_ERROR_PAGE = (
+    "<!DOCTYPE html>\n"
+    "<!-- Hello future GitHubber! We're having a bad day. -->\n"
+    "<html>\n  <head><title>Server Error</title></head>\n"
+    "  <body>\n    <h1>Something went wrong</h1>\n"
+    "    <p>Please try again in a moment.</p>\n"
+    "  </body>\n</html>\n"
+)
+
+
+def _html_error_get(monkeypatch, status=502):
+    """Registry OK (one lane), every repo fetch fails with an HTML page."""
+    registry = (
+        "LANES = [\n"
+        '    {"lane": "alpha", "repo": "alpha", "disposition": "live",'
+        ' "tokens": []},\n'
+        "]\n"
+    )
+
+    async def fake_get(url, refresh=False, raw=False):
+        if url.endswith("/fleet-manager/main/scripts/gen_roster.py"):
+            return _res(url, data=registry)
+        return _res(url, ok=False, status=status,
+                    data=HTML_ERROR_PAGE, error=str(HTML_ERROR_PAGE)[:200])
+
+    monkeypatch.setattr(github, "_get", fake_get)
+
+
+def test_html_error_body_becomes_generic_short_reason(monkeypatch):
+    _html_error_get(monkeypatch, status=502)
+    _freeze(monkeypatch)
+    with TestClient(app) as c:
+        r = c.get("/freshness")
+    assert r.status_code == 200
+    # the injected uppercase DOCTYPE / HTML comment never reach the page
+    # (the page's own doctype is the lowercase one in base.html)
+    assert "<!DOCTYPE" not in r.text
+    assert "Hello future GitHubber" not in r.text
+    # card/heartbeat cells keep the envelope status in the generic reason
+    assert "HTTP 502 — non-JSON error body" in r.text
+    # cells are still honest unknowns, never fabricated freshness
+    assert "unknown" in r.text
+
+
+def test_html_error_body_row_reasons_are_generic(monkeypatch):
+    _html_error_get(monkeypatch, status=502)
+    out = asyncio.run(freshness.overview(now=NOW))
+    (row,) = out["rows"]
+    # card + heartbeat see the envelope → status-prefixed generic reason
+    assert row["card"]["reason"] == "HTTP 502 — non-JSON error body"
+    assert row["heartbeat"]["reason"] == "HTTP 502 — non-JSON error body"
+    # commit + PR reasons come through fleet's builders (envelope status
+    # already dropped) → the same generic phrase, unprefixed
+    assert row["last_commit"]["reason"] == "non-JSON error body"
+    assert row["open_prs"]["reason"] == "non-JSON error body"
+    for reason in (row["card"]["reason"], row["heartbeat"]["reason"],
+                   row["last_commit"]["reason"], row["open_prs"]["reason"]):
+        assert "<" not in reason and "\n" not in reason
+        assert len(reason) <= freshness.REASON_MAX_CHARS
+
+
+def test_long_plain_text_reason_is_truncated_with_ellipsis(monkeypatch):
+    long_error = "ConnectError: " + "very " * 100 + "long network story"
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        return _res(ok=False, status=0, error=long_error)
+
+    async def fake_api(repo, subpath="", refresh=False):
+        return _res(ok=False, status=0, error=long_error)
+
+    monkeypatch.setattr(github, "fetch_file", fake_fetch)
+    monkeypatch.setattr(github, "repo_api", fake_api)
+    row = asyncio.run(freshness.repo_row(_LANE, NOW))
+    for signal in ("last_commit", "card", "heartbeat", "open_prs"):
+        reason = row[signal]["reason"]
+        assert len(reason) <= freshness.REASON_MAX_CHARS
+        assert reason.endswith("…")
+        assert reason.startswith("ConnectError: very")
+
+
+def test_short_meaningful_reasons_pass_through_verbatim():
+    assert freshness._short_reason("HTTP 404") == "HTTP 404"
+    assert freshness._short_reason("offline test") == "offline test"
+    assert freshness._short_reason("Not Found") == "Not Found"
+    # multi-line but short: collapsed to one line, content kept
+    assert freshness._short_reason("rate\nlimited") == "rate limited"
+    # empty stays empty (ok rows carry reason: "")
+    assert freshness._short_reason("") == ""
