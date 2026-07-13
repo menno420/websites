@@ -432,6 +432,55 @@ def abandoned_guided_claims() -> list[dict[str, Any]]:
     return _rows(rows)
 
 
+def guided_step_dropoff() -> list[dict[str, Any]]:
+    """Per-task step heatmap over the abandoned guided claims.
+
+    Same scope as ``abandoned_guided_claims()`` (status 'claimed', no
+    submission row, at least one guide exchange). For each task and each
+    step_index: ``touched`` counts claims whose chat has ≥1 exchange at that
+    step, ``died_here`` counts claims whose chat ENDED there (their highest
+    step_index — the step where the tester gave up). Steps run dense from 0
+    to the task's highest observed step so gaps render as zeros; tasks are
+    ordered by task_id. ``claim_count`` is the task's drop-off total (the
+    died_here denominator)."""
+    with closing(_connect()) as conn:
+        rows = conn.execute(
+            "SELECT c.task_id, g.claim_id, g.step_index"
+            " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
+            " WHERE c.status = 'claimed'"
+            " AND NOT EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
+            " GROUP BY c.task_id, g.claim_id, g.step_index"
+        ).fetchall()
+    # (task_id, claim_id) → the steps that claim's chat touched; the max of
+    # that set is where the claim died.
+    steps_by_claim: dict[tuple[str, int], set[int]] = {}
+    for r in rows:
+        key = (r["task_id"], r["claim_id"])
+        steps_by_claim.setdefault(key, set()).add(int(r["step_index"]))
+    claims_by_task: dict[str, list[set[int]]] = {}
+    for (task_id, _claim_id), steps in steps_by_claim.items():
+        claims_by_task.setdefault(task_id, []).append(steps)
+    out: list[dict[str, Any]] = []
+    for task_id in sorted(claims_by_task):
+        claim_steps = claims_by_task[task_id]
+        top = max(max(steps) for steps in claim_steps)
+        out.append(
+            {
+                "task_id": task_id,
+                "claim_count": len(claim_steps),
+                "steps": [
+                    {
+                        "step_index": idx,
+                        "touched": sum(1 for s in claim_steps if idx in s),
+                        "died_here": sum(1 for s in claim_steps if max(s) == idx),
+                    }
+                    for idx in range(top + 1)
+                ],
+            }
+        )
+    return out
+
+
 # --- payout ledger ----------------------------------------------------------
 
 def add_ledger_entry(
