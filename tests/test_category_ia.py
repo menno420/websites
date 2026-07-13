@@ -63,7 +63,7 @@ def test_category_grouping_matches_the_brief():
     """The first-cut grouping the owner reacts to — a re-group is a data
     edit in app/nav.py and a conscious update here."""
     by_key = {c["key"]: [i["href"] for i in c["items"]] for c in nav.CATEGORIES}
-    assert by_key["overview"] == ["/", "/fleet"]
+    assert by_key["overview"] == ["/", "/fleet", "/freshness"]
     assert by_key["work"] == ["/queue", "/orders", "/ideas", "/reviews"]
     assert by_key["history"] == ["/activity", "/journal"]
     assert by_key["console"] == [

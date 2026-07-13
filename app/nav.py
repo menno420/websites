@@ -68,6 +68,16 @@ CATEGORIES: list[dict[str, Any]] = [
                 ),
                 "action": {"label": "open fleet", "href": "/fleet"},
             },
+            {
+                "key": "freshness",
+                "label": "repo freshness",
+                "href": "/freshness",
+                "desc": (
+                    "per-repo movement — last commit, last session card, "
+                    "open PRs, heartbeat age"
+                ),
+                "action": {"label": "open freshness", "href": "/freshness"},
+            },
         ],
     },
     {

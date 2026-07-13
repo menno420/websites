@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}repo freshness{% endblock %}
+{% block headright %}<a href="/freshness.json">json</a> · <a href="/freshness?refresh=1">refresh now</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>repo freshness — which fleet repos are moving, and which are stale</h2>
+  <p class="dim small">One row per fleet repo with its four movement signals:
+    <strong>last commit</strong> (short sha + age), <strong>last session card</strong>
+    (newest dated <code>.sessions/</code> file on main), <strong>open PR count</strong>,
+    and <strong>heartbeat age</strong> (the <code>updated:</code> stamp of
+    <code>control/status.md</code>). <span class="b warn">stale</span> = amber, past a
+    threshold: heartbeat older than {{ f.stale_hours }}h or last commit older than
+    {{ f.commit_stale_days }} days. <span class="b unknown">unknown</span> = the signal
+    could not be fetched — shown honestly with the reason, never guessed. Archived/hub
+    seats are exempt (old ages there are history, not alarm).</p>
+  {% if f.lane_source.source == 'registry' %}
+  <p class="dim small">lane set: <span class="b ok">live from registry</span> —
+    {{ f.lane_source.count }} lanes parsed from the
+    <a href="{{ f.registry_url }}">fleet-manager registry ↗</a>.</p>
+  {% else %}
+  <div class="banner">⚠ lane set: <strong>cached fallback list</strong> — the live
+    <a href="{{ f.registry_url }}">fleet-manager registry ↗</a> could not be used
+    ({{ f.lane_source.reason }}); showing the last hand-kept lane copy. The repos are
+    real; only the SET may be stale until the registry is reachable again.</div>
+  {% endif %}
+  <p class="small">
+    <span class="b repo">{{ f.summary.total }} repos</span>
+    <span class="b ok">{{ f.summary.moving }} moving</span>
+    {% if f.summary.stale %}<span class="b warn">{{ f.summary.stale }} stale</span>{% endif %}
+    {% if f.summary.unknown %}<span class="b unknown">{{ f.summary.unknown }} unknown</span>{% endif %}
+    {% if f.summary.exempt %}<span class="b unknown">{{ f.summary.exempt }} archived/hub</span>{% endif %}
+  </p>
+</div>
+
+<div class="card">
+  <table>
+    <tr>
+      <th>lane</th><th>repo</th><th>last commit</th>
+      <th>last session card</th><th>open PRs</th><th>heartbeat</th>
+    </tr>
+    {% for r in f.rows %}
+    <tr>
+      <td>{{ r.lane }}
+        {% if r.state == 'stale' %}<span class="b warn">stale</span>
+        {% elif r.state == 'unknown' %}<span class="b unknown">unknown</span>
+        {% elif r.state == 'exempt' %}<span class="dim small">{{ r.note or 'archived/hub — exempt' }}</span>
+        {% endif %}</td>
+      <td><a href="{{ r.repo_url }}">{{ r.repo }}</a></td>
+      <td>
+        {% if r.last_commit.ok %}
+        <code>{{ r.last_commit.sha }}</code>
+        <span class="dim small">· {{ r.last_commit.age_human }}</span>
+        {% if r.commit_stale %}<span class="b warn">&gt;{{ f.commit_stale_days }}d</span>{% endif %}
+        {% else %}
+        <span class="b unknown">unknown</span>
+        <span class="dim small">— {{ r.last_commit.reason }}</span>
+        {% endif %}</td>
+      <td>
+        {% if r.card.ok %}
+        {{ r.card.date }} <span class="dim small">· {{ r.card.age_human }}</span>
+        {% else %}
+        <span class="b unknown">unknown</span>
+        <span class="dim small">— {{ r.card.reason }}</span>
+        {% endif %}</td>
+      <td>
+        {% if r.open_prs.ok %}
+        {{ r.open_prs.display }}
+        {% else %}
+        <span class="b unknown">unknown</span>
+        <span class="dim small">— {{ r.open_prs.reason }}</span>
+        {% endif %}</td>
+      <td>
+        {% if r.heartbeat.ok %}
+        {{ r.heartbeat.age_human }}
+        {% if r.heartbeat_stale %}<span class="b warn">&gt;{{ f.stale_hours }}h</span>{% endif %}
+        {% else %}
+        <span class="b unknown">unknown</span>
+        <span class="dim small">— {{ r.heartbeat.reason }}</span>
+        {% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

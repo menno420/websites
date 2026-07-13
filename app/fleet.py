@@ -421,13 +421,26 @@ async def heartbeat_freshness(
     return fresh if fresh["ok"] else None
 
 
+def _envelope_reason(res: dict) -> str:
+    """A human reason out of a not-ok result envelope (never empty)."""
+    return res.get("error") or (
+        f"HTTP {res.get('status')}" if res.get("status") else "unreachable"
+    )
+
+
 def _commit_age(commits_res: dict, now: datetime) -> dict[str, Any]:
-    """Last-commit age from a ``/commits?per_page=1`` result (honest on miss)."""
+    """Last-commit age from a ``/commits?per_page=1`` result (honest on miss).
+
+    Carries the short sha + numeric ``age_hours`` (and a ``reason`` on miss)
+    so /freshness can classify commit staleness without re-parsing.
+    """
+    miss = {"ok": False, "age_human": "unknown", "sha": "", "age_hours": None}
     if not commits_res["ok"] or not isinstance(commits_res["data"], list):
-        return {"ok": False, "age_human": "unknown"}
+        return {**miss, "reason": _envelope_reason(commits_res)}
     data = commits_res["data"]
     if not data:
-        return {"ok": False, "age_human": "unknown"}
+        return {**miss, "reason": "no commits returned"}
+    sha = str(data[0].get("sha") or "")[:7]
     date = (
         ((data[0].get("commit") or {}).get("committer") or {}).get("date")
         or ((data[0].get("commit") or {}).get("author") or {}).get("date")
@@ -435,17 +448,34 @@ def _commit_age(commits_res: dict, now: datetime) -> dict[str, Any]:
     )
     dt = _parse_iso(date)
     if dt is None:
-        return {"ok": False, "age_human": "unknown"}
-    return {"ok": True, "age_human": _human_age((now - dt).total_seconds() / 3600)}
+        return {**miss, "sha": sha, "reason": "commit date unparseable"}
+    age_hours = (now - dt).total_seconds() / 3600
+    return {
+        "ok": True,
+        "age_human": _human_age(age_hours),
+        "sha": sha,
+        "age_hours": age_hours,
+        "reason": "",
+    }
 
 
 def _open_pr_count(pulls_res: dict) -> dict[str, Any]:
     """Open-PR count from a ``/pulls?state=open`` result (honest on miss)."""
     if not pulls_res["ok"] or not isinstance(pulls_res["data"], list):
-        return {"ok": False, "count": None, "display": "?"}
+        return {
+            "ok": False,
+            "count": None,
+            "display": "?",
+            "reason": _envelope_reason(pulls_res),
+        }
     n = len(pulls_res["data"])
     # per_page caps at 100 — show "100+" rather than an undercount lie.
-    return {"ok": True, "count": n, "display": f"{n}+" if n >= 100 else str(n)}
+    return {
+        "ok": True,
+        "count": n,
+        "display": f"{n}+" if n >= 100 else str(n),
+        "reason": "",
+    }
 
 
 async def repo_meta(repo: str, now: datetime, refresh: bool = False) -> dict[str, Any]:

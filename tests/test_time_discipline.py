@@ -35,6 +35,7 @@ GUARDED = {
     ("fleet", "lane_status"),
     ("fleet", "freshness"),
     ("fleet", "heartbeat_freshness"),
+    ("freshness", "overview"),
     ("orders", "overview"),
     ("orders", "classify_order"),
 }
