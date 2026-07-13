@@ -912,3 +912,15 @@
   above (built) covers `testing_ai.py` only; nothing covers a repo-wide
   code-consumption scan. Source:
   `.sessions/2026-07-13-testing-ai-inventory.md` 💡.
+
+- **Storefront freshness pin — nag when `products.json` goes stale** ·
+  `captured` (2026-07-13, venture-products-page session 💡) — each entry in
+  `botsite/data/products.json` carries an `as_of` date; a CI-time check (or
+  small on-page note) comparing those dates against a staleness horizon
+  (~14 days) would nag when the curated storefront has not been re-verified
+  against venture-lab. Worth having because a hand-curated registry drifts
+  silently the moment a product goes live or changes price — the honesty
+  doctrine dies through staleness, not lies. Deduped against this backlog +
+  the queue-state NEXT list: nearest neighbors are the tester-task
+  `product_url` liveness pins; nothing covers registry as-of staleness.
+  Source: `.sessions/2026-07-13-venture-products-page.md` 💡.

@@ -1,0 +1,1 @@
+- `claude/venture-products-page` · **botsite /products page** — venture storefront page, committed products.json · botsite/** + botsite/tests · 2026-07-13
