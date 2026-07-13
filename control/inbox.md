@@ -280,3 +280,41 @@ END ORDER TEXT
 Context (coordinator note, not owner text): pre-create the missing env-var entries on Railway services so the owner only pastes values. Coordinator dispatched with discovery protocol (Railway write capability untested) + safety rails: empty values only where the app treats empty as unset; no fake auth values; DATABASE_URL excluded (requires Postgres provisioning = cost/infra, stays owner-click).
 why: the owner wants the missing env-var entries pre-created on Railway so filling credentials is a paste-values-only step.
 done-when: writable → placeholders created + verified by name via the existing read path + envhub honesty preserved; unwritable → exact denial recorded in docs/CAPABILITIES.md + six-field fallback ask.
+
+## ORDER 027 · 2026-07-13T22:14Z · status: new
+**EAP final-night worklist — owner directive relay (fm ORDER 045, Phase 3 fan-out).**
+
+Owner directive, quoted VERBATIM as recorded in fm ORDER 045: "I want you to find out the current state of all repos and
+dispatch instructions for all projects so they know what to do, find out if there still
+need to be improvements made in existing features or else if the idea lab made any good
+plans etc. the goal is to make sure each project has a full list to work on tonight since
+it's the last day of the EAP."
+
+Citations: fm ORDER 045, control/inbox.md @ ca1ce28 · docs/eap-final-night-worklists-2026-07-13.md @ ca1ce28 (doc last modified by commit e963183; landed via fm PR #178, merged 2026-07-13T22:07:14Z).
+
+**Your seat's full night worklist, copied faithfully from the doc:**
+
+## websites — swept @ `31b5d00`
+
+Heartbeat ~10h stale at HEAD despite an active evening wave (#291–#304); FENCE
+through 2026-07-14 (no live-URL moves, no Railway consolidation).
+
+1. Shepherd #304 (per-step question digest) to green + build its follow-on — declared raw input for the tester-question→rewrite loop (websites PR #304; `docs/ideas/backlog.md:1442@31b5d00`) `[lane]`
+2. Truing pass: heartbeat 11:31Z + current-state "nothing in flight" contradicted by #291–#304 and 7 open lifeboats vs 3 documented (`control/status.md:2`, `docs/current-state.md:103@31b5d00`) `[drift]`
+3. Cold-browser pass over the review site before EAP close 07-14 (ORDER 022 item 5, `control/inbox.md@31b5d00`) `[standing]` `[deadline]`
+4. Read-path check of the two #275 env leads — dashboard's undocumented `SITE_PASSWORD`; possible `ANTHROPIC_API_KEY` on the parallel botsite copy (`docs/current-state.md@31b5d00`, queued "next session") `[lane]`
+5. Suite-level token pin in `tests/conftest.py` — autouse sentinel for `GITHUB_TOKEN`/`RAILWAY_TOKEN`, kills the unpinned-reason-assertion flake class (`docs/ideas/backlog.md:33@31b5d00`) `[improve]`
+6. Full `asked_at` timestamp on questions-ledger records — unblocks the #302 latency stat for same-day answers (`backlog.md:1421@31b5d00`) `[improve]`
+7. Outbox grammar gate on the control fast lane — `quality.yml` short-circuits green on control/**-only diffs (`backlog.md:1192@31b5d00`) `[improve]`
+8. One idea-engine build-direct slice: review-queue row auto-check or open-PR awareness at wake (idea-engine `ideas/websites/review-queue-row-auto-check-2026-07-11.md`, `open-pr-awareness-at-wake-2026-07-10.md` @`2e5d73f`) `[build-direct]`
+
+**Blocked (do not schedule):** ORDER 020 writeback (owner contents:write PAT paste) · ORDER 021 environments hub (owner Discord-auth decision/Q-0004) · lifeboat disposal #245/#249/#257/#278/#279/#280/#300 (owner-click) · photo-pack originals (owner).
+
+Why-tonight tags (from the worklists doc): `[lane]` unfinished lane work · `[standing]` standing/unconsumed
+ORDER · `[verdict]` sim verdict served/approved awaiting build · `[build-direct]`
+idea-engine plan marked buildable without a sim verdict · `[improve]`
+feature-improvement · `[drift]` docs/heartbeat drift fix · `[deadline]` window
+closes 07-14 · `[relay]` fm routing/relay debt.
+
+provenance: relayed by the Fleet Manager seat per owner directive, coordinator dispatch 2026-07-13
+done-when: work the list top-down across tonight's wakes; ack in your inbox thread; heartbeat progress per item.
