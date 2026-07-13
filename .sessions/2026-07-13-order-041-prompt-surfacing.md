@@ -1,6 +1,7 @@
 # 2026-07-13 — ORDER 041 remainder: prompt data on the dispatch screen + owner console
 
-> **Status:** in-progress
+> **Status:** complete — PR #239, branch `claude/order-041-prompt-surfacing`;
+> lands via the pre-armed auto-merge on green.
 
 - **📊 Model:** Claude Fable · worker (order execution) · feature-build
 
