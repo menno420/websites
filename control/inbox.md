@@ -282,6 +282,9 @@ why: the owner wants the missing env-var entries pre-created on Railway so filli
 done-when: writable → placeholders created + verified by name via the existing read path + envhub honesty preserved; unwritable → exact denial recorded in docs/CAPABILITIES.md + six-field fallback ask.
 
 ## ORDER 027 · 2026-07-13T22:14Z · status: new
+priority: P1
+do: work the EAP final-night worklist below, top-down (8 items) — relay of fm ORDER 045 / docs/eap-final-night-worklists-2026-07-13.md @ ca1ce28
+why: owner directive 2026-07-13 — every seat gets a full list to work tonight, the last day of the EAP
 **EAP final-night worklist — owner directive relay (fm ORDER 045, Phase 3 fan-out).**
 
 Owner directive, quoted VERBATIM as recorded in fm ORDER 045: "I want you to find out the current state of all repos and
