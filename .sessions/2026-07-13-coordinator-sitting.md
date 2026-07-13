@@ -1,8 +1,8 @@
 # 2026-07-13 — Coordinator sitting record: 2026-07-12→13 overnight run + morning orders (STEP-5 RETRO)
 
-> **Status:** `in-progress` — coordinator ender, branch
-> `claude/coordinator-ender-2026-07-13`; flips to `complete` + PR number as
-> the deliberate LAST commit of this ender.
+> **Status:** `complete` — coordinator ender, branch
+> `claude/coordinator-ender-2026-07-13`, PR #276 (retro card + docs truth +
+> outbox proposals + CLOSED heartbeat; flipped as the deliberate LAST commit).
 
 - **📊 Model:** Claude Fable 5 · coordinator seat (ender worker) · session-close/retro
 
