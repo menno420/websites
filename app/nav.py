@@ -241,6 +241,16 @@ CATEGORIES: list[dict[str, Any]] = [
             },
             {
                 "key": None,
+                "label": "morning briefing",
+                "href": "/owner/briefing",
+                "desc": (
+                    "the owner's catch-up — what shipped, what's waiting, "
+                    "what's stale (16h window)"
+                ),
+                "action": {"label": "open briefing", "href": "/owner/briefing"},
+            },
+            {
+                "key": None,
                 "label": "owner queue (writeback)",
                 "href": "/owner/queue",
                 "desc": (

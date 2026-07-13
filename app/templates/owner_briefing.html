@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}morning briefing 🔒{% endblock %}
+{% block headright %}🔒 owner · <a href="/owner">console</a> · <a href="/owner/briefing?refresh=1{% if not b.window.default_used %}&hours={{ b.window.hours }}{% endif %}">refresh now</a>{% endblock %}
+
+{% macro badge(state, text) -%}
+<span class="b {{ state }}">{{ text }}</span>
+{%- endmacro %}
+
+{% macro unknown_line(section) -%}
+<p class="small"><span class="b unknown">unknown</span>
+  <span class="dim">— {{ section.reason }}; nothing is assumed</span></p>
+{%- endmacro %}
+
+{% block content %}
+
+<div class="card" style="border-color:var(--purple);">
+  <h2>☀️ morning briefing <span class="dim small">— the owner's catch-up, one screen</span></h2>
+  <p class="dim small">Your morning catch-up — what shipped, what's waiting on you, what's
+    stale · <strong>window: last {{ b.window.hours }}h</strong>
+    ({{ b.cutoff_iso }} → {{ b.now_iso }}) ·
+    override with <code>?hours=</code> ({{ b.min_hours }}–{{ b.max_hours }};
+    default {{ b.default_hours }}h) ·
+    <a href="/owner/briefing?hours=24">24h</a> ·
+    <a href="/owner/briefing?hours=48">48h</a> ·
+    <a href="/owner/briefing">default</a></p>
+  {% if b.window.note %}
+  <p class="banner">⚠ {{ b.window.note }}</p>
+  {% endif %}
+</div>
+
+{# 1 · SHIPPED — merged PRs inside the window, newest first #}
+<div class="card" id="shipped">
+  <h2>SHIPPED <span class="dim small">— PRs merged in the last {{ b.window.hours }}h, newest first</span></h2>
+  {% if b.shipped.state != 'ok' %}
+  {{ unknown_line(b.shipped) }}
+  {% else %}
+    {% if b.shipped.rows %}
+    <table class="small">
+      <tr><th>repo</th><th>PR</th><th>merged at (UTC)</th></tr>
+      {% for it in b.shipped.rows %}
+      <tr>
+        <td><span class="b repo">{{ it.repo }}</span></td>
+        <td><a href="{{ it.url }}">#{{ it.number }}</a> {{ it.title }}</td>
+        <td class="dim">{{ it.merged_at }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="small dim">nothing merged in this window — an honest quiet, not a fetch failure.</p>
+    {% endif %}
+    {% for e in b.shipped.errors %}
+    <p class="small"><span class="b unknown">{{ e.repo }}: unknown</span>
+      <span class="dim">— {{ e.reason }}</span></p>
+    {% endfor %}
+  {% endif %}
+</div>
+
+{# 2 · ORDERS — the /orders cross-reference reused whole #}
+<div class="card" id="orders">
+  <h2>ORDERS <span class="dim small">— inbox orders across the fleet · <a href="/orders">full /orders view</a></span></h2>
+  {% if b.orders.state != 'ok' %}
+  {{ unknown_line(b.orders) }}
+  {% else %}
+  <p class="small">
+    {% if b.orders.summary.open %}{{ badge('warn', b.orders.summary.open ~ ' open') }}{% else %}{{ badge('ok', '0 open') }}{% endif %}
+    {{ badge('unknown', b.orders.summary.claimed ~ ' claimed') }}
+    {{ badge('ok', b.orders.summary.done ~ ' done') }}
+    {% if b.orders.summary.unknown %}{{ badge('unknown', b.orders.summary.unknown ~ ' state unknown') }}{% endif %}
+    {% if b.orders.summary.errored %}{{ badge('bad', b.orders.summary.errored ~ ' inbox fetch(es) failed') }}{% endif %}
+  </p>
+  {% if b.orders.open_orders %}
+  <table class="small">
+    <tr><th>repo</th><th>order</th><th>priority</th><th>issued</th><th>do</th></tr>
+    {% for o in b.orders.open_orders %}
+    <tr>
+      <td><span class="b repo">{{ o.repo }}</span></td>
+      <td><a href="{{ o.url }}">ORDER {{ o.id }}</a></td>
+      <td>{{ o.priority }}</td>
+      <td class="dim">{{ o.issued }}</td>
+      <td class="dim">{{ o.do }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="small dim">no open (unclaimed, not-done) orders anywhere — nothing waits unrouted.</p>
+  {% endif %}
+  {% endif %}
+</div>
+
+{# 3 · ASKS — open ⚑ rows of docs/owner/OWNER-ACTIONS.md #}
+<div class="card" id="asks">
+  <h2>ASKS <span class="dim small">— open ⚑ owner-actions · <a href="{{ b.asks.url }}">full ledger on GitHub ↗</a></span></h2>
+  {% if b.asks.state != 'ok' %}
+  {{ unknown_line(b.asks) }}
+  {% else %}
+  {% if b.asks.note %}<p class="banner">⚠ {{ b.asks.note }}</p>{% endif %}
+  <p class="small">{% if b.asks.count %}{{ badge('warn', b.asks.count ~ ' open ask' ~ ('s' if b.asks.count != 1 else '')) }}
+    {% if b.asks.count > b.asks.top | length %}<span class="dim">— top {{ b.asks.top | length }} below; the rest in the ledger</span>{% endif %}
+    {% else %}{{ badge('ok', 'no open ⚑ asks') }}{% endif %}</p>
+  {% if b.asks.top %}
+  <table class="small">
+    <tr><th>WHAT</th><th>WHERE</th><th>UNBLOCKS</th></tr>
+    {% for a in b.asks.top %}
+    <tr>
+      <td>{{ a.what }}</td>
+      <td class="dim">{{ a.where }}</td>
+      <td class="dim">{{ a.unblocks }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% endif %}
+</div>
+
+{# 4 · FLEET — stale repos + incomplete environments only #}
+<div class="card" id="fleet">
+  <h2>FLEET <span class="dim small">— what's stale or incomplete · <a href="/freshness">full freshness view</a> · <a href="/owner/environments-hub">environments hub 🔒</a></span></h2>
+  {% if b.fleet.lane_source.note %}<p class="banner">⚠ {{ b.fleet.lane_source.note }}{% if b.fleet.lane_source.reason %} — {{ b.fleet.lane_source.reason }}{% endif %}</p>{% endif %}
+  <p class="small">
+    {% if b.fleet.stale %}{{ badge('warn', b.fleet.stale | length ~ ' stale repo' ~ ('s' if b.fleet.stale | length != 1 else '')) }}
+    {% else %}{{ badge('ok', 'no stale repos') }}{% endif %}
+    {% if b.fleet.unknown_rows %}{{ badge('unknown', b.fleet.unknown_rows | length ~ ' unknown — no signal readable') }}{% endif %}
+    <span class="dim">of {{ b.fleet.summary.total }} tracked</span>
+  </p>
+  {% if b.fleet.stale %}
+  <table class="small">
+    <tr><th>repo</th><th>last commit</th><th>heartbeat</th><th>why stale</th></tr>
+    {% for r in b.fleet.stale %}
+    <tr>
+      <td><a href="{{ r.repo_url }}">{{ r.repo }}</a></td>
+      <td class="dim">{% if r.last_commit.ok %}{{ r.last_commit.age_human }} ago{% else %}unknown — {{ r.last_commit.reason }}{% endif %}</td>
+      <td class="dim">{% if r.heartbeat.ok %}{{ r.heartbeat.age_human }} ago{% else %}unknown — {{ r.heartbeat.reason }}{% endif %}</td>
+      <td>{% if r.commit_stale %}{{ badge('warn', 'commits quiet') }}{% endif %}
+          {% if r.heartbeat_stale %}{{ badge('warn', 'heartbeat old') }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% for r in b.fleet.unknown_rows %}
+  <p class="small"><span class="b unknown">{{ r.repo }}: unknown</span>
+    <span class="dim">— {% if not r.last_commit.ok %}{{ r.last_commit.reason }}{% elif not r.heartbeat.ok %}{{ r.heartbeat.reason }}{% else %}no movement signal readable{% endif %}</span></p>
+  {% endfor %}
+  <h3>environments</h3>
+  {% if b.fleet.env.state != 'ok' %}
+  <p class="small"><span class="b unknown">unknown</span>
+    <span class="dim">— {{ b.fleet.env.reason }}; nothing is assumed complete. Variable NAMES only — values never exist here.</span></p>
+  {% else %}
+  <p class="small">
+    {% if b.fleet.env.incomplete_names %}
+    {{ badge('warn', b.fleet.env.incomplete_names | length ~ ' group' ~ ('s' if b.fleet.env.incomplete_names | length != 1 else '') ~ ' incomplete') }}
+    <span class="dim">— {% for n in b.fleet.env.incomplete_names %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</span>
+    {% else %}{{ badge('ok', 'no incomplete groups') }}{% endif %}
+    {% if b.fleet.env.unknown_names %}{{ badge('unknown', '+' ~ b.fleet.env.unknown_names | length ~ ' unknown — outside the token scope, never assumed') }}{% endif %}
+    <span class="dim">· names and statuses only, never values</span>
+  </p>
+  {% endif %}
+</div>
+
+{# 5 · WATCHES — review-bake + open non-draft PR check states #}
+<div class="card" id="watches">
+  <h2>WATCHES <span class="dim small">— review-bake + open PRs and their checks</span></h2>
+  <h3>review-bake</h3>
+  {% if b.watches.bake.state != 'ok' %}
+  <p class="small"><span class="b unknown">unknown</span>
+    <span class="dim">— {{ b.watches.bake.reason }}</span></p>
+  {% elif not b.watches.bake.started_at and not b.watches.bake.conclusion %}
+  <p class="small dim">no review-bake runs recorded yet — an honest absence.</p>
+  {% else %}
+  <p class="small">
+    {% if b.watches.bake.conclusion == 'success' %}{{ badge('ok', 'success') }}
+    {% elif not b.watches.bake.completed %}{{ badge('unknown', b.watches.bake.conclusion or 'pending') }}
+    {% else %}{{ badge('bad', b.watches.bake.conclusion) }}{% endif %}
+    <span class="dim">latest run · event {{ b.watches.bake.event or '?' }} ·
+      started {{ b.watches.bake.started_at or '?' }}</span>
+    {% if b.watches.bake.url %}· <a href="{{ b.watches.bake.url }}">view run</a>{% endif %}
+  </p>
+  {% endif %}
+  <h3>open non-draft PRs</h3>
+  {% if b.watches.prs.state != 'ok' %}
+  {{ unknown_line(b.watches.prs) }}
+  {% else %}
+  {% if b.watches.prs.rows %}
+  {% if b.watches.prs.capped %}<p class="small dim">showing the newest {{ b.watches.prs.limit }} — more exist.</p>{% endif %}
+  <table class="small">
+    <tr><th>repo</th><th>PR</th><th>opened</th><th>checks</th></tr>
+    {% for p in b.watches.prs.rows %}
+    <tr>
+      <td><span class="b repo">{{ p.repo }}</span></td>
+      <td><a href="{{ p.url }}">#{{ p.number }}</a> {{ p.title }}</td>
+      <td class="dim">{{ p.created_at }}</td>
+      <td>
+        {% if p.checks == 'green' %}{{ badge('ok', 'green') }}
+        {% elif p.checks == 'failing' %}{{ badge('bad', 'failing') }}
+        {% elif p.checks == 'pending' %}{{ badge('warn', 'pending') }}
+        {% elif p.checks == 'none' %}{{ badge('unknown', 'no check runs') }}
+        {% else %}{{ badge('unknown', 'unknown') }} <span class="dim small">— {{ p.checks_reason }}</span>{% endif %}
+        {% if p.checks_counts %}<span class="dim small">
+          {% for k, v in p.checks_counts.items() %}{{ v }} {{ k }}{% if not loop.last %} · {% endif %}{% endfor %}</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="small dim">no open non-draft PRs across the board repos — nothing in flight to watch.</p>
+  {% endif %}
+    {% for e in b.watches.prs.errors %}
+    <p class="small"><span class="b unknown">{{ e.repo }}: unknown</span>
+      <span class="dim">— {{ e.reason }}</span></p>
+    {% endfor %}
+  {% endif %}
+</div>
+
+<p class="dim small">🔒 morning briefing — gated by <code>SITE_PASSWORD</code>, GET-only;
+every number above comes from the same TTL-cached GitHub reads as the rest of the console,
+and a failed source says <em>unknown — why</em> instead of pretending.</p>
+{% endblock %}
