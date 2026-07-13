@@ -1055,7 +1055,14 @@
   `.sessions/2026-07-13-agent-pr-diagnostic.md` 💡.
 
 - **Embed the manager outbox tally in /owner/briefing — one URL for the
-  owner read AND the manager roll-up** · `captured` (2026-07-13,
+  owner read AND the manager roll-up** · `built` (2026-07-13, briefing
+  REPORTS-section PR, branch `claude/briefing-outbox-0713` —
+  `briefing.outbox_report` + `latest_report` render the newest
+  `control/outbox.md` REPORT entry in a sixth briefing card over the same
+  `github.fetch_file` path ASKS rides; unreadable file → honest
+  `unknown — <reason>`, no REPORT entries → explicit honest-empty,
+  malformed REPORT-like headings skipped and counted, body bounded to 40
+  lines with the cap noted; captured 2026-07-13,
   coordinator-sitting ender 💡) — give `/owner/briefing` (PR #273) a
   "reports to the manager" section rendering the newest `control/outbox.md`
   REPORT entry over the same committed-file read path the fleet pages
