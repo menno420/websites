@@ -1,7 +1,9 @@
 # 2026-07-13 — /prompts: deployed-vs-canonical drift row (ORDER 022 item 3)
 
-> **Status:** `in-progress` — branch `claude/prompts-drift-row`; flips to
-> `complete` + PR number as the deliberate LAST code step.
+> **Status:** `complete` — PR #234, branch `claude/prompts-drift-row`;
+> reviewed (honest-state ladder, degrade paths, TTL-cache reuse, template
+> self-containment re-verified against the diff — no fixes needed); lands
+> via the pre-armed auto-merge on green.
 
 - **📊 Model:** Claude Fable 5 · worker (order execution) · feature-build
 
@@ -64,10 +66,32 @@ item 3.
 
 ## 💡 Session idea
 
-(pending — captured with its "worth having because" line and deduped
-against `docs/ideas/backlog.md` before the close-out flip; honest
-"nothing" if no idea earns its keep.)
+**Surface source-header supersession warnings on /prompts artifact
+cards** — the recon behind this session found /prompts pins and serves fm
+`docs/prompts/v3/universal-startup.md` as a paste body while that file's
+OWN header says "v3.3 (2026-07-12): SUPERSEDED AS THE GENERATION SOURCE —
+historical template… Do not paste this file". The page presents the 26
+artifacts as THE paste source, yet one of them self-declares do-not-paste
+and the site renders it indistinguishably from the pasteable 25. Parse the
+already-fetched body's header lines for supersession markers ("SUPERSEDED",
+"Do not paste", "historical template") and render a loud warning chip on
+that artifact's card, labeling its copy flow accordingly — zero new
+network, same honest-degrade rules. Worth having because the drift row
+just shipped keeps deployed-vs-canonical honest, but says nothing when the
+canonical copy ITSELF disclaims being pasteable — an owner pasting from
+/prompts today would paste a file whose own header forbids it, presented
+as authoritative. Deduped: no supersession/do-not-paste/paste-source entry
+in `docs/ideas/backlog.md`, and no supersession handling anywhere in
+`app/`.
 
 ## ⟲ Previous-session review
 
-(pending — written at close-out.)
+`.sessions/2026-07-13-inventory-consistency-pin.md` (PR #225): strong
+evidence discipline — it proved its new pin RED on the pre-fix drift via a
+stash test before trusting the green, and let committed evidence (row K +
+the real consumer) decide which inventory was right instead of assuming.
+Its "895 passed (+4 new)" convention made this session's baseline a
+subtraction, and its 💡 (code as the third inventory) was captured with
+scope and dedupe already done — genuinely promotable. Nothing misleading
+found; its never-silent-exemptions allowlist is the same honesty principle
+this session's never-green-from-prose rule applies.
