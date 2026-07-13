@@ -7,12 +7,15 @@ no red anywhere; the pre-D-0028 ``routine:`` line leaked into ``blockers:``
 for hours exactly this way). These tests run the REAL committed heartbeat
 through the same parsers so a malformed one goes red at PR time.
 
-Honest scope note: heartbeat-only PRs ride the ``control/**`` fast lane and
-SKIP pytest by design — so a bad heartbeat is caught by the NEXT non-control
-PR, not by its own. Delayed enforcement, but a standing floor: the tree can
-never sit green for long with an unparseable heartbeat. (Making the fast
-lane run just this file was considered and rejected — one enforced gate,
-no second logic path, is repo doctrine.)
+Honest scope note: heartbeat-only PRs ride the ``control/**`` fast lane,
+which skips the full pytest suite by design. Originally that meant a bad
+heartbeat was caught only by the NEXT non-control PR (running just this
+file in the fast lane was once rejected as a second logic path) — until
+incident PR #307 merged exactly that way. Since ORDER 027 item 7, the fast
+lane's grammar-pins gate (``.github/workflows/quality.yml``) runs THIS file
+whenever a control-only diff touches ``control/status.md``, so a malformed
+heartbeat now reddens its own PR; the full suite still runs it on every
+non-control PR as the standing floor.
 
 Assertions stick to the documented contract (``control/README.md`` § status
 format): if a future format change breaks them, the heartbeat and the
