@@ -1069,15 +1069,13 @@
   `.sessions/2026-07-13-coordinator-sitting.md` 💡.
 
 - **Structural no-bare-numeric-env-parse gate — make the int("") class
-  unshippable, not just fixed** · `captured` (2026-07-13, env-hardening
-  session 💡) — a small static test scanning app/, botsite/, dashboard/,
-  review/ (excluding bootstrap.py/.substrate) and failing on any
-  MODULE-LEVEL `int(`/`float(` wrapped directly around
-  `os.environ`/`os.getenv` that doesn't go through an `_env_int`-style
-  guard (PR #282 introduced one per affected module). Worth having because
-  PR #282 fixed six sites by hand, but nothing stops the seventh — the
-  same discipline-vs-structure gap the clarity gate (PR #241) closed for
-  page headers. Deduped against this backlog + the queue-state NEXT list:
-  the code-vs-inventory bullets (#227 and its per-service generalization)
-  check env-var NAME documentation completeness, never parse safety.
-  Source: `.sessions/2026-07-13-env-hardening.md` 💡.
+  unshippable, not just fixed** — shipped 2026-07-13 (PR #285):
+  `tests/test_env_guard_gate.py` AST-scans app/, botsite/, dashboard/,
+  review/ (excluding bootstrap.py/.substrate, tests dirs, and the
+  review/gen_*.py offline bakers) and fails on any IMPORT-TIME bare
+  `int(`/`float(` over `os.environ`/`os.getenv` — module scope, top-level
+  if/try blocks, class bodies, and function defaults all count; function
+  bodies are exempt, which is exactly what lets `_env_int`-guarded sites
+  (PR #282) pass. Self-tests seed a violation fixture and prove the
+  scanner catches it without touching real service modules. Source:
+  `.sessions/2026-07-13-env-hardening.md` 💡.
