@@ -1086,6 +1086,9 @@ async def _owner_page(
     # distance-to-finish: dying at step 2 of 6 and step 2 of 2 should not
     # render the same. `script_len` (0 for unknown tasks / empty scripts,
     # which keep today's observed-only strip) drives the "of N steps" label.
+    # The store rows carry the survival contrast too — per-step `finished`
+    # (finisher claims that also asked there) and `died_share` (died over
+    # ALL touchers) — the template shades by lethality, not raw death count.
     dropoff_heatmap = store.guided_step_dropoff()
     for t in dropoff_heatmap:
         step_script = task_steps(task_by_id(t["task_id"]))
@@ -1098,6 +1101,8 @@ async def _owner_page(
                     "step_index": idx,
                     "touched": 0,
                     "died_here": 0,
+                    "finished": 0,
+                    "died_share": 0.0,
                     "step_text": _heatmap_step_text(step_script, idx),
                     "reached": False,
                 }

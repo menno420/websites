@@ -442,13 +442,31 @@ def guided_step_dropoff() -> list[dict[str, Any]]:
     step_index — the step where the tester gave up). Steps run dense from 0
     to the task's highest observed step so gaps render as zeros; tasks are
     ordered by task_id. ``claim_count`` is the task's drop-off total (the
-    died_here denominator)."""
+    died_here denominator).
+
+    Survival contrast: ``finished`` counts FINISHER claims — a submission
+    row exists, the tester pushed through — whose chat has ≥1 exchange at
+    that step (PR #292 persists their transcripts too; the drop-off scope
+    merely excludes them), and ``died_share`` is died_here over ALL
+    touchers of the step (drop-off + finisher claims; 0.0 when nobody
+    touched it) — the lethality signal that separates "hard but passable"
+    (many finishers asked, few died) from "wall" (every toucher died).
+    ``finisher_count`` is the task's total of finisher claims with any
+    guide chat. Finisher chats extend the dense range when they reach past
+    the last drop-off step; tasks still appear only when they have
+    drop-offs — the strip stays a drop-off view, finishers are contrast."""
     with closing(_connect()) as conn:
         rows = conn.execute(
             "SELECT c.task_id, g.claim_id, g.step_index"
             " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
             " WHERE c.status = 'claimed'"
             " AND NOT EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
+            " GROUP BY c.task_id, g.claim_id, g.step_index"
+        ).fetchall()
+        finisher_rows = conn.execute(
+            "SELECT c.task_id, g.claim_id, g.step_index"
+            " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
+            " WHERE EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
             " GROUP BY c.task_id, g.claim_id, g.step_index"
         ).fetchall()
     # (task_id, claim_id) → the steps that claim's chat touched; the max of
@@ -460,22 +478,43 @@ def guided_step_dropoff() -> list[dict[str, Any]]:
     claims_by_task: dict[str, list[set[int]]] = {}
     for (task_id, _claim_id), steps in steps_by_claim.items():
         claims_by_task.setdefault(task_id, []).append(steps)
+    # Same shape for the finishers — their max is just "furthest step they
+    # asked at", nothing died there.
+    fin_by_claim: dict[tuple[str, int], set[int]] = {}
+    for r in finisher_rows:
+        key = (r["task_id"], r["claim_id"])
+        fin_by_claim.setdefault(key, set()).add(int(r["step_index"]))
+    finishers_by_task: dict[str, list[set[int]]] = {}
+    for (task_id, _claim_id), steps in fin_by_claim.items():
+        finishers_by_task.setdefault(task_id, []).append(steps)
     out: list[dict[str, Any]] = []
     for task_id in sorted(claims_by_task):
         claim_steps = claims_by_task[task_id]
+        fin_steps = finishers_by_task.get(task_id, [])
         top = max(max(steps) for steps in claim_steps)
+        if fin_steps:
+            top = max(top, max(max(steps) for steps in fin_steps))
+        steps_out: list[dict[str, Any]] = []
+        for idx in range(top + 1):
+            touched = sum(1 for s in claim_steps if idx in s)
+            died_here = sum(1 for s in claim_steps if max(s) == idx)
+            finished = sum(1 for s in fin_steps if idx in s)
+            touchers = touched + finished
+            steps_out.append(
+                {
+                    "step_index": idx,
+                    "touched": touched,
+                    "died_here": died_here,
+                    "finished": finished,
+                    "died_share": died_here / touchers if touchers else 0.0,
+                }
+            )
         out.append(
             {
                 "task_id": task_id,
                 "claim_count": len(claim_steps),
-                "steps": [
-                    {
-                        "step_index": idx,
-                        "touched": sum(1 for s in claim_steps if idx in s),
-                        "died_here": sum(1 for s in claim_steps if max(s) == idx),
-                    }
-                    for idx in range(top + 1)
-                ],
+                "finisher_count": len(fin_steps),
+                "steps": steps_out,
             }
         )
     return out
