@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-13T08:28:59Z",
+  "generated_at": "2026-07-13T10:28:16Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -20,7 +20,7 @@
           "repo": "fleet-manager",
           "repo_url": "https://github.com/menno420/fleet-manager",
           "heartbeat_available": true,
-          "updated": "2026-07-13T06:52Z \u2014 idle owner-question routing worker write (coordinator-delegated; coordinator seat session_01UutkJqyMcHC1VyFW8fe1a9 continuous since 2026-07-12 ~20:30Z). mode: MORNING-REPORTED (NIGHT-RUN closed out \u2014 ORDER 039/040 morning deliverable landed)",
+          "updated": "2026-07-13T10:05Z \u2014 roll-up worker write (coordinator-delegated; coordinator seat session_01UutkJqyMcHC1VyFW8fe1a9 continuous since 2026-07-12 ~20:30Z). **FLEET NIGHT-REPORT ROLL-UP POSTED** \u2014 `control/outbox.md` \u00a7 \"2026-07-13 \u00b7 FLEET NIGHT-REPORT ROLL-UP (owner ask ~09:00Z)\", this PR. **Coverage 13/13 seat reports posted, 0 pending** (11 on seat mains; gba on parked PR #89 head `a84933b`, pml on parked PR #63 head `db46649` until the owner sweep). \u2248276 PRs merged fleet-wide overnight per the reports' own counts (+7 superbot per-ledger). NEW owner asks queued as items 55\u201360 (docs/owner-queue.m \u2026 [truncated for the mirror \u2014 full text at the source]",
           "reason": ""
         }
       ]
@@ -33,14 +33,14 @@
           "repo": "venture-lab",
           "repo_url": "https://github.com/menno420/venture-lab",
           "heartbeat_available": true,
-          "updated": "2026-07-13T06:10:46Z As of 2026-07-13T06:10:46Z \u2014 coordinator session_01CXEh5TBKBNTDGgsDstfcjc. NIGHT RUN COMPLETE under ORDER 008; morning tally in control/outbox.md (this commit) \u2014 headline: 6 products publish-READY + SWTK live, ~215k words of book prose (6 new books + 4 NL editions + versions), 3,468 trading configs 0-promoted-honest, 52 PRs merged (venture #103\u2013#139 + trading #80\u2013#95; dawn slice after the 05:04Z tally: #138 board-book cuts \u2014 +9 board-book manuscripts (comet-biscuit 2\u20133, star-pirates distillation, EN/NL/DE) \u2014 + #139 claim prune), 0 open. Routines: pacemaker paused as of 202 \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-13T09:26:28Z As of 2026-07-13T09:26:28Z \u2014 night-report slice serving ORDER 009. Night window 2026-07-12T22:30Z\u2192now: 46 PRs merged into venture main (#96\u2013#141, git first-parent verified; first in-window #97 `e0f343a` 22:30:46Z, last #141 `374e8d1` 09:12:14Z) \u2014 evening slices #96\u2013#102, ORDER 008 night run #103\u2013#136, morning tally #137 (`5814880`), dawn board-book cuts #138, claim prune #139, wind-down heartbeat #140 (`0679327`), ORDER 009 request landing #141 (`374e8d1`). Trading-repo merges #80\u2013#95 per the 06:10Z tally (`5814880`) \u2014 not re-measured this slice. Open PRs: 0 (live GitHub M \u2026 [truncated for the mirror \u2014 full text at the source]",
           "reason": ""
         },
         {
           "repo": "trading-strategy",
           "repo_url": "https://github.com/menno420/trading-strategy",
           "heartbeat_available": true,
-          "updated": "2026-07-13T05:04:48Z main: 58d7dfb night_run: ORDER-012 complete; PRs #80\u2013#95 merged (15 research + 1 order landing), 0 open surface_added: 11 strategies \u00b7 6 tickers (SPY QQQ TSLA JPM XOM TLT) \u00b7 BTC-USD \u00b7 hourly matrix complete scoreboard: 3468 configs / 312 lanes \u2192 0 PROMOTED / 64 KEEP-dev / 248 KILL; max_t 1.38 vs bar 2.64 notable_negatives: TSLA-RSI-reversion t=-3.01 worse-than-hold; vol-gate subtracts value (46/60 splits) synthesis: docs/research-round-3-results.md (PR #89) ledger_rows_added: 309; tests: 437 passing rails: holdout untouched \u00b7 paper lane byte-untouched \u00b7 grading 2026-07-17 \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-13T09:22:51Z main: 08969bb night_report: ORDER-013 served; window 2026-07-12T22:30Z\u219209:12Z: 18 PRs #80\u2013#97 merged (#80 ORDER-012 landing \u00b7 #81\u2013#88+#90\u2013#95 fourteen research slices \u00b7 #89 synthesis \u00b7 #96 morning tally de5a477 \u00b7 #97 manager ORDER-013 inbox append 08969bb); full report: control/outbox.md \u00a7 NIGHT REPORT 2026-07-13 open_prs: 0 (verified 2026-07-13T09:19Z, MCP + git ls-remote cross-check)",
           "reason": ""
         }
       ]
@@ -67,7 +67,7 @@
           "repo": "superbot-mineverse",
           "repo_url": "https://github.com/menno420/superbot-mineverse",
           "heartbeat_available": true,
-          "updated": "2026-07-13T04:12:00Z",
+          "updated": "2026-07-13T09:28:00Z",
           "reason": ""
         }
       ]
@@ -80,14 +80,14 @@
           "repo": "superbot-next",
           "repo_url": "https://github.com/menno420/superbot-next",
           "heartbeat_available": true,
-          "updated": "2026-07-13T05:09Z",
+          "updated": "2026-07-13T09:55Z",
           "reason": ""
         },
         {
           "repo": "superbot",
           "repo_url": "https://github.com/menno420/superbot",
           "heartbeat_available": true,
-          "updated": "2026-07-11T19:45:00Z",
+          "updated": "2026-07-13T09:45:00Z",
           "reason": ""
         }
       ]
@@ -100,14 +100,14 @@
           "repo": "idea-engine",
           "repo_url": "https://github.com/menno420/idea-engine",
           "heartbeat_available": true,
-          "updated": "2026-07-13T05:14:54Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-12T23:44:55Z overwrite; committed by the coordinator's landing worker with dictated content \u2014 the coordinator session has no file tools)",
+          "updated": "2026-07-13T09:31:00Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-13T05:14:54Z overwrite; committed by the coordinator's landing worker with dictated content \u2014 the coordinator session has no file tools)",
           "reason": ""
         },
         {
           "repo": "sim-lab",
           "repo_url": "https://github.com/menno420/sim-lab",
           "heartbeat_available": true,
-          "updated": "2026-07-13T05:18:23Z",
+          "updated": "2026-07-13T09:32:00Z",
           "reason": ""
         }
       ]
@@ -133,7 +133,7 @@
           "repo": "substrate-kit",
           "repo_url": "https://github.com/menno420/substrate-kit",
           "heartbeat_available": true,
-          "updated": "2026-07-13T05:17:00Z",
+          "updated": "2026-07-13T09:20:00Z",
           "reason": ""
         }
       ]
@@ -146,7 +146,7 @@
           "repo": "websites",
           "repo_url": "https://github.com/menno420/websites",
           "heartbeat_available": true,
-          "updated": "2026-07-13T06:43:25Z",
+          "updated": "2026-07-13T09:30:00Z",
           "reason": ""
         }
       ]
@@ -198,20 +198,20 @@
       "repo_url": "https://github.com/menno420/superbot",
       "head": {
         "ok": true,
-        "sha": "df5ee69b4176e2c289659effabafff7f9cafca5b",
-        "committed_at": "2026-07-13T09:42:12+02:00",
+        "sha": "5d863c126ef770175109fa6ca7415b3a9b01aeb0",
+        "committed_at": "2026-07-13T11:36:59+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-11T19:45:00Z",
-          "phase": "STEADY \u2014 hub coordination surface (docs/ledger/recon + fleet relay); product runtime work is lane-side (superbot-next rebuild at 37/49 ports per #1996)",
+          "updated": "2026-07-13T09:45:00Z",
+          "phase": "STEADY \u2014 hub coordination surface (docs/ledger/recon + fleet relay); product runtime work is lane-side (superbot-next rebuild: 51/51 parity rows ported, CUT-1 done \u2014 cutover gate = owner ORDER 001 live-drive)",
           "health": "one-liner above.",
-          "last-shipped": "PR #2003 \u2014 ORDER 002 consumed: self-review 2026-07-11 at docs/retro/self-review-2026-07-11.md + this heartbeat created",
+          "last-shipped": "PR #2064 \u2014 fleet night review 2026-07-13 (verified per-lane digest + owner-action queue) + orientation fixes (curious-research added to fleet_status.py/reading path; api.github.com proxy-wall documented)",
           "blockers": "none.",
           "orders": "acked=001-002 done=001-002 (001 done at #1977; 002 done at #2003 \u2014 record: docs/retro/self-review-2026-07-11.md, consumption block appended to control/inbox.md)",
-          "needs-owner": "none new hub-specific (verified against fm docs/owner-queue.md @ 7ff1f75 \u2014 the hub's owner tail is already queued there). Manager-sweep note, NOT an owner click: fm owner-queue C#20's manager note (superbot codex-final-review invalid YAML) is RESOLVED by superbot PR #1995 (8214200) \u2014 retire that line at the next sweep. Filed at the repo's retro convention home: **[`docs/retro/self-review-2026-07-11.md`](../docs/retro/self-review-2026-07-11.md)** (same glob as the gen-1 `self-review-2026-07-09.md` so the manager's cross-lane corpus reader finds it). Digest: went-wrong = codex-final-review born- \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "needs-owner": "hub-side residue only \u2014 flip the two deliberately-held mineverse FLAG drafts #2058/#2061 ready when deploy timing suits (CodeQL resolved by code change; merge=deploy Q-0193); the fleet-wide owner queue is consolidated in docs/eap/night-review-2026-07-13.md \u00a77 (canonical: fm docs/owner-queue.md). Manager-sweep note, NOT an owner click: fm owner-queue C#20's manager note (superbot codex-final-review invalid YAML) is RESOLVED by superbot PR #1995 (8214200) \u2014 retire that line at the next sweep. Filed at the repo's retro convention home: **[`docs/retro/self-review-2026-07-11.md`](../docs/retro/self \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/superbot/blob/main/control/status.md"
       }
@@ -223,18 +223,18 @@
       "repo_url": "https://github.com/menno420/superbot-next",
       "head": {
         "ok": true,
-        "sha": "faeedde4555abcccb2743e411030cec68ebad1bc",
-        "committed_at": "2026-07-13T07:46:32Z",
+        "sha": "06c19f449f12df62980c36b0b8b7a0e86e0f66ff",
+        "committed_at": "2026-07-13T10:08:51Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-13T05:09Z",
-          "phase": "SEAT OPEN \u2014 coordinator session_01KhzyfUk76YB9Bj2TPF6h5z active; ORDER 017 night run complete \u2014 morning tally below (due ~06:00Z clause). Landing mode unchanged: repo auto-merge enabler is canonical for non-draft claude/* PRs (#321).",
-          "health": "main at `5bb5563` (#356 channel hub ops, merged 2026-07-13T05:04Z) at tally sync; golden-parity gate job green at last landing, `report` leg red-by-design.",
+          "updated": "2026-07-13T09:55Z",
+          "phase": "SEAT OPEN \u2014 coordinator session_01KhzyfUk76YB9Bj2TPF6h5z active; ORDERS 017+018 both served \u2014 delta section below refreshes the 09:25Z report. Landing mode unchanged: repo auto-merge enabler is canonical for non-draft claude/* PRs (#321).",
+          "health": "main at `e835443` (#369 doctrine sweep, merged 2026-07-13) at refresh sync \u2014 MILESTONE: full-corpus parity since 2026-07-13T04:00:14Z (run 29222893993, fishing slice 4/#350); the golden-parity `report` job is now a live green \u2014 a red report = REAL regression, not doctrine. Latest confirmation run 29238825392: 484/484 goldens, 51/51 subsystems, 0 `_unmapped`. Doctrine docs updated in #369.",
           "kit": "v1.15.0",
-          "orders": "acked=001\u2013017 done=002\u2013016; ORDER 017 \u2014 this tally closes the night mandate; ORDER 001 still open owner-side (band-1 live-drive needs an owner run with the Discord token; pointer: PR #298 body). routines: failsafe `trig_01TuQrpMVpDCXB3K3VbjQUoA` cron `0 1-23/2 * * *` + pacemaker send_later chain healthy. Night incidents, both recovered: scheduler wedge 01:07\u201302:44Z (failsafe slot + pacemaker fires stalled platform-side, flushed 02:44Z, chain re-armed); GitHub Actions check-run outage ~03:40Z (runs not spawning; cleared, queued CI now draining). Business crons unchanged: `trig_01Jm57GAjNCFrYJn1 \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "orders": "acked=001\u2013018 done=002\u2013018 (017 tally 05:09Z + 018 thorough night report both served; 018 done-when verified at HEAD \u2014 report present in status \u00a7ORDER-018 + outbox 09:25Z entry); ORDER 001 still open owner-side (band-1 live-drive needs an owner run with the Discord token; pointer: PR #298 body). routines: failsafe `trig_01TuQrpMVpDCXB3K3VbjQUoA` cron `0 1-23/2 * * *` + pacemaker send_later chain healthy. Night incidents, both recovered: scheduler wedge 01:07\u201302:44Z (failsafe slot + pacemaker fires stalled platform-side, flushed 02:44Z, chain re-armed); GitHub Actions check-run outage ~03:40Z ( \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/superbot-next/blob/main/control/status.md"
       }
@@ -246,20 +246,20 @@
       "repo_url": "https://github.com/menno420/substrate-kit",
       "head": {
         "ok": true,
-        "sha": "45fb77ca7701a04324736c391796abce871464d6",
-        "committed_at": "2026-07-13T06:30:53Z",
+        "sha": "df6fa9cb54d696c08f40cca7242df8e984c2bf14",
+        "committed_at": "2026-07-13T09:18:58Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-13T05:17:00Z",
-          "phase": "ORDER 016 COMPLETE \u2014 night-run tally posted 05:17Z; #317 awaiting owner ratification sweep",
+          "updated": "2026-07-13T09:20:00Z",
+          "phase": "ORDER 017 COMPLETE \u2014 thorough night report posted 09:20Z (heartbeat + outbox, this PR); #317 awaiting owner ratification sweep",
           "health": "green \u2014 latest verified state: `python3 dist/bootstrap.py check --strict` exit 0 @ b171d02 \u00b7 `python3 scripts/check_idea_index.py` OK (new body-state-drift guard live) \u00b7 boot set 2862/7000 words (K0 gauge silent). Prior health record (PR #307): git history of this file.",
-          "kit": "v1.15.0 \u00b7 check: green \u00b7 engaged: yes SHIPPED (night run, ORDER 016): - **#314** order landed verbatim (6ab5caa) - **#315** seed skills \u2192 registry, 12 skills (2325e71) - **#316** rationalize skill + checkpoint doctrine, 13 skills (817220d) - **#317** GREEN-PARKED ratification: PL-012 autonomy rider (rulings.md + CONSTITUTION/routines tmpl) + reading-path.md.tmpl + 3 interview slots (head 82fca96) - **#318** heartbeat (d4eb24e) - **#319** adopter-outcome writeup: docs/reports/2026-07-13-night-run-adopter-outcomes.md + 3 guidance-delta ideas (c71f423+2cfc4b1) - Evening pre-order: #308/#310/#311/ \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "orders": "acked=001\u2013016 \u00b7 done=001\u2013016 (016 tally posted; #317 ratification = owner-side residue)",
+          "kit": "v1.15.0 \u00b7 check: green \u00b7 engaged: yes NIGHT REPORT (ORDER 017, owner ask via Fleet Manager \u2014 window 2026-07-12T22:30Z \u2192 2026-07-13T09:20Z): - **SHIPPED (merges, numbers + SHAs):** #308 K0 gauge (174b113) \u00b7 #310 condensation (c5ef5b9) \u00b7 #311 gate proof (cf0fa24) \u00b7 #312 idea-drift guard (1086dd5) \u00b7 #313 heartbeat (ebc1be9) \u00b7 #314 ORDER 016 verbatim (6ab5caa) \u00b7 #315 seed skills (2325e71) \u00b7 #316 rationalize (817220d) \u00b7 #318 heartbeat (~d4eb24e squash) \u00b7 #319 adopter-outcome report (b171d02; branch c71f423+2cfc4b1) \u00b7 #320 ORDER 016 tally (847e7df) \u00b7 #321 enabler branch-allowlist preflight (45fb77c \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "orders": "acked=001\u2013017 \u00b7 done=001\u2013017 (017 = this report, posted heartbeat + outbox in this PR; #317 ratification = owner-side residue)",
           "blockers": "none.",
-          "notes": "this update = ORDER 016 morning tally 05:17Z (control-only diff, fast lane \u2014 no card): phase \u2192 ORDER 016 COMPLETE, SHIPPED consolidated to the night run, TALLY block posted (slices/templates/measurements), ROUTINE DISPOSITION refreshed, next-2 baton = owner sweep of #317 \u2192 release wave \u00b7 grounded-skills window; matching tally entry appended to control/outbox.md (lane\u2192manager). \u2691 FOR OWNER, kit line, B1 FAMILY VERDICTS kept verbatim. Prior standing record: git history of this file @ 917261b / 817220d / 86d2a57 \u2014 pointers over re-derivation."
+          "notes": "this update = ORDER 017 thorough night report 09:20Z (control-only diff, fast lane \u2014 no card): NIGHT REPORT block added (shipped SHAs \u00b7 open-PR check states \u00b7 orders \u00b7 asks \u00b7 stalls \u00b7 wake-chain health \u00b7 next-3), phase/updated/inbox/orders lines refreshed, matching full report appended to control/outbox.md (lane\u2192manager). \u2691 FOR OWNER, kit line, B1 FAMILY VERDICTS, ORDER 016 tally blocks kept verbatim. Prior standing record: git history of this file @ 847e7df / 917261b / 817220d \u2014 pointers over re-derivation."
         },
         "source_url": "https://github.com/menno420/substrate-kit/blob/main/control/status.md"
       }
@@ -271,27 +271,26 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "1daf34972efc349b8c93054730b28743753b1a3a",
-        "committed_at": "2026-07-13T08:23:56Z",
+        "sha": "d013a5909c97397f27d9e094b5b1e1e2a2db4d76",
+        "committed_at": "2026-07-13T10:26:49Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-13T06:43:25Z",
-          "phase": "ORDER 042 ACK + VENTURE BATCH-2 TRIAGE \u2014 posted 2026-07-13T06:43Z on top of the ORDER 022 MORNING TALLY (posted 05:48Z, heartbeat + control/outbox.md; night run complete). Batch-2 intake ledger: 8 WEBSITE-IDEA markers (venture-lab control/outbox.md batch 2) triaged 06:30Z \u2014 1 duplicate (product-catalog one-pager, already live as #248), 1 owner-gated (photo-packs gallery needs the originals), 6 buildable; strategy-graveyard leaderboard dispatched (in flight); queue: diagnostic tree, field-manual funnel, SWTK gotchas, rubric scorer, webhook analyzer. THE TALLY: 41 PRs merged this sitting (#209\u2013# \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "health": "green (main HEAD d35e619 = #252, the tally's own control merge; python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q \u2192 1090 passed at tally write, control-only merges since; bootstrap check --strict green; per-merge /version live-verification held through the night per the quality floor)",
+          "updated": "2026-07-13T09:30:00Z",
+          "phase": "ORDER 023 NIGHT REPORT POSTED \u2014 thorough night report (window 2026-07-12T22:30Z\u21922026-07-13T09:30Z) posted 2026-07-13T09:30Z to this heartbeat + control/outbox.md (manager-addressed), per the owner's morning-review ask relayed via the Fleet Manager (inbox ORDER 023, landed by fm PR #263 = e6a529f). THE NIGHT IN ONE LINE: 45 PRs merged to main in the window (#217\u2013#264 span, every window commit a PR squash \u2014 full number+SHA list in the outbox REPORT), suite 757 at sitting start \u2192 1172 passed at this write (full four-suite run green at report build), zero open non-draft PRs, all live-verified per \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "health": "green (main HEAD 30d407e = #264; python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q \u2192 1172 passed at this write; bootstrap check --strict green; per-merge /version live-verification held through the window per the quality floor)",
           "kit": "v1.15.0 \u00b7 check: green \u00b7 engaged: yes",
-          "last-shipped": "#252 ORDER 022 morning tally (control/** \u2014 heartbeat + outbox) = main d35e619 (2026-07-13); the top of the night's 41-PR build rollup remains #251 = 9b84486.",
+          "last-shipped": "#262 /should-i-build-it rubric scorer (botsite) = a319ccf \u2014 top deploy-bearing merge of the window; main HEAD is 30d407e = #264 (ORDER 024 landing, control-only). Bake PR #259 landed = bcf2943.",
           "blockers": "none",
-          "orders": "acked=001-022 done=001-019 (020 owner-gated \u2014 filing #183 + build #189 merged; remaining = the owner GITHUB_TOKEN contents:write PAT paste, then live writeback verification. 021 owner-gated \u2014 environments hub merged #202/#203/#216/#219; remaining = the owner Discord-auth DECISION/Q-0004, then the gate build at the app/owner.py seam. 022 TALLY-POSTED 2026-07-13T05:48Z in this heartbeat + control/outbox.md \u2014 order still standing until owner review. Fleet-manager ledger: fm ORDER 042 ACK: SATISFIED \u2014 both venture batch-1 pages verified live against 042's scope 2026-07-13T06:29Z: /puddle-museum (P \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "routine": "armed \u00b7 FAILSAFE cron \"Websites failsafe wake\" trig_019cGrUpfHSMv4qLk5tn2hgr \u00b7 45 */2 * * * \u00b7 enabled, healthy \u2014 verified via list_triggers at write: next 06:45Z \u00b7 pacemaker ~15-min send_later chain LIVE. Bake-bridge DISPOSITION: trig_01WA3ewRinYv6sN9Sm4CGx3b fired once (scheduled, event-type proven, 2026-07-13T05:33:12Z) and SELF-RETIRED \u2014 absent from the live roster at 06:30Z, so fm ORDER 022-amendment's \"no bridge trigger exists\" end-state now holds; the predecessor's 20:01Z re-arm is documented as good-faith on a false premise (the fm 19:20Z owner-live sweep had deliberately deleted the or \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "landing": "pushed-unmerged claude/heartbeat-042-ack \u2014 this heartbeat's own control/** fast-lane PR (READY at write; this session never self-arms/self-merges). The tally PR #252 and all build branches from the night are merged; the only other open PRs are the draft rescue-parks #245/#249 (kit-churn parks, do-not-merge by design \u2014 owner may close).",
-          "deployed": "LIVE URLs \u2014 pointers only; the durable ledger lives in docs/current-state.md. Review site https://review-production-f027.up.railway.app (public program review \u2014 EAP closes Tue 07-14; the cold-pass nav fix + privacy lint live). Control-plane https://control-plane-production-abb0.up.railway.app (owner console \u2014 prompts home with drift row, per-seat version history, supersession warnings; /freshness fleet page). Botsite (Fleet Arcade + /testing + /products storefront + /products/catalog + The Puddle Museum). Mineverse https://web-production-97636.up.railway.app. Every deploy-bearing merge in the \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "orders": "acked=001-024 done=001-019 (020 owner-gated \u2014 filing #183 + build #189 merged; remaining = the owner GITHUB_TOKEN contents:write PAT paste, then live writeback verification. 021 owner-gated \u2014 environments hub merged #202/#203/#216/#219; remaining = the owner Discord-auth DECISION/Q-0004, then the gate build at the app/owner.py seam. 022 TALLY-POSTED 2026-07-13T05:48Z (#252) \u2014 standing until owner review; batch-2 remainder = webhook analyzer. 023 SERVED \u2014 this heartbeat + the outbox REPORT are the deliverable; done-when met on this landing. 024 IN FLIGHT \u2014 order landed #264; the /prompts curren \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "routine": "armed \u00b7 FAILSAFE cron \"Websites failsafe wake\" trig_019cGrUpfHSMv4qLk5tn2hgr \u00b7 45 */2 * * * \u00b7 enabled, healthy \u2014 verified via list_triggers at this write: last fire 2026-07-13T08:45:40Z, next 10:45Z; night fires on schedule (00:45/02:45/04:45/06:45/08:45Z). Pacemaker ~15-min send_later chain LIVE \u2014 newest outstanding tick trig_014eShoE49EF3S9nbmuBjbT7 (fires 09:52Z); note: list_triggers at write shows 6 pending account-wide one-shots (09:25\u201310:00Z) \u2014 multiple concurrent sessions/workers each hold a tick; flagged in the outbox report, not a stall. Bake-bridge DISPOSITION (carried): trig_01WA3ew \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "landing": "pushed-unmerged claude/order-023-night-report \u2014 this report's own control/** fast-lane PR (READY at write; this session never self-arms/self-merges). Only other open PRs are the three draft parks #245/#249/#257 (kit-stub lifeboats, do-not-merge by design, no checks run on drafts \u2014 owner may close). Zero open non-draft PRs besides this one.",
+          "deployed": "LIVE URLs \u2014 pointers only; the durable ledger lives in docs/current-state.md. Review site https://review-production-f027.up.railway.app (public program review \u2014 EAP closes Tue 07-14; daily data refreshed by the now-working scheduled bake, latest bake bcf2943). Control-plane https://control-plane-production-abb0.up.railway.app (owner console \u2014 prompts home with drift row, per-seat version history, supersession warnings; /freshness fleet page). Botsite (Fleet Arcade + /testing + /products storefront + /products/catalog + The Puddle Museum + /field-manual funnel + /stripe-gotchas + /graveyard + / \u2026 [truncated for the mirror \u2014 full text at the source]",
           "rung": "order",
-          "tooling": "pr-capable",
           "needs-owner": "pointer \u2014 canonical six-field blocks live in docs/owner/OWNER-ACTIONS.md ONLY (do not duplicate them here). Seven asks open there, unchanged: botsite SITE_PASSWORD; botsite Postgres/DATABASE_URL; PayPal Payouts creds; Q-0004; Discord OAuth redirect-URI + client secret (environments-hub gate \u2014 DECISION PENDING, seam in place); the armed-service ask; the fine-grained GitHub contents:write PAT (ORDER 020 owner writeback). These are exactly the owner-gated remainder of ORDER 022 item 2.",
-          "notes": "NEUTRAL pointers only. Boot from main: HANDOFF.md \u2192 docs/current-state.md \u2192 this file; owner asks in docs/owner/OWNER-ACTIONS.md; capability walls in docs/CAPABILITIES.md. Tally corrections vs the night's running ledger, verified against git: sitting suite baseline was 757 passed (not 763; heartbeat at #207/#209), and the sitting total is 41 merged PRs of which 23 belong to the ORDER 022 run proper. NEXT-2 baton: (1) watch today's scheduled review-bake GH-cron run by conclusion (bridge is retired by design \u2014 do NOT re-arm trig_01WA3ewRinYv6sN9Sm4CGx3b; the \"no bridge trigger exists\" end-state \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "notes": "NEUTRAL pointers only. Boot from main: HANDOFF.md \u2192 docs/current-state.md \u2192 this file; owner asks in docs/owner/OWNER-ACTIONS.md; capability walls in docs/CAPABILITIES.md. NEXT-3 baton (= the report's next-3): (1) ORDER 024 \u2014 /prompts presents the CURRENT generation-source artifacts as primary, superseded files demoted (fix in flight); (2) webhook analyzer \u2014 the last buildable batch-2 marker \u2014 lands; (3) owner-gated queue awaits the morning decisions (020 PAT \u00b7 021 Discord/Q-0004 \u00b7 SITE_PASSWORD \u00b7 DATABASE_URL \u00b7 PayPal). Parked: draft PRs #245/#249/#257 (kit-stub lifeboats \u2014 owner may close an \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/websites/blob/main/control/status.md"
       }
@@ -303,14 +302,15 @@
       "repo_url": "https://github.com/menno420/trading-strategy",
       "head": {
         "ok": true,
-        "sha": "de5a477ee38c0793f3e44b339231f837f4d2e895",
-        "committed_at": "2026-07-13T05:06:48Z",
+        "sha": "d5597457b10fb42ae646ccb2c8fc61690671d52a",
+        "committed_at": "2026-07-13T10:15:03Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-13T05:04:48Z main: 58d7dfb night_run: ORDER-012 complete; PRs #80\u2013#95 merged (15 research + 1 order landing), 0 open surface_added: 11 strategies \u00b7 6 tickers (SPY QQQ TSLA JPM XOM TLT) \u00b7 BTC-USD \u00b7 hourly matrix complete scoreboard: 3468 configs / 312 lanes \u2192 0 PROMOTED / 64 KEEP-dev / 248 KILL; max_t 1.38 vs bar 2.64 notable_negatives: TSLA-RSI-reversion t=-3.01 worse-than-hold; vol-gate subtracts value (46/60 splits) synthesis: docs/research-round-3-results.md (PR #89) ledger_rows_added: 309; tests: 437 passing rails: holdout untouched \u00b7 paper lane byte-untouched \u00b7 grading 2026-07-17 \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-13T09:22:51Z main: 08969bb night_report: ORDER-013 served; window 2026-07-12T22:30Z\u219209:12Z: 18 PRs #80\u2013#97 merged (#80 ORDER-012 landing \u00b7 #81\u2013#88+#90\u2013#95 fourteen research slices \u00b7 #89 synthesis \u00b7 #96 morning tally de5a477 \u00b7 #97 manager ORDER-013 inbox append 08969bb); full report: control/outbox.md \u00a7 NIGHT REPORT 2026-07-13 open_prs: 0 (verified 2026-07-13T09:19Z, MCP + git ls-remote cross-check)",
+          "orders": "acked=001\u2013013 \u00b7 done=001\u2013012 (012 served: night run executed, morning tally #96) \u00b7 013 served by this report surface_added: 11 strategies \u00b7 6 tickers (SPY QQQ TSLA JPM XOM TLT) \u00b7 BTC-USD \u00b7 hourly matrix complete scoreboard: 3468 configs / 312 lanes \u2192 0 PROMOTED / 64 KEEP-dev / 248 KILL; max_t 1.38 vs bar 2.64 notable_negatives: TSLA-RSI-reversion t=-3.01 worse-than-hold; vol-gate subtracts value (46/60 splits) synthesis: docs/research-round-3-results.md (PR #89; covers slices 1\u20138, later slices' deltas in their #90\u2013#95 cards) ledger_rows_added: 309 (experiments/index.jsonl 242\u2192551 over window); \u2026 [truncated for the mirror \u2014 full text at the source]",
           "kit": "substrate-kit v1.15.0 (vendored bootstrap.py; main at PR #75 \u2014 v1.12.0\u2192v1.12.1 via PR #63 (ea22323), v1.12.1\u2192v1.13.0 via PR #72 (8cc0208), v1.13.0\u2192v1.14.0 via PR #74, v1.14.0\u2192v1.15.0 via PR #75 (b354548, current origin/main HEAD))."
         },
         "source_url": "https://github.com/menno420/trading-strategy/blob/main/control/status.md"
@@ -323,14 +323,15 @@
       "repo_url": "https://github.com/menno420/venture-lab",
       "head": {
         "ok": true,
-        "sha": "0679327a463c063dcd9fc62b33ffb9a3789fa7d3",
-        "committed_at": "2026-07-13T06:12:05Z",
+        "sha": "e3dfab82df7b36971e0b6505396d2bc38b0cb41d",
+        "committed_at": "2026-07-13T10:26:36Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-13T06:10:46Z As of 2026-07-13T06:10:46Z \u2014 coordinator session_01CXEh5TBKBNTDGgsDstfcjc. NIGHT RUN COMPLETE under ORDER 008; morning tally in control/outbox.md (this commit) \u2014 headline: 6 products publish-READY + SWTK live, ~215k words of book prose (6 new books + 4 NL editions + versions), 3,468 trading configs 0-promoted-honest, 52 PRs merged (venture #103\u2013#139 + trading #80\u2013#95; dawn slice after the 05:04Z tally: #138 board-book cuts \u2014 +9 board-book manuscripts (comet-biscuit 2\u20133, star-pirates distillation, EN/NL/DE) \u2014 + #139 claim prune), 0 open. Routines: pacemaker paused as of 202 \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "updated": "2026-07-13T09:26:28Z As of 2026-07-13T09:26:28Z \u2014 night-report slice serving ORDER 009. Night window 2026-07-12T22:30Z\u2192now: 46 PRs merged into venture main (#96\u2013#141, git first-parent verified; first in-window #97 `e0f343a` 22:30:46Z, last #141 `374e8d1` 09:12:14Z) \u2014 evening slices #96\u2013#102, ORDER 008 night run #103\u2013#136, morning tally #137 (`5814880`), dawn board-book cuts #138, claim prune #139, wind-down heartbeat #140 (`0679327`), ORDER 009 request landing #141 (`374e8d1`). Trading-repo merges #80\u2013#95 per the 06:10Z tally (`5814880`) \u2014 not re-measured this slice. Open PRs: 0 (live GitHub M \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "orders": "009 SERVED by this commit (report in this heartbeat + the outbox night-report entry, newest-last). 008 served (tally #137 + wind-down #140). 007 terminal, live re-checked this slice: PR #51 closed-unmerged 2026-07-12T09:39:15Z; PR #57 merged 2026-07-12T09:40:17Z (`4c2e623`). 003 done at PR #16 (`912da3e`) per the #104 verification card; 001/002/004/005/006 done per prior heartbeats \u2014 not re-derived. Wake chain: failsafe trig_01HCLdpcX9QNUz4Y33efgt57 armed (cron `45 1-23/2 * * *`), fired on schedule overnight; pacemaker send_later chain ran ~15\u201345 min cadence overnight, deliberately paused 2026 \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/venture-lab/blob/main/control/status.md"
       }
@@ -342,8 +343,8 @@
       "repo_url": "https://github.com/menno420/superbot-games",
       "head": {
         "ok": true,
-        "sha": "5aec110834345e20ce47941266fe598f43804ea0",
-        "committed_at": "2026-07-13T02:46:23Z",
+        "sha": "57f69be34785afb427d608b207e7369025166e94",
+        "committed_at": "2026-07-13T09:24:31Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -353,7 +354,7 @@
           "phase": "docs-correction \u2014 landed a docs-only PR correcting stale \"plugin contract in flight\" claims; no feature-code change. Close-out/archive-prep from the prior wake still stands (5 feature PRs parked for owner merge). ladder (per-slice, all four at PURE CORE \u2014 workflow/host-adapter rungs NOT yet built): - mining      \u2014 PURE CORE shipped (games/mining/core/, 96 tests). workflow (rung 2) = SCOPED-AND-FLAGGED (not built) pending a \u2691 audit-schema decision \u2014 see docs/design/mining-workflow-seam.md, PR #60 (READY + green). host-adapter = named-next. - exploration \u2014 PURE CORE shipped (games/exploration/, \u2026 [truncated for the mirror \u2014 full text at the source]",
           "health": "green \u2014 main merged work green; local verify on the PR branch: tests/check_suite_floors.py TOTAL 310 (all floors met), pytest tests/ games/exploration/tests/ = 310 passed, tools/gen_balance.py --check clean, bootstrap.py check --strict exit 0 (after session card flipped complete).",
           "last-shipped": "kit substrate-kit v1.12.0 \u2192 v1.12.1 (#58). main HEAD 9efe599 (this branch is based on 5ddfbee/#58, which is fine; main has since advanced via fleet-manager PR #61 \u2014 see the Archival correction section below), kit substrate-kit v1.12.1. open-PR (this wake): #59 docs/plugin-contract-binding-correction \u2014 docs-only correction of stale \"plugin contract in flight\" claims (README + docs/founding-plan-mining.md + docs/design/mining-plugin-layout.md \u00a73 shape note). READY (not draft); auto-merge NOT armed. Branch head af8e9f2 (+ this heartbeat commit). CI: opened this wake; a born-red CI webhook right a \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "orders": "acked=001,002,003,004,005 done=001,002,003,005",
+          "orders": "acked=001,002,003,004,005,006 done=001,002,003,005,006 (004 satisfied \u2014 see \u2691 below; 006 = NIGHT REPORT section at end of this file)",
           "needs-owner": "ORDER 004 (self-review) \u2014 SATISFIED on main: artifact at docs/retro/close-out-world-games-2026-07-11.md (authored 201f8dd/#47, relocated at close-out 3a4eb98/#57); done=004 is backed by real, spec-compliant content, not a bare marker. Remaining owner items: the OWNER-ACTION block below + docs/retro/archive-ready-2026-07-11.md. \u2691 mining WORKFLOW seam (rung 2) \u2014 audit-schema decision (D1 which schema / D2 audit item-grants, a divergence from the oracle) needs owner/lab ratification; scoped in docs/design/mining-workflow-seam.md, PR #60.",
           "notes": "prior-wake self-review + lessons \u2192 docs/retro/close-out-world-games-2026-07-11.md \u00b7 archive resume spec \u2192 docs/retro/archive-ready-2026-07-11.md \u00b7 per-PR state \u2192 control/claims/ \u00b7 session card \u2192 .sessions/2026-07-12-plugin-contract-binding-correction.md \u00b7 telemetry \u2192 telemetry/model-usage.jsonl ARCHIVAL CORRECTION ONLY \u2014 not a resumption of the close-out lane, no feature work re-added; one dated stamp. The stale heartbeat (updated 2026-07-11T19:39:14Z), whose \"5 parked PRs\" framing is carried forward into the `## Open PRs` and `## \u2691 OWNER-ACTION` sections below, is SUPERSEDED on two points. Ve \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
@@ -367,8 +368,8 @@
       "repo_url": "https://github.com/menno420/superbot-idle",
       "head": {
         "ok": true,
-        "sha": "c735075d90e88518e8b9877128680d0bf84f1c98",
-        "committed_at": "2026-07-13T01:50:23Z",
+        "sha": "b03cc96b9f4e1b53375ba8baf00c35ce80ce7101",
+        "committed_at": "2026-07-13T10:22:35Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -380,7 +381,7 @@
           "kit": "v1.7.1 \u00b7 check: green boot: 2026-07-10 \u2014 idle-engine seat synced seed HEAD 28fac02, kit v1.7.1 verified via bootstrap.py --version, check --strict green, calibration posted",
           "last-shipped": "ORDER 003 \u2014 pytest CI workflow (PR #74); prior: PLUG-001 docs-only un-park (PR #72), close-out + archive prep (PR #70 + heartbeat PR #71)",
           "blockers": "SIM-001/Q-0264 and KIT-001 still open (\u2691 blocks below). PLUG-001 CLEARED 2026-07-12 \u2014 contract found, un-parked (see PLUG-001 section below).",
-          "orders": "acked=000-003 done=000-002 (003 in-flight: PR #74 READY+green, awaiting owner required-check + merge) - ADDRESSED by **PR #74** (`order-003-pytest-ci`): adds `.github/workflows/pytest.yml`, a new workflow that runs `python3 -m pytest -q` on every `pull_request` and `push` to `main`. Job/check name `pytest`, so it shows as its own check-run. - Gap was real (verified at HEAD 45ff2bf, per inbox): `.github/workflows/` held only `substrate-gate.yml` + `theme-gate.yml`; grep for `pytest` in both returned nothing \u2014 no CI job executed the suite, so GREEN \u2260 TESTED. - Style mirrors `theme-gate.yml` (ubu \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "orders": "acked=000-004 done=000-004 (003 done-when met: PR #74 MERGED 2026-07-12T19:40:02Z with the `pytest` check green + the \u2691 required-check ask filed as OA-003 below; 004 = NIGHT REPORT section at end of this file) - ADDRESSED by **PR #74** (`order-003-pytest-ci`): adds `.github/workflows/pytest.yml`, a new workflow that runs `python3 -m pytest -q` on every `pull_request` and `push` to `main`. Job/check name `pytest`, so it shows as its own check-run. - Gap was real (verified at HEAD 45ff2bf, per inbox): `.github/workflows/` held only `substrate-gate.yml` + `theme-gate.yml`; grep for `pytest` in bo \u2026 [truncated for the mirror \u2014 full text at the source]",
           "needs-owner": "**OA-001 \u2014 repo settings: Allow auto-merge + required check `substrate-gate` on `main` \u2014 RESOLVED-VERIFIED** - Auto-merge armed successfully at creation and fired on green for PRs #1 and #2 \u2014 the VERIFIED-NEEDED criterion (\"next PR shows Auto-merge enabled and lists `substrate-gate` as required\") is met. **OA-002 \u2014 repo settings: make `theme-gate` a required status check on `main` \u2014 RESOLVED-VERIFIED** - Owner enabled theme-gate as a required check ~00:10Z; observed gating merges from PR #6 onward \u2014 auto-merge fires only after theme-gate concludes. **OA-003 \u2014 \u2691 OWNER ASK: add `pytest` as a REQ \u2026 [truncated for the mirror \u2014 full text at the source]",
           "notes": "seeded 2026-07-10 by the dispatch copilot at the owner's direct instruction (live dispatch chat), on the fleet seeding recipe (fourth consumer: product-forge, sim-lab precedents). Egg farm = FIRST THEME, not the product \u2014 the contract is in README.md. The coordinator overwrites this file (never append) as every session's deliberate last step. ARCHIVED 2026-07-11: founding coordinator chat archived by owner order; durable homes for its knowledge are docs/retro/2026-07-11-lane-retro.md + docs/retro/2026-07-11-archive-ready.md. - Executable request registered in `docs/design/economy-v1.md` \u00a7 \"Sim \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
@@ -394,20 +395,20 @@
       "repo_url": "https://github.com/menno420/superbot-mineverse",
       "head": {
         "ok": true,
-        "sha": "35f147a2ec3052bc1e2027ec327077c65f8729b0",
-        "committed_at": "2026-07-13T05:29:42Z",
+        "sha": "234e8f72ba3f99749c3540f00f4e2b3f464195bf",
+        "committed_at": "2026-07-13T10:20:58Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-13T04:12:00Z",
-          "phase": "heartbeat \u2014 ORDER 004 morning tally (night-run ~2026-07-13T00:40\u201304:05Z, whole SuperBot World seat). COORDINATOR-DELEGATED heartbeat write \u2014 the coordinator seat authorized this status overwrite.",
+          "updated": "2026-07-13T09:28:00Z",
+          "phase": "heartbeat \u2014 ORDER 005 night report (owner ask 2026-07-13, fm relay); the ORDER 004 morning-tally content below is PRESERVED. COORDINATOR-DELEGATED heartbeat write.",
           "health": "green",
           "kit": "v1.8.0",
           "last-shipped": "#63 \u2014 tests+server: shared served-bytes fixtures + views uses cached schema loader; merged 2026-07-13T02:21Z.",
           "blockers": "none",
-          "orders": "acked=001,002,003,004 done=001,002,003,004",
+          "orders": "acked=001,002,003,004,005 done=001,002,003,004,005 (005 = NIGHT REPORT section below)",
           "needs-owner": "MINING_WRITE_ENDPOINT + MINING_WRITE_SHARED_SECRET pair (conformance is then one command: `python3 scripts/conformance_run.py`, docs/conformance-runbook.md) \u2014 full OWNER-ACTION block (WHAT/WHERE/HOW/WHY-IT-MATTERS/UNBLOCKS/VERIFIED-NEEDED/RISK): control/outbox.md entry 2026-07-12T21:05Z. Owner-decision queue: \u00a7 QUEUED below. practice (2026-07-13T05:27:28Z): ORDER 038 adopted (fm inbox, standing, 2026-07-13): VERDICT 016 authenticity gate applied to every cross-agent reviewer reply before acting (cited line ranges must be \u2264 EOF at the reviewed head; failed reply = fabricated, discarded with cit \u2026 [truncated for the mirror \u2014 full text at the source]",
           "notes": "ORDER 004 done-when met \u2014 tally posted here, per-game state table below, minigame section spec at docs/design/minigame-section-spec-2026-07-13.md (landed #58, outbox pointer #59). Verification labels: mineverse PR states API-verified at this stamp; games/idle/next merge states verified against each repo's main history at HEAD; suite counts, goldens, and run details are lane-reported (sources cited). - **superbot-games** (suite 310\u2192516, lane-reported per PR bodies; merges verified in main): #68 mining seam \u00b7 #69 fishing seam \u00b7 #70 mining CLI \u00b7 #71 fishing CLI \u00b7 #72 hub launcher \u00b7 #73 persistenc \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
@@ -481,21 +482,21 @@
       "repo_url": "https://github.com/menno420/idea-engine",
       "head": {
         "ok": true,
-        "sha": "2e5d73f59407521922c8bfdb474d7738105fb046",
-        "committed_at": "2026-07-13T08:20:21Z",
+        "sha": "8218d6630f53633461d993d9a3caa4ad54ab251d",
+        "committed_at": "2026-07-13T09:29:37Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-13T05:14:54Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-12T23:44:55Z overwrite; committed by the coordinator's landing worker with dictated content \u2014 the coordinator session has no file tools)",
-          "phase": "SESSION 2 ACTIVE \u2014 ORDER 004 night run TALLY POSTED (morning tally, ~06:00Z deadline met; outbox twin = TALLY 001, same commit). Governing orders: owner ORDER 003 (continuous idea pipeline, P1 standing-ACTIVE; landed verbatim via PR #274 \u2192 1bfcde6) + owner ORDER 004 (night run, landed verbatim via PR #280 \u2192 c99852c). ORDER 004 MORNING TALLY (single-home block \u2014 tally facts live HERE and in outbox TALLY 001 only; every count verified against both trees at HEAD, idea-engine a123fda / sim-lab 6526959): VERDICTS FINALIZED since ORDER 004 landed 00:44Z: 9 \u2014 V018 approve (encounter coexistence: per- \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "health": "green \u2014 python3 bootstrap.py check --strict exit 0 on this tree immediately before push (this heartbeat is a control/**-only diff: kit-gate control fast lane, no session card).",
+          "updated": "2026-07-13T09:31:00Z (real wall-clock via date -u, per the control/README rule \u2014 monotonic past the prior 2026-07-13T05:14:54Z overwrite; committed by the coordinator's landing worker with dictated content \u2014 the coordinator session has no file tools)",
+          "phase": "SESSION 2 ACTIVE \u2014 ORDER 007 NIGHT REPORT POSTED (this commit; outbox twin = NIGHT-REPORT 001, same commit) + ORDERs 005/006 ACKED (9 SIM-REQUESTs, dispatch to sim sessions in progress this wake). Governing orders: owner ORDER 003 (continuous idea pipeline, P1 standing-ACTIVE; landed verbatim via PR #274 \u2192 1bfcde6) + owner ORDER 004 (night run, landed verbatim via PR #280 \u2192 c99852c; morning tally served 05:14Z \u2014 TALLY 001 in outbox + history @ 3b9a728) + fm ORDERs 005 (#300 \u2192 b428feb) / 006 (#304 \u2192 98b147b) / 007 (#305 \u2192 755319e). NIGHT-REPORT 001 (single-home block \u2014 report facts live HERE an \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "health": "green \u2014 python3 bootstrap.py check --strict exit 0 on this tree immediately before push (this heartbeat is a control/**-only diff: kit-gate control fast lane, no session card; control/inbox.md untouched, so the inbox append-only gate self-skips per the workflow).",
           "kit": "v1.10.0 \u00b7 check: green \u00b7 engaged: yes",
-          "last-shipped": "parked-PR list NONE (zero open PRs in both repos at tally time; ORDER 004 rule 2 \u2014 any unmerged fast-lane PR stays OPEN for the owner sweep, none currently outstanding). NIGHT-RUN CYCLE LEDGER (new since the 23:44Z heartbeat; PROPOSAL \u2192 VERDICT, all landed): P016 encounter coexistence (#279 \u2192 d1d1b6b) \u2192 V018 approve (sim-lab #61 \u2192 3eece35); P017 IRV monotonicity (#281 \u2192 80baad5) \u2192 V019 null (#63 \u2192 e5e1bee); P018 book breadth-vs-depth (#283 \u2192 d0dca70) \u2192 V020 null (#64 \u2192 45e7dfb; cross-ledger echo PR #285 \u2192 b9914ca; sim-lab relocation echo #66 \u2192 a7edcad); P019 backlog low-water (#284 \u2192 f7906e5) \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "last-shipped": "#306 \u2192 eea4e5b (PROPOSAL 034 drift-regime observability, merged mid-report; before it #305 \u2192 755319e ORDER 007 landing) \u2014 parked-PR list: the two night-report PRs only (this one + sim-lab's twin), both left OPEN to land on green (ORDER 004 rule 2 \u2014 any unmerged fast-lane PR stays OPEN for the owner sweep); nothing else outstanding. Post-tally cycle ledger (new since the 05:14Z tally; PROPOSAL \u2192 VERDICT, all landed): P026 breadth budget (#293 \u2192 0716140) \u2192 V028 approve (sim-lab #74 \u2192 fe51983); P027 comp/stipend (#294 \u2192 3978df1) \u2192 V029 null (#76 \u2192 76dc487); P028 bracket seeding (#295 \u2192 535c232) \u2192 \u2026 [truncated for the mirror \u2014 full text at the source]",
           "blockers": "none.",
-          "orders": "acked=001-004 done=002 (001 standing \u2014 its per-session rule re-satisfied this session: the session card .sessions/2026-07-12-ideas-lab-session2-boot.md carries the \ud83d\udcca Model line; 002 done \u2014 Self-review preserved at docs/retro/self-review-2026-07-11.md; 003 standing-ACTIVE \u2014 a per-wake obligation that never flips done: the pipeline ran all night, see the tally block in the phase line; 004 done-when MET \u2014 morning tally posted in heartbeat + outbox by ~06:00Z, this commit). \u2691 needs-owner (condensed from the session-1 close-out \u2014 canonical full-field detail stands in history at c77563c control/stat \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "notes": "PIPELINE HEARTBEAT \u2014 night-run cycles 4-12 tallied above (neutral facts + pointers only). NEXT-2-TASKS BATON: (1) INTAKE 025 \u2192 VERDICT 027 for P025 (claim-expiry horizons vs lane death) \u2014 on its landing the ORDER 003 rotation continues at the venture slot; (2) standing watches unchanged \u2014 kit v1.15.0 upgrade PRs for both repos (the claude/ allowlist line from #272 must survive the upgrade, see last-shipped FACT), owner sitting bundle \u22642026-07-13 (\u2691 item 1), gift-repo awaiting the owner tweak reply (\u2691 item 3). Session-1 final tally + prior flags/watches/mint ledgers: preserved in history at c77 \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "orders": "acked=001-007 done=002,004,007 (001 standing \u2014 its per-session rule re-satisfied this session: the session card .sessions/2026-07-12-ideas-lab-session2-boot.md carries the \ud83d\udcca Model line; 002 done \u2014 Self-review preserved at docs/retro/self-review-2026-07-11.md; 003 standing-ACTIVE \u2014 a per-wake obligation that never flips done: the pipeline ran all night, see NIGHT-REPORT 001; 004 done-when MET \u2014 morning tally posted 05:14Z, TALLY 001; 005/006 acked-in-progress \u2014 the 9 SIM-REQUESTs are priority intake, dispatch to sim sessions underway this wake, verdicts to post via outbox naming the requesting \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "notes": "PIPELINE HEARTBEAT \u2014 night-run cycles through V034 reported in NIGHT-REPORT 001 above (neutral facts + pointers only). NEXT-2-TASKS BATON: (1) the 9 SIM-REQUEST dispatches (ORDERs 005/006) \u2014 verdicts post via outbox naming the requesting seats, then INTAKE 034 \u2192 V036 for P034; (2) standing watches unchanged \u2014 kit v1.15.0 upgrade PRs for both repos (the claude/ allowlist line from #272 must survive the upgrade, see last-shipped FACT), owner sitting bundle \u22642026-07-13 (\u2691 item 1), gift-repo awaiting the owner tweak reply (\u2691 item 3). Session-1 final tally + prior flags/watches/mint ledgers: preser \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/idea-engine/blob/main/control/status.md"
       }
@@ -507,21 +508,21 @@
       "repo_url": "https://github.com/menno420/sim-lab",
       "head": {
         "ok": true,
-        "sha": "c7340aeb330f2b05655f55e8b542b0e62c71d061",
-        "committed_at": "2026-07-13T08:21:30Z",
+        "sha": "fc3a5e6482a32938c37b4b7ab32b1f6e0ca2c5e1",
+        "committed_at": "2026-07-13T10:26:00Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-13T05:18:23Z",
-          "phase": "ACTIVE \u2014 under the merged Ideas Lab seat (Q-0264; idea-engine + sim-lab, one seat), coordinator session 2 (booted 2026-07-12 ~20:45Z; owner ORDER 003 standing + owner ORDER 004 night run, both in the idea-engine inbox). NIGHT-RUN TALLY (ORDER 004 morning tally, ~06:00Z \u2014 counts verified against this tree at HEAD 6526959; canonical tally home: idea-engine control/status.md + outbox TALLY 001): 26 verdicts finalized (V001\u2013V026, every outbox VERDICT block `status: finalized`), 9 of them tonight since ORDER 004 landed 00:44Z \u2014 V018 approve / V019 null / V020 null / V021 approve / V022 reject / V02 \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-13T09:32:00Z",
+          "phase": "ACTIVE \u2014 under the merged Ideas Lab seat (Q-0264; idea-engine + sim-lab, one seat), coordinator session 2 (booted 2026-07-12 ~20:45Z; owner ORDER 003 standing + owner ORDER 004 night run, both in the idea-engine inbox). ORDER 004 (sim-lab local \u2014 NIGHT REPORT REQUEST) SERVED this commit; outbox twin = NIGHT-REPORT 001, same commit. NIGHT-REPORT 001 (window 2026-07-12T22:30Z \u2192 2026-07-13T09:32Z; counts verified against both trees at HEAD, sim-lab 24ba4f7 / idea-engine eea4e5b, and against the live GitHub PR index at 09:16Z, re-checked 09:28Z after two mid-report merges; canonical roster twin: i \u2026 [truncated for the mirror \u2014 full text at the source]",
           "health": "green",
           "kit": "v1.7.0 \u00b7 check: green (bootstrap.py check --strict exit 0) \u00b7 engaged: yes",
-          "last-shipped": "#71 6526959 (verdict-026: Braess added-edge frequency, PROPOSAL 024 \u2014 null, arms agreeing: paradox in ~3.3% of the affine diamond census exactly, worst case 4/3); tonight's run in order: #60 2e28767 (V017 T10 cost curve) \u00b7 #61 3eece35 (V018 encounter coexistence, approve) \u00b7 #62 a3b921b (docs: current-state refresh through V018) \u00b7 #63 e5e1bee (V019 IRV, null) \u00b7 #64 45e7dfb (V020 book breadth-vs-depth, null) \u00b7 #65 944ece7 (V021 backlog low-water, approve) \u00b7 #66 a7edcad (control: INTAKE 018 + VERDICT 020 relocation echo into the canonical ledger) \u00b7 #67 cf953a5 (V022 casino fairness, reject) \u00b7 #68 \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "last-shipped": "#82 24ba4f7 (VERDICT 035: null \u2014 assign-at-merge queue tax is a conditional frontier, INTAKE 033 / idea-engine P033; merged mid-report) after #80 cd47c06 (VERDICT 034 Penney, approve) + #81 8a4e63c (ORDER 004 night-report request landed); post-tally run in order: #73 5e356ed (V027 claim-expiry, reject) \u00b7 #74 fe51983 (V028 breadth budget, approve) \u00b7 #75 fcb39e3 (V030 bracket seeding, approve) \u00b7 #76 76dc487 (V029 comp/stipend, null) \u00b7 #77 b50fd06 (V031 lease-renewal, null) \u00b7 #78 c7340ae (V032 adaptive versioning, reject) \u00b7 #79 52f8d7a (V033 EXPLORE_ACTION pacing, reject) \u00b7 #80 cd47c06 (V034 Penn \u2026 [truncated for the mirror \u2014 full text at the source]",
           "blockers": "none",
-          "orders": "acked=ORDER-001 ORDER-002 ORDER-003 done=ORDER-001 ORDER-002 ORDER-003 (ORDER-001 model-attribution: \ud83d\udcca Model line on session cards + card markers present; ORDER-002 self-review: docs/retro/self-review-2026-07-11.md with the dated section, \u2691 items mirrored below; ORDER-003 merge-on-green: done-when met 2026-07-12T10:31:24Z \u2014 PR #51 (head a7e526b, branch fix/order-003-evidence) merged by github-actions[bot] with ZERO agent merge calls, 28s open-to-merge, enabler run 29189245547 \"Auto-merge enabled for PR #51 \u2014 it merges when 'substrate-gate' is green\"; enabler shipped in PR #50 \u2192 e11ed40, mirror \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "notes": "Scribe-committed heartbeat (coordinator-dictated, merged Ideas Lab seat). NEXT-TASKS: (1) V027 completion \u2014 pull PROPOSAL 025 (idea-engine outbox @ a123fda) as INTAKE 025, run the claim-expiry-horizon sim to a finalized verdict; (2) next intake per the idea-engine outbox as ORDER 003's rotation continues. CODEX POSTURE unchanged: the @codex question step remains suspended (three replies verified fabricated); VERDICT 016 supplies the evidence-based ruling \u2014 gate, don't suspend (mandatory pre-trust authenticity gate; the step can be reinstated behind it) \u2014 the adoption decision sits with manager \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "orders": "acked=ORDER-001 ORDER-002 ORDER-003 ORDER-004 done=ORDER-001 ORDER-002 ORDER-003 ORDER-004 (ORDER-001 model-attribution: \ud83d\udcca Model line on session cards + card markers present; ORDER-002 self-review: docs/retro/self-review-2026-07-11.md with the dated section, \u2691 items mirrored below; ORDER-003 merge-on-green: done-when met 2026-07-12T10:31:24Z \u2014 PR #51 (head a7e526b, branch fix/order-003-evidence) merged by github-actions[bot] with ZERO agent merge calls, 28s open-to-merge, enabler run 29189245547 \"Auto-merge enabled for PR #51 \u2014 it merges when 'substrate-gate' is green\"; enabler shipped in PR # \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "notes": "Scribe-committed heartbeat (coordinator-dictated, merged Ideas Lab seat). NEXT-TASKS: (1) the 9 SIM-REQUEST verdicts (idea-engine ORDERs 005/006) as priority intake \u2014 each names its requesting seat (venture-lab / superbot-idle / superbot-games) for manager relay; (2) INTAKE 034 \u2192 V036 for idea-engine PROPOSAL 034 (drift-regime observability, sim-ready @ eea4e5b) as ORDER 003's rotation continues (V035 for P033 landed mid-report, #82). CODEX POSTURE unchanged: the @codex question step remains suspended (three replies verified fabricated); VERDICT 016 supplies the evidence-based ruling \u2014 gate, d \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/sim-lab/blob/main/control/status.md"
       }
@@ -611,14 +612,14 @@
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "e663b794c6b6c581dda686a42a84aaa356e880f4",
-        "committed_at": "2026-07-13T07:52:53Z",
+        "sha": "5134cf7cef3c737ba81235409e72e952d56a7ff2",
+        "committed_at": "2026-07-13T10:08:17Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-13T06:52Z \u2014 idle owner-question routing worker write (coordinator-delegated; coordinator seat session_01UutkJqyMcHC1VyFW8fe1a9 continuous since 2026-07-12 ~20:30Z). mode: MORNING-REPORTED (NIGHT-RUN closed out \u2014 ORDER 039/040 morning deliverable landed)",
+          "updated": "2026-07-13T10:05Z \u2014 roll-up worker write (coordinator-delegated; coordinator seat session_01UutkJqyMcHC1VyFW8fe1a9 continuous since 2026-07-12 ~20:30Z). **FLEET NIGHT-REPORT ROLL-UP POSTED** \u2014 `control/outbox.md` \u00a7 \"2026-07-13 \u00b7 FLEET NIGHT-REPORT ROLL-UP (owner ask ~09:00Z)\", this PR. **Coverage 13/13 seat reports posted, 0 pending** (11 on seat mains; gba on parked PR #89 head `a84933b`, pml on parked PR #63 head `db46649` until the owner sweep). \u2248276 PRs merged fleet-wide overnight per the reports' own counts (+7 superbot per-ledger). NEW owner asks queued as items 55\u201360 (docs/owner-queue.m \u2026 [truncated for the mirror \u2014 full text at the source]",
           "phase": "morning tally posted \u2014 **full night-run report in `control/outbox.md` (2026-07-13 MORNING TALLY entry \u2014 the manager\u2192owner lane, opened this PR)**; ORDERs 042 (Websites: venture WEBSITE-IDEA routing) + 043 (Ideas Lab: SIM-REQUEST priority intake) dispatched.",
           "health": "green",
           "kit": "v1.7.0 \u00b7 check: green \u00b7 engaged: yes coordinator: session_01UutkJqyMcHC1VyFW8fe1a9 (live coordinator seat; this heartbeat written by its tally worker).",
