@@ -38,6 +38,7 @@ from . import (
     nav,
     owner_assist,
     owner_queue,
+    prompts,
     railway,
     readiness,
     writeback,
@@ -196,9 +197,14 @@ async def owner_board(request: Request, _: None = Depends(require_owner)):
     # envhub.group_summary across all groups reduced to one board chip —
     # same TTL-cached railway.live_overview read the environments-hub makes,
     # zero new network surface.
-    rows, envcov = await asyncio.gather(
+    # Fleet prompt-state rows (ORDER 041 remainder): per-seat deployed vs
+    # canonical + stale count, reduced from the SAME drift rows /prompts
+    # renders (prompts.console_rollup — identical TTL-cached fetches, no
+    # second source, no stored copies).
+    rows, envcov, promptstate = await asyncio.gather(
         readiness.board(refresh=_refresh(request), reveal_secrets=True),
         envhub.board_rollup(refresh=_refresh(request)),
+        prompts.console_rollup(refresh=_refresh(request)),
     )
     return templates.TemplateResponse(
         request,
@@ -206,6 +212,7 @@ async def owner_board(request: Request, _: None = Depends(require_owner)):
         {
             "rows": rows,
             "envcov": envcov,
+            "promptstate": promptstate,
             "ttl": config.CACHE_TTL_SECONDS,
             "cache_entries": github.cache_size(),
             "banner": None,
@@ -316,9 +323,10 @@ async def owner_envhub_manifest(
 
 
 async def _render_with_banner(request: Request, banner: dict) -> HTMLResponse:
-    rows, envcov = await asyncio.gather(
+    rows, envcov, promptstate = await asyncio.gather(
         readiness.board(reveal_secrets=True),
         envhub.board_rollup(),
+        prompts.console_rollup(),
     )
     return templates.TemplateResponse(
         request,
@@ -326,6 +334,7 @@ async def _render_with_banner(request: Request, banner: dict) -> HTMLResponse:
         {
             "rows": rows,
             "envcov": envcov,
+            "promptstate": promptstate,
             "ttl": config.CACHE_TTL_SECONDS,
             "cache_entries": github.cache_size(),
             "banner": banner,
