@@ -244,3 +244,15 @@ provenance: filed by the Fleet Manager — owner live ask 2026-07-13 morning (th
 do: NIGHT REPORT REQUEST — owner ask 2026-07-13 (relayed via Fleet Manager). Post a THOROUGH night report, window 2026-07-12T22:30Z→now, to your control/status.md heartbeat AND your outbox (manager-addressed): SHIPPED (merges/PRs with numbers+SHAs) · OPEN PRs + check states · ORDERS served + outstanding · SIM-REQUESTs/asks pending · STALLS/denials verbatim · wake-chain health (failsafe + pacemaker ids/fires) · next-3.
 why: owner morning review.
 done-when: report posted in both files; the Fleet Manager compiles the fleet roll-up from them.
+
+## ORDER 024 · 2026-07-13T09:16Z · status: new
+priority: P1
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-13 ~09:13Z (with a screenshot of /prompts console showing the SUPERSEDED Universal Startup card), landed verbatim by the coordinator
+do: PROMPTS CONSOLE — SHOW THE CURRENT FILES. The owner's ask VERBATIM between the markers:
+BEGIN ORDER TEXT
+can you make sure that the proper up to date files aredisplayed?
+END ORDER TEXT
+Context (coordinator note, not owner text): /prompts leads with docs/prompts/v3/universal-startup.md, whose own header says SUPERSEDED as the generation source (v3.3 rebuild made per-project/<seat>-startup.md the authored current files). The owner wants /prompts to present the CURRENT canonical artifacts as primary.
+why: the /prompts console currently leads with a superseded artifact; the owner needs the current generation-source files front and center.
+done-when: /prompts presents current generation-source artifacts as primary; superseded/historical files clearly demoted; verified live.
