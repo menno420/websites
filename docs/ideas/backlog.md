@@ -820,8 +820,14 @@
   NAMES, not hosts — deduped against it, this backlog, and the queue-state
   NEXT list). Source: `.sessions/2026-07-12-tester-task-url-guard.md` 💡.
 
-- **Environments rollup in the authed /owner readiness JSON** · `captured`
-  (2026-07-12, owner-board env-chip session 💡) — the board chip's rollup
+- **Environments rollup in the authed /owner readiness JSON** · `built`
+  (2026-07-13, PR #246 — `/owner/api/readiness.json` becomes
+  `{"rows": [...], "environments": <envhub.board_rollup dict>}`; same
+  TTL-cached `railway.live_overview` read, honest `unknown` passthrough
+  intact, gate/GET-only unchanged; contract pinned in
+  `tests/test_owner_readiness_json_contract.py` — top-level keys,
+  environments key set, states enum `{ok, unknown}`, never-values)
+  — the board chip's rollup
   (`envhub.board_rollup`, PR #223) renders on the `/owner` HTML only;
   `/owner/api/readiness.json` (the authed machine view of the same board)
   does not carry it, so a script or agent wanting the "N groups
@@ -973,3 +979,20 @@
   queue-state NEXT list: #240's envelope-level fix bullet covers the
   github source only; nothing adds a cross-module conformance gate.
   Source: `.sessions/2026-07-13-railway-reason-bound.md` 💡.
+
+- **Surface the environments rollup in `scripts/healthcheck.py`** ·
+  `captured` (2026-07-13, readiness-env-rollup session 💡) — the
+  environments rollup now ships machine-readably on the authed
+  `/owner/api/readiness.json` (PR #246), and that bullet's own "why" names
+  the scheduled healthcheck as the machinery that should watch it when the
+  owner is not looking — but the cron probe today checks service liveness
+  only. One authed read of the JSON (the site password already lives in
+  the service env) could report `environments.state` +
+  `incomplete_names` alongside the liveness rows, with the same honest
+  `unknown` passthrough. Worth having because the rollup now exists for
+  machines yet nothing scheduled actually reads it — the honesty ladder
+  still only helps while someone is looking. Deduped against this backlog
+  + the queue-state NEXT list: the env-drift and inventory-consistency
+  bullets pin COMMITTED inventories against each other; nothing consumes
+  the LIVE rollup from the cron probe. Source:
+  `.sessions/2026-07-13-readiness-env-rollup.md` 💡.
