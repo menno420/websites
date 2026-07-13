@@ -1,0 +1,1 @@
+- `claude/review-privacy-lint` · **review privacy lint test suite** — site-wide accent-aware private-lane token lint over every review/app.py GET route + committed review/data/** (ORDER 022 item 2 follow-through, backlog bullet) · review/tests only · 2026-07-13
