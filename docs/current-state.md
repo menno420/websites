@@ -137,7 +137,7 @@ trued 2026-07-13 late night, ORDER 027 item 2.)
   question digest #304 · review questions-ledger chain: bake-time sync
   #297 · unanswered nag #299 · answer-debt age #301 · latency stat #302 ·
   full `asked_at` #305. Suite 1252 → **1342 passed** (verified this pass).
-  This truing pass = ORDER 027 item 2, landing as its own PR.
+  This truing pass = ORDER 027 item 2, landed as PR #308.
 
 - **2026-07-13 post-ender wave: PRs #277→#290** (same day, after ender
   #276; merges verified on `main`, now `6360263`): intake sweep #277 ·
