@@ -587,6 +587,45 @@ def guided_finisher_hotspots() -> list[dict[str, Any]]:
     return out
 
 
+QUESTION_DIGEST_CAP = 5  # newest tester questions kept per (task, step) cell
+
+
+def guided_step_questions(
+    cap: int = QUESTION_DIGEST_CAP,
+) -> dict[str, dict[int, dict[str, Any]]]:
+    """Tester questions grouped by (task, step) across ALL claims.
+
+    The digest behind the heatmap / hotspot cells: the strips
+    (``guided_step_dropoff()`` / ``guided_finisher_hotspots()``) count WHO
+    asked per step; this returns WHAT they asked — the persisted
+    ``guide_exchanges`` MESSAGE text (tester side only, never the guide's
+    replies), keyed ``task_id → step_index → cell``. Scope is every claim
+    with chat activity regardless of outcome — drop-offs AND finishers
+    (PR #292 persists both) — because a hint-needing step reads the same
+    whatever became of the asker; a task only surfaces where a strip row
+    exists to hang it on, so extra tasks in the mapping are inert.
+
+    Each cell carries ``total`` (every exchange at that task+step) and
+    ``questions`` — the newest ``cap`` message texts, newest first, so one
+    chatty claim can't scroll the strip. The texts are RAW tester input:
+    the caller renders them escaped (and truncated for display)."""
+    with closing(_connect()) as conn:
+        rows = conn.execute(
+            "SELECT c.task_id, g.step_index, g.message"
+            " FROM guide_exchanges g JOIN claims c ON c.id = g.claim_id"
+            " ORDER BY g.id DESC"
+        ).fetchall()
+    out: dict[str, dict[int, dict[str, Any]]] = {}
+    for r in rows:
+        cell = out.setdefault(r["task_id"], {}).setdefault(
+            int(r["step_index"]), {"total": 0, "questions": []}
+        )
+        cell["total"] += 1
+        if len(cell["questions"]) < cap:
+            cell["questions"].append(r["message"])
+    return out
+
+
 # --- payout ledger ----------------------------------------------------------
 
 def add_ledger_entry(
