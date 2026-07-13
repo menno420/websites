@@ -864,8 +864,14 @@
   gate/checker for model-line shape. Source:
   `.sessions/2026-07-13-model-line-hygiene.md` 💡.
 
-- **Structural clarity-bar gate** · `captured` (2026-07-13,
-  clarity-control-plane session 💡) — a test that walks every registered
+- **Structural clarity-bar gate** · `built` (2026-07-13, PR #241 — landed
+  across ALL FOUR services, not just the control-plane: one route-walking
+  `test_clarity_structure.py` per service in tests/, botsite/tests/,
+  dashboard/tests/, review/tests/, each asserting its own header idiom (h2 +
+  `p.dim.small` for app/, sb-page-hero h1 + `p.sb-lead` / detail `p.tagline`
+  for the sb services), with PARAM_EXPANDERS + two-way completeness guards
+  and explicit documented non-page classifications, shaped like the PR #233
+  privacy lint) — a test that walks every registered
   page route on the control-plane app and asserts the header idiom (h2 with
   em-dash purpose + `p.dim.small` lede), so a new page can never ship below
   the clarity bar. Worth having because it turns the one-off manual 24-page
