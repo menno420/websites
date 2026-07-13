@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Vetting Catalog — SuperBot{% endblock %}
+{% block description %}The venture publishing pipeline's full vetted catalog: every title and product with its honest state — live, publish-ready, hard-gated, or parked.{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ catalog|length }} vetted titles &amp; products</span>
+    <div class="head-row"><h1>Vetting Catalog</h1></div>
+    <p class="sb-lead">The venture publishing pipeline's full vetted catalog — every book and
+      digital product that has been through the vetting lane, with its honest state: what is
+      live and purchasable right now, what is publish-ready and awaiting only the owner's
+      publish click, what is hard-gated on missing components or assets, and what is parked
+      at a flagged blocking step. Nothing here is faked — a buy link appears only for an
+      entry that is really purchasable, and sales happen on Gumroad, never here.
+      Looking for the store itself? That is the smaller <a href="/products">Products</a> page.</p>
+  </section>
+
+  {% if catalog_groups %}
+  {% for group in catalog_groups %}
+  <section class="section-sm">
+    <h2 style="margin:0 0 4px">{{ group.label }}</h2>
+    <p class="sb-muted" style="margin:0 0 12px">{{ group.entries|length }} entr{{ "y" if group.entries|length == 1 else "ies" }}</p>
+    <div class="card-grid">
+      {% for e in group.entries %}
+      <article class="sb-card sb-feat">
+        <div class="sb-feat-top">
+          <span class="sb-tile sb-tile-emoji">{{ icon("layers" if e.kind == "book" else "coins", 22) }}</span>
+          <h3 style="font-size:var(--sb-text-lg)">{{ e.title }}</h3>
+          <span class="sb-badge {{ 'sb-badge-ok' if e.is_live else 'sb-badge-neutral' }}">{{ e.status }}</span>
+        </div>
+        <p class="sb-muted" style="margin:6px 0 0">{{ e.category }}</p>
+        <p style="margin:10px 0 0"><strong>{{ e.price }}</strong></p>
+        {% if e.has_link %}
+        <p style="margin:10px 0 0">
+          <a class="sb-btn sb-btn-primary sb-btn-sm" href="{{ e.link_url }}" target="_blank" rel="noopener">
+            Buy on Gumroad {{ icon("external", 13) }}
+          </a>
+        </p>
+        {% endif %}
+        <p class="sb-muted" style="margin:10px 0 0"><em>{{ e.status_note }}</em></p>
+        <div class="sb-feat meta">
+          <span class="sb-muted" style="font-size:var(--sb-text-xs)">Curated from {{ e.source }}, as of {{ e.as_of }}</span>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+  {% else %}
+  <div class="sb-empty section"><span class="ico">{{ icon("layers", 20) }}</span><h4>No catalog entries registered yet</h4>
+    <p>The vetting catalog is empty or unavailable right now. Nothing is faked here.</p></div>
+  {% endif %}
+</div>
+{% endblock %}
