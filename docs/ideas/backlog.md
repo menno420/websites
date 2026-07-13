@@ -1075,7 +1075,14 @@
   `.sessions/2026-07-13-agent-pr-diagnostic.md` 💡.
 
 - **Embed the manager outbox tally in /owner/briefing — one URL for the
-  owner read AND the manager roll-up** · `captured` (2026-07-13,
+  owner read AND the manager roll-up** · `built` (2026-07-13, briefing
+  REPORTS-section PR, branch `claude/briefing-outbox-0713` —
+  `briefing.outbox_report` + `latest_report` render the newest
+  `control/outbox.md` REPORT entry in a sixth briefing card over the same
+  `github.fetch_file` path ASKS rides; unreadable file → honest
+  `unknown — <reason>`, no REPORT entries → explicit honest-empty,
+  malformed REPORT-like headings skipped and counted, body bounded to 40
+  lines with the cap noted; captured 2026-07-13,
   coordinator-sitting ender 💡) — give `/owner/briefing` (PR #273) a
   "reports to the manager" section rendering the newest `control/outbox.md`
   REPORT entry over the same committed-file read path the fleet pages
@@ -1115,3 +1122,19 @@
   docs tables, never the smoke's poison list; the env-guard gate covers
   only bare `int()`/`float()` casts. Source:
   `.sessions/2026-07-13-hostile-env-smoke.md` 💡.
+
+- **Outbox REPORT grammar drift pin — parse the committed outbox at HEAD
+  in CI** · `captured` (2026-07-13, briefing-outbox session 💡) — a small
+  offline test feeding this repo's own committed `control/outbox.md`
+  (read from disk, zero network) through `briefing.latest_report` and
+  failing when the real file drifts out of the grammar the briefing reads
+  (REPORT-like headings skipped, or zero reports found while `## REPORT`
+  text exists). Worth having because the /owner/briefing REPORTS card
+  (PR #286) and the coordinator's hand-written outbox entries share a
+  grammar enforced by nothing — one heading typo silently demotes the
+  newest night report to the honest-empty state on the page the owner
+  opens every morning. Deduped against this backlog: the grammar
+  source-of-truth notes pin status.md/inbox/claims formats (kit-owned,
+  `src/engine/grammar.py`); no bullet covers `control/outbox.md`'s REPORT
+  grammar or a parse-the-committed-file pin for it. Source:
+  `.sessions/2026-07-13-briefing-outbox.md` 💡.

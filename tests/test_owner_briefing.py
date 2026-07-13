@@ -11,6 +11,10 @@ Coverage, mirroring the suite's owner-route conventions
   the notes surfacing on the rendered page;
 * honest unknown — a failing source renders ``unknown`` + its reason and
   the page still answers 200 (never fabricated data, never a 500);
+* REPORTS — unit tests on ``briefing.latest_report`` (newest-entry
+  selection, empty/report-less/malformed outbox → honest empty, body
+  bound) plus the section rendering the newest ``control/outbox.md``
+  REPORT and its explicit honest-empty state;
 * the /owner console page links to the briefing prominently.
 """
 
@@ -86,6 +90,21 @@ def stubbed_client(monkeypatch):
         "WHAT: A decided ask that must NOT count as open.\n"
     )
 
+    outbox = (
+        "# websites → manager · outbox\n\n"
+        "> Lane→manager channel, append-only, one writer.\n\n"
+        "## REPORT · 2026-07-13T05:48Z · websites → manager · OLDER TALLY\n"
+        "older report body — must not render.\n\n"
+        "## REPORT · 2026-07-13T09:30Z · websites → manager · "
+        "NEWEST NIGHT REPORT\n"
+        "newest report body line one.\n\n"
+        "### SHIPPED\n"
+        "- fixture shipped row inside the newest report.\n\n"
+        "## PROPOSAL · 2026-07-13T11:29Z · websites → manager · "
+        "A PROPOSAL ENTRY\n"
+        "proposal-only body marker — not a report.\n"
+    )
+
     async def fake_get(url, refresh=False, raw=False):
         if "/pulls?state=closed" in url:
             return _envelope(url, ok=True, status=200, error="", data=[
@@ -133,6 +152,8 @@ def stubbed_client(monkeypatch):
             })
         if "OWNER-ACTIONS.md" in url:
             return _envelope(url, ok=True, status=200, error="", data=ledger)
+        if "control/outbox.md" in url:
+            return _envelope(url, ok=True, status=200, error="", data=outbox)
         # everything else (inboxes, statuses, registry, …) offline-degrades
         return _envelope(url)
 
@@ -283,7 +304,127 @@ def test_offline_sections_state_unknown():
     assert data["watches"]["bake"]["state"] == "unknown"
     assert data["watches"]["bake"]["reason"]
     assert data["watches"]["prs"]["state"] == "unknown"
+    assert data["outbox"]["state"] == "unknown"
+    assert data["outbox"]["reason"]
+    assert data["outbox"]["found"] is False
     assert data["window"]["hours"] == 16
+
+
+# --------------------------------------------------------------------------- #
+# REPORTS — latest_report (unit) + the rendered section
+# --------------------------------------------------------------------------- #
+def test_latest_report_picks_the_last_report_entry():
+    text = (
+        "# outbox\n\n"
+        "## REPORT · 2026-07-13T05:48Z · websites → manager · OLDER\n"
+        "older body.\n\n"
+        "## REPORT · 2026-07-13T09:30Z · websites → manager · NEWEST\n"
+        "newest body.\n\n"
+        "### SHIPPED\n"
+        "- a subsection line stays inside the entry.\n\n"
+        "## PROPOSAL · 2026-07-13T11:29Z · websites → manager · IGNORED\n"
+        "proposals are not reports.\n"
+    )
+    r = briefing.latest_report(text)
+    assert r["found"] is True
+    assert r["issued"] == "2026-07-13T09:30Z"
+    assert r["route"] == "websites → manager"
+    assert r["title"] == "NEWEST"
+    assert r["total_reports"] == 2
+    assert "newest body." in r["lines"]
+    assert "### SHIPPED" in r["lines"]  # ### subsections belong to the entry
+    assert "older body." not in r["lines"]
+    assert "proposals are not reports." not in r["lines"]
+    assert r["truncated"] is False
+    assert r["note"] == ""
+
+
+def test_latest_report_empty_and_reportless_are_honest_empty():
+    assert briefing.latest_report("")["found"] is False
+    assert briefing.latest_report("")["total_reports"] == 0
+    reportless = (
+        "# outbox\n\n"
+        "## PROPOSAL · 2026-07-13T11:29Z · websites → manager · NO REPORTS\n"
+        "body.\n"
+    )
+    r = briefing.latest_report(reportless)
+    assert r["found"] is False
+    assert r["title"] == ""
+    assert r["lines"] == []
+
+
+def test_latest_report_malformed_headings_skipped_with_note():
+    text = (
+        "## REPORT\n"
+        "no grammar at all.\n\n"
+        "## REPORT ·  · websites manager · timestamp and arrow missing\n"
+        "also out of grammar.\n"
+    )
+    r = briefing.latest_report(text)
+    assert r["found"] is False  # nothing parseable → honest empty, not a guess
+    assert "2 REPORT-like heading(s) skipped" in r["note"]
+
+
+def test_latest_report_bounds_the_body_with_a_truncation_flag():
+    body = "\n".join(f"line {i}" for i in range(60))
+    text = f"## REPORT · 2026-07-13T09:30Z · websites → manager · LONG\n{body}\n"
+    r = briefing.latest_report(text)
+    assert r["found"] is True
+    assert len(r["lines"]) == briefing.OUTBOX_REPORT_MAX_LINES
+    assert r["truncated"] is True
+    assert r["limit"] == briefing.OUTBOX_REPORT_MAX_LINES
+
+
+def test_reports_section_renders_the_newest_outbox_report(stubbed_client):
+    r = stubbed_client.get("/owner/briefing", headers=_basic())
+    assert r.status_code == 200
+    assert "REPORTS" in r.text
+    # newest report rendered: heading fields + body, subsection included.
+    assert "NEWEST NIGHT REPORT" in r.text
+    assert "2026-07-13T09:30Z" in r.text
+    assert "newest report body line one." in r.text
+    assert "fixture shipped row inside the newest report." in r.text
+    assert "newest of 2 reports" in r.text
+    # older report and the PROPOSAL entry stay in the outbox, not the page.
+    assert "OLDER TALLY" not in r.text
+    assert "older report body" not in r.text
+    assert "proposal-only body marker" not in r.text
+
+
+def test_reports_section_honest_empty_when_no_report_entries(monkeypatch):
+    monkeypatch.setattr(config, "SITE_PASSWORD", OWNER_PW)
+    monkeypatch.setattr(config, "RAILWAY_TOKEN", "")
+
+    reportless = (
+        "# websites → manager · outbox\n\n"
+        "## PROPOSAL · 2026-07-13T11:29Z · websites → manager · NOT A REPORT\n"
+        "proposal-only body marker.\n"
+    )
+
+    async def fake_get(url, refresh=False, raw=False):
+        if "control/outbox.md" in url:
+            return _envelope(
+                url, ok=True, status=200, error="", data=reportless
+            )
+        return _envelope(url)
+
+    monkeypatch.setattr(github, "_get", fake_get)
+    with TestClient(app) as c:
+        r = c.get("/owner/briefing", headers=_basic())
+    assert r.status_code == 200
+    assert "no REPORT entries" in r.text  # explicit honest-empty, page 200
+    assert "NOT A REPORT" not in r.text
+    assert "proposal-only body marker" not in r.text
+
+
+def test_reports_section_unknown_when_outbox_unreadable(offline_client):
+    r = offline_client.get("/owner/briefing", headers=_basic())
+    assert r.status_code == 200
+    assert "REPORTS" in r.text
+    # the offline fixture fails every fetch → the section says unknown with
+    # the reason instead of an invented report or a silent omission.
+    assert 'id="reports"' in r.text
+    assert "no REPORT entries" not in r.text
 
 
 # --------------------------------------------------------------------------- #
