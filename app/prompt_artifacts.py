@@ -69,6 +69,93 @@ def extract_provenance(text: str) -> str:
     return ""
 
 
+# Supersession / do-not-paste markers (ORDER 022 item 3): an artifact whose
+# OWN header disclaims being the paste source must not render
+# indistinguishably from the pasteable ones. The one real marker today is
+# universal-startup.md line 5 — a FULL-LINE comment: "⚠ v3.3 (2026-07-12):
+# SUPERSEDED AS THE GENERATION SOURCE — historical template, … Do not paste
+# this file; do not regenerate from it." (verified live 2026-07-13). Because
+# extract_paste_body STRIPS full-line comments, the matcher runs on the RAW
+# upstream text (same convention as extract_provenance), header region only.
+#
+# Conservative by design — strong signals only, ambiguity = no warning:
+# - the STANDALONE ALL-CAPS token `SUPERSEDED` (never lowercase "supersedes":
+#   every current per-seat registry copy's header says "Version lineage: vN
+#   (…) supersedes the prior registry sync copy" and is CURRENT);
+# - "do not paste" (case-insensitive);
+# - "historical template" (case-insensitive).
+# NOT matched (all verified-current phrasing upstream): bare "retired" /
+# "RETIRED" ("the v3.1/v3.2 core+seat-block assembly is RETIRED" describes
+# the assembly, not the file), body prose like "this table supersedes any
+# cron previously recorded", and session-ender's "THIS file stays the
+# canonical single source".
+_SUPERSESSION_SIGNALS: tuple[tuple[str, "re.Pattern[str]"], ...] = (
+    ("SUPERSEDED", re.compile(r"\bSUPERSEDED\b")),  # caps token only
+    ("do not paste", re.compile(r"\bdo not paste\b", re.IGNORECASE)),
+    ("historical template", re.compile(r"\bhistorical template\b", re.IGNORECASE)),
+)
+_SUPERSESSION_LINE_MAX_CHARS = 300
+# Successor extraction: ONLY an explicit single naming on the marker line —
+# one markdown link, or one "see <path>.md" — otherwise None (the real
+# marker names the per-seat startups generically; a link is never invented).
+_SUCCESSOR_MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+_SUCCESSOR_SEE_RE = re.compile(r"\bsee\s+`?([\w./-]+\.md)`?", re.IGNORECASE)
+
+
+def extract_supersession(text: str) -> Optional[dict[str, Any]]:
+    """A supersession/do-not-paste marker in the artifact's RAW header, or
+    ``None``.
+
+    Scans only the first ``_PROVENANCE_SCAN_LINES`` RAW lines (the marker
+    lives in the comment header extract_paste_body strips), and only lines
+    in the header region — HTML-comment lines/blocks, blockquotes, headings;
+    a strong phrase in plain body text does not flag. Returns
+    ``{"phrase": <matched strong phrase>, "line": <marker line, comment
+    delimiters stripped, truncated>, "successor": <path/url or None>}``.
+    """
+    in_comment = False
+    for line in (text or "").splitlines()[:_PROVENANCE_SCAN_LINES]:
+        s = line.strip()
+        was_in_comment = in_comment
+        if in_comment and "-->" in s:
+            in_comment = False
+        opens_comment = s.startswith("<!--")
+        if opens_comment and "-->" not in s:
+            in_comment = True
+        header_region = (
+            was_in_comment
+            or opens_comment
+            or s.startswith(">")
+            or s.startswith("#")
+        )
+        if not header_region:
+            continue
+        for phrase, pattern in _SUPERSESSION_SIGNALS:
+            if pattern.search(s):
+                cleaned = s
+                for token in ("<!--", "-->"):
+                    cleaned = cleaned.replace(token, "")
+                cleaned = cleaned.strip().lstrip(">#").strip()
+                if len(cleaned) > _SUPERSESSION_LINE_MAX_CHARS:
+                    cleaned = (
+                        cleaned[: _SUPERSESSION_LINE_MAX_CHARS - 1].rstrip()
+                        + "…"
+                    )
+                # all naming candidates on the marker line — a successor is
+                # linked only when exactly ONE file is named, else None.
+                candidates = list(dict.fromkeys(
+                    _SUCCESSOR_MD_LINK_RE.findall(s)
+                    + _SUCCESSOR_SEE_RE.findall(s)
+                ))
+                successor = candidates[0] if len(candidates) == 1 else None
+                return {
+                    "phrase": phrase,
+                    "line": cleaned,
+                    "successor": successor,
+                }
+    return None
+
+
 # The registry's authoritative end-of-header marker (per-seat instructions.md
 # artifacts carry it; the paste body is everything AFTER it). Artifacts
 # without the marker (coordinator/failsafe prompts, the universals) instead
@@ -180,7 +267,7 @@ def build_artifact(
     """The canonical prompt-artifact dict from a ``github.fetch_file`` result.
 
     ``{seat, label, path, github_url, ok, text, error, fetched_at, cached,
-    provenance, chars}`` — ``text`` is the CLEAN PASTE BODY
+    provenance, chars, superseded}`` — ``text`` is the CLEAN PASTE BODY
     (:func:`extract_paste_body` over the upstream text: generation metadata
     stripped, body otherwise byte-exact); ``provenance`` and the GitHub link
     keep the full file's metadata reachable. On failure ``text`` is ``None``
@@ -206,6 +293,10 @@ def build_artifact(
         # usually lives in the very header extract_paste_body strips.
         "provenance": extract_provenance(raw or ""),
         "chars": len(text) if text else 0,
+        # supersession marker from the RAW header (the comment lines
+        # extract_paste_body strips); None on fetch failure — a warning is
+        # never invented for content that could not be read.
+        "superseded": extract_supersession(raw or "") if ok else None,
     }
 
 
