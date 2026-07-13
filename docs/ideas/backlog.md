@@ -1127,7 +1127,14 @@
   `.sessions/2026-07-13-hostile-env-smoke.md` 💡.
 
 - **Outbox REPORT grammar drift pin — parse the committed outbox at HEAD
-  in CI** · `captured` (2026-07-13, briefing-outbox session 💡) — a small
+  in CI** · `built` (2026-07-13, PR #289, branch
+  `claude/outbox-grammar-pin-0713` —
+  `tests/test_outbox_grammar_pin.py` reads the committed `control/outbox.md`
+  from disk, zero network, feeds it through `briefing.latest_report` and
+  fails naming the drift when a REPORT-like level-2 heading is skipped or
+  zero reports parse while `## REPORT` text exists; plus synthetic cases
+  keeping the pin's REPORT-like regex and the parser aligned; captured
+  2026-07-13, briefing-outbox session 💡) — a small
   offline test feeding this repo's own committed `control/outbox.md`
   (read from disk, zero network) through `briefing.latest_report` and
   failing when the real file drifts out of the grammar the briefing reads
@@ -1141,3 +1148,20 @@
   `src/engine/grammar.py`); no bullet covers `control/outbox.md`'s REPORT
   grammar or a parse-the-committed-file pin for it. Source:
   `.sessions/2026-07-13-briefing-outbox.md` 💡.
+
+- **Outbox grammar gate in the CI control fast lane — run the pin on the
+  PRs that write the outbox** · `captured` (2026-07-13, outbox-grammar-pin
+  session 💡) — `quality.yml`'s control fast lane short-circuits GREEN on a
+  control/**-only diff (pytest never runs), and outbox appends are exactly
+  control/**-only PRs, so `tests/test_outbox_grammar_pin.py` (PR #289)
+  fires only on the NEXT non-control PR — after the typo'd report has
+  already spent a morning rendering honest-empty on /owner/briefing. The
+  fast lane already runs in-job control gates (control-status, inbox
+  append-only); add an outbox grammar step there when `control/outbox.md`
+  is in the diff — run the single pin test file or a tiny inline parse —
+  so the drift reddens the PR that introduces it. Deduped against this
+  backlog: the grammar-drift-pin bullet above is the pytest pin itself
+  (merge-lagged by the fast lane's design); the grammar source-of-truth
+  notes cover status.md/inbox/claims kit-owned grammars; no bullet touches
+  the fast lane's gate set. Source:
+  `.sessions/2026-07-13-outbox-grammar-pin.md` 💡.
