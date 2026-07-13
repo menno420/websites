@@ -1344,8 +1344,13 @@
   Source: `.sessions/2026-07-13-review-questions-bake-sync.md` 💡.
 
 - **Finisher-question hotspots — tasks with zero drop-offs never surface
-  their hint-needing steps** · `captured` (2026-07-13,
-  heatmap-survival-contrast session 💡) — the survival contrast (PR #298)
+  their hint-needing steps** · `built` (2026-07-13, PR #303 —
+  `guided_finisher_hotspots()` aggregates per-step `finished` counts over
+  finisher claims on tasks with NO drop-offs — tasks with any drop-off
+  stay on the heatmap as contrast — and the owner queue lists the strip
+  under the heatmap with the same step-text join + full-length padding,
+  no lethality shading) — original capture (2026-07-13,
+  heatmap-survival-contrast session 💡): the survival contrast (PR #298)
   only renders on tasks that HAVE drop-offs (`guided_step_dropoff()`
   keys the strip off abandoned claims; finishers are contrast, not
   subject), so a task where every tester finished but half of them asked
@@ -1432,3 +1437,24 @@
   read or write only the date-precision `asked` plus `closed_at`;
   nothing carries a full asked timestamp.
   Source: `.sessions/2026-07-13-questions-answer-latency.md` 💡.
+
+- **Per-step question digest — surface WHAT testers asked at a hotspot,
+  not just how many** · `captured` (2026-07-13, finisher-hotspots
+  session 💡) — the heatmap and the finisher hotspots (PRs #294/#298/#303)
+  rank WHERE guide chats cluster, but the owner still has to open each
+  drop-off's per-claim transcript one by one to learn what confused
+  people — and finishers' transcripts on hotspot tasks aren't rendered
+  anywhere at all (PR #292 attaches them to submissions, not to the
+  strip). A per-step digest — group the persisted `guide_exchanges`
+  messages by (task, step) across ALL claims and render the tester
+  questions (message text only, untrusted-input framing, maybe capped +
+  collapsed) behind each cell — would turn "step 3 · 4 asked" into the
+  actual rewrite input: the four questions themselves. Worth having
+  because the hotspot tells the owner a hint is needed but not which
+  hint; the raw questions are already persisted and answer that
+  directly. Deduped against this backlog: the transcript bullet
+  (built, #292) is per-claim evidence on submissions; the heatmap,
+  survival-contrast, and finisher-hotspots bullets (all built) count
+  claims per step but never render message text; nothing groups guide
+  messages by step across claims.
+  Source: `.sessions/2026-07-13-finisher-hotspots.md` 💡.
