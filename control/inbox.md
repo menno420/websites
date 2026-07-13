@@ -196,3 +196,43 @@ do: OWNER ENVIRONMENTS HUB — the owner's directive VERBATIM between the marker
 BEGIN ORDER TEXT
 and one important part I'm  still missing is the part where I can find and store all my envs etc, I want to be able to see all envs and links to where theyre managed on the website, and as pasword we could use the discord auth we already use across 2 instances, do you understand what I mean? one of the things it also does for us is a way to actually create the complete enviroments per project group and review them seperately
 END ORDER TEXT
+
+## ORDER 022 · 2026-07-13T00:45Z · status: new
+priority: P1
+executor: Websites coordinator
+provenance: owner live in the coordinator session, 2026-07-13 night run, landed verbatim by the coordinator
+why: owner night-run directive 2026-07-13 — autonomous overnight execution rules (silence=consent, open PRs stay open, no stalls, wake hygiene, quality floor) plus the seat's five worklines for the night.
+done-when: morning tally posted by ~06:00Z in the heartbeat + outbox (pages shipped/fixed vs the clarity bar / initiations / plan-completion state), and the five seat items executed to done or honestly ledgered.
+do: OWNER NIGHT RUN 2026-07-13 — the owner's order VERBATIM between the markers:
+BEGIN ORDER TEXT
+DIRECT ORDER — WEBSITES (owner, 2026-07-13, night run). Land this verbatim in your inbox
+(top-precedence owner turn), then execute all night.
+
+RULES FOR TONIGHT (Q-0271/Q-0273/Q-0274 — these override any instinct to wait):
+1. I am away until morning; that is the system's normal state. Silence = consent = done.
+   Never hold or re-confirm finished work.
+2. OPEN PRs STAY OPEN — new rule for tonight: land on green where auto-merge arms (yours
+   does — merge=deploy); where it doesn't, leave the PR OPEN and take the next slice. No
+   merge-chasing, no parking-and-waiting.
+3. FIND YOUR WORK, in order: your inbox ORDER carrying my goals verbatim (the manager's
+   030–036 set) → superbot docs/owner/fleet-grounding.md §8 → your rework plan +
+   OWNER-ACTIONS at HEAD → your generative rung. An empty queue means GENERATE, never idle.
+4. NO STALLS UNDER ANY CIRCUMSTANCES: probe before declaring a wall (attempt once, verbatim
+   error); genuinely-owner-only item → six-field owner-queue entry → CONTINUE same turn;
+   design uncertainty → SIM-REQUEST via outbox → CONTINUE.
+5. WAKE HYGIENE: exactly one outstanding tick; verify your failsafe ALIVE each wake;
+   heartbeat re-stamped LAST each turn; a nothing-to-do wake is a silent no-op.
+6. QUALITY FLOOR: merge=deploy verified via /version; every page held to the clarity bar.
+MORNING: by ~06:00Z post your tally (pages shipped/fixed vs the clarity bar / initiations /
+plan-completion state) in your heartbeat + outbox.
+
+YOUR SEAT TONIGHT (execute to done — and actually well made):
+1. THE CLARITY BAR on every live page: each page immediately shows WHAT it is, WHAT it does,
+   and its most important features — audit all pages, fix every miss.
+2. Keep executing the existing plan to completion: control plane, bot sites, the Anthropic
+   review site. Don't stop until it's all done.
+3. The prompt library + deployed-vs-canonical drift row (the reboot enabler).
+4. SCAN AND INITIATE: build the next site-shaped things from your drawn idea list without
+   waiting for routing; treat venture's WEBSITE-IDEA markers as priority intake.
+5. One cold-browser pass over the review site (EAP closes Tue 07-14); fix what you find.
+END ORDER TEXT
