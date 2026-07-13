@@ -10,8 +10,14 @@
 ## Captured / planned (pick highest-value buildable first)
 
 - **Hostile-env import smoke — dynamically import every service module
-  under a poisoned environment** · `captured` (2026-07-13, env-guard-gate
-  session 💡) — the dynamic complement to `tests/test_env_guard_gate.py`
+  under a poisoned environment** · `built` (2026-07-13, PR #287 —
+  `tests/test_hostile_env_smoke.py` imports every runtime module of all
+  four services in a subprocess per service per poison mode (every
+  documented env var set to `""`, then to garbage; 8 subprocesses, poison
+  passed via `subprocess.run(env=...)` so nothing leaks into pytest;
+  failures name the module + carry the subprocess traceback); zero real
+  crash sites found — PR #282/#285 hardening held; captured 2026-07-13,
+  env-guard-gate session 💡) — the dynamic complement to `tests/test_env_guard_gate.py`
   (PR #285): set every documented env var (the envhub manifest knows the
   names) to "" and "garbage", then `importlib.import_module` every module
   in app/, botsite/, dashboard/, review/, proving no import-time crash of
