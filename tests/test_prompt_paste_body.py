@@ -159,7 +159,8 @@ def test_build_artifact_text_is_the_clean_body_provenance_from_full_file():
 
 
 def _pre_blocks(html):
-    return re.findall(r"<pre>(.*?)</pre>", html, flags=re.DOTALL)
+    # attribute-tolerant: the historical-reference pre carries class=nocopy
+    return re.findall(r"<pre[^>]*>(.*?)</pre>", html, flags=re.DOTALL)
 
 
 def test_prompts_route_renders_and_copies_only_the_clean_body(monkeypatch):

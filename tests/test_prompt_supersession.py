@@ -300,11 +300,15 @@ def test_prompts_route_banner_and_chip_when_one_artifact_superseded(monkeypatch)
     assert "names no single successor file" in flat
     # summary chip in the header card
     assert "⚠ 1 superseded" in r.text
-    # copy demoted but not blocked: warned note + red-bordered pre, and the
-    # copy path (copycode.js over .card pre) still binds
-    assert "paste-ready body of a SUPERSEDED file" in flat
-    assert '<pre class="superseded">' in r.text
+    # universal-startup is pinned HISTORICAL (owner order 2026-07-13): its
+    # card rides the collapsed Historical reference section with the copy
+    # affordance REMOVED — pre.nocopy (copycode.js skips it), note says so
+    assert "copy button removed: not a paste source" in flat
+    assert '<pre class="superseded nocopy">' in r.text
     assert 'src="/static/copycode.js"' in r.text
+    # the banner sits inside the Historical section, after its anchor
+    assert r.text.find('id="historical"') < \
+        r.text.find('class="banner superseded"')
 
 
 def test_prompts_route_no_banner_no_chip_when_all_current(monkeypatch):

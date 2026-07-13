@@ -33,7 +33,9 @@
     return ok;
   }
 
-  document.querySelectorAll(".card pre").forEach(function (pre) {
+  // pre.nocopy = deliberately not copy-ready (a do-not-paste historical
+  // file on /prompts) — no button; the text stays plain and selectable.
+  document.querySelectorAll(".card pre:not(.nocopy)").forEach(function (pre) {
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "copy-btn";

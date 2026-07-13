@@ -6,8 +6,12 @@
   <h2>prompt library — every fleet paste artifact, inline and always-current</h2>
   <p class="dim small">All {{ p.total }} registry artifacts rendered live from
     <a href="{{ p.repo_url }}">fleet-manager <code>main</code> ↗</a> — the
-    {{ p.seats|length }} seats' coordinator prompt / Custom Instructions / failsafe plus the
-    fleet-wide universal-startup and session-ender. Read-only over raw content, TTL-cached
+    {{ p.seats|length }} seats' coordinator prompt (the seat's expanded startup) /
+    Custom Instructions / failsafe plus the fleet-wide Universal Session-Ender:
+    the {{ p.current_count }} <strong>current paste sources</strong>, first. Registry files
+    whose own header says superseded / do-not-paste ({{ p.historical|length }} today) are
+    demoted to the collapsed <a href="#historical">Historical reference</a> section at the
+    bottom. Read-only over raw content, TTL-cached
     ({{ p.ttl }}s), so a merged prompt update appears here automatically. Each block is the
     CLEAN paste body — the registry's generation metadata (comment headers, GENERATED COPY /
     char-count blockquotes) is hidden, whitespace otherwise preserved, copy button per block
@@ -63,10 +67,11 @@
   {% endif %}
 
   <p class="small">
-    <a href="#universal"><code>universal</code></a>
-    {%- for s in p.seats %} ·
-    <a href="#{{ s.anchor }}"><code>{{ s.name }}</code></a>
+    {%- for s in p.seats %}
+    <a href="#{{ s.anchor }}"><code>{{ s.name }}</code></a> ·
     {%- endfor %}
+    <a href="#universal"><code>universal session-ender</code></a>
+    {%- if p.historical %} · <a href="#historical">historical reference</a>{% endif %}
   </p>
 </div>
 
@@ -149,17 +154,12 @@
 </div>
 {% endmacro %}
 
-{# UNIVERSAL prompts FIRST (owner feedback 2026-07-12: the session-ender was
-   buried at the bottom of ~26 artifacts) — the two fleet-wide prompts every
-   session uses, clearly labeled, above the per-seat listing. #}
-<div class="card" id="universal">
-  <h2>Universal prompts <span class="b ok">every seat, every session</span></h2>
-  <p class="dim small">One copy for the whole fleet — the <strong>Universal
-    Startup</strong> and the <strong>Universal Session-Ender</strong>
-    (<code>docs/prompts/v3/</code>). Per-seat artifacts follow below.</p>
-</div>
-{% for a in p.fleet_wide %}{{ artifact_card(a) }}{% endfor %}
-
+{# CURRENT paste sources FIRST (owner order 2026-07-13: proper, up-to-date
+   files primary). Each seat's registry copies are the v3.6 GENERATED copies
+   of the authored per-seat files (docs/prompts/v3/per-project/ — the v3.3
+   rebuild's paste sources, per-project README v3.6), the seat's startup
+   (coordinator prompt) leading its section. The superseded universal-startup
+   template is demoted to the Historical reference section at the bottom. #}
 {% for s in p.seats %}
 <div class="card" id="{{ s.anchor }}">
   <h2>seat · {{ s.name }}
@@ -168,6 +168,44 @@
 </div>
 {% for a in s.artifacts %}{{ artifact_card(a) }}{% endfor %}
 {% endfor %}
+
+{# The still-current fleet-wide universal — the session-ender's own header
+   says "THIS file stays the canonical single source" (v3.3, verified live
+   2026-07-13). Keeps the Universal … label (owner feedback 2026-07-12) and
+   its own jump link in the header card so it never drowns among the seats. #}
+<div class="card" id="universal">
+  <h2>Universal Session-Ender <span class="b ok">every seat, every session</span></h2>
+  <p class="dim small">One copy for the whole fleet
+    (<code>docs/prompts/v3/</code>) — its own header keeps it canonical:
+    “THIS file stays the canonical single source”.</p>
+</div>
+{% for a in p.fleet_wide %}{{ artifact_card(a) }}{% endfor %}
+
+{# HISTORICAL reference LAST (owner order 2026-07-13): registry files whose
+   OWN header says superseded / do-not-paste — kept on the page for
+   provenance (version history covers the rest), collapsed, warning banner
+   kept, copy affordance removed (prompt_block copyable=False → pre.nocopy,
+   which copycode.js skips). Never rendered as a primary card. #}
+{% if p.historical %}
+<div class="card" id="historical">
+  <h2>Historical reference
+    <span class="b warn">superseded — not paste sources</span></h2>
+  <p class="dim small">{{ p.historical|length }} registry
+    file{{ '' if p.historical|length == 1 else 's' }} whose own header says
+    superseded / do-not-paste, demoted here by design: current files render
+    above as primary; these stay readable for reference (collapsed, no copy
+    button — each body keeps its ⚠ SUPERSEDED banner). Past versions of the
+    current prompts live in each seat's version history, not here.</p>
+  {% for a in p.historical %}
+  <details class="grp" id="{{ a.anchor }}">
+    <summary>{{ a.label }}
+      <span class="dim small">· <code>{{ a.path }}</code></span>
+      <span class="b warn">historical</span></summary>
+    {{ prompt_block(a, p.ttl, copyable=False) }}
+  </details>
+  {% endfor %}
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}<script src="/static/copycode.js" defer></script>{% endblock %}
