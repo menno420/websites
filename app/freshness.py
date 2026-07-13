@@ -50,10 +50,44 @@ COMMIT_STALE_DAYS = 7
 # convention. Anything else in the directory (README, stubs) is ignored.
 _CARD_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-.+\.md$")
 
+# User-visible failure reasons are table-cell text: cap them hard so an
+# upstream error DOCUMENT can never flood a cell again (observed live: a
+# transient GitHub failure returned a full HTML error page, which rendered
+# wholesale as "unknown — <!DOCTYPE html> …").
+REASON_MAX_CHARS = 140
 
-def _unknown(reason: str) -> dict[str, Any]:
-    """The honest empty signal — ok=False plus WHY, never a guessed value."""
-    return {"ok": False, "reason": reason}
+
+def _short_reason(
+    text: Any, limit: int = REASON_MAX_CHARS, status: Any = None
+) -> str:
+    """A table-cell-safe failure reason — short, single-line, human.
+
+    Collapses whitespace runs (newlines included) to single spaces; a body
+    that looks like markup (an HTML error page is a document, not a reason)
+    is replaced with a generic "HTTP <status> — non-JSON error body" phrase
+    (the envelope status when known); anything still longer than ``limit``
+    is hard-truncated with an ellipsis. Meaningful short reasons
+    ("HTTP 404") pass through verbatim — honest degradation still says WHY,
+    just never in document form.
+    """
+    flat = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not flat:
+        return ""
+    low = flat.lower()
+    if flat.startswith("<") or "<!doctype" in low or "<html" in low:
+        prefix = f"HTTP {status} — " if status else ""
+        return f"{prefix}non-JSON error body"
+    if len(flat) > limit:
+        return flat[: limit - 1].rstrip() + "…"
+    return flat
+
+
+def _unknown(reason: str, status: Any = None) -> dict[str, Any]:
+    """The honest empty signal — ok=False plus WHY, never a guessed value.
+
+    The WHY is always routed through ``_short_reason`` so no caller can
+    accidentally put an upstream error document in a cell."""
+    return {"ok": False, "reason": _short_reason(reason, status=status)}
 
 
 async def last_card(
@@ -69,7 +103,7 @@ async def last_card(
     if not res["ok"]:
         if res["status"] == 404:
             return _unknown("no .sessions/ on main (HTTP 404)")
-        return _unknown(fleet._envelope_reason(res))
+        return _unknown(fleet._envelope_reason(res), status=res.get("status"))
     if not isinstance(res["data"], list):
         return _unknown("unexpected .sessions/ listing payload")
     dates: list[str] = []
@@ -105,7 +139,7 @@ async def heartbeat(
     if not res["ok"]:
         if res["status"] == 404:
             return _unknown("no control/status.md on main (HTTP 404)")
-        return _unknown(fleet._envelope_reason(res))
+        return _unknown(fleet._envelope_reason(res), status=res.get("status"))
     if not (isinstance(res["data"], str) and res["data"].strip()):
         return _unknown("empty status file")
     fields = fleet.parse_status(res["data"], repo)["fields"]
@@ -137,7 +171,21 @@ async def repo_row(
         heartbeat(repo, now, refresh=refresh),
         last_card(repo, now, refresh=refresh),
     )
+    # The commit/PR signals are built by fleet (shared with /fleet); their
+    # reasons are shortened HERE so this page's cells stay bounded without
+    # changing what /fleet renders.
     last_commit = meta["last_commit"]
+    if not last_commit["ok"]:
+        last_commit = {
+            **last_commit,
+            "reason": _short_reason(last_commit.get("reason", "")),
+        }
+    open_prs = meta["open_prs"]
+    if not open_prs["ok"]:
+        open_prs = {
+            **open_prs,
+            "reason": _short_reason(open_prs.get("reason", "")),
+        }
     exempt = _exempt_note(lane.get("note", ""))
 
     # Strictly PAST the threshold is stale; exactly at it is not.
@@ -171,7 +219,7 @@ async def repo_row(
         "exempt": exempt,
         "last_commit": last_commit,
         "commit_stale": commit_stale,
-        "open_prs": meta["open_prs"],
+        "open_prs": open_prs,
         "card": card,
         "heartbeat": beat,
         "heartbeat_stale": heartbeat_stale,
@@ -200,6 +248,12 @@ async def overview(
     """
     now = now or clock.now()
     lane_defs, lane_source = await fleet.resolve_lanes(refresh=refresh)
+    # The fallback banner interpolates the registry failure reason — same
+    # error-document hazard as the cells, same cure.
+    lane_source = {
+        **lane_source,
+        "reason": _short_reason(lane_source.get("reason", "")),
+    }
     rows = list(
         await asyncio.gather(
             *[repo_row(lane, now, refresh=refresh) for lane in lane_defs]
