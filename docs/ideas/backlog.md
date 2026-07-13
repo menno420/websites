@@ -996,3 +996,21 @@
   bullets pin COMMITTED inventories against each other; nothing consumes
   the LIVE rollup from the cron probe. Source:
   `.sessions/2026-07-13-readiness-env-rollup.md` 💡.
+
+- **Catalog sha-drift pin — nag when the vetting catalog's pinned source
+  sha falls behind venture-lab HEAD** · `captured` (2026-07-13,
+  venture-vetting-catalog session 💡) — every entry in
+  `botsite/data/catalog.json` (PR #248) pins its provenance to venture-lab
+  @ `2c039e3`; a scheduled or CI-time check comparing that pinned sha
+  against venture-lab's current HEAD for `docs/publishing/vetting/` +
+  `OWNER-QUEUE.md` (one raw-content read of the default-branch sha, the
+  read-only forward-only channel the fleet already uses) would nag when
+  packets changed upstream while the committed catalog still claims them.
+  Worth having because a 22-entry hand-curated registry decays the moment
+  the vetting lane moves — a title going live upstream while the catalog
+  still says publish-ready is exactly the dishonesty the page exists to
+  avoid. Deduped against this backlog + the queue-state NEXT list: the
+  storefront-freshness bullet above is TIME-based (`as_of` horizon,
+  products.json only); nothing compares pinned source shas against the
+  upstream repo, and nothing covers catalog.json. Source:
+  `.sessions/2026-07-13-venture-vetting-catalog.md` 💡.
