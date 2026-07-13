@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import statistics
 from pathlib import Path
 from typing import Any
 
@@ -852,6 +853,52 @@ def answer_debt(
         )
     )
     return nag
+
+
+def answer_latency_days(q: dict[str, Any]) -> int | None:
+    """Whole days from a record's ``asked`` date to its bake-stamped
+    ``closed_at``, UTC — the question's real resolution time.
+
+    ``None`` when either timestamp is missing or unparseable — committed
+    ledgers baked before the stamp existed (and hand-mangled fields) are
+    ignored, never guessed. Clamped at 0 so a same-day answer (or clock
+    skew between the two stamps) never reads negative."""
+    raw_asked = str(q.get("asked") or "").strip()
+    raw_closed = str(q.get("closed_at") or "").strip()
+    if not raw_asked or not raw_closed:
+        return None
+    try:
+        asked = dt.date.fromisoformat(raw_asked)
+        closed = dt.datetime.fromisoformat(raw_closed.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if closed.tzinfo is None:
+        closed = closed.replace(tzinfo=dt.timezone.utc)
+    return max((closed.astimezone(dt.timezone.utc).date() - asked).days, 0)
+
+
+def answer_latency(records: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The promise-KEPT stat: count + median whole-day asked→closed
+    turnaround over the ANSWERED ledger records — the positive complement
+    to ``answer_debt``, which only measures the promise breaking.
+
+    ``None`` until at least one answered record carries both parseable
+    timestamps (honest absence — the stat is hidden, never fabricated).
+    ``median_days`` is an int when the median is whole, else the exact
+    half-day float (even-count medians). Pure read: records untouched."""
+    days = []
+    for q in records:
+        if question_answer_state(q) != "answered":
+            continue
+        d = answer_latency_days(q)
+        if d is not None:
+            days.append(d)
+    if not days:
+        return None
+    median = statistics.median(days)
+    if float(median).is_integer():
+        median = int(median)
+    return {"count": len(days), "median_days": median}
 
 
 QUESTIONS_FILTER_SPEC = listfilter.ListSpec(

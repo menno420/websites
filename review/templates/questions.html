@@ -27,6 +27,13 @@
       {% for q in q_nag %}{% if q.url %}<a href="{{ q.url }}" target="_blank" rel="noopener">{{ q.title }}</a>{% else %}{{ q.title }}{% endif %}{% if q.debt_days is not none %} (closed {{ q.debt_days }} day{{ "s" if q.debt_days != 1 }} without an answer){% endif %}{{ " · " if not loop.last }}{% endfor %}
     </div>
     {% endif %}
+    {% if q_latency %}
+    <p class="sb-muted">
+      <strong>{{ q_latency.count }} answered question{{ "s" if q_latency.count != 1 }}</strong> resolved in a median of
+      <strong>{{ q_latency.median_days }} day{{ "s" if q_latency.median_days != 1 }}</strong>
+      (asked → closed, from the ledger's baked timestamps).
+    </p>
+    {% endif %}
     {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
     {% set lf = q_filter %}
     {% include "_listfilter.html" %}
