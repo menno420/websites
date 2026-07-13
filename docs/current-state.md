@@ -116,10 +116,12 @@ trued 2026-07-13 late night, ORDER 027 item 2.)
   botsite `SITE_PASSWORD` · botsite Postgres/`DATABASE_URL` · PayPal Payouts
   creds · armed-service control-API token · the `/owner/environments` live
   half.
-- **Two environment leads from the ORDER 026 discovery pass (#275),
-  unverified:** the dashboard service carries an undocumented
-  `SITE_PASSWORD` variable, and an `ANTHROPIC_API_KEY` may live on the
-  parallel botsite copy — both worth a read-path check next session.
+- **#275 env leads (ORDER 026) — RESOLVED** (PR #282, re-verified at
+  HEAD; ORDER 027 item 4): dashboard reads no
+  `SITE_PASSWORD` — set-but-unused drift (`docs/dashboard.md:127`);
+  botsite-copy `ANTHROPIC_API_KEY` not measured — walled
+  (`docs/botsite.md:108`, `docs/CAPABILITIES.md` 2026-07-13; row K).
+  Unused-var deletion = new ⚑ OWNER-ACTIONS ask.
 - The `control-plane` service **GitHub token is currently UNSET**
   (live finding 2026-07-10/11: the board shows the honest "unknown (token
   lacks admin scope)" / "needs push-scope token" cells and every fleet
@@ -693,9 +695,9 @@ trued 2026-07-13 late night, ORDER 027 item 2.)
 > via `control/inbox.md` orders or manager routing.
 >
 > **Next-session baton (2026-07-13 ender):** (1) the owner-gated decisions
-> queue (8 ⚑ asks in `docs/owner/OWNER-ACTIONS.md`, BAKE_PAT newest) + the
-> two env leads from #275 (dashboard `SITE_PASSWORD`; botsite-copy
-> `ANTHROPIC_API_KEY`); (2) close/dispose the seven parked draft lifeboats
+> queue (8 ⚑ asks in `docs/owner/OWNER-ACTIONS.md`, BAKE_PAT newest) —
+> #275 env leads CLOSED (PR #282); (2) close/dispose the
+> seven parked draft lifeboats
 > #245/#249/#257/#278/#279/#280/#300 (owner-click; the intake sweep ran
 > as #277) — superseded as work source by the ORDER 027 night list.
 
