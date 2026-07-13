@@ -618,6 +618,19 @@ def test_non_guided_grade_prompt_has_no_transcript_block(client, ai_mock):
     assert "<untrusted_guide_chat_transcript>" not in prompt
 
 
+def test_chat_pins_step_title_at_persist_time(client, ai_mock):
+    # provenance pin: the persisted exchange snapshots the step's title AS
+    # THE ASKER SAW IT (untruncated, from the same `steps` script the guide
+    # rendered) — step_index alone re-attributes history once the script is
+    # rewritten or reordered
+    token = claim(client)
+    assert chat(client, token, message="Search finds nothing?", step=2).json()["ok"] is True
+    claim_id = testing_store.claim_by_token(token)["id"]
+    transcript = testing_store.guide_transcript_for_claim(claim_id)
+    assert transcript[0]["step_index"] == 2
+    assert transcript[0]["step_title"] == "Commands and search"
+
+
 def test_degraded_chat_is_never_persisted(client):
     # no key → honest degraded copy, and no transcript row (nothing coached)
     token = claim(client)

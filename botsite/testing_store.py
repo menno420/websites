@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS guide_exchanges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     claim_id INTEGER NOT NULL REFERENCES claims(id),
     step_index INTEGER NOT NULL DEFAULT 0,
+    step_title TEXT NOT NULL DEFAULT '',
     message TEXT NOT NULL,
     reply TEXT NOT NULL,
     created_at TEXT NOT NULL
@@ -121,7 +122,25 @@ def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(db_path())
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA)  # idempotent — no separate migration step
+    _ensure_step_title_column(conn)
     return conn
+
+
+def _ensure_step_title_column(conn: sqlite3.Connection) -> None:
+    """Retrofit ``guide_exchanges.step_title`` onto DB files created before
+    the provenance pin — ``CREATE TABLE IF NOT EXISTS`` never adds columns to
+    an existing table. Retrofitted rows keep the ``''`` default: "no snapshot
+    was taken" is their honest state, never backfilled from the current
+    script (that would fake exactly the attribution this column disproves)."""
+    cols = {
+        r["name"]
+        for r in conn.execute("PRAGMA table_info(guide_exchanges)").fetchall()
+    }
+    if "step_title" not in cols:
+        conn.execute(
+            "ALTER TABLE guide_exchanges"
+            " ADD COLUMN step_title TEXT NOT NULL DEFAULT ''"
+        )
 
 
 def _now() -> str:
@@ -388,13 +407,19 @@ def screenshot_by_id(shot_id: int) -> Optional[dict[str, Any]]:
 # contract) — nothing derived from a shared screen ever lands here.
 
 def add_guide_exchange(
-    claim_id: int, step_index: int, message: str, reply: str
+    claim_id: int, step_index: int, message: str, reply: str,
+    step_title: str = "",
 ) -> dict[str, Any]:
+    """``step_title`` is the provenance pin: the step's title AS THE ASKER SAW
+    IT, snapshotted by the route at persist time. ``step_index`` alone decays —
+    the moment the walkthrough script inserts, removes, or reorders a step,
+    the index points at different text and history silently re-attributes.
+    Default ``''`` = no snapshot (rows persisted before the pin existed)."""
     with closing(_connect()) as conn, conn:
         cur = conn.execute(
-            "INSERT INTO guide_exchanges (claim_id, step_index, message,"
-            " reply, created_at) VALUES (?, ?, ?, ?, ?)",
-            (claim_id, step_index, message, reply, _now()),
+            "INSERT INTO guide_exchanges (claim_id, step_index, step_title,"
+            " message, reply, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (claim_id, step_index, step_title, message, reply, _now()),
         )
         row = conn.execute(
             "SELECT * FROM guide_exchanges WHERE id = ?", (cur.lastrowid,)
@@ -606,12 +631,16 @@ def guided_step_questions(
     exists to hang it on, so extra tasks in the mapping are inert.
 
     Each cell carries ``total`` (every exchange at that task+step) and
-    ``questions`` — the newest ``cap`` message texts, newest first, so one
-    chatty claim can't scroll the strip. The texts are RAW tester input:
-    the caller renders them escaped (and truncated for display)."""
+    ``questions`` — the newest ``cap`` entries, newest first, so one chatty
+    claim can't scroll the strip. Each entry is ``{"message", "step_title"}``:
+    the message is RAW tester input (the caller renders it escaped and
+    truncated for display) and ``step_title`` is the row's provenance pin —
+    the step's title at ask time, ``''`` for rows persisted before the pin
+    existed. The caller compares the pin against the CURRENT script to flag
+    questions asked against an older version of the step."""
     with closing(_connect()) as conn:
         rows = conn.execute(
-            "SELECT c.task_id, g.step_index, g.message"
+            "SELECT c.task_id, g.step_index, g.step_title, g.message"
             " FROM guide_exchanges g JOIN claims c ON c.id = g.claim_id"
             " ORDER BY g.id DESC"
         ).fetchall()
@@ -622,7 +651,9 @@ def guided_step_questions(
         )
         cell["total"] += 1
         if len(cell["questions"]) < cap:
-            cell["questions"].append(r["message"])
+            cell["questions"].append(
+                {"message": r["message"], "step_title": r["step_title"]}
+            )
     return out
 
 

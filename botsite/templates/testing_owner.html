@@ -5,13 +5,16 @@
    heatmap and the finisher hotspots count WHO asked; this lists the actual
    messages). One collapsed <details> per step with questions: untrusted
    tester input, autoescaped, newest-capped by the store, truncated by the
-   route. Padded / question-free cells render nothing. #}
+   route. Padded / question-free cells render nothing. Provenance: a STALE
+   question renders the step title pinned at ask time (the script changed
+   at that index since); a pre-pin legacy row says the wording wasn't
+   recorded instead of guessing from the current script. #}
 {% macro step_question_digest(t) %}
 {% for st in t.steps %}{% if st.questions %}
 <details style="margin-top:4px">
   <summary class="sb-hint">step {{ st.step_index + 1 }} · {{ st.question_total }} tester question(s){% if st.question_total > st.questions|length %} · newest {{ st.questions|length }} shown{% endif %} (untrusted tester input)</summary>
   {% for q in st.questions %}
-  <p class="sb-hint" style="margin-top:2px">· {{ q }}</p>
+  <p class="sb-hint" style="margin-top:2px">· {{ q.text }}{% if q.stale %} <em>— asked when this step said “{{ q.pinned_title }}”</em>{% elif q.unpinned %} <em>— step wording at ask time not recorded (pre-provenance row)</em>{% endif %}</p>
   {% endfor %}
 </details>
 {% endif %}{% endfor %}

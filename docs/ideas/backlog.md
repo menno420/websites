@@ -1504,8 +1504,15 @@
   Source: `.sessions/2026-07-13-finisher-hotspots.md` 💡.
 
 - **Guide-question step provenance — pin what the step SAID when the
-  question was asked** · `captured` (2026-07-13, step-question-digest
-  session 💡) — `guide_exchanges` rows pin only `step_index`, so the
+  question was asked** · `built` (2026-07-13, step-provenance session —
+  `guide_exchanges.step_title` snapshots the step's title at persist time
+  (`add_guide_exchange` + an in-place column retrofit for pre-pin DB
+  files, rows before the pin honestly keep `''`); the owner-queue digest
+  resolves each question via `testing._digest_question` — pin == current
+  title renders clean, a differing pin renders "asked when this step said
+  …" with the ask-time title, a pinned-free legacy row says the wording
+  wasn't recorded instead of guessing; captured 2026-07-13,
+  step-question-digest session 💡) — `guide_exchanges` rows pin only `step_index`, so the
   digest (PR #304) and both strips (#294/#298/#303) attribute every
   persisted question to whatever text CURRENTLY sits at that index: the
   moment a walkthrough script inserts, removes, or reorders a step,
@@ -1576,6 +1583,25 @@
   per the working agreement. Deduped against this backlog + the
   queue-state NEXT list: no orientation-budget/headroom bullet exists.
   Source: `.sessions/2026-07-13-env-leads-close.md` 💡.
+
+- **Import valve for the testing-DB export — restore `export.json` after a
+  redeploy wipe** · `captured` (2026-07-13, step-provenance session 💡) —
+  the ephemeral-disk mitigation is half a lifeboat: `GET
+  /testing/owner/export.json` (owner-auth) dumps the full tester-program
+  DB before a redeploy, but nothing can put the backup BACK — after the
+  wipe the owner holds a JSON file and the queue starts empty (claims,
+  transcripts, ledger, provenance pins all gone until Postgres lands). An
+  owner-auth import valve (upload the export, rows re-inserted with the
+  same honest `.get`-default handling this session used for pre-pin rows,
+  so old backups without newer columns restore cleanly) would close the
+  loop the export half-opened. Worth having because every backup valve
+  that can't restore is a promise the disaster will break — and the
+  Postgres ask it bridges to is still an OPEN owner action. Deduped
+  against this backlog + the queue-state NEXT list: the export valve
+  itself shipped with the store module and appears only as prose in its
+  docstring; no import/restore bullet exists anywhere; the
+  submissions-Postgres OWNER-ACTIONS ask is infrastructure, not this
+  repo-side bridge. Source: `.sessions/2026-07-13-step-provenance.md` 💡.
 
 - **Wire `scripts/review_row_check.py` into `quality.yml` as the advisory
   owed-row step** · `captured` (2026-07-13, build-direct session 💡) — the
