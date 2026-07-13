@@ -1,19 +1,24 @@
 name: review-bake
 
-# Scheduled data bake for the review service (review/) — keeps the site's
-# committed mirrors fresh without any runtime network access:
-#   review/data/snapshot.json  (this repo's own history — gen_snapshot.py)
-#   review/data/fleet.json     (fleet registry + heartbeat mirror — gen_fleet.py)
-#   review/data/stats.json     (per-repo REST numbers — gen_stats.py, which
-#                               uses the Actions GITHUB_TOKEN for rate headroom;
-#                               a durable owner PAT would unlock richer stats —
-#                               queued in docs/owner/OWNER-ACTIONS.md)
+# Scheduled data bake for the fleet's committed data mirrors — keeps the
+# sites fresh without any runtime network access:
+#   review/data/snapshot.json    (this repo's own history — gen_snapshot.py)
+#   review/data/fleet.json       (fleet registry + heartbeat mirror — gen_fleet.py)
+#   review/data/stats.json       (per-repo REST numbers — gen_stats.py, which
+#                                 uses the Actions GITHUB_TOKEN for rate headroom;
+#                                 a durable owner PAT would unlock richer stats —
+#                                 queued in docs/owner/OWNER-ACTIONS.md)
+#   botsite/data/graveyard.json  (trading-strategy experiment-ledger aggregate —
+#                                 botsite/gen_graveyard.py; anonymous raw fetch +
+#                                 ls-remote, fail-soft: on any fetch failure it
+#                                 keeps the committed file and exits 0)
 #
 # Trigger: daily cron (best-effort delivery, ±hours — the capability ledger's
 # standing finding; never gate anything on a slot) + workflow_dispatch for a
 # manual refresh. NOT triggered by push — no self-trigger loop is possible.
 #
-# Landing path for the baked diff (touches ONLY review/data/**):
+# Landing path for the baked diff (touches ONLY review/data/** +
+# botsite/data/graveyard.json — the explicitly staged data files):
 #   1. try a direct push to main — if the branch ruleset allows it, done;
 #   2. otherwise push a `bake/…` branch and try to open a `[bake]` PR with
 #      auto-merge, so the required `quality` check still gates the diff (a
@@ -24,21 +29,30 @@ name: review-bake
 #   3. if PR creation is refused, the job DOES NOT FAIL: the baked branch is
 #      already pushed, and the run summary says exactly what to do with it.
 #
-# ⚑ KNOWN WALL — OWNER TOGGLE REQUIRED for step 2 to work end-to-end:
-#   Both historical scheduled/dispatch runs (incl. run 29184552812,
-#   2026-07-12T07:38Z) baked successfully, pushed their bake/ branch, then
-#   failed at `gh pr create` with the verbatim error
-#     "GitHub Actions is not permitted to create or approve pull requests".
-#   That is a repo/org console setting no workflow content can change:
-#   Settings → Actions → General → Workflow permissions →
-#   check "Allow GitHub Actions to create and approve pull requests".
-#   Until the owner flips it, this workflow degrades honestly: the bake data
-#   lands on a pushed `bake/…` branch, the job stays green, and the summary
-#   carries a compare link so any session (or the owner) can open the PR.
-#   No new secrets are required either way. Queued in
-#   docs/owner/OWNER-ACTIONS.md.
+# ⚑ KNOWN WALL — RESOLVED 2026-07-12 (docs/owner/OWNER-ACTIONS.md Decided
+#   row M): early runs failed at `gh pr create` with "GitHub Actions is not
+#   permitted to create or approve pull requests" until the owner flipped
+#   Settings → Actions → General → "Allow GitHub Actions to create and
+#   approve pull requests". The refusal handling below is KEPT as
+#   defense-in-depth — if the toggle ever reverts, the workflow degrades
+#   honestly again: the bake data lands on a pushed `bake/…` branch, the
+#   job stays green (exit 0), and the summary carries a compare link so any
+#   session (or the owner) can open the PR. No new secrets either way.
 #
-# Scope safety: the commit path stages review/data/ files explicitly (never
+# Required-check chain (added 2026-07-13): a PR created with the Actions
+#   GITHUB_TOKEN does not trigger its own `pull_request` workflows (GitHub's
+#   recursion guard — verified on PR #259: zero check runs on its head; a
+#   session had to close/reopen it by hand). The documented exception: events
+#   "triggered by the GITHUB_TOKEN, with the exception of workflow_dispatch
+#   and repository_dispatch, will not create a new workflow run" — so after
+#   opening the PR this job dispatches `quality.yml` on the bake branch
+#   (`gh workflow run`, needs `actions: write`). The dispatch run's check
+#   lands on the branch head SHA = the PR head SHA, and required status
+#   checks match by check-run name on the head SHA, not by event — so the
+#   required `quality` context is satisfied and auto-merge can fire.
+#   Best-effort like the PR create: a refused dispatch never fails the job.
+#
+# Scope safety: the commit path stages the baked data files explicitly (never
 # `git add -A`), the job has no secret beyond the repo-scoped Actions token,
 # and a bake that produces no diff exits quietly.
 
@@ -50,6 +64,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # actions:write ONLY for `gh workflow run quality.yml` — the dispatch-chained
+  # required check on the bake PR (see the header). Nothing broader.
+  actions: write
 
 jobs:
   bake:
@@ -67,14 +84,18 @@ jobs:
           python-version: "3.12"
 
       # The generators are stdlib-only on purpose (urllib, ast, json) — no
-      # dependency install needed for the bake itself.
-      - name: Bake snapshot + fleet mirror + stats
+      # dependency install needed for the bake itself. gen_graveyard.py is
+      # path-independent (writes next to its own file) and fail-soft: if the
+      # anonymous raw.githubusercontent.com fetch fails it keeps the
+      # committed graveyard.json untouched and exits 0.
+      - name: Bake snapshot + fleet mirror + stats + botsite graveyard
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 review/gen_snapshot.py
           python3 review/gen_fleet.py
           python3 review/gen_stats.py
+          python3 botsite/gen_graveyard.py
 
       - name: Commit and land the refreshed data
         env:
@@ -85,13 +106,14 @@ jobs:
           # Stage ONLY the baked data files — never a blanket add.
           git add review/data/snapshot.json review/data/fleet.json
           git add review/data/stats.json 2>/dev/null || true
+          git add botsite/data/graveyard.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "bake produced no changes — nothing to land."
             exit 0
           fi
           stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git commit -m "[bake] review data refresh $stamp" \
-                     -m "Scheduled review-bake: regenerated review/data mirrors (snapshot, fleet, stats). Data-only diff; no session card by design (see .github/workflows/review-bake.yml)."
+          git commit -m "[bake] fleet data refresh $stamp" \
+                     -m "Scheduled review-bake: regenerated committed data mirrors (review/data snapshot, fleet, stats; botsite/data graveyard). Data-only diff; no session card by design (see .github/workflows/review-bake.yml)."
           if git push origin HEAD:main; then
             echo "pushed directly to main."
             exit 0
@@ -106,8 +128,8 @@ jobs:
           # (see the header). A refusal must not fail the job — the bake
           # itself succeeded and the branch is pushed.
           if pr_url="$(gh pr create \
-            --title "[bake] review data refresh $stamp" \
-            --body "Automated daily bake of the review service's committed data mirrors (review/data/snapshot.json, fleet.json, stats.json). Data-only diff — no session card by design. Auto-merge is enabled; if it could not be armed, this PR waits for a human click." \
+            --title "[bake] fleet data refresh $stamp" \
+            --body "Automated daily bake of the committed data mirrors (review/data/snapshot.json, fleet.json, stats.json; botsite/data/graveyard.json). Data-only diff — no session card by design. Auto-merge is enabled and a quality run is dispatched on this branch (PRs created with the Actions token don't trigger their own pull_request checks); if either could not be armed, this PR waits for a human hand." \
             --base main --head "$branch" 2>&1)"; then
             echo "opened $pr_url"
             {
@@ -116,6 +138,20 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             gh pr merge --squash --auto "$pr_url" \
               || echo "auto-merge could not be enabled — PR left open for a human click (visible on the board)."
+            # Required-check chain (see header): the GITHUB_TOKEN-created PR
+            # triggers no pull_request run of its own, so dispatch quality.yml
+            # on the bake branch — its check run lands on the PR head SHA and
+            # satisfies the required `quality` context. Best-effort: a refused
+            # dispatch never fails the job, it just leaves the PR checkless
+            # (fallback: dispatch quality.yml on $branch by hand, or
+            # close/reopen the PR).
+            if gh workflow run quality.yml --ref "$branch"; then
+              echo "dispatched quality.yml on $branch (required-check chain)."
+              echo "Dispatched \`quality.yml\` on \`$branch\` to satisfy the required check." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "quality dispatch refused — PR is checkless until a hand dispatches quality.yml on $branch or closes/reopens it."
+              echo "⚠ quality dispatch refused — PR needs a hand: dispatch \`quality.yml\` on \`$branch\`, or close/reopen the PR." >> "$GITHUB_STEP_SUMMARY"
+            fi
           else
             echo "PR creation refused: $pr_url"
             {
