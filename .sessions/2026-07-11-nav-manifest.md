@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #122, branch `claude/nav-manifest`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 24 — 11:30Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 24 — 11:30Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 11:30Z nudge; ritual clean (no 12:00Z
 fire visible, no new orders, no collision), so rung 3 with the designated

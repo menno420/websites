@@ -828,7 +828,10 @@
   `.sessions/2026-07-12-owner-readiness-env-chip.md` 💡.
 
 - **Align `.sessions/README.md`'s model-line examples with the family-level
-  rule** · `captured` (2026-07-12, card-model-line-fix session 💡) — the
+  rule** · `built` (2026-07-13, PR #226 — template + ender-checklist examples
+  now "Claude Fable 5" / "Claude Opus 4.8", plus a 102-card historical sweep
+  normalizing exact-ID model-line tokens to family-level names; original
+  capture 2026-07-12, card-model-line-fix session 💡) — the
   README's template and ender checklist say "FAMILY level only" but give
   `claude-fable-5` / `claude-opus-4-8` as the examples, i.e. the exact-ID
   shape; agents copy templates literally, so the doc that defines the rule
@@ -838,3 +841,16 @@
   cards one at a time. Deduped against this backlog + the queue-state NEXT
   list: nothing touches the session-card template or model-attribution
   examples. Source: `.sessions/2026-07-12-card-model-line-fix.md` 💡.
+
+- **Kit-gate advisory for exact-ID model lines** · `captured` (2026-07-13,
+  model-line-hygiene session 💡) — extend the session-card scan in
+  `bootstrap.py check` (the `session_markers` machinery) with an advisory
+  that flags any `📊 Model:` line matching the lowercase exact-ID token
+  shape, so regressions are caught at the gate instead of by manual sweeps
+  like PR #226. Worth having because a one-time sweep decays — without a
+  checker the old shape creeps back via copy-paste from pre-sweep cards in
+  other fleet repos. Kit-owned surface, so the build routes via the kit
+  lane, not this repo. Deduped against this backlog + the queue-state NEXT
+  list: the README-example fix above is now `built` and nothing else adds a
+  gate/checker for model-line shape. Source:
+  `.sessions/2026-07-13-model-line-hygiene.md` 💡.

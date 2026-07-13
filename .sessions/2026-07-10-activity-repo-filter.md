@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #86 (`claude/activity-repo-filter`),
 > squash-merge on `quality` green. (Flipped after the PR existed.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 10 — 00:14Z nudge, executed ~01:12Z)
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 10 — 00:14Z nudge, executed ~01:12Z)
 
 **What this session was about:** the 00:14Z send_later continuation (queued;
 executed ~01:12Z). Collision check: heartbeat at HEAD still carried this

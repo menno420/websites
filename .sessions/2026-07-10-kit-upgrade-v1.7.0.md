@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — upgrade applied, gates green, shipped as PR #62.
 
-- **📊 Model:** claude-fable-5 (coordinator-tasked distribution-wave worker)
+- **📊 Model:** Claude Fable 5 (coordinator-tasked distribution-wave worker)
 
 **What this session was about:** take the vendored `bootstrap.py` from kit
 v1.6.0 (D-0026, PR #45) to the released **v1.7.0** through the kit's own §4.3

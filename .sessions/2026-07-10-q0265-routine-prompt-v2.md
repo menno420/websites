@@ -2,7 +2,7 @@
 
 > **Status:** `complete`
 
-📊 Model: claude-fable-5
+📊 Model: Claude Fable 5
 
 ## Declared at open (born-red)
 

@@ -1,7 +1,7 @@
 # 2026-07-09 — Plant gen-1 retro question set + self-review ORDER (manager fleet write)
 
 > **Status:** `complete` — docs/retro/QUESTIONS.md + README planted, ORDER 003 appended to control/inbox.md; docs-only, no runtime surface.
-- **📊 Model:** claude-fable-5 · high · fleet-manager write
+- **📊 Model:** Claude Fable 5 · high · fleet-manager write
 
 **What this session is about:** A fleet-manager write worker (not this Project's
 own lane) plants the gen-1 self-review retro protocol: `docs/retro/QUESTIONS.md`

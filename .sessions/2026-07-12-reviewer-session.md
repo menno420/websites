@@ -4,7 +4,7 @@
 > commits to the shared checkout during review. PRs #159/#161/#160 parked
 > open + green awaiting the owner's squash-merge.
 
-- **📊 Model:** claude-fable-5 · dispatched reviewer (coordinator directive) · review
+- **📊 Model:** Claude Fable 5 · dispatched reviewer (coordinator directive) · review
 
 **What this session was about:** Coordinator-dispatched review of three open
 PRs. Each was reviewed full-diff plus local four-suite runs in isolated

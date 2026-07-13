@@ -5,7 +5,7 @@
 > quality run's FAILURE was the born-red gate by design — verbatim log:
 > "missing: Session idea … badge still says in-progress".)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 14 — 03:31Z nudge) — family reported by this session's own harness ("You are powered by … claude-fable-5" system context), NOT read off the Routines screen, per ORDER 010's ground-truth rule.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 14 — 03:31Z nudge) — family reported by this session's own harness ("You are powered by … Claude Fable 5" system context), NOT read off the Routines screen, per ORDER 010's ground-truth rule.
 
 **What this session was about:** the 03:31Z send_later continuation.
 `scripts/open_work.py` at wake surfaced a NEW branch → open PR #94: the

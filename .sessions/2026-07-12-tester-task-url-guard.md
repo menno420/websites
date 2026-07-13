@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #221, branch `claude/tester-task-url-guard`;
 > lands via the auto-merge-enabler on green.
 
-- **📊 Model:** claude-fable-5 · worker · feature-slice
+- **📊 Model:** Claude Fable 5 · worker · feature-slice
 
 **What this session was about:** backlog promotion — the captured bullet
 "Tester-task URL liveness guard" (`docs/ideas/backlog.md`, source

@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR branch `claude/coordinator-sitting-report-2026-07-12`,
 > status overwrite + this card only; lands via the auto-merge-enabler on green.
 
-- **📊 Model:** claude-fable-5 · coordinator seat (report worker) · order
+- **📊 Model:** Claude Fable 5 · coordinator seat (report worker) · order
 
 **What this session was about:** the coordinator seat's 2026-07-12 sitting
 report — wholesale overwrite of `control/status.md` recording fleet-manager

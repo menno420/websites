@@ -3,7 +3,7 @@
 > **Status:** `complete` — branch `claude/order-015-projects-role-chips`;
 > PR number recorded on the PR itself (opened READY off this branch).
 
-- **📊 Model:** claude-fable-5 · worker · feature-slice
+- **📊 Model:** Claude Fable 5 · worker · feature-slice
 
 **What this session was about:** backlog promotion under ORDER 015 (owner
 live directive: website-plans sweep — "find all website related plans across

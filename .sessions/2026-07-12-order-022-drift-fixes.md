@@ -4,7 +4,7 @@
 > READY + green for the auto-merge enabler (build worker; merge is
 > deliberately not this session's call).
 
-- **📊 Model:** claude-fable-5 · build worker · order
+- **📊 Model:** Claude Fable 5 · build worker · order
 
 **What this session was about:** ORDER 022 items 1, 2 and 4 (ledger part)
 (fleet-manager `control/inbox.md` @ `1bb53f9`): the mineverse arcade card

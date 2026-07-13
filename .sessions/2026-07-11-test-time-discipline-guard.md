@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #114, branch `claude/test-time-discipline-guard`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 21 — 09:38Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 21 — 09:38Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 09:38Z nudge; ritual clean (no new
 orders; sibling #113 kit v1.10.1 landed mid-window, bumped the kit line and

@@ -4,7 +4,7 @@
 > parks as a READY PR to main (build worker; merge is deliberately not this
 > session's call — the auto-merge enabler arms server-side).
 
-- **📊 Model:** claude-fable-5 · build worker · order
+- **📊 Model:** Claude Fable 5 · build worker · order
 
 **What this session was about:** Rung: order — ORDER 015 (control/inbox.md):
 after ORDER 014's /prompts library landed (PR #165), the control-plane had

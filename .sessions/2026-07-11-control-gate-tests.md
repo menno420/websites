@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #127, branch `claude/control-gate-tests`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 26 — 12:45Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 26 — 12:45Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 12:45Z nudge; ritual clean (no new
 orders, no collision; the 12:05Z fire's relayed branch correctly no longer

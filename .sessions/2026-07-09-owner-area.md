@@ -9,7 +9,7 @@
 > latest failed CI). Owner-directed ("add a password to a secure part of the
 > site … but the main site should always be browsable"). Deploy + verify live.
 
-- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+- **📊 Model:** Claude Opus 4.8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
 
 ## What was done
 

@@ -3,7 +3,7 @@
 > **Status:** `complete` — wind-down Phase 1 shipped as PR #46: open PRs settled
 > (zero found open), queue state committed, heartbeat overwritten.
 
-- **📊 Model:** claude-fable-5 (wind-down worker session)
+- **📊 Model:** Claude Fable 5 (wind-down worker session)
 
 **What this session was about:** the lane is moving gen-1 → gen-2. A fresh
 Project boots only from what is committed on `main`, so everything that lived

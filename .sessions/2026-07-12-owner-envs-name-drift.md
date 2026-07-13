@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #218, branch `claude/owner-envs-name-drift`;
 > lands via the auto-merge-enabler on green.
 
-- **📊 Model:** claude-fable-5 · worker · feature-slice
+- **📊 Model:** Claude Fable 5 · worker · feature-slice
 
 **What this session was about:** the gated /owner/environments page holds
 both halves of a diff it does not compute — the COMMITTED documented env-var

@@ -5,7 +5,7 @@
 > queue-state NEXT item 2 (retro A3). Branch pushed; PR not opened this
 > session (see Landing below) — next session opens it.
 
-- **📊 Model:** claude-sonnet-5 · medium · maintenance + smoke-check build
+- **📊 Model:** Claude Sonnet 5 · medium · maintenance + smoke-check build
 
 **What this session was about:** The standing 4-hourly inbox-ritual wake
 (`control/inbox.md`, ORDER 008's own routine). All orders 001-008 were already

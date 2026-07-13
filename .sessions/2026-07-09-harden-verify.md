@@ -13,7 +13,7 @@
 > card, so the born-red mechanism the workflow assumes is not actually enforced.
 > Recovered by fix-forward (this branch), and captured as a workflow bug below.
 
-- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+- **📊 Model:** Claude Opus 4.8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
 
 ## P0 — verify #16 definition-of-done (DONE)
 

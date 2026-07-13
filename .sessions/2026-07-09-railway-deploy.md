@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — deployed live; docs shipped as PR #3 (`claude/railway-deploy`, squash-merged).
 
-- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+- **📊 Model:** Claude Opus 4.8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
 
 **What this session was about:** Phase 3 of the kickoff sequence — create a
 FRESH Railway project (never the production bot project), deploy the site

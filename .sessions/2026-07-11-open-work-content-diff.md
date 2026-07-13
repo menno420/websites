@@ -4,7 +4,7 @@
 > BUILT UNDER THE #141 MERGE HOLD: the PR is READY + green and WAITS
 > UNMERGED for the hold-lift relay (held-list position #1).
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 33 — post-18:13Z pass under the build-not-merge clarification) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 33 — post-18:13Z pass under the build-not-merge clarification) — family from this session's own harness, per ORDER 010.
 - **⚑ Self-initiated** (rung 4, contained + reversible; the owner welcomes
   these): scripts/open_work.py has a kill-switch header and nothing depends
   on it — worst case, delete the file.

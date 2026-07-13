@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #139, branch `claude/inbox-provenance-advisory`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 31 — 15:44Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 31 — 15:44Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 15:44Z nudge (the ~16:00Z
 fire-rescue window — ritual at 15:45Z found no traces yet; re-checked

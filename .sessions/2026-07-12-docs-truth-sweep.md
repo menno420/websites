@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — branch `claude/docs-truth-sweep`, PR #210.
 
-- **📊 Model:** claude-fable-5 · build worker · docs sweep
+- **📊 Model:** Claude Fable 5 · build worker · docs sweep
 
 **What this session was about:** contained docs-truth-sweep (coordinator-assigned
 slice, not an ORDER): (1) strike the satisfied "Actions: Allow GitHub Actions to

@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR branch `claude/control-plane-ia-v2`; one slice,
 > lands via the auto-merge-enabler on green.
 
-- **📊 Model:** claude-fable-5 · websites worker · owner-directed (live feedback)
+- **📊 Model:** Claude Fable 5 · websites worker · owner-directed (live feedback)
 
 **What this session was about:** owner feedback, verbatim intent — the
 console is "a lot of clicking and a lot of scrolling; the ideal interface

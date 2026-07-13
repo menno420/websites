@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #118, branch `claude/order-011-self-review`;
 > claim landed first as #117.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired order slice (continuous mode, slice 22 — 10:15Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired order slice (continuous mode, slice 22 — 10:15Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 10:15Z nudge's ritual found **ORDER
 011** (P1, filed 09:59Z, owner-directed via the fleet-manager coordinator):

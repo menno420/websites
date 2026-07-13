@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #109, branch `claude/nav-overflow-guard`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 19 — 08:21Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 19 — 08:21Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 08:21Z send_later continuation, timed
 after the ~08:00Z 4-hourly fire window. Ritual findings: the fire left NO

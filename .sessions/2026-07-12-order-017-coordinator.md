@@ -5,7 +5,7 @@
 > in its only commit (the work it records is already merged to main —
 > mirroring PR #163's record-only session-card pattern).
 
-- **📊 Model:** claude-fable-5 · webagent coordinator (worker fan-out) · order
+- **📊 Model:** Claude Fable 5 · webagent coordinator (worker fan-out) · order
 
 **What this session was about:** Rung: order — executed ORDER 017, the
 review-site refresh for the Anthropic review window (PR #172 carried the

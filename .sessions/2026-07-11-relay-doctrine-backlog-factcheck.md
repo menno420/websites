@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #99 (`claude/relay-doctrine-backlog-factcheck`),
 > squash-merge on `quality` green. (Flipped after the PR existed.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 15 — 04:12Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 15 — 04:12Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 04:12Z send_later continuation. The
 start ritual (open_work.py) surfaced a SECOND stranded case in one night:

@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR branch `claude/order-envhub-manifest`; one
 > slice, lands via the auto-merge-enabler on green.
 
-- **📊 Model:** claude-fable-5 · websites worker · order (ORDER 021)
+- **📊 Model:** Claude Fable 5 · websites worker · order (ORDER 021)
 
 **What this session was about:** ORDER 021 slice 2 (rung: order; slice 1 =
 merged #202) — the "create the complete environments per project group"

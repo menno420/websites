@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #142, branch `claude/chain-entry-refresh`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired upkeep slice (continuous mode, slice 32 — 16:16Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired upkeep slice (continuous mode, slice 32 — 16:16Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 16:16Z nudge (post-16:00Z
 fire-rescue window: NO fire traces at 16:18Z — heartbeat stamp still

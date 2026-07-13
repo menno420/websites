@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #92 (`claude/ideas-states-waitdeploy`),
 > squash-merge on `quality` green. (Flipped after the PR existed.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 13 — 02:57Z nudge)
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 13 — 02:57Z nudge)
 
 **What this session was about:** the 02:57Z send_later continuation.
 Collision check: heartbeat at HEAD is this chain's 02:35Z stamp — clear.

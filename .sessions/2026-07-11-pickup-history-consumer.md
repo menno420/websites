@@ -4,7 +4,7 @@
 > BUILT UNDER THE #141 MERGE HOLD: READY + green, WAITS UNMERGED
 > (held-list position #2, after #147).
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 34 — 18:54Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 34 — 18:54Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 18:54Z nudge under the
 build-not-merge hold; ritual clean (no new orders; stamp frozen 16:27Z;

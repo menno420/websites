@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #130, branch `claude/route-clock-freeze`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 27 — 13:19Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 27 — 13:19Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 13:19Z nudge; ritual clean (sibling
 #129 landed kit v1.11.0 mid-window — engine + pin only, no collision; no

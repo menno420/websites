@@ -4,7 +4,7 @@
 > squash-merge on `quality` green. (Card flipped AFTER the PR existed — the
 > number is real, not predicted; slices 1+2 both mispredicted theirs.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 3)
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 3)
 
 **What this session was about:** slice 3 of the 20:00Z continuous-mode wake
 (manager Q-0265). Work-ladder rung 3 (backlog promotion) — the queue-state

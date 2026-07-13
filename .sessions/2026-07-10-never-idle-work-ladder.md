@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #61 (`claude/never-idle-work-ladder`), squash-merge on `quality` green.
 
-- **📊 Model:** claude-fable-5 · coordinator-dispatched upgrade job
+- **📊 Model:** Claude Fable 5 · coordinator-dispatched upgrade job
 
 **What this session was about:** close the perpetual-work-generation gap in
 `docs/project/project-instructions.md` (PR #60 covered mechanics — orientation,

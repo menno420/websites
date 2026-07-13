@@ -4,7 +4,7 @@
 > PR #166 (parks READY awaiting the owner's merge click — no auto-merge on
 > this repo).
 
-- **📊 Model:** claude-fable-5 · worker (ORDER 015 execution) · feature-build
+- **📊 Model:** Claude Fable 5 · worker (ORDER 015 execution) · feature-build
 
 **What this session was about:** Execute the merged plan
 `docs/planning/live-env-visibility-plan-2026-07-11.md` (slice 1) under

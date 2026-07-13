@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #79 (`claude/own-heartbeat-selfcheck`),
 > squash-merge on `quality` green. (Flipped after the PR existed.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 7 — 22:45Z nudge)
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 7 — 22:45Z nudge)
 
 **What this session was about:** the 22:45Z send_later continuation. Inbox at
 HEAD has no order past 009; work-ladder rung 3 — the backlog's small-dogfood

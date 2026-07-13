@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #11; producer half is superbot PR #1884.
 
-- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+- **📊 Model:** Claude Opus 4.8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
 
 ## What I did
 
