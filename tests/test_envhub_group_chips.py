@@ -101,6 +101,18 @@ def _group_count() -> int:
     return len(envhub.load_registry()["groups"])
 
 
+def _partial_set_total() -> int:
+    """Expected set-live count under the _partial_live mix: control-plane +
+    dashboard fully set, botsite 2 of its documented names set (SITE_JSON_URL
+    + PORT), review absent. Derived from the registry so the chip pin tracks
+    rendering logic, not the inventory's size."""
+    return (
+        len(_committed_names("control-plane"))
+        + 2
+        + len(_committed_names("dashboard"))
+    )
+
+
 def _fake_graphql(names_by_service_id: dict[str, list[str]],
                   service_nodes: list[tuple[str, str]]):
     """A mocked railway._graphql: projectToken scope, the given service
@@ -209,9 +221,9 @@ def test_partial_group_renders_amber_chip(client, monkeypatch):
     _partial_live(monkeypatch)
     r = client.get(HUB_URL, headers=_basic())
     assert r.status_code == 200
-    # 10 (control-plane) + 2 (botsite) + 6 (dashboard) = 18 of 25 —
+    # control-plane + dashboard fully set, botsite 2 set —
     # review's absence from a SUCCESSFUL read is honest missing, not unknown.
-    assert _amber_chip(18, _estate_total()) in r.text
+    assert _amber_chip(_partial_set_total(), _estate_total()) in r.text
     assert _green_chip(_estate_total(), _estate_total()) not in r.text
 
 
@@ -246,7 +258,7 @@ def test_mixed_groups_on_one_page(client, monkeypatch):
     _partial_live(monkeypatch)
     r = client.get(HUB_URL, headers=_basic())
     assert r.status_code == 200
-    assert _amber_chip(18, _estate_total()) in r.text
+    assert _amber_chip(_partial_set_total(), _estate_total()) in r.text
     assert r.text.count("set live</span>") == 1
     assert r.text.count(UNKNOWN_CHIP) == _group_count() - 1
     # the out-of-scope chips carry the scope reason, never an assumption.

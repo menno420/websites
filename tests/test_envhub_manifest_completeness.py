@@ -90,6 +90,14 @@ def _committed_names(surface_id: str) -> list[str]:
     return list(surface["variable_names"])
 
 
+def _estate_total() -> int:
+    """All documented names across the four surfaces — derived from the
+    registry so these pins track badge logic, not the inventory's size."""
+    reg = envhub.load_registry()
+    estate = next(g for g in reg["groups"] if g["id"] == "superbot-websites")
+    return sum(len(s["variable_names"]) for s in estate["surfaces"])
+
+
 def _fake_graphql(names_by_service_id: dict[str, list[str]],
                   service_nodes: list[tuple[str, str]]):
     """A mocked railway._graphql: projectToken scope, the given service
@@ -199,11 +207,19 @@ def test_mixed_present_absent_and_missing_service(client, monkeypatch):
     _mixed_live(monkeypatch)
     r = client.get(MANIFEST_URL, headers=_basic())
     assert r.status_code == 200
-    # 10 (control-plane) + 2 (botsite) + 6 (dashboard) = 18 set of 25 total.
-    assert r.text.count(SET_BADGE) == 18
-    # 3 botsite names missing + all 4 review names (service not created yet).
-    assert r.text.count(MISSING_BADGE) == 7
-    assert "18/25 set live" in r.text
+    # control-plane + dashboard fully set, botsite 2 set (SITE_JSON_URL, PORT).
+    set_count = (
+        len(_committed_names("control-plane"))
+        + 2
+        + len(_committed_names("dashboard"))
+    )
+    assert r.text.count(SET_BADGE) == set_count
+    # botsite's remaining names missing + ALL review names (not created yet).
+    missing_count = (
+        len(_committed_names("botsite")) - 2 + len(_committed_names("review"))
+    )
+    assert r.text.count(MISSING_BADGE) == missing_count
+    assert f"{set_count}/{_estate_total()} set live" in r.text
     # the absent service carries the honest not-created-yet note.
     assert "not created yet" in r.text
     # live-only extra names are the hub's business, not a schema row here.
@@ -281,7 +297,7 @@ def test_annotate_rows_set_and_missing_per_name():
     assert "not created yet" in review["live"]["note"]
     assert m["completeness"]["comparable"] is True
     assert m["completeness"]["set_count"] == 2
-    assert m["completeness"]["total"] == 25
+    assert m["completeness"]["total"] == _estate_total()
     assert m["completeness"]["unknown_count"] == 0
 
 
@@ -311,7 +327,7 @@ def test_annotate_no_live_truth_means_all_unknown(live):
     c = m["completeness"]
     assert c["comparable"] is False
     assert c["set_count"] == 0 and c["known_total"] == 0
-    assert c["unknown_count"] == c["total"] == 25
+    assert c["unknown_count"] == c["total"] == _estate_total()
 
 
 def test_annotate_other_group_unknown_even_on_healthy_read():
