@@ -40,6 +40,7 @@ ALL_FEATURE_ROUTES = [
     "/owner/environments",
     "/directory",
     "/owner",
+    "/owner/briefing",
     "/owner/queue",
 ]
 

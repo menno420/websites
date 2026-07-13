@@ -30,6 +30,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import (
+    briefing,
     config,
     envdrift,
     envhub,
@@ -238,6 +239,26 @@ async def owner_board_json(request: Request, _: None = Depends(require_owner)):
         envhub.board_rollup(refresh=_refresh(request)),
     )
     return JSONResponse({"rows": rows, "environments": envcov})
+
+
+@router.get("/briefing", response_class=HTMLResponse)
+async def owner_briefing(request: Request, _: None = Depends(require_owner)):
+    """ORDER 025 — THE MORNING BRIEFING: the owner's catch-up on one gated
+    GET-only page. Five sections (SHIPPED / ORDERS / ASKS / FLEET /
+    WATCHES) over a bounded window (default last 16h; ``?hours=`` clamped
+    to 1–168, invalid values fall back to the default with the fallback
+    noted on the page). All composition lives in the domain layer
+    (``app/briefing.py``) over the existing TTL-cached github client —
+    zero new network surface, zero state changes; a failed source renders
+    "unknown — <reason>", never fabricated data, and the route always
+    answers 200."""
+    data = await briefing.overview(
+        hours_raw=request.query_params.get("hours"),
+        refresh=_refresh(request),
+    )
+    return templates.TemplateResponse(
+        request, "owner_briefing.html", {"b": data}
+    )
 
 
 @router.get("/environments", response_class=HTMLResponse)
