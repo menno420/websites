@@ -1025,6 +1025,21 @@ async def testing_guide_frame(
 # --------------------------------------------------------------------------
 # owner queue (auth + same guards on state changes)
 # --------------------------------------------------------------------------
+HEATMAP_STEP_TEXT_MAX = 80
+
+
+def _heatmap_step_text(steps: list[dict[str, Any]], step_index: int) -> str:
+    """The walkthrough step's title for a heatmap cell tooltip, truncated so
+    long titles don't bloat the attribute. Empty when the task/index has no
+    step text — the cell then falls back to the bare step number."""
+    if not (0 <= step_index < len(steps)):
+        return ""
+    text = str(steps[step_index].get("title") or "").strip()
+    if len(text) > HEATMAP_STEP_TEXT_MAX:
+        text = text[: HEATMAP_STEP_TEXT_MAX - 1].rstrip() + "…"
+    return text
+
+
 async def _owner_page(
     request: Request, banner: Optional[dict[str, Any]] = None, status_code: int = 200
 ) -> HTMLResponse:
@@ -1062,7 +1077,15 @@ async def _owner_page(
         d["guide_transcript"] = store.guide_transcript_for_claim(d["id"])
     # Per-task step heatmap over the same rows: where chats cluster before a
     # claim dies — the rankable aggregate the per-claim transcripts can't give.
+    # Join step_index → the walkthrough step's own text (the same `steps`
+    # script the guide renders) so each cell's tooltip says WHAT the step
+    # asks; unknown tasks / out-of-range indexes leave step_text empty and
+    # the cell keeps the bare number.
     dropoff_heatmap = store.guided_step_dropoff()
+    for t in dropoff_heatmap:
+        step_script = task_steps(task_by_id(t["task_id"]))
+        for st in t["steps"]:
+            st["step_text"] = _heatmap_step_text(step_script, st["step_index"])
     # ORDER 019 PR2: filter/sort/search over the submissions queue (the
     # centralized listfilter core; state lives in the GET query string, so
     # POST-action re-renders simply show the unfiltered default).

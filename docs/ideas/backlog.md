@@ -1247,8 +1247,11 @@
   nothing aggregates guide-chat activity per step. Source:
   `.sessions/2026-07-13-owner-queue-dropoff.md` 💡.
 
-- **Step text labels on the drop-off heatmap** · `captured` (2026-07-13,
-  dropoff-heatmap session 💡) — the heatmap strip (PR #294) names steps by
+- **Step text labels on the drop-off heatmap** · `built` (2026-07-13,
+  PR #295 — `_owner_page` joins each heatmap cell's step_index against
+  the guided task's walkthrough step titles, truncated at 80 chars, and
+  the cell tooltip carries the text; unknown task / out-of-range index
+  keeps the bare number) — the heatmap strip (PR #294) names steps by
   number only; the guided tasks' walkthrough step texts already live in
   the tester-facing task data (`shaped_tasks()` / `task_by_id(...)` feed
   the guide with the step list), so joining `step_index` against the
