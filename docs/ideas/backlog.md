@@ -9,6 +9,17 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Suite-level token pin in `tests/conftest.py` — ambient-env independence
+  as structure, not discipline** · `captured` (2026-07-13) — there is no
+  `tests/conftest.py`; an autouse fixture pinning `config.GITHUB_TOKEN`
+  (and `RAILWAY_TOKEN`) to a known sentinel for every test would make the
+  unpinned-reason-assertion flake class impossible (a test's meaning could
+  never again change with whether the runner exports a token — this dev
+  container proxy-injects one, CI may not), while rung-specific tests keep
+  monkeypatching explicitly as they already do. Worth having because
+  PR #251's sweep shows the protection today is per-test discipline — the
+  next unpinned assertion reintroduces the both-rungs bug #250 flagged.
+  Source: `.sessions/2026-07-13-tighten-ladder-pins.md` 💡.
 - **Manifest completeness diff — "what is missing to finish this
   environment"** · `built` (2026-07-12, PR #216 —
   `envhub.annotate_completeness` badges every manifest schema row against
