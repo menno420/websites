@@ -20,6 +20,7 @@ Two kinds of content live here:
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 from pathlib import Path
 from typing import Any
@@ -775,7 +776,9 @@ def overview_stats(snapshot_data: dict[str, Any]) -> list[dict[str, Any]]:
 # ORDER 019 PR2 — /questions ledger filter/sort/search over the centralized
 # listfilter core (review/listfilter.py, a byte-identical vendored copy of
 # app/listfilter.py). The ledger records carry ``asked``/``title``/``url``/
-# ``status``/``answer_url``/``answer_label`` (see data/questions.json + the
+# ``status``/``answer_url``/``answer_label`` — plus a bake-stamped
+# ``closed_at`` on closed records synced after the answer-debt slice —
+# (see data/questions.json + the
 # template) — the dimensions read exactly those fields, defaulting the same
 # way the template does (missing status renders as "open").
 # --------------------------------------------------------------------------- #
@@ -805,6 +808,50 @@ def unanswered_closed(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for q in records
         if question_status(q) == "closed" and question_answer_state(q) == "pending"
     ]
+
+
+def answer_debt_days(q: dict[str, Any], now: dt.datetime | None = None) -> int | None:
+    """Whole days since the record's bake-stamped ``closed_at``, UTC.
+
+    ``None`` when the field is missing or unparseable — committed ledgers
+    baked before the stamp existed (and hand-mangled timestamps) degrade to
+    the binary nag, never to a crash or an invented age. Clamped at 0 so a
+    just-closed record under clock skew never reads negative. Mirrors
+    ``gen_questions.answer_debt_days`` — one debt clock, two surfaces."""
+    raw = str(q.get("closed_at") or "").strip()
+    if not raw:
+        return None
+    try:
+        closed = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if closed.tzinfo is None:
+        closed = closed.replace(tzinfo=dt.timezone.utc)
+    now = now if now is not None else dt.datetime.now(dt.timezone.utc)
+    return max((now - closed).days, 0)
+
+
+def answer_debt(
+    records: list[dict[str, Any]], now: dt.datetime | None = None
+) -> list[dict[str, Any]]:
+    """``unanswered_closed`` ranked by answer debt, each record copied with a
+    computed ``debt_days`` (int, or None when ``closed_at`` is absent/bad).
+
+    Oldest ``closed_at`` first — the longest-broken promise is the one to pay
+    first; records whose debt is unknowable keep their ledger order after the
+    dated ones. Pure read: the given records are never mutated."""
+    nag = []
+    for q in unanswered_closed(records):
+        q = dict(q)
+        q["debt_days"] = answer_debt_days(q, now)
+        nag.append(q)
+    nag.sort(
+        key=lambda q: (
+            q["debt_days"] is None,
+            str(q.get("closed_at") or "") if q["debt_days"] is not None else "",
+        )
+    )
+    return nag
 
 
 QUESTIONS_FILTER_SPEC = listfilter.ListSpec(

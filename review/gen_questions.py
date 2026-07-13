@@ -11,7 +11,8 @@ Intake convention (matches the ledger note + the 'Ask about this' links): an
 issue whose TITLE contains ``[program-review]`` (case-insensitive) is a
 reviewer question. PR objects (the issues API interleaves them, marked by a
 ``pull_request`` key) are excluded. Each match maps to a ledger record —
-``asked`` (created_at date), ``title``, ``url``, ``status`` (open/closed).
+``asked`` (created_at date), ``title``, ``url``, ``status`` (open/closed),
+plus ``closed_at`` (the issue's own timestamp) only while closed.
 
 Merge, keyed by issue url, into the COMMITTED file — never a rebuild:
 
@@ -35,7 +36,15 @@ nothing, so the bake's diff stays honest (no daily stamp-only churn).
 Advisory (every run with a readable ledger): records whose ``status`` is
 ``closed`` but whose ``answer_url`` is missing get one ``ADVISORY:`` line
 each — a question closed without its promised published answer nags the
-bake log instead of rotting silently as "closed / pending".
+bake log instead of rotting silently as "closed / pending". When the record
+carries a bake-stamped ``closed_at`` the line ages the debt ("closed N days
+without an answer"); older records without the field keep the binary wording.
+
+``closed_at``: stamped from the issue's own ``closed_at`` timestamp (the
+SAME single REST response, no extra call) whenever the sync sees a closed
+issue; dropped again if the issue reopens. Bake-owned like ``status`` —
+hand-written fields stay untouched, and a truthy ``status_override`` pins
+both status and stamp.
 
     python3 review/gen_questions.py
 """
@@ -102,12 +111,18 @@ def is_review_question(issue: Any) -> bool:
 def issue_record(issue: dict[str, Any]) -> dict[str, Any]:
     """Map one matching issue to a ledger record (the template's fields)."""
     created = str(issue.get("created_at") or "")
-    return {
+    rec = {
         "asked": created[:10],  # 2026-07-13T…Z → 2026-07-13
         "title": str(issue.get("title") or "").strip(),
         "url": str(issue.get("html_url") or ""),
         "status": "closed" if str(issue.get("state") or "open") == "closed" else "open",
     }
+    closed_at = str(issue.get("closed_at") or "")
+    if rec["status"] == "closed" and closed_at:
+        # same REST response, one more field — the answer-debt clock starts
+        # the moment the issue closes, never fabricated for open records.
+        rec["closed_at"] = closed_at
+    return rec
 
 
 def unanswered_closed(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -124,11 +139,39 @@ def unanswered_closed(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def answer_debt_days(rec: dict[str, Any], now: dt.datetime | None = None) -> int | None:
+    """Whole days since the record's bake-stamped ``closed_at``, UTC.
+
+    ``None`` when the field is missing or unparseable — old baked data
+    (pre-stamp) and hand-mangled timestamps degrade to the binary nag, never
+    to a crash or an invented age. Clamped at 0 for clock skew.
+    """
+    raw = str(rec.get("closed_at") or "").strip()
+    if not raw:
+        return None
+    try:
+        closed = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if closed.tzinfo is None:
+        closed = closed.replace(tzinfo=dt.timezone.utc)
+    now = now if now is not None else dt.datetime.now(dt.timezone.utc)
+    return max((now - closed).days, 0)
+
+
 def advise_unanswered(records: list[dict[str, Any]]) -> None:
-    """One loud advisory line per closed-but-unanswered record, every run."""
+    """One loud advisory line per closed-but-unanswered record, every run.
+
+    Aged ("closed N days without an answer") when the record carries a
+    parseable ``closed_at``; the binary wording otherwise."""
     for rec in unanswered_closed(records):
         ref = str(rec.get("url") or rec.get("title") or "?")
-        print(f"ADVISORY: closed without a published answer: {ref}")
+        days = answer_debt_days(rec)
+        if days is None:
+            print(f"ADVISORY: closed without a published answer: {ref}")
+        else:
+            unit = "day" if days == 1 else "days"
+            print(f"ADVISORY: closed {days} {unit} without an answer: {ref}")
 
 
 def merge_questions(
@@ -137,8 +180,9 @@ def merge_questions(
     """Merge live issue intake into the committed ledger, keyed by url.
 
     Existing records keep their ledger position and every hand-written field;
-    only ``status`` is refreshed from the live issue (skipped when the record
-    pins it with a truthy ``status_override``). New questions append after
+    only the bake-owned ``status`` + ``closed_at`` pair is refreshed from the
+    live issue (skipped when the record pins it with a truthy
+    ``status_override``). New questions append after
     the existing ledger, oldest-asked first (ties broken by url) so repeated
     bakes are byte-stable.
     """
@@ -153,6 +197,12 @@ def merge_questions(
         live = incoming.pop(str(rec.get("url") or ""), None)
         if live is not None and not rec.get("status_override"):
             rec["status"] = live["status"]
+            # ``closed_at`` is bake-owned, exactly like ``status``: stamped
+            # while the issue is closed, dropped again if it reopens.
+            if "closed_at" in live:
+                rec["closed_at"] = live["closed_at"]
+            else:
+                rec.pop("closed_at", None)
         merged.append(rec)
     merged.extend(
         sorted(incoming.values(), key=lambda r: (r["asked"], r["url"]))

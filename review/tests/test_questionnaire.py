@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -163,6 +164,114 @@ def test_unanswered_closed_helper_semantics():
         [closed_unanswered, closed_answered, open_unanswered, defaulted_open]
     ) == [closed_unanswered]
     assert story.unanswered_closed([]) == []
+
+
+# ---------------------------------------------------------------------------
+# Answer-debt age — bake-stamped closed_at turns the nag into "closed N days"
+# ---------------------------------------------------------------------------
+
+def _nag_ledger(monkeypatch, tmp_path: Path, *records):
+    """Point /questions at a tmp ledger of the given records (nag pattern)."""
+    monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
+    monkeypatch.delenv("GIT_SHA", raising=False)
+    p = tmp_path / "questions.json"
+    p.write_text(
+        json.dumps({"updated": "2026-07-13", "note": "n", "questions": list(records)}),
+        encoding="utf-8",
+    )
+    real = story.load_questions
+
+    def fake(path=None):
+        return real(p)
+
+    monkeypatch.setattr(story, "load_questions", fake)
+
+
+def test_answer_debt_orders_oldest_closed_first_with_fallback_after():
+    now = dt.datetime(2026, 7, 13, 12, 0, tzinfo=dt.timezone.utc)
+    newer = {"title": "newer", "status": "closed", "closed_at": "2026-07-12T00:00:00Z"}
+    older = {"title": "older", "status": "closed", "closed_at": "2026-07-01T00:00:00Z"}
+    undated = {"title": "undated", "status": "closed"}
+    bad = {"title": "bad", "status": "closed", "closed_at": "garbage"}
+    answered = {"title": "answered", "status": "closed", "answer_url": "/x"}
+    out = story.answer_debt([undated, newer, bad, older, answered], now)
+    # oldest debt first; unknowable debt keeps ledger order after the dated
+    assert [q["title"] for q in out] == ["older", "newer", "undated", "bad"]
+    assert [q["debt_days"] for q in out] == [12, 1, None, None]
+    # pure read — the given records were never mutated
+    assert "debt_days" not in newer and "debt_days" not in undated
+
+
+def test_answer_debt_days_is_robust_to_missing_and_bad_stamps():
+    now = dt.datetime(2026, 7, 13, 12, 0, tzinfo=dt.timezone.utc)
+    assert story.answer_debt_days({"status": "closed"}, now) is None
+    assert story.answer_debt_days({"closed_at": "not-a-date"}, now) is None
+    assert story.answer_debt_days({"closed_at": None}, now) is None
+    # future stamps clamp to 0 — a just-closed record never reads negative
+    assert story.answer_debt_days({"closed_at": "2026-07-14T00:00:00Z"}, now) == 0
+
+
+def test_questions_banner_ages_debt_and_orders_oldest_first(
+    monkeypatch, tmp_path: Path
+):
+    oldest = {
+        "asked": "2026-06-20",
+        "title": "Oldest broken promise?",
+        "url": "https://github.com/menno420/websites/issues/995",
+        "status": "closed",
+        "closed_at": "2026-06-25T00:00:00Z",
+    }
+    newer = {
+        "asked": "2026-07-01",
+        "title": "Newer broken promise?",
+        "url": "https://github.com/menno420/websites/issues/996",
+        "status": "closed",
+        "closed_at": "2026-07-05T00:00:00Z",
+    }
+    _nag_ledger(monkeypatch, tmp_path, newer, oldest)  # ledger order: newer first
+    r = client.get("/questions")
+    assert r.status_code == 200
+    banner = r.text.split('class="rv-aged"', 1)[1].split("</div>", 1)[0]
+    # each offender carries its server-computed age, "closed N days …"
+    for q in (oldest, newer):
+        days = story.answer_debt_days(q)
+        assert days is not None and days > 1
+        assert f"closed {days} days without an answer" in banner
+    # … and the banner ranks by debt: oldest closed_at first
+    assert banner.index("Oldest broken promise?") < banner.index(
+        "Newer broken promise?"
+    )
+
+
+def test_questions_banner_falls_back_to_binary_wording_without_closed_at(
+    monkeypatch, tmp_path: Path
+):
+    # old baked data — the committed ledger predates the closed_at stamp
+    dated = {
+        "asked": "2026-07-01",
+        "title": "Dated debt?",
+        "url": "https://github.com/menno420/websites/issues/994",
+        "status": "closed",
+        "closed_at": "2026-07-05T00:00:00Z",
+    }
+    undated = {
+        "asked": "2026-07-01",
+        "title": "Undated debt?",
+        "url": "https://github.com/menno420/websites/issues/993",
+        "status": "closed",
+    }
+    _nag_ledger(monkeypatch, tmp_path, undated, dated)
+    r = client.get("/questions")
+    assert r.status_code == 200
+    # the binary heading still carries the promise for every offender
+    assert "2 questions closed without a published answer" in r.text
+    banner = r.text.split('class="rv-aged"', 1)[1].split("</div>", 1)[0]
+    # the undated record renders without an invented age …
+    undated_part = banner.split("Undated debt?", 1)[1].split("·", 1)[0]
+    assert "without an answer" not in undated_part
+    # … the dated one is aged, and dated debt outranks unknowable debt
+    assert "days without an answer" in banner
+    assert banner.index("Dated debt?") < banner.index("Undated debt?")
 
 
 def test_load_questions_degrades(tmp_path: Path):
