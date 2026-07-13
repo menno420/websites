@@ -41,6 +41,18 @@
     {% endif %}
   </p>
 
+  {# Supersession chip: artifacts whose OWN header says superseded /
+     do-not-paste (shared raw-header detection, app/prompt_artifacts.py).
+     Rendered only when > 0 — no marker, no chip noise. #}
+  {% if p.superseded_count %}
+  <p class="small">
+    <span class="b bad">⚠ {{ p.superseded_count }} superseded</span>
+    <span class="dim">— {{ p.superseded_count }} of {{ p.total }} artifacts
+      carr{{ 'ies' if p.superseded_count == 1 else 'y' }} a header marker saying
+      superseded / do-not-paste; each is flagged loudly on its card below.</span>
+  </p>
+  {% endif %}
+
   {% if p.error_count == p.total %}
   <div class="banner">⚠ <strong>unavailable</strong> — none of the {{ p.total }} artifacts
     could be fetched from fleet-manager right now (see the per-artifact errors below);

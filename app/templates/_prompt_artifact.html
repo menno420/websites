@@ -11,6 +11,24 @@
    block. #}
 {% macro prompt_block(a, ttl) %}
   {% if a.ok %}
+  {% if a.superseded %}
+  {# Supersession marker found in the artifact's OWN raw header (shared
+     detection in app/prompt_artifacts.py — strong phrases only). Unmissable
+     by design: the header the paste body hides says this file is not the
+     paste source. The marker text is UNTRUSTED DATA — autoescaped, never
+     |safe. #}
+  <div class="banner superseded"><span class="b bad">⚠ SUPERSEDED — do not paste</span><br>
+    this file's own header disclaims being the paste source
+    (matched: <code>{{ a.superseded.phrase }}</code>) —
+    “{{ a.superseded.line }}”
+    {%- if a.superseded.successor %}<br>successor named by the marker: see
+    {% if a.superseded.successor.startswith('http') -%}
+    <a href="{{ a.superseded.successor }}">{{ a.superseded.successor }} ↗</a>
+    {%- else %}<code>{{ a.superseded.successor }}</code>{% endif %}
+    {%- else %}<br>the marker names no single successor file — none is linked
+    (never invented){% endif %}
+    · <a href="{{ a.github_url }}">view the full marker on GitHub ↗</a></div>
+  {% endif %}
   <p class="small">
     {% if a.provenance %}<span class="note">{{ a.provenance }}</span>
     {% else %}<span class="b unknown">no version line found in the artifact</span>{% endif %}
@@ -18,9 +36,14 @@
   <p class="dim small">fetched {{ a.fetched_at }}
     {%- if a.cached %} · served from cache (TTL {{ ttl }}s — age ≤ TTL){% else %} · live fetch{% endif %}
     · {{ a.chars }} chars
+    {%- if a.superseded %}
+    · generation metadata hidden — <strong>copy gives the paste-ready body of a
+    SUPERSEDED file</strong> (its own header says do not paste)
+    {%- else %}
     · generation metadata hidden — copy gives the paste-ready body
+    {%- endif %}
     (<a href="{{ a.github_url }}">full file on GitHub ↗</a>)</p>
-  <pre>{{ a.text }}</pre>
+  <pre{% if a.superseded %} class="superseded"{% endif %}>{{ a.text }}</pre>
   {% else %}
   <div class="banner">⚠ could not fetch <code>{{ a.path }}</code> — {{ a.error }} ·
     <a href="{{ a.github_url }}">view on GitHub ↗</a> (nothing shown rather than a stale

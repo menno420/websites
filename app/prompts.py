@@ -822,6 +822,10 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
         "total": len(artifacts),
         "ok_count": ok_count,
         "error_count": len(artifacts) - ok_count,
+        # Artifacts whose OWN raw header carries a supersession/do-not-paste
+        # marker (shared detection: prompt_artifacts.extract_supersession) —
+        # each is banner-flagged on its card; 0 renders no chip (no noise).
+        "superseded_count": sum(1 for a in artifacts if a["superseded"]),
         "drift": drift,
         "deployed": deployed,
         "ttl": config.CACHE_TTL_SECONDS,

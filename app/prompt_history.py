@@ -39,7 +39,12 @@ from typing import Any, Optional
 from urllib.parse import quote
 
 from . import config, github
-from .prompt_artifacts import REPO, extract_paste_body, extract_provenance
+from .prompt_artifacts import (
+    REPO,
+    extract_paste_body,
+    extract_provenance,
+    extract_supersession,
+)
 from .roster import SEATS, seat_for  # noqa: F401  (validates {seat} paths)
 
 # The two authored per-seat prompt sources whose git history IS the version
@@ -130,6 +135,9 @@ async def _version_entry(
         "text": text,
         "chars": len(text) if text else 0,
         "provenance": extract_provenance(raw or ""),
+        # same shared supersession detection as the library/dispatch cards —
+        # a historical rung whose header carries the marker warns too.
+        "superseded": extract_supersession(raw or "") if ok else None,
         "error": (
             ""
             if ok
