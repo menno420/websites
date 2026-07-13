@@ -39,17 +39,24 @@ name: review-bake
 #   job stays green (exit 0), and the summary carries a compare link so any
 #   session (or the owner) can open the PR. No new secrets either way.
 #
-# Required-check chain (added 2026-07-13): a PR created with the Actions
-#   GITHUB_TOKEN does not trigger its own `pull_request` workflows (GitHub's
-#   recursion guard — verified on PR #259: zero check runs on its head; a
-#   session had to close/reopen it by hand). The documented exception: events
-#   "triggered by the GITHUB_TOKEN, with the exception of workflow_dispatch
-#   and repository_dispatch, will not create a new workflow run" — so after
-#   opening the PR this job dispatches `quality.yml` on the bake branch
-#   (`gh workflow run`, needs `actions: write`). The dispatch run's check
-#   lands on the branch head SHA = the PR head SHA, and required status
-#   checks match by check-run name on the head SHA, not by event — so the
-#   required `quality` context is satisfied and auto-merge can fire.
+# Required-check chain (added 2026-07-13; measured reality same day): a PR
+#   created with the Actions GITHUB_TOKEN does not trigger its own
+#   `pull_request` workflows (GitHub's recursion guard — verified on PR #259:
+#   zero check runs on its head; a session had to close/reopen it by hand).
+#   After opening the PR this job dispatches `quality.yml` on the bake branch
+#   (`gh workflow run`, needs `actions: write`) — the dispatch run's check
+#   lands green on the PR head SHA. ⚑ MEASURED LIMIT (PR #270, quality run
+#   29242891214 on head 48cef208): the ruleset does NOT accept that
+#   dispatch-event run as the required `quality` context — merge attempts
+#   return verbatim `405 Repository rule violations found` / `Required
+#   status check "quality" is expected.`, and armed auto-merge never fires.
+#   The chain is KEPT as a visible green signal (zero cost, proves the diff
+#   passes), not as the merge unlock. Interim landing path: a session (any
+#   non-GITHUB_TOKEN actor) closes/reopens the bake PR — that fires a REAL
+#   pull_request quality run the ruleset accepts (precedent PR #259) — or
+#   review-merges it. Durable fix: create the bake PR with a fine-grained
+#   PAT instead of GITHUB_TOKEN — see the ⚑ OWNER-ACTION row (2026-07-13)
+#   in docs/owner/OWNER-ACTIONS.md.
 #   Best-effort like the PR create: a refused dispatch never fails the job.
 #
 # Scope safety: the commit path stages the baked data files explicitly (never
