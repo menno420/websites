@@ -1291,7 +1291,11 @@
   tail. Source: `.sessions/2026-07-13-heatmap-step-labels.md` 💡.
 
 - **Heatmap survival contrast — fold finishers' guide chats into the
-  strip** · `captured` (2026-07-13, heatmap-tail session 💡) — the
+  strip** · `built` (2026-07-13, PR #298 — `guided_step_dropoff()` emits
+  per-step `finished` finisher counts + `died_share` over ALL touchers,
+  finisher chats extend the dense range, and the strip shades by
+  lethality with a "N finisher(s) asked" cell annotation) — original
+  capture (2026-07-13, heatmap-tail session 💡): the
   drop-off heatmap aggregates ONLY abandoned claims
   (`guided_step_dropoff()` scopes to status='claimed' with no submission
   row), so a step where ten finishers also chatted heavily but pushed
@@ -1329,3 +1333,23 @@
   only; the owner-gated answer-bot bullet is about generating answers,
   not auditing their absence; nothing watches answer-lag on the ledger.
   Source: `.sessions/2026-07-13-review-questions-bake-sync.md` 💡.
+
+- **Finisher-question hotspots — tasks with zero drop-offs never surface
+  their hint-needing steps** · `captured` (2026-07-13,
+  heatmap-survival-contrast session 💡) — the survival contrast (PR #298)
+  only renders on tasks that HAVE drop-offs (`guided_step_dropoff()`
+  keys the strip off abandoned claims; finishers are contrast, not
+  subject), so a task where every tester finished but half of them asked
+  the guide about step 3 shows nothing at all: the "needs a hint" signal
+  the contrast separates from "needs a rewrite" is invisible exactly
+  where it's purest. A small finisher-only aggregate (same `finished`
+  counts, no lethality shading) listed under the heatmap — or folded in
+  as contrast-only task rows — would surface question hotspots before
+  the first drop-off ever happens. Worth having because hint-worthy
+  friction on a passable task is the cheapest UX fix available, and
+  today it only becomes visible after someone gives up. Deduped against
+  this backlog: the drop-off, heatmap, step-text, tail, and
+  survival-contrast bullets (all built) key the strip off abandoned
+  claims; the transcript bullet is per-claim evidence, not per-step;
+  nothing aggregates finisher chats on tasks without drop-offs.
+  Source: `.sessions/2026-07-13-heatmap-survival-contrast.md` 💡.
