@@ -1,7 +1,9 @@
 # 2026-07-13 — Cold-browser pass #2 over the live review site + the 3 fixes it found
 
-> **Status:** `in-progress` — branch `claude/cold-browser-review-0713`; flips to `complete`
-> + PR number as the deliberate LAST code step.
+> **Status:** `complete` — PR #311, branch `claude/cold-browser-review-0713`;
+> the second 2026-07-13 cold-browser pass (15 routes, 49/49 links) and its
+> 3 fixes: favicon on all three sites, the hamburger's initial glyph, and
+> the footer's horizontal gutter.
 
 - **📊 Model:** Claude Fable 5 · landing worker · order-slice
 
@@ -91,16 +93,34 @@ requests captured, plus a same-site link check:
 - `docs/CAPABILITIES.md` — append-log entry: Chromium-via-Playwright behind
   the agent proxy needs `--ssl-version-max=tls1.2` (proxy resets the TLS 1.3
   ClientHello); verified working this session.
+- `docs/ideas/backlog.md`: this session's 💡 captured as a new bullet.
 - Verified: `python3 -m pytest tests/ botsite/tests dashboard/tests
-  review/tests -q` — [[fill:verify]]; `python3 bootstrap.py check --strict`
-  — [[fill:verify]].
+  review/tests -q` — 1345 passed, 1 warning (+3 over main's 1342);
+  `python3 bootstrap.py check --strict` — green except this card's own
+  designed born-red HOLD (released by this flip).
 
 ⚑ Self-initiated: no — ORDER 022 item 5 / ORDER 027 item 3.
 
 ## 💡 Session idea
 
-[[fill:idea]]
+**Scheduled browser-level smoke-crawl in CI** — a scheduled Actions job
+launching headless Chromium over each site's route inventory, failing on
+console errors / pageerrors / failed requests / horizontal overflow at
+375px — the browser-level complement to the curl-level `healthcheck.yml`
+smoke. Worth having because both 2026-07-13 cold passes found real
+rendering-only regressions (dead chrome wiring, a blank hamburger, a lost
+footer gutter, a favicon 404) within hours of each other — visual-layer
+rot demonstrably recurs and nothing automatic watches it. Deduped against
+`docs/ideas/backlog.md` + the other `.sessions/*.md` cards: the
+healthcheck bullets are status-code probes and the webhook-analyzer card
+used Playwright once, ad hoc — no scheduled/browser-level crawl idea
+exists. Captured in `docs/ideas/backlog.md`.
 
 ## ⟲ Previous-session review
 
-[[fill:prev-review]]
+The venture-vetting-catalog session (PR #248) did well — 22 packets
+curated with nothing invented, per-title states derived from each packet's
+own Status/Verdict and pinned by a breakdown test; what it missed is what
+its own 💡 admits: the whole catalog is hand-pinned to venture-lab
+`2c039e3` with nothing watching for upstream drift, so its honesty has a
+shelf life until that sha-drift nag gets built.

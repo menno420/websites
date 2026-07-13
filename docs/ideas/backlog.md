@@ -1513,3 +1513,22 @@
   answer-debt bullets own status/closed_at, not asked stamps; nothing
   proposes backfilling.
   Source: `.sessions/2026-07-13-asked-at-timestamp.md` 💡.
+
+- **Scheduled browser-level smoke-crawl in CI — a Playwright job that
+  cold-crawls the three live sites the way the manual cold passes do** ·
+  `captured` (2026-07-13, cold-browser-review session 💡) — the existing
+  `healthcheck.yml` smoke is curl-level (`/healthz` + `/` status codes);
+  both 2026-07-13 cold passes found real regressions it can never see
+  (dead chrome wiring, a blank hamburger, a lost footer gutter, a favicon
+  404) because they only exist in a rendering browser. A scheduled Actions
+  job launching headless Chromium over each site's route inventory,
+  failing on console errors / pageerrors / failed requests / horizontal
+  overflow at 375px, would make the cold pass a standing gate instead of
+  a hand-run ritual (GitHub runners need no proxy TLS flag; the local
+  recipe is in `docs/CAPABILITIES.md`). Worth having because both manual
+  passes paid for themselves within hours of each other — visual-layer
+  rot demonstrably recurs and nothing automatic watches it. Deduped
+  against this backlog + `.sessions/*.md` cards: the healthcheck bullets
+  are status-code probes; the webhook-analyzer card used Playwright once,
+  ad hoc, locally; no scheduled/browser-level crawl idea exists anywhere.
+  Source: `.sessions/2026-07-13-cold-browser-review.md` 💡.
