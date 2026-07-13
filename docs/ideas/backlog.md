@@ -1224,8 +1224,14 @@
   touches unsubmitted-claim visibility or drop-off signals. Source:
   `.sessions/2026-07-13-guide-transcript-evidence.md` 💡.
 
-- **Drop-off step heatmap on the owner queue** · `captured` (2026-07-13,
-  owner-queue-dropoff session 💡) — the Drop-offs section (PR #293) shows
+- **Drop-off step heatmap on the owner queue** · `built` (2026-07-13,
+  PR #294 — `guided_step_dropoff()` in `botsite/testing_store.py`
+  aggregates the same claims × guide_exchanges scope as
+  `abandoned_guided_claims()` per task and step_index into
+  touched/died-here counts; `_owner_page` feeds it to
+  `testing_owner.html`, which renders a per-task heatmap strip at the top
+  of the Drop-offs section, cell shading scaled by the died-here share) —
+  original capture: the Drop-offs section (PR #293) shows
   each abandoned claim's transcript individually, but the signal the
   capture named — "the walkthrough step where chats cluster before a claim
   dies is exactly the step that needs rewriting" — still requires reading
@@ -1240,3 +1246,18 @@
   claims, not step aggregates; the transcript bullet covers submissions;
   nothing aggregates guide-chat activity per step. Source:
   `.sessions/2026-07-13-owner-queue-dropoff.md` 💡.
+
+- **Step text labels on the drop-off heatmap** · `captured` (2026-07-13,
+  dropoff-heatmap session 💡) — the heatmap strip (PR #294) names steps by
+  number only; the guided tasks' walkthrough step texts already live in
+  the tester-facing task data (`shaped_tasks()` / `task_by_id(...)` feed
+  the guide with the step list), so joining `step_index` against the
+  task's step text in `_owner_page` would let each cell's tooltip (or a
+  per-task legend line) say WHAT the deadliest step asks the tester to
+  do — "step 3 · open the theme toggle" instead of "step 3". Worth having
+  because the heatmap's whole point is naming the step that needs
+  rewriting, and today the owner still has to open the tester page to
+  learn what the number means. Deduped against this backlog: the drop-off
+  and heatmap bullets above (both now built) cover surfacing and
+  aggregating; nothing joins step_index back to the walkthrough step
+  text. Source: `.sessions/2026-07-13-dropoff-heatmap.md` 💡.
