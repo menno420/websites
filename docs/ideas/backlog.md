@@ -1127,7 +1127,13 @@
   `.sessions/2026-07-13-hostile-env-smoke.md` 💡.
 
 - **Outbox REPORT grammar drift pin — parse the committed outbox at HEAD
-  in CI** · `captured` (2026-07-13, briefing-outbox session 💡) — a small
+  in CI** · `built` (2026-07-13, branch `claude/outbox-grammar-pin-0713` —
+  `tests/test_outbox_grammar_pin.py` reads the committed `control/outbox.md`
+  from disk, zero network, feeds it through `briefing.latest_report` and
+  fails naming the drift when a REPORT-like level-2 heading is skipped or
+  zero reports parse while `## REPORT` text exists; plus synthetic cases
+  keeping the pin's REPORT-like regex and the parser aligned; captured
+  2026-07-13, briefing-outbox session 💡) — a small
   offline test feeding this repo's own committed `control/outbox.md`
   (read from disk, zero network) through `briefing.latest_report` and
   failing when the real file drifts out of the grammar the briefing reads
