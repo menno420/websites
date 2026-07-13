@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #223, branch `claude/owner-readiness-env-chip`;
 > lands via the auto-merge-enabler on green.
 
-- **📊 Model:** claude-fable-5 · worker · feature-slice
+- **📊 Model:** Claude Fable 5 · worker · feature-slice
 
 **What this session was about:** backlog promotion — the captured idea
 "Environments-completeness rollup chip on the /owner board"
