@@ -933,3 +933,22 @@
   the queue-state NEXT list: nearest neighbors are the tester-task
   `product_url` liveness pins; nothing covers registry as-of staleness.
   Source: `.sessions/2026-07-13-venture-products-page.md` 💡.
+
+- **Privacy-boundary decision + lint for the OTHER three services** ·
+  `captured` (2026-07-13, review-privacy-lint session 💡) — the new
+  review-side privacy lint (PR #233) covers `review/` only, but the
+  private lane's name appears verbatim in `app/config.py` (LANES entry)
+  and `app/reviews.py`, and the control-plane serves without auth — so
+  either the ORDER 017 D privacy contract is deliberately review-scoped
+  (the control plane is the owner's own console; document that boundary
+  where the next privacy session will look) or the same accent-aware
+  walker pattern (every GET route via TestClient + committed data files,
+  allowlist with stale rejection) should be stamped onto app/, botsite/
+  and dashboard/. Decide first, lint second — the lint shape is now
+  proven and cheap to port. Worth having because the one leak class we
+  actually shipped (2026-07-12) escaped precisely on the surfaces nobody
+  had decided about. Deduped against this backlog + the queue-state NEXT
+  list: the built review-privacy-lint bullet covers review/ only; the
+  dashboard denylist test covers control-API tokens, not the private
+  lane; nothing covers a cross-service privacy boundary. Source:
+  `.sessions/2026-07-13-review-privacy-lint.md` 💡.
