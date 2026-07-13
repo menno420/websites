@@ -39,7 +39,7 @@ classifier states, drift-guarded by a new test.
   project-instructions table, so a state rename breaks the build until the
   docs follow; script existence pinned.
 - Verified before push: `python3 -m pytest tests/ botsite/tests
-  dashboard/tests review/tests -q` — 1350 passed, 1 warning (+5 over
+  dashboard/tests review/tests -q` — 1349 passed, 1 warning (+4 over
   main's 1345); `python3 bootstrap.py check --strict` — "check: all checks
   passed." (born-red HOLD on this card by design until this flip).
 
