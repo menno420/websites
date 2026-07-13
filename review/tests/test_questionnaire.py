@@ -274,6 +274,103 @@ def test_questions_banner_falls_back_to_binary_wording_without_closed_at(
     assert banner.index("Dated debt?") < banner.index("Undated debt?")
 
 
+# ---------------------------------------------------------------------------
+# Answer-latency stat — median asked→closed turnaround over ANSWERED records,
+# the promise-kept complement to the answer-debt nag
+# ---------------------------------------------------------------------------
+
+def _answered(title: str, asked: str, closed_at, num: int = 990) -> dict:
+    rec = {
+        "asked": asked,
+        "title": title,
+        "url": f"https://github.com/menno420/websites/issues/{num}",
+        "status": "closed",
+        "answer_url": "/reviews/2026-07-11-edition-001",
+        "answer_label": "edition 1",
+    }
+    if closed_at is not None:
+        rec["closed_at"] = closed_at
+    return rec
+
+
+def test_answer_latency_days_is_robust_to_missing_and_bad_stamps():
+    good = {"asked": "2026-07-01", "closed_at": "2026-07-05T09:30:00Z"}
+    assert story.answer_latency_days(good) == 4
+    # naive stamps read as UTC, same-day answers read 0
+    assert story.answer_latency_days(
+        {"asked": "2026-07-01", "closed_at": "2026-07-01T23:00:00"}
+    ) == 0
+    # a closed_at before asked (clock skew / hand-mangled data) clamps to 0
+    assert story.answer_latency_days(
+        {"asked": "2026-07-05", "closed_at": "2026-07-01T00:00:00Z"}
+    ) == 0
+    # either timestamp missing or unparseable → None, never a guess
+    assert story.answer_latency_days({"asked": "2026-07-01"}) is None
+    assert story.answer_latency_days({"closed_at": "2026-07-05T00:00:00Z"}) is None
+    assert story.answer_latency_days(
+        {"asked": "garbage", "closed_at": "2026-07-05T00:00:00Z"}
+    ) is None
+    assert story.answer_latency_days(
+        {"asked": "2026-07-01", "closed_at": "garbage"}
+    ) is None
+    assert story.answer_latency_days({}) is None
+
+
+def test_answer_latency_medians_answered_records_only():
+    a = _answered("a", "2026-07-01", "2026-07-02T00:00:00Z")  # 1 day
+    b = _answered("b", "2026-07-01", "2026-07-04T00:00:00Z")  # 3 days
+    c = _answered("c", "2026-07-01", "2026-07-09T00:00:00Z")  # 8 days
+    pending = {"title": "p", "status": "closed", "closed_at": "2026-06-01T00:00:00Z"}
+    unstamped = _answered("u", "2026-07-01", None)
+    # odd count → the middle value, an int
+    assert story.answer_latency([a, b, c, pending, unstamped]) == {
+        "count": 3, "median_days": 3,
+    }
+    # even count → half-day medians stay exact, whole ones collapse to int
+    assert story.answer_latency([a, b]) == {"count": 2, "median_days": 2}
+    assert story.answer_latency([b, c]) == {"count": 2, "median_days": 5.5}
+    # no qualifying record → None (pending debt and bad stamps never count)
+    assert story.answer_latency([]) is None
+    assert story.answer_latency([pending, unstamped]) is None
+    assert story.answer_latency(
+        [_answered("g", "garbage", "2026-07-05T00:00:00Z")]
+    ) is None
+
+
+def test_questions_page_renders_latency_stat_with_correct_median(
+    monkeypatch, tmp_path: Path
+):
+    _nag_ledger(
+        monkeypatch,
+        tmp_path,
+        _answered("Fast answer?", "2026-07-01", "2026-07-02T00:00:00Z", 992),
+        _answered("Slow answer?", "2026-07-01", "2026-07-08T00:00:00Z", 991),
+    )
+    r = client.get("/questions")
+    assert r.status_code == 200
+    # median of [1, 7] days — the stat is server-computed and pluralized
+    assert "<strong>2 answered questions</strong> resolved in a median of" in r.text
+    assert "<strong>4 days</strong>" in r.text
+
+
+def test_questions_page_hides_latency_stat_without_qualifying_records(
+    monkeypatch, tmp_path: Path
+):
+    # answered but unstamped (old baked data) + answered with a mangled stamp
+    # + closed-but-unanswered debt: nothing qualifies, the stat is absent
+    _nag_ledger(
+        monkeypatch,
+        tmp_path,
+        _answered("Answered pre-stamp?", "2026-07-01", None, 989),
+        _answered("Answered, stamp mangled?", "2026-07-01", "garbage", 988),
+        {"title": "Still owed?", "status": "closed",
+         "closed_at": "2026-07-01T00:00:00Z"},
+    )
+    r = client.get("/questions")
+    assert r.status_code == 200
+    assert "resolved in a median of" not in r.text
+
+
 def test_load_questions_degrades(tmp_path: Path):
     res = story.load_questions(tmp_path / "nope.json")
     assert res["ok"] is False and "missing" in res["error"]
