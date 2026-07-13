@@ -166,7 +166,16 @@
   guide flow (it ships this PR). Source:
   `.sessions/2026-07-12-order-018-testing-guided-mode-pr3.md` 💡.
 
-- **Shared contents-listing honesty classifier** · `captured` — three
+- **Shared contents-listing honesty classifier** · `built` (2026-07-13,
+  PR #250 — `github.classify_listing(result, *, on_404, reason_404,
+  subject) -> (state, reason)` with the 404 disposition as the explicit
+  per-caller parameter; migrated `projects.overview`, `projects.detail`,
+  `prompts.registry_drift` AND `ideas.repo_ideas` onto the one ladder;
+  honest supersets where the copies had diverged: token-unset failures
+  name the token on /prompts and /ideas, non-list 2xx payloads say
+  "unexpected listing payload (HTTP <status>)" everywhere, and every
+  composed reason is re-bounded by `short_reason` at 140 chars) —
+  original capture: three
   surfaces now hand-roll the same degraded-listing ladder over a
   `github.repo_api` contents result: `projects.overview`, `projects.detail`
   (404 → empty / no-token → not-configured / else unavailable) and
