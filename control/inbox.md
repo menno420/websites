@@ -236,3 +236,11 @@ YOUR SEAT TONIGHT (execute to done — and actually well made):
    waiting for routing; treat venture's WEBSITE-IDEA markers as priority intake.
 5. One cold-browser pass over the review site (EAP closes Tue 07-14); fix what you find.
 END ORDER TEXT
+
+## ORDER 023 · 2026-07-13T09:10Z · status: new
+priority: P2
+executor: Websites coordinator (live session)
+provenance: filed by the Fleet Manager — owner live ask 2026-07-13 morning (thorough night report requested from every fleet session).
+do: NIGHT REPORT REQUEST — owner ask 2026-07-13 (relayed via Fleet Manager). Post a THOROUGH night report, window 2026-07-12T22:30Z→now, to your control/status.md heartbeat AND your outbox (manager-addressed): SHIPPED (merges/PRs with numbers+SHAs) · OPEN PRs + check states · ORDERS served + outstanding · SIM-REQUESTs/asks pending · STALLS/denials verbatim · wake-chain health (failsafe + pacemaker ids/fires) · next-3.
+why: owner morning review.
+done-when: report posted in both files; the Fleet Manager compiles the fleet roll-up from them.
