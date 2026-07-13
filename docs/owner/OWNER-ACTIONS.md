@@ -214,6 +214,19 @@ the variable NAME `RAILWAY_TOKEN` present on control-plane/production
 `app/railway.py` verified correct against the live API (its stale
 "UNVERIFIED" docstring note is now updated).
 
+### ⚑ Ask added 2026-07-13 (bake required-check wall — extends the ORDER 020 PAT ask)
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: Extend the ORDER 020 fine-grained PAT so ONE token serves both needs — when minting it, grant menno420/websites BOTH Contents: Read and write (ORDER 020's writeback need) AND Pull requests: Read and write (bake PR creation as a real actor) — then ALSO store it as a websites repo Actions secret named BAKE_PAT; an agent session then switches review-bake's GH_TOKEN to it. **Recommended: one PAT, two scopes, three paste targets (control-plane + botsite Railway GITHUB_TOKEN per ORDER 020, plus the BAKE_PAT Actions secret) — this is the durable fix for the nightly bake PRs sitting blocked.**
+WHERE: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens (Repository access: Only select repositories → menno420/websites; Permissions → Contents: Read and write, Pull requests: Read and write); then github.com/menno420/websites → Settings → Secrets and variables → Actions → New repository secret → name BAKE_PAT.
+HOW: generate the token once with both permissions, paste it into the ORDER 020 targets (Railway GITHUB_TOKEN on control-plane + botsite) and into the new BAKE_PAT Actions secret (the value never goes in the repo). Say the word and a session flips review-bake.yml's landing step to `GH_TOKEN: ${{ secrets.BAKE_PAT || secrets.GITHUB_TOKEN }}`.
+RISK: ↩️ reversible — revoke the PAT / delete the BAKE_PAT secret any time; the workflow change will be written with that explicit `|| secrets.GITHUB_TOKEN` fallback, so an unset or revoked secret returns to exactly today's behavior (GITHUB_TOKEN-created PR, checkless until a session close/reopens it) rather than breaking the bake.
+WHY-IT-MATTERS: measured 2026-07-13 (docs/CAPABILITIES.md wall entry): a bake PR created with the Actions GITHUB_TOKEN gets no pull_request-event checks, and the #269 dispatch-chained quality run goes GREEN on the PR head (run 29242891214 on PR #270) but the main ruleset still refuses it — verbatim `405 Repository rule violations found` / `Required status check "quality" is expected.` — so armed auto-merge never fires and every nightly bake PR waits for a hand. A PAT-created PR is a real actor's PR: it triggers its own pull_request quality run, the exact kind the ruleset counts.
+UNBLOCKS: the nightly bake loop becomes fully hands-off (bake → PR → real pull_request quality run → auto-merge on green); no more parked bake PRs like #270; interim close/reopen ritual retired.
+VERIFIED-NEEDED: the next scheduled bake's PR shows a pull_request-event `quality` run in its checks tab and auto-merges without any intervention. PAT minting + repo-secret creation are owner-held (no agent credential exists — same wall class as the ORDER 020 ask above); the failing 405 path itself WAS attempted and captured verbatim this session (PR #270).
+```
+
 ## 🟢 Decided / resolved
 
 | # | Item | Decision | Provenance |
