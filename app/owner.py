@@ -224,10 +224,20 @@ async def owner_board(request: Request, _: None = Depends(require_owner)):
 @router.get("/api/readiness.json")
 async def owner_board_json(request: Request, _: None = Depends(require_owner)):
     # Authed JSON: unlike the public /api/readiness.json, this DOES carry the
-    # secret names (under each row's secrets.names).
-    return JSONResponse(
-        await readiness.board(refresh=_refresh(request), reveal_secrets=True)
+    # secret names (under each row's secrets.names). Since the environments
+    # rollup landed (backlog promotion of the #223 board chip), the payload is
+    # an object — the board rows under "rows" plus the SAME envhub.board_rollup
+    # dict the /owner HTML chip renders under "environments", so machine
+    # consumers get the "N groups incomplete" signal without scraping HTML.
+    # Same TTL-cached railway.live_overview read, zero new network surface;
+    # the rollup's honest-unknown ladder passes through untouched. Shape
+    # pinned in tests/test_owner_readiness_json_contract.py (the #217
+    # /fleet.json precedent).
+    rows, envcov = await asyncio.gather(
+        readiness.board(refresh=_refresh(request), reveal_secrets=True),
+        envhub.board_rollup(refresh=_refresh(request)),
     )
+    return JSONResponse({"rows": rows, "environments": envcov})
 
 
 @router.get("/environments", response_class=HTMLResponse)
