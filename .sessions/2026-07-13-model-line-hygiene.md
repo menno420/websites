@@ -1,7 +1,6 @@
 # 2026-07-13 — model-line hygiene: family-level examples in template + historical card sweep
 
-> **Status:** `in-progress` — branch `claude/model-line-hygiene`; flips to `complete`
-> + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/model-line-hygiene`, PR #226.
 
 - **📊 Model:** Claude Fable 5 · worker · housekeeping sweep
 
@@ -19,14 +18,24 @@ backlog capture from the 2026-07-12 card-model-line-fix session's 💡 idea.
   ender-checklist examples (line 57) changed from exact-ID-shaped strings to
   family-level names ("Claude Fable 5", "Claude Opus 4.8"). Rule text kept
   intact; only the examples changed.
-- Swept historical `.sessions/*.md` cards whose `📊 Model:` line carried an
-  exact-ID-shaped model token, normalizing the token to the family-level name
-  (Claude Fable 5 / Claude Opus 4.8 / Claude Sonnet 5). Only cards with
-  Status `complete` and terminal branches/PRs were touched; full before→after
-  list in the PR body.
+- Swept 102 historical `.sessions/*.md` cards whose `📊 Model:` line carried
+  an exact-ID-shaped model token, normalizing the token to the family-level
+  name (Claude Fable 5 / Claude Opus 4.8 / Claude Sonnet 5). All matched
+  cards were Status `complete` with work already merged to main (terminal);
+  zero skips needed. One line per card, no other content touched; full
+  before→after list in the PR #226 body.
+- Determined `.sessions/README.md` is NOT kit-planted (host-authored body):
+  `bootstrap.py` carries no exact-ID example strings, its
+  `_adopt_sessions_readme` plant has no template block, `_merge_model_doctrine`
+  is append-only/byte-preserving, and `.substrate/state.json`
+  `planted_doc_hashes` omits the file — so no `control/outbox.md` upstream
+  routing needed (the kit's own doctrine examples are already family-level).
+- `docs/ideas/backlog.md`: flipped the promoted README-examples idea to
+  `built` (PR #226); captured this session's 💡 as a new bullet.
 - Verified: `python3 -m pytest tests/ botsite/tests dashboard/tests
-  review/tests -q` — <filled at flip>; `python3 bootstrap.py check --strict`
-  — <filled at flip>.
+  review/tests -q` — 891 passed, 1 warning; `python3 bootstrap.py check
+  --strict` — all checks passed (this card the designed born-red HOLD under
+  the added-card gate until this flip; swept siblings advisory-only).
 
 ⚑ Self-initiated: no — coordinator-assigned slice promoting the captured
 backlog idea from the card-model-line-fix session; text-only card edits,
