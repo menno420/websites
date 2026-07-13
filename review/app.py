@@ -183,6 +183,27 @@ async def problems(request: Request):
 # ---------------------------------------------------------------------------
 # Fleet — every seat in the manager's registry, from the committed mirror.
 # ---------------------------------------------------------------------------
+def _suppress_empty_facet_options(view: dict[str, Any]) -> dict[str, Any]:
+    """Drop facet options that currently match nothing and are not selected.
+
+    /fleet declares fixed option universes (LANES_FILTER_SPEC — e.g. the
+    disposition dimension includes "hub") so the pill rows stay stable, but
+    the committed mirror can legitimately hold zero seats for a value.
+    Offering a dead "hub · 0" pill only confuses (2026-07-13 cold-pass
+    finding F2): clicking it filters to an empty grid. A zero-count value
+    that IS selected stays visible — its "on" pill and removable chip must
+    keep rendering so a deep link like /fleet?disposition=hub can always be
+    un-filtered. The vendored listfilter core and _listfilter.html partial
+    are byte-pinned to app/'s copies (and other surfaces may want their
+    zero-count options), so this is deliberately a route-local view tweak.
+    """
+    for dim in view["dims"]:
+        dim["options"] = [
+            o for o in dim["options"] if o["count"] or o["selected"]
+        ]
+    return view
+
+
 @app.get("/fleet", response_class=HTMLResponse)
 async def fleet(request: Request):
     """ORDER 019 PR2: the lanes grid gains the centralized listfilter widget
@@ -201,8 +222,8 @@ async def fleet(request: Request):
         state = listfilter.parse(
             fleetdata.LANES_FILTER_SPEC, request.query_params
         )
-        lanes_filter = listfilter.apply(
-            fleetdata.LANES_FILTER_SPEC, lanes, state
+        lanes_filter = _suppress_empty_facet_options(
+            listfilter.apply(fleetdata.LANES_FILTER_SPEC, lanes, state)
         )
     ctx.update(
         {
