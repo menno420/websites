@@ -1,6 +1,6 @@
 # websites — fleet cleanup audit (2026-07-13, EAP final night)
 
-> **Status:** `audit`
+> **Status:** `historical`
 >
 > Read-only cross-repo cleanup pass, run as a complementary check alongside a
 > live owner-driven fleet dispatch ("ORDER 045", 2026-07-13 ~22:00–22:30Z).
