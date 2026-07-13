@@ -90,6 +90,25 @@ def test_overview_not_configured_vs_unavailable(monkeypatch):
     assert out["state"] == "unavailable" and "rate limited" in out["reason"]
 
 
+def test_overview_non_list_2xx_payload_is_unavailable(monkeypatch):
+    """An ok envelope whose data is not a directory listing (non-JSON 2xx)
+    renders as 'unavailable' with the shared honest shape reason — never as
+    an empty registry (github.classify_listing)."""
+
+    async def fake_api(repo, subpath="", refresh=False):
+        return _res(ok=True, status=200, data="<!doctype html>oops")
+
+    async def run():
+        monkeypatch.setattr(github, "repo_api", fake_api)
+        return await projects.overview()
+
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
+    out = asyncio.run(run())
+    assert out["state"] == "unavailable"
+    assert out["reason"] == "unexpected listing payload (HTTP 200)"
+    assert out["packages"] == []
+
+
 def test_overview_dir_exists_but_no_packages_is_empty(monkeypatch):
     async def fake_api(repo, subpath="", refresh=False):
         return _res(data=[])

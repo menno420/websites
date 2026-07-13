@@ -100,6 +100,65 @@ def short_reason(
     return flat
 
 
+def classify_listing(
+    result: dict,
+    *,
+    on_404: str,
+    reason_404: Optional[str] = None,
+    subject: str = "the listing",
+) -> tuple[str, str]:
+    """Classify a contents-listing envelope into an honest ``(state, reason)``.
+
+    The ONE degradation ladder for directory-listing consumers (/projects
+    overview + detail, the /prompts drift chip, /ideas), replacing the
+    hand-rolled per-page copies that had begun to diverge (backlog bullet
+    2026-07-12). The honesty contract this encodes: a failed listing is
+    NEVER rendered as an empty page — unknown-with-a-reason always beats a
+    silently fabricated empty.
+
+    Rungs, in order:
+
+    - ``("ok", "")`` — envelope ok and ``data`` is a list. An EMPTY list is
+      still ``ok``: whether an empty directory is a friendly launch state,
+      real drift, or a plain absence is the CALLER's meaning to assign.
+    - ``(on_404, reason_404 or fetch reason)`` — a 404 means something
+      different on every page (projects: the registry hasn't landed →
+      "empty"; ideas: this repo keeps no backlog → "missing"; prompts:
+      drift can't be judged → "unknown"), so the 404 disposition is an
+      explicit parameter — deliberate differences are declared here, not
+      re-derived per page.
+    - ``("unavailable", "unexpected listing payload (HTTP <status>)")`` —
+      ok but ``data`` is not a list (a non-JSON 2xx body): honest about
+      the wrong shape instead of a bare "HTTP 200".
+    - ``("not-configured", …)`` — any other failure while GITHUB_TOKEN is
+      unset names the missing token AND the fetch reason: ``"GITHUB_TOKEN
+      is not set on this service and {subject} failed (fetch: {reason})"``.
+    - ``("unavailable", <fetch reason>)`` — any other failure.
+
+    Every returned reason — including a caller-supplied ``reason_404`` and
+    the composed not-configured text — re-passes :func:`short_reason`, so
+    banner text stays hard-bounded at ``REASON_MAX_CHARS`` no matter how it
+    was assembled (the #237→#240 precedent extended to composed reasons).
+    """
+    status = result.get("status")
+    base_reason = result.get("error") or f"HTTP {status}"
+    if result.get("ok") and isinstance(result.get("data"), list):
+        return "ok", ""
+    if status == 404:
+        return on_404, short_reason(reason_404 or base_reason, status=status)
+    if result.get("ok"):
+        return "unavailable", short_reason(
+            f"unexpected listing payload (HTTP {status})", status=status
+        )
+    if not config.GITHUB_TOKEN:
+        return "not-configured", short_reason(
+            f"GITHUB_TOKEN is not set on this service and {subject} "
+            f"failed (fetch: {base_reason})",
+            status=status,
+        )
+    return "unavailable", short_reason(base_reason, status=status)
+
+
 def _result(url: str, status: int, data: Any = None, error: str = "") -> dict:
     return {
         "ok": 200 <= status < 300,

@@ -372,27 +372,22 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
     }
 
     root = await _list_dir(ROOT, refresh=refresh)
-    if not (root["ok"] and isinstance(root["data"], list)):
-        reason = root.get("error") or f"HTTP {root.get('status')}"
-        if root.get("status") == 404:
-            # The registry folder has not landed upstream yet — an absence,
-            # not an error (the dispatch says it is being created right now).
-            out["state"] = "empty"
-            out["reason"] = (
-                f"{config.OWNER}/{REPO} has no `{ROOT}/` directory yet — the "
-                "registry is still landing upstream; this page fills in the "
-                "moment it exists"
-            )
-        elif not token_set:
-            out["state"] = "not-configured"
-            out["reason"] = (
-                "GITHUB_TOKEN is not set on this service and the "
-                f"{config.OWNER}/{REPO} `{ROOT}/` listing failed "
-                f"(fetch: {reason})"
-            )
-        else:
-            out["state"] = "unavailable"
-            out["reason"] = reason
+    # Shared honesty ladder (github.classify_listing); a 404 here is the
+    # registry folder not landed upstream yet — an absence, not an error
+    # (the dispatch says it is being created right now), hence on_404="empty".
+    state, reason = github.classify_listing(
+        root,
+        on_404="empty",
+        reason_404=(
+            f"{config.OWNER}/{REPO} has no `{ROOT}/` directory yet — the "
+            "registry is still landing upstream; this page fills in the "
+            "moment it exists"
+        ),
+        subject=f"the {config.OWNER}/{REPO} `{ROOT}/` listing",
+    )
+    if state != "ok":
+        out["state"] = state
+        out["reason"] = reason
         return out
 
     dirs: list[tuple[str, str]] = []
@@ -466,24 +461,19 @@ async def detail(name: str, refresh: bool = False) -> dict[str, Any]:
         return out
 
     root = await _list_dir(ROOT, refresh=refresh)
-    if not (root["ok"] and isinstance(root["data"], list)):
-        reason = root.get("error") or f"HTTP {root.get('status')}"
-        if root.get("status") == 404:
-            out["state"] = "empty"
-            out["reason"] = (
-                f"{config.OWNER}/{REPO} has no `{ROOT}/` directory yet — the "
-                "registry is still landing upstream"
-            )
-        elif not token_set:
-            out["state"] = "not-configured"
-            out["reason"] = (
-                "GITHUB_TOKEN is not set on this service and the "
-                f"{config.OWNER}/{REPO} `{ROOT}/` listing failed "
-                f"(fetch: {reason})"
-            )
-        else:
-            out["state"] = "unavailable"
-            out["reason"] = reason
+    # Same shared ladder as :func:`overview` (github.classify_listing).
+    state, reason = github.classify_listing(
+        root,
+        on_404="empty",
+        reason_404=(
+            f"{config.OWNER}/{REPO} has no `{ROOT}/` directory yet — the "
+            "registry is still landing upstream"
+        ),
+        subject=f"the {config.OWNER}/{REPO} `{ROOT}/` listing",
+    )
+    if state != "ok":
+        out["state"] = state
+        out["reason"] = reason
         return out
 
     # The registry listing is the allowlist: a name that is not one of its

@@ -121,12 +121,18 @@ async def repo_ideas(repo: str, refresh: bool = False) -> dict[str, Any]:
     """
     res = await github.repo_api(repo, f"/contents/{IDEAS_DIR}", refresh=refresh)
 
-    has_dir = res["ok"] and isinstance(res["data"], list)
-    # A 404 is a legitimate "this repo has no ideas dir" — NOT an error banner.
-    missing = res["status"] == 404
-    listing_error = None
-    if not has_dir and not missing:
-        listing_error = res.get("error") or f"HTTP {res.get('status')}"
+    # Shared honesty ladder (github.classify_listing). A 404 is a legitimate
+    # "this repo has no ideas dir" — an absence (on_404="missing"), NOT an
+    # error banner; any other failure surfaces as listing_error (a missing
+    # token now names itself in the reason).
+    state, reason = github.classify_listing(
+        res,
+        on_404="missing",
+        subject=f"the {repo} `{IDEAS_DIR}/` listing",
+    )
+    has_dir = state == "ok"
+    missing = state == "missing"
+    listing_error = reason if state in ("not-configured", "unavailable") else None
 
     files: list[dict] = []
     if has_dir:

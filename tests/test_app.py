@@ -970,6 +970,48 @@ def test_ideas_listing_error_surfaces(monkeypatch):
     assert out["listing_error"] and "rate limited" in out["listing_error"]
 
 
+def test_ideas_listing_error_names_missing_token(monkeypatch):
+    """Token-unset + non-404 listing failure: the per-repo banner now NAMES
+    the missing token (shared github.classify_listing ladder) instead of
+    echoing only the raw fetch reason."""
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        return {"ok": False, "status": 403, "data": None, "error": "rate limited",
+                "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        monkeypatch.setattr(config, "GITHUB_TOKEN", "")
+        return await ideas.repo_ideas("superbot")
+
+    out = asyncio.run(run())
+    assert out["missing"] is False and out["has_dir"] is False
+    assert out["listing_error"] == (
+        "GITHUB_TOKEN is not set on this service and the superbot "
+        "`docs/ideas/` listing failed (fetch: rate limited)"
+    )
+
+
+def test_ideas_non_list_2xx_payload_is_an_honest_listing_error(monkeypatch):
+    """An ok envelope whose data is not a directory listing is a listing
+    error with the shared 'unexpected listing payload' reason — never a
+    silent empty backlog."""
+
+    async def fake_repo_api(repo, subpath="", refresh=False):
+        return {"ok": True, "status": 200, "data": "<!doctype html>oops",
+                "error": "", "fetched_at": "", "cached": False, "url": ""}
+
+    async def run():
+        monkeypatch.setattr(github, "repo_api", fake_repo_api)
+        monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
+        return await ideas.repo_ideas("websites")
+
+    out = asyncio.run(run())
+    assert out["missing"] is False and out["has_dir"] is False
+    assert out["listing_error"] == "unexpected listing payload (HTTP 200)"
+    assert out["total"] == 0
+
+
 def test_ideas_route_degrades_no_auth(client):
     """/ideas serves 200 even when GitHub is unreachable (honest empty state)."""
     r = client.get("/ideas")
