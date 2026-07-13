@@ -1,7 +1,8 @@
 # 2026-07-13 — botsite /products: the fleet's storefront for venture-lab's products
 
-> **Status:** `in-progress` — branch `claude/venture-products-page`; flips to `complete`
-> + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/venture-products-page`, PR #232
+> (READY + targeting main; merge is the coordinator/owner's call — this
+> worker opens, never merges).
 
 - **📊 Model:** Claude Fable · worker · self-initiated build slice
 
@@ -28,8 +29,8 @@ buy link only for the one product that is really purchasable.
   degradation, loader, and committed-registry honesty tests.
 - Verified: `python3 -m pytest tests/ botsite/tests dashboard/tests
   review/tests -q` — 927 passed (was 915; +12 new products tests);
-  `python3 bootstrap.py check --strict` — green apart from this card's own
-  designed born-red hold.
+  `python3 bootstrap.py check --strict` — green after this card's designed
+  born-red hold was released at the flip.
 
 ⚑ Self-initiated: yes — ORDER 022 item 4 generative mandate; contained (new
 page + registry inside botsite, no existing behavior changed, GET-only, no
