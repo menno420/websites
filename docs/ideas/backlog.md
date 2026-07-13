@@ -317,7 +317,12 @@
   the queue-state NEXT list: nothing touches guild data. Source:
   `.sessions/2026-07-11-dashboard-bot-management.md` 💡.
 
-- **Bake-time questions sync from GitHub issues** · `captured` — the
+- **Bake-time questions sync from GitHub issues** · `built` (2026-07-13,
+  PR #297, branch `claude/review-questions-bake-sync-0713` —
+  `review/gen_questions.py`, stdlib-only fail-soft: one capped issues
+  call, `[program-review]` title filter, PR objects excluded, merge keyed
+  by url preserving hand-written `answer_url`/`answer_label` +
+  `status_override` pins; wired into review-bake.yml) — the
   review site's `/questions` ledger is a hand-kept `questions.json` today;
   the `review-bake` workflow already has the Actions token, so a fourth
   generator could list this repo's issues titled `[program-review]` (one
@@ -1305,3 +1310,22 @@
   bullet covers submissions' transcripts per claim, not per-step
   aggregates; nothing folds finished claims' guide activity into the
   step strip. Source: `.sessions/2026-07-13-heatmap-tail.md` 💡.
+
+- **Closed-but-unanswered nag for the questions ledger** · `captured`
+  (2026-07-13, review-questions-bake-sync session 💡) — the bake sync
+  (PR #297) now flips a ledger record's status to `closed` when its
+  GitHub issue closes, but the answer link stays hand-written — so a
+  `[program-review]` issue closed without a published answer renders as
+  "closed / pending" forever, silently breaking the ledger's own promise
+  ("the evidence-backed answer publishes in the next review edition AND
+  lands here"). A bake-time or CI-time advisory flagging records where
+  `status == closed` and `answer_url` is missing (pure read of the
+  committed questions.json, no network) would turn that silent gap into
+  a visible nag for the next session. Worth having because the sync
+  automates intake but thereby makes it POSSIBLE to close a question
+  without answering it on record — exactly the quiet dishonesty the
+  ledger exists to prevent. Deduped against this backlog + the
+  queue-state NEXT list: the bake-sync bullet (now built) covers intake
+  only; the owner-gated answer-bot bullet is about generating answers,
+  not auditing their absence; nothing watches answer-lag on the ledger.
+  Source: `.sessions/2026-07-13-review-questions-bake-sync.md` 💡.
