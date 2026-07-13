@@ -316,6 +316,40 @@ def test_answer_latency_days_is_robust_to_missing_and_bad_stamps():
     assert story.answer_latency_days({}) is None
 
 
+def test_answer_latency_days_prefers_asked_at_for_sub_day_resolution():
+    # the full stamp resolves what the date floor read as "0 days"
+    assert story.answer_latency_days({
+        "asked": "2026-07-01",
+        "asked_at": "2026-07-01T09:00:00Z",
+        "closed_at": "2026-07-01T15:00:00Z",
+    }) == 0.25
+    # whole spans still collapse to int, asked_at works without asked
+    assert story.answer_latency_days({
+        "asked_at": "2026-07-01T09:00:00Z",
+        "closed_at": "2026-07-05T09:00:00Z",
+    }) == 4
+    # a naive asked_at reads as UTC rather than being rejected
+    assert story.answer_latency_days({
+        "asked_at": "2026-07-01T09:00:00",
+        "closed_at": "2026-07-01T21:00:00Z",
+    }) == 0.5
+    # clock skew between the stamps clamps to 0, never negative
+    assert story.answer_latency_days({
+        "asked_at": "2026-07-01T12:00:00Z",
+        "closed_at": "2026-07-01T09:00:00Z",
+    }) == 0
+    # an unparseable asked_at degrades to the date-precision fallback…
+    assert story.answer_latency_days({
+        "asked": "2026-07-01",
+        "asked_at": "garbage",
+        "closed_at": "2026-07-05T09:30:00Z",
+    }) == 4
+    # …and to None when there is no fallback to degrade to
+    assert story.answer_latency_days(
+        {"asked_at": "garbage", "closed_at": "2026-07-05T09:30:00Z"}
+    ) is None
+
+
 def test_answer_latency_medians_answered_records_only():
     a = _answered("a", "2026-07-01", "2026-07-02T00:00:00Z")  # 1 day
     b = _answered("b", "2026-07-01", "2026-07-04T00:00:00Z")  # 3 days
@@ -324,17 +358,45 @@ def test_answer_latency_medians_answered_records_only():
     unstamped = _answered("u", "2026-07-01", None)
     # odd count → the middle value, an int
     assert story.answer_latency([a, b, c, pending, unstamped]) == {
-        "count": 3, "median_days": 3,
+        "count": 3, "median_days": 3, "median_label": "3 days",
     }
     # even count → half-day medians stay exact, whole ones collapse to int
-    assert story.answer_latency([a, b]) == {"count": 2, "median_days": 2}
-    assert story.answer_latency([b, c]) == {"count": 2, "median_days": 5.5}
+    assert story.answer_latency([a, b]) == {
+        "count": 2, "median_days": 2, "median_label": "2 days",
+    }
+    assert story.answer_latency([b, c]) == {
+        "count": 2, "median_days": 5.5, "median_label": "5.5 days",
+    }
     # no qualifying record → None (pending debt and bad stamps never count)
     assert story.answer_latency([]) is None
     assert story.answer_latency([pending, unstamped]) is None
     assert story.answer_latency(
         [_answered("g", "garbage", "2026-07-05T00:00:00Z")]
     ) is None
+
+
+def test_answer_latency_resolves_sub_day_medians_from_asked_at():
+    fast = _answered("f", "2026-07-01", "2026-07-01T15:00:00Z")
+    fast["asked_at"] = "2026-07-01T09:00:00Z"  # 6 hours
+    assert story.answer_latency([fast]) == {
+        "count": 1, "median_days": 0.25, "median_label": "6 hours",
+    }
+    # a record without asked_at still counts at date precision alongside
+    dated = _answered("d", "2026-07-01", "2026-07-04T09:00:00Z")  # 3 days
+    stat = story.answer_latency([fast, dated])
+    assert stat["count"] == 2 and stat["median_days"] == 1.625
+
+
+def test_latency_label_wordings():
+    assert story.latency_label(0) == "0 days"
+    assert story.latency_label(1) == "1 day"
+    assert story.latency_label(3) == "3 days"
+    assert story.latency_label(5.5) == "5.5 days"  # date-precision wording kept
+    assert story.latency_label(0.25) == "6 hours"
+    assert story.latency_label(1 / 24) == "1 hour"
+    assert story.latency_label(0.01) == "under an hour"
+    assert story.latency_label(1.625) == "1.6 days"
+    assert story.latency_label(2.04) == "2 days"  # one-decimal round collapses
 
 
 def test_questions_page_renders_latency_stat_with_correct_median(
@@ -351,6 +413,19 @@ def test_questions_page_renders_latency_stat_with_correct_median(
     # median of [1, 7] days — the stat is server-computed and pluralized
     assert "<strong>2 answered questions</strong> resolved in a median of" in r.text
     assert "<strong>4 days</strong>" in r.text
+
+
+def test_questions_page_words_sub_day_latency_in_hours(
+    monkeypatch, tmp_path: Path
+):
+    fast = _answered("Same-day answer?", "2026-07-01", "2026-07-01T15:00:00Z", 987)
+    fast["asked_at"] = "2026-07-01T09:00:00Z"  # 6 hours asked → closed
+    _nag_ledger(monkeypatch, tmp_path, fast)
+    r = client.get("/questions")
+    assert r.status_code == 200
+    assert "<strong>1 answered question</strong> resolved in a median of" in r.text
+    assert "<strong>6 hours</strong>" in r.text
+    assert "0 days" not in r.text  # the old floor's weakest wording is gone
 
 
 def test_questions_page_hides_latency_stat_without_qualifying_records(

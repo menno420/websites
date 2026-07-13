@@ -1420,8 +1420,16 @@
   Source: `.sessions/2026-07-13-answer-debt-age.md` 💡.
 
 - **Bake a full `asked_at` timestamp on questions-ledger records — give
-  the latency stat sub-day resolution** · `captured` (2026-07-13,
-  questions-answer-latency session 💡) — `gen_questions.issue_record`
+  the latency stat sub-day resolution** · `built` (2026-07-13, PR #305 —
+  `issue_record` stamps `asked_at` from the same response's full
+  `created_at` (`asked` untouched as the display date, never fabricated);
+  `answer_latency_days` prefers the full stamp — fractional days, int
+  when whole — and falls back to the date-precision `asked` so committed
+  pre-stamp records compute byte-identically, the merge never backfills
+  existing records; `answer_latency` grows a `median_label` ("6 hours"
+  under a day; whole/half-day wording byte-identical) that /questions
+  renders) — original capture (2026-07-13, questions-answer-latency
+  session 💡): `gen_questions.issue_record`
   truncates the issue's `created_at` to a date (`created[:10]`) while
   `closed_at` keeps its full timestamp, so `answer_latency_days` (PR
   #302) can never resolve finer than whole days and a same-day answer
@@ -1484,3 +1492,24 @@
   CURRENT title for display only; nothing versions or snapshots step
   identity.
   Source: `.sessions/2026-07-13-step-question-digest.md` 💡.
+
+- **One-shot `asked_at` backfill for the committed pre-stamp questions
+  ledger** · `captured` (2026-07-13, asked-at-timestamp session 💡) —
+  PR #305 gives sub-day latency resolution only to records baked AFTER
+  it lands: the merge deliberately never backfills `asked_at` onto
+  existing records (pinned by test, so that PR's committed file stayed
+  byte-identical), which leaves every historical answered record floored
+  at date precision forever — and a median over mixed-precision records
+  stays coarse as long as the legacy majority dominates. The GitHub API
+  still serves `created_at` for every issue url already in the ledger,
+  so either a one-time backfill run or teaching the merge to stamp
+  `asked_at` when missing (bake-owned, exactly like `closed_at` — a
+  strictly additive field, no display change) would give the ENTIRE
+  ledger the same honest resolution in one bake diff. Worth having
+  because the stat's pitch is measured turnaround, and today its history
+  understates precision the API still has on record. Deduped against
+  this backlog: the asked_at bullet (built, #305) stamps new records
+  only and its entry documents the no-backfill pin; the bake-sync and
+  answer-debt bullets own status/closed_at, not asked stamps; nothing
+  proposes backfilling.
+  Source: `.sessions/2026-07-13-asked-at-timestamp.md` 💡.
