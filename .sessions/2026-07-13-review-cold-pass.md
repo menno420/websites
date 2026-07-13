@@ -18,6 +18,36 @@ review/tests only, no URL/structure changes.
   review/tests -q` — <pending>; `python3 bootstrap.py check --strict` —
   <pending>.
 
+## Cold pass findings (live audit of review-production-f027.up.railway.app)
+
+- **F1 — fixed (broken, sitewide):** `SBDS.initChrome()` was defined by the
+  vendored `review/static/ds/ds.js` but never called — at 375px the nav
+  links were hidden with a dead hamburger (no mobile navigation at all), the
+  theme toggle did nothing, and both header buttons rendered as empty
+  icon-less squares. Fix: new `review/static/site.js` (the botsite/dashboard
+  `static/app.js` idiom — guard on `window.SBDS`, call `SBDS.initChrome()`,
+  register the server-rendered nav in the palette; no network fetch, the
+  service stays network-free), included from `base.html` after `ds.js`.
+  Test-pinned in `review/tests/test_review.py`.
+- **F2 — fixed (confusing):** /fleet offered an always-empty "hub · 0"
+  disposition pill (the fixed facet universe includes "hub"; the committed
+  mirror has 0 hub-disposition lanes) while the page prose calls two seats
+  "hub". Fix at the route layer, never the data: `review/app.py` now drops
+  zero-count facet options that are not actively selected; an active
+  zero-count value (e.g. a `/fleet?disposition=hub` deep link) keeps its
+  "on" pill + removable ✕ chip so it can always be un-filtered. The vendored
+  `listfilter.py` / `_listfilter.html` stay byte-identical to app/'s copies
+  (test-pinned). Tests in `test_fleet.py` (real mirror) +
+  `test_review_filters.py` (synthetic suppress-unless-active).
+- **F3 — skipped with reason (cosmetic):** Google Fonts is the only external
+  runtime dependency. Deliberately NOT vendored now — surface stability
+  ahead of the 2026-07-14 EAP close beats a cosmetic self-containment win.
+  Flagged as a candidate follow-up: vendor the two font families under
+  `review/static/` after the EAP window.
+- **Clean bill from the same audit:** 41/41 internal URLs return 200; 0
+  broken external links; the clarity bar passes on all pages; 0px mobile
+  horizontal overflow.
+
 ⚑ Self-initiated: no — coordinator-dispatched slice of ORDER 022 item 5.
 
 ## 💡 Session idea
