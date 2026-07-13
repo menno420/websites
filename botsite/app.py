@@ -35,6 +35,7 @@ from . import agent_pr_tree as agent_pr_tree_registry
 from . import arcade as arcade_registry
 from . import catalog as catalog_registry
 from . import data_source as ds
+from . import field_manual as field_manual_registry
 from . import graveyard as graveyard_registry
 from . import products as products_registry
 from . import puddle_museum as puddle_museum_registry
@@ -48,6 +49,7 @@ NAV = [
     ("games", "Games", "/games"),
     ("arcade", "Arcade", "/arcade"),
     ("products", "Products", "/products"),
+    ("field-manual", "Field Manual", "/field-manual"),
     ("testing", "Testing", "/testing"),
     ("changelog", "Changelog", "/changelog"),
     ("status", "Status", "/status"),
@@ -260,6 +262,35 @@ async def products_catalog(request: Request):
         }
     )
     return templates.TemplateResponse(request, "catalog.html", ctx)
+
+
+@app.get("/field-manual", response_class=HTMLResponse)
+async def field_manual(request: Request):
+    """Free-chapter funnel page for the Agent Fleet Field Manual (ORDER 022
+    item 4, venture WEBSITE-IDEA batch-2 intake; marker: venture-lab
+    ``control/outbox.md`` batch 2 @ 0679327). The pitch, chapter list and
+    the launch kit's designated free chapter (chapter 1, "The D1 Lesson")
+    render from the committed ``botsite/data/field_manual.json`` read from
+    disk at request time (``botsite/field_manual.py``, provenance recorded
+    in-file) — cross-repo data arrives only as committed JSON, never a live
+    fetch on the request path. The CTA is HONEST via the committed
+    ``data/catalog.json`` entry: a buy link renders ONLY when that entry
+    carries a real ``url`` (today it does not — the publish click is queued
+    to the owner); the moment the catalog gains the url, the page shows it
+    automatically."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "field-manual", res)
+    manual = field_manual_registry.load_field_manual()
+    entry = field_manual_registry.catalog_entry()
+    ctx.update(
+        {
+            "book": manual["book"],
+            "excerpt": manual["excerpt"],
+            "entry": entry,
+            "buy_url": field_manual_registry.buy_url(entry),
+        }
+    )
+    return templates.TemplateResponse(request, "field_manual.html", ctx)
 
 
 @app.get("/puddle-museum", response_class=HTMLResponse)

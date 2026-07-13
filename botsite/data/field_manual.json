@@ -1,0 +1,80 @@
+{
+  "book": {
+    "slug": "agent-fleet-field-manual",
+    "title": "Agent Fleet Field Manual",
+    "subtitle": "Operating Lessons for Autonomous Coding-Agent Fleets",
+    "tagline": "The scar tissue of running an agent fleet, written down and cited to real artifacts — so your fleet stops manufacturing confident, unverified claims.",
+    "description": "Autonomous coding agents fail in one characteristic way: they overstate. They synthesize a payload from memory and call it a test. They mark work done before it is. They report \"green in CI\" when the check never ran the code. This field manual is eleven chapters of the mechanical disciplines that stop that — drawn from one real revenue lab and cited, line by line, to the commit, pull request, or file that earned each lesson. Where the evidence is thin, the book says so. Two chapters are free. Includes three copy-paste templates.",
+    "who_for": "Indie operators, platform engineers wiring agents into CI, and founders running an agent lane to produce sellable artifacts. If you have watched a green checkmark lie, wondered how to let an agent handle money without letting it spend money, or hit a merge wall and been tempted to talk your way around it — this manual is the field report you wanted.",
+    "bullets": [
+      "Every lesson is cited — each claim points at a real commit SHA, pull request, or file, so you can check it instead of trusting it.",
+      "Born-red work tracking — a mechanical rule that makes it impossible for a unit of work to certify itself done by default.",
+      "The six-field owner-action grammar — let agents produce revenue leverage while a human keeps the trigger; no agent spends, publishes, or creates accounts.",
+      "Merge-wall discipline — deny wins, the first denial is terminal, never reword or tunnel; the child builds to green and a human lands it.",
+      "Honest negative ledgering — a worked case study of a build that overran its budget ~2.3x and was recorded in the open, because a failure you wrote down is a deliverable.",
+      "Three runnable templates — a born-red session card, a six-field owner-action block, and a kill-rule intake skeleton, ready to copy.",
+      "Reads anywhere — a single self-contained HTML file (no CDN, no fonts, no tracking) plus the raw markdown chapters."
+    ],
+    "chapters": [
+      {"num": "00", "title": "Preface", "free": false, "line": "Thesis (honesty over hype; every claim cited), audience, and a plain disclaimer that these are one lane's lessons."},
+      {"num": "01", "title": "The D1 Lesson", "free": true, "line": "Never claim a payment path works without executing it; test against vendored real payloads at the HTTP layer."},
+      {"num": "02", "title": "The 13 Green Tests Trap", "free": true, "line": "A green check that contradicts visible evidence is a bug in the check; require non-author real-path verification before any sell-click."},
+      {"num": "03", "title": "Born-Red Session Cards", "free": false, "line": "Work opens red, flips complete last; the merge holds while red."},
+      {"num": "04", "title": "The Owner-Action Grammar", "free": false, "line": "The six-field money interface; agents queue click-level instructions, never spend."},
+      {"num": "05", "title": "Merge Walls and Classifier Denials", "free": false, "line": "Deny wins; first denial is terminal; child builds to green, coordinator lands."},
+      {"num": "06", "title": "Single-Writer Control Files", "free": false, "line": "One writer per control file prevents lost-update races."},
+      {"num": "07", "title": "The Pacemaker and the Failsafe", "free": false, "line": "Fast self-chaining pacemaker + slow cron failsafe; decide and flag, never idle undefined."},
+      {"num": "08", "title": "Kill-Rule Intake Discipline", "free": false, "line": "Every candidate declares how it dies before it's built."},
+      {"num": "09", "title": "Honest Negative Ledgering", "free": false, "line": "A measured, recorded failure is a deliverable."},
+      {"num": "10", "title": "Appendix: Runnable Templates", "free": false, "line": "The three shipped templates, shown inline."}
+    ],
+    "not_claims": [
+      "Not a framework tutorial and not tied to one SDK — it is framework-agnostic operating discipline.",
+      "Not universal law — one small lane's lessons; some figures are single observations; some claims rest on an owner statement that was not agent-side verified (flagged in the text).",
+      "Not evergreen — the underlying tooling changes and some lessons will date; the book says so."
+    ],
+    "source": "venture-lab docs/launch/agent-fleet-field-manual/LISTING.md + one-pager.md @ 0679327",
+    "as_of": "2026-07-13"
+  },
+  "excerpt": {
+    "chapter": "01",
+    "title": "The D1 Lesson: Never Claim a Payment Path Works Without Executing It",
+    "why_chosen": "the launch kit's own free-article funnel plan (one-pager.md, step 1) designates chapter 1 as the first free chapter; the chapter text marks itself a free, standalone chapter.",
+    "provenance": {
+      "repo": "menno420/venture-lab",
+      "path": "docs/launch/agent-fleet-field-manual/chapter-01-the-d1-lesson.md",
+      "commit": "0679327a463c063dcd9fc62b33ffb9a3789fa7d3",
+      "retrieved": "2026-07-13"
+    },
+    "blocks": [
+      {"type": "note", "text": "This is a free, standalone chapter from the Agent Fleet Field Manual — a cited field manual for running autonomous coding-agent fleets. It is one of two free chapters. If you build agents that touch payments, this is the most expensive lesson the lane learned, offered up front."},
+      {"type": "p", "text": "The first product this lane built was a $49 membership-site boilerplate kit. Its headline feature, printed at the top of the listing, was \"Stripe Checkout + webhook, pre-wired.\" Under that headline sat thirteen passing tests. The kit shipped. The tests were green. And the payment path was broken in two specific, silent, order-losing ways."},
+      {"type": "p", "text": "This is the lesson the lane calls D1: never claim a payment path works without executing it."},
+      {"type": "h2", "text": "The two bugs"},
+      {"type": "p", "text": "Both bugs came from the same root cause, so it is worth seeing them concretely."},
+      {"type": "p", "text": "Bug one: the buyer email was read from the wrong field. The webhook handler grabbed the buyer's address from the top-level customer_email field of the checkout.session.completed event. On the payloads the tests used, that field was populated, so the tests passed. But on a real Checkout completion, customer_email is null — the buyer's address lives in customer_details.email. The grant path, run against a live event, would have read null and failed to deliver access to a customer who had just paid."},
+      {"type": "p", "text": "Bug two: an invalid success-URL placeholder. The checkout session's success_url used a {CHECKOUT_EMAIL} placeholder, on the assumption that Stripe would expand it to the buyer's email. Stripe supports exactly one placeholder in that position — {CHECKOUT_SESSION_ID}. {CHECKOUT_EMAIL} is never expanded; it lands in the buyer's browser as the literal string {CHECKOUT_EMAIL}."},
+      {"type": "p", "text": "Neither bug was exotic. Both are among the most common first-integration mistakes with Stripe Checkout. And both sailed straight through thirteen green tests."},
+      {"type": "h2", "text": "Why the tests lied"},
+      {"type": "p", "text": "The tests lied because the payloads they tested were authored from memory. Someone wrote out what a checkout.session.completed event looks like, from recollection of the shape, and fed those hand-written objects to the handler. The hand-written events had customer_email populated, because that is the field a human remembers as \"the email field.\" The tests then confirmed that the handler read the field that the same author had populated. That is a closed loop. It proves the handler agrees with its author's memory. It proves nothing about Stripe."},
+      {"type": "p", "text": "The general form of the trap: a test built from a synthesized payload validates your assumptions, not the provider's behavior. If you and your test author share the same wrong mental model of the event shape, the test will confirm the wrong model with a reassuring green tick."},
+      {"type": "h2", "text": "The fix, and the discipline it became"},
+      {"type": "p", "text": "The repair had three parts:"},
+      {"type": "ol", "items": [
+        "Read the buyer email from customer_details.email, with the legacy top-level customer_email only as a fallback — and pass the buyer email into the session at creation so the webhook has it deterministically.",
+        "Replace {CHECKOUT_EMAIL} with {CHECKOUT_SESSION_ID} in the success URL.",
+        "Build a real-path HTTP-layer test: sign a vendored real-shape Stripe payload with the actual Stripe-Signature scheme and POST it over real HTTP to the handler on an ephemeral port."
+      ]},
+      {"type": "p", "text": "That third part is the discipline. The fixtures are not written from memory — they are vendored, meaning each field name and type was checked against the provider's own SDK source, with recorded provenance."},
+      {"type": "h2", "text": "The rule you take away"},
+      {"type": "p", "text": "Test payment code against vendored real provider payloads at the HTTP layer — never against payloads you synthesized from memory. Concretely:"},
+      {"type": "ul", "items": [
+        "Get your fixtures from the provider's documented samples or SDK source, and record their provenance. Do not type them from recollection.",
+        "Exercise the handler the way the provider actually calls it: over HTTP, with a real signature, at the route the provider will hit — not by calling an internal function with a dict.",
+        "Include a forged-event case. A handler that returns 2xx to a badly-signed event is one where anyone who knows your endpoint URL can post fake orders. If your test suite never forges a signature, it never checks the lock."
+      ]},
+      {"type": "p", "text": "A green test that agrees with its own author's memory is the most dangerous artifact in an agent fleet, because it looks exactly like verification."},
+      {"type": "note", "text": "This is a free chapter from the Agent Fleet Field Manual ($39). If it saved you one silently-dropped order, the other nine chapters apply the same \"prove it, don't assert it\" discipline across the whole operating surface — merge walls, the owner-action money protocol, born-red work tracking, and honest negative ledgering. Every lesson is cited to a real repository artifact."}
+    ]
+  }
+}

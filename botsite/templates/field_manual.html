@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Agent Fleet Field Manual — free chapter — SuperBot{% endblock %}
+{% block description %}The Agent Fleet Field Manual ($39): operating lessons for autonomous coding-agent fleets, every lesson cited to a real artifact. Read a full chapter free — honest status: not purchasable until the owner's publish click.{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> free chapter · {{ entry.price if entry else "$39 one-time" }}</span>
+    <div class="head-row"><h1>Agent Fleet Field Manual</h1></div>
+    <p class="sb-lead">The funnel page for the fleet's own book: an eleven-chapter field manual of
+      operating lessons for autonomous coding-agent fleets, every lesson cited to a real commit,
+      pull request, or file. Read one full chapter free below — the launch kit's designated free
+      chapter, committed here with its provenance. The book itself
+      {% if buy_url %}is live — the buy link is at the bottom of the pitch.{% else %}is
+      <strong>not purchasable yet</strong>: it is publish-ready and the publish click is queued to
+      the owner, so this page shows no buy link until a real store URL exists.{% endif %}
+      It sits alongside the <a href="/products">fleet store</a> and the full
+      <a href="/products/catalog">vetting catalog</a>.</p>
+  </section>
+
+  {% if book %}
+  <section class="section-sm">
+    <h2 style="margin:0 0 4px">The pitch</h2>
+    <p style="margin:0 0 8px"><em>{{ book.tagline }}</em></p>
+    <p style="margin:0 0 12px">{{ book.description }}</p>
+    {% if book.bullets %}
+    <ul style="margin:0 0 12px">
+      {% for b in book.bullets %}<li>{{ b }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    <p class="sb-muted" style="margin:0"><strong>Who it's for:</strong> {{ book.who_for }}</p>
+  </section>
+
+  {% if book.chapters %}
+  <section class="section-sm">
+    <h2 style="margin:0 0 4px">The eleven chapters ({{ book.chapters | selectattr("free") | list | length }} free)</h2>
+    <ul style="margin:0">
+      {% for c in book.chapters %}
+      <li><strong>{{ c.num }} — {{ c.title }}.</strong>
+        {% if c.free %}<span class="sb-badge sb-badge-ok">free</span>{% endif %}
+        {{ c.line }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if book.not_claims %}
+  <section class="section-sm">
+    <h2 style="margin:0 0 4px">What it is NOT (honest)</h2>
+    <ul style="margin:0">
+      {% for n in book.not_claims %}<li>{{ n }}</li>{% endfor %}
+    </ul>
+    <p class="sb-muted" style="margin:8px 0 0;font-size:var(--sb-text-xs)">Pitch curated from {{ book.source }}, as of {{ book.as_of }}.</p>
+  </section>
+  {% endif %}
+  {% else %}
+  <div class="sb-empty section-sm"><span class="ico">{{ icon("layers", 20) }}</span><h4>Pitch unavailable right now</h4>
+    <p>The committed book data is missing or unreadable. Nothing is faked here — see the
+      <a href="/products/catalog">vetting catalog</a> for the book's pipeline status.</p></div>
+  {% endif %}
+
+  <section class="section-sm">
+    <h2 style="margin:0 0 4px">Get the book</h2>
+    {% if entry %}
+    {% if buy_url %}
+    <p style="margin:0 0 8px"><strong>{{ entry.title }}</strong> — {{ entry.price }}.</p>
+    <p style="margin:0 0 8px">
+      <a class="sb-btn sb-btn-primary sb-btn-sm" href="{{ buy_url }}" target="_blank" rel="noopener">
+        Buy — {{ entry.price }} {{ icon("external", 13) }}
+      </a>
+    </p>
+    {% else %}
+    <p style="margin:0 0 8px"><strong>{{ entry.title }}</strong> — {{ entry.price }} —
+      is <strong>not purchasable yet</strong>. Its pipeline status is
+      <span class="sb-mono">{{ entry.status }}</span>: the publish click is queued to the owner,
+      no store listing exists, and this page renders no buy button until one really does.</p>
+    <p class="sb-muted" style="margin:0 0 8px;font-size:var(--sb-text-xs)">Status per the committed
+      catalog ({{ entry.source }}, as of {{ entry.as_of }}): {{ entry.status_note }}</p>
+    {% endif %}
+    {% else %}
+    <p style="margin:0 0 8px">The Agent Fleet Field Manual is not in the committed catalog right
+      now, so there is nothing to buy from this page.</p>
+    {% endif %}
+    <p class="sb-muted" style="margin:0">Meanwhile: browse the <a href="/products">fleet store</a>
+      for what is really purchasable today, or the full
+      <a href="/products/catalog">vetting catalog</a> for every title's honest pipeline state.</p>
+  </section>
+
+  {% if excerpt %}
+  <section class="section-sm">
+    <h2 style="margin:0 0 4px">Free chapter{% if excerpt.chapter %} {{ excerpt.chapter }}{% endif %}: {{ excerpt.title }}</h2>
+    {% for block in excerpt.blocks %}
+    {% if block.type == "h2" %}
+    <h3 style="margin:16px 0 4px">{{ block.text }}</h3>
+    {% elif block.type == "note" %}
+    <p class="sb-muted" style="margin:10px 0"><em>{{ block.text }}</em></p>
+    {% elif block.type == "ul" %}
+    <ul style="margin:8px 0">{% for item in block['items'] %}<li>{{ item }}</li>{% endfor %}</ul>
+    {% elif block.type == "ol" %}
+    <ol style="margin:8px 0">{% for item in block['items'] %}<li>{{ item }}</li>{% endfor %}</ol>
+    {% else %}
+    <p style="margin:8px 0">{{ block.text }}</p>
+    {% endif %}
+    {% endfor %}
+    <p class="sb-muted" style="margin:12px 0 0;font-size:var(--sb-text-xs)">Free chapter committed
+      verbatim from {{ excerpt.provenance.repo }} {{ excerpt.provenance.path }}
+      @ {{ excerpt.provenance.commit[:7] }} (full sha {{ excerpt.provenance.commit }}),
+      retrieved {{ excerpt.provenance.retrieved }}.
+      {% if excerpt.why_chosen %}Why this chapter: {{ excerpt.why_chosen }}{% endif %}</p>
+  </section>
+  {% else %}
+  <div class="sb-empty section-sm"><span class="ico">{{ icon("layers", 20) }}</span><h4>Free chapter unavailable right now</h4>
+    <p>The committed excerpt is missing or unreadable, so no chapter renders. Nothing is faked
+      here.</p></div>
+  {% endif %}
+</div>
+{% endblock %}
