@@ -7,9 +7,12 @@ chats cluster before a claim dies — needs a per-step aggregate. Covers the
 ``guided_step_dropoff()`` store accessor (touched/died-here counts, dense
 steps, per-task grouping, same scope as ``abandoned_guided_claims()``) and
 the heatmap strip rendered inside the Drop-offs section on GET
-/testing/owner, and the step-text join (step_index → the walkthrough
+/testing/owner, the step-text join (step_index → the walkthrough
 step's title in the cell tooltip, bare-number fallback for unknown
-tasks). Network-free, same fixture as the drop-offs suite. The
+tasks), and the full-length tail (the strip pads never-reached steps
+out to the script's real length with hollow cells + an "of N steps"
+label; unknown tasks stay observed-only). Network-free, same fixture
+as the drop-offs suite. The
 no-auth 401 pin for /testing/owner already lives in
 ``test_testing.py::test_owner_401_on_missing_or_wrong_password``.
 """
@@ -179,6 +182,55 @@ def test_heatmap_tooltip_falls_back_to_bare_number(client, monkeypatch):
     html = owner_page(client, monkeypatch)
     assert 'title="step 2: 1 chat(s) touched it, 1 died here"' in html
     assert "step 2 —" not in html
+
+
+# --- full-length tail (pad the strip out to the walkthrough's real length) ------
+
+def test_heatmap_pads_tail_to_full_script_length(client, monkeypatch):
+    # GUIDED_TASK's walkthrough is 6 steps; two drop-offs whose chats touch
+    # only steps 0–2 must still render a 6-cell strip: 3 observed cells plus
+    # 3 hollow never-reached tail cells and an "of 6 steps" label —
+    # distance-to-finish is the severity signal the strip used to hide
+    c1 = make_claim("early@example.com")
+    c2 = make_claim("earlier@example.com")
+    for step in (0, 1, 2):
+        testing_store.add_guide_exchange(c1["id"], step, "stuck", "try this")
+    testing_store.add_guide_exchange(c2["id"], 1, "lost", "go on")
+    html = owner_page(client, monkeypatch)
+    assert "of 6 steps" in html
+    # observed cells keep the counts form ...
+    assert "step 3 · 1 touched · 1 died" in html
+    # ... the unreached tail renders as never-reached cells (steps 4–6)
+    for n in (4, 5, 6):
+        assert f"step {n} · never reached" in html
+    assert "step 3 · never reached" not in html
+    # tail tooltips still carry the step's own text from the script join
+    assert (
+        "step 6 — Theme and phone width: never reached by any drop-off's chat"
+        in html
+    )
+
+
+def test_heatmap_no_tail_when_dropoff_dies_at_last_step(client, monkeypatch):
+    # a chat that reaches the final step (index 5 of 6) already densifies the
+    # strip to full length — nothing to pad, no never-reached cell
+    c = make_claim("finisher@example.com")
+    testing_store.add_guide_exchange(c["id"], 5, "last one", "almost there")
+    html = owner_page(client, monkeypatch)
+    assert "of 6 steps" in html
+    assert "step 6 · 1 touched · 1 died" in html
+    assert "never reached" not in html
+
+
+def test_heatmap_unknown_task_keeps_observed_only_strip(client, monkeypatch):
+    # no catalog entry → empty step script: no padding, no "of N steps"
+    # label — the strip stays exactly the observed-only pre-tail rendering
+    c = make_claim("ghost@example.com", task_id="walkthrough-unknown-task")
+    testing_store.add_guide_exchange(c["id"], 1, "where?", "there")
+    html = owner_page(client, monkeypatch)
+    assert "step 2 · 1 touched · 1 died" in html
+    assert "never reached" not in html
+    assert "· of " not in html
 
 
 def test_heatmap_step_text_truncates_and_bounds():
