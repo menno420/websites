@@ -39,6 +39,7 @@ from . import field_manual as field_manual_registry
 from . import graveyard as graveyard_registry
 from . import products as products_registry
 from . import puddle_museum as puddle_museum_registry
+from . import stripe_gotchas as stripe_gotchas_registry
 from . import listfilter
 from . import testing
 
@@ -56,6 +57,7 @@ NAV = [
     ("puddle-museum", "Puddle Museum", "/puddle-museum"),
     ("graveyard", "Graveyard", "/graveyard"),
     ("agent-pr-check", "PR Check", "/agent-pr-check"),
+    ("stripe-gotchas", "Stripe Gotchas", "/stripe-gotchas"),
 ]
 
 
@@ -354,6 +356,33 @@ async def agent_pr_check(request: Request):
         }
     )
     return templates.TemplateResponse(request, "agent_pr_check.html", ctx)
+
+
+@app.get("/stripe-gotchas", response_class=HTMLResponse)
+async def stripe_gotchas(request: Request):
+    """SWTK webhook-gotchas companion — the free marketing microsite for the
+    Stripe Webhook Test Kit, the fleet's one LIVE product (ORDER 022 item 4,
+    venture WEBSITE-IDEA batch-2 intake; marker: "SWTK gotchas microsite").
+    Six real Stripe checkout-webhook gotchas, each as symptom → fix, curated
+    verbatim-faithfully from the kit's own GOTCHAS.md + gotcha article. Data
+    is the committed ``botsite/data/stripe_gotchas.json`` read from disk at
+    request time (``botsite/stripe_gotchas.py``, provenance recorded in-file:
+    venture-lab @ 0679327) — cross-repo data arrives only as committed JSON,
+    never a live fetch on the request path. GET-only: no forms, no
+    state-changing routes. The buy CTA is HONEST via the committed
+    ``data/products.json`` entry: the $29 Gumroad link (with the standard
+    ``ref=fleet-store`` attribution) renders ONLY while the registry says the
+    kit is live with a real URL — never an invented store link, and the copy
+    states the kit's own honest limits alongside its four checks."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "stripe-gotchas", res)
+    ctx.update(
+        {
+            "page": stripe_gotchas_registry.load_gotchas(),
+            "swtk": stripe_gotchas_registry.swtk_product(),
+        }
+    )
+    return templates.TemplateResponse(request, "stripe_gotchas.html", ctx)
 
 
 @app.get("/changelog", response_class=HTMLResponse)
