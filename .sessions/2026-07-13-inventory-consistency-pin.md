@@ -1,7 +1,8 @@
 # 2026-07-13 — committed-inventory consistency pin: railway.SERVICES vs the envhub registry
 
-> **Status:** `in-progress` — branch `claude/inventory-consistency-pin`,
-> PR #225; flips to `complete` after the cross-check pass.
+> **Status:** `complete` — PR #225, branch `claude/inventory-consistency-pin`;
+> cross-check passed (independent re-diff confirmed the single drift, the pin
+> proven red on pre-fix main); lands via the auto-merge-enabler on green.
 
 - **📊 Model:** claude-fable-5 · worker · feature-slice
 

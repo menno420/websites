@@ -97,7 +97,18 @@
   `.sessions/2026-07-12-order-015-owner-environments.md` 💡.
 
 - **Committed-inventory consistency pin: `railway.SERVICES` vs the envhub
-  registry** · `captured` — the repo hand-keeps TWO committed inventories of
+  registry** · `built` (2026-07-13, PR #225 —
+  `tests/test_inventory_consistency.py` pins the two inventories to each
+  other, zero network: service-name sets, per-service variable-NAME sets in
+  BOTH directions with named-variable failure messages, and URLs, over the
+  real `envhub.load_registry` loader; explicit per-entry-justified
+  allowlists for legitimate one-sided variables — currently empty — with a
+  stale-allowlist check so exemptions cannot outlive their reason; the one
+  found drift reconciled evidence-first: `ANTHROPIC_API_KEY` added to
+  SERVICES' botsite entry, the registry side proven right by
+  `docs/owner/OWNER-ACTIONS.md` row K + the live consumer
+  `botsite/testing_ai.py`) — original capture: the repo hand-keeps TWO
+  committed inventories of
   the same four services' variable names (`app/railway.py` SERVICES and
   `app/data/environments.json`'s superbot-websites group) and they have
   already drifted (the registry documents `ANTHROPIC_API_KEY` for botsite;
