@@ -192,15 +192,15 @@
     {% if not dropoffs %}<p class="sb-hint">No drop-offs — no claimed-but-unsubmitted claim has guide-chat activity.</p>{% endif %}
     {% if dropoff_heatmap %}
     <div style="margin-bottom:14px">
-      <p class="sb-hint">Step heatmap — where guide chats cluster before a claim dies. Per step: how many drop-offs' chats touched it and how many stopped there; darker cell = larger share of the task's drop-offs died at that step.</p>
+      <p class="sb-hint">Step heatmap — where guide chats cluster before a claim dies. Per step: how many drop-offs' chats touched it, how many stopped there, and how many finishers also asked there but pushed through; darker cell = larger share of EVERYONE who chatted at that step died there (lethality — "hard but passable" steps stay pale, walls go dark).</p>
       {% for t in dropoff_heatmap %}
       <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:8px">
         <span class="sb-badge sb-mono">{{ t.task_id }}</span>
-        <span class="sb-hint">{{ t.claim_count }} drop-off(s){% if t.script_len %} · of {{ t.script_len }} steps{% endif %}</span>
+        <span class="sb-hint">{{ t.claim_count }} drop-off(s){% if t.finisher_count %} · {{ t.finisher_count }} finisher(s) chatted{% endif %}{% if t.script_len %} · of {{ t.script_len }} steps{% endif %}</span>
         {% for st in t.steps %}
         {% if st.reached %}
-        <span class="sb-mono" style="padding:2px 8px; border-radius:4px; border:1px solid rgba(214,69,49,0.35); background:rgba(214,69,49,{{ '%.2f'|format(0.7 * st.died_here / t.claim_count) }})"
-          title="step {{ st.step_index + 1 }}{% if st.step_text %} — {{ st.step_text }}{% endif %}: {{ st.touched }} chat(s) touched it, {{ st.died_here }} died here">step {{ st.step_index + 1 }} · {{ st.touched }} touched · {{ st.died_here }} died</span>
+        <span class="sb-mono" style="padding:2px 8px; border-radius:4px; border:1px solid rgba(214,69,49,0.35); background:rgba(214,69,49,{{ '%.2f'|format(0.7 * st.died_share) }})"
+          title="step {{ st.step_index + 1 }}{% if st.step_text %} — {{ st.step_text }}{% endif %}: {{ st.touched }} chat(s) touched it, {{ st.died_here }} died here{% if st.finished %}; {{ st.finished }} finisher(s) also asked here{% endif %}">step {{ st.step_index + 1 }} · {{ st.touched }} touched · {{ st.died_here }} died{% if st.finished %} · {{ st.finished }} finisher(s) asked{% endif %}</span>
         {% else %}
         <span class="sb-mono sb-hint" style="padding:2px 8px; border-radius:4px; border:1px dashed rgba(214,69,49,0.35); background:transparent; opacity:0.65"
           title="step {{ st.step_index + 1 }}{% if st.step_text %} — {{ st.step_text }}{% endif %}: never reached by any drop-off's chat">step {{ st.step_index + 1 }} · never reached</span>

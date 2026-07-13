@@ -11,8 +11,11 @@ the heatmap strip rendered inside the Drop-offs section on GET
 step's title in the cell tooltip, bare-number fallback for unknown
 tasks), and the full-length tail (the strip pads never-reached steps
 out to the script's real length with hollow cells + an "of N steps"
-label; unknown tasks stay observed-only). Network-free, same fixture
-as the drop-offs suite. The
+label; unknown tasks stay observed-only), and the survival contrast
+(per-step ``finished`` finisher counts + ``died_share`` lethality over
+ALL touchers — finishers' persisted chats fold into the same cells so
+"hard but passable" and "wall" stop rendering identically).
+Network-free, same fixture as the drop-offs suite. The
 no-auth 401 pin for /testing/owner already lives in
 ``test_testing.py::test_owner_401_on_missing_or_wrong_password``.
 """
@@ -63,6 +66,17 @@ def make_claim(email, name="Wanda", task_id=GUIDED_TASK):
     )
 
 
+def make_finisher(email, steps, task_id=GUIDED_TASK):
+    """A claim that chatted at `steps` and then pushed through to a
+    submission — the survival-contrast side of the heatmap."""
+    claim = make_claim(email, task_id=task_id)
+    for step in steps:
+        testing_store.add_guide_exchange(claim["id"], step, "hm?", "like so")
+    testing_store.create_submission(claim["id"], {"q": "a"}, "made it")
+    testing_store.set_claim_status(claim["id"], "submitted")
+    return claim
+
+
 def owner_page(client, monkeypatch):
     monkeypatch.setenv("SITE_PASSWORD", PW)
     r = client.get("/testing/owner", auth=("owner", PW))
@@ -107,9 +121,12 @@ def test_heatmap_groups_by_task_ordered_by_task_id(client):
     ]
     assert rows[0]["claim_count"] == 1
     # zeta's claim only chatted at step 1 — step 0 renders as a zero cell
+    # (zero touchers → died_share stays 0.0, no division blow-up)
     assert rows[1]["steps"] == [
-        {"step_index": 0, "touched": 0, "died_here": 0},
-        {"step_index": 1, "touched": 1, "died_here": 1},
+        {"step_index": 0, "touched": 0, "died_here": 0,
+         "finished": 0, "died_share": 0.0},
+        {"step_index": 1, "touched": 1, "died_here": 1,
+         "finished": 0, "died_share": 1.0},
     ]
 
 
@@ -120,7 +137,8 @@ def test_heatmap_empty_without_any_guided_dropoff(client):
 
 def test_heatmap_excludes_submitted_claims(client):
     # same scope as abandoned_guided_claims(): a submission row (and status
-    # flip) takes the claim out of the drop-off aggregate entirely
+    # flip) takes the claim out of the drop-off aggregate entirely — its
+    # chat re-enters only as the per-step `finished` contrast count
     done = make_claim("finisher@example.com")
     testing_store.add_guide_exchange(done["id"], 0, "How?", "Like this.")
     testing_store.create_submission(done["id"], {"q": "a"}, "found nothing")
@@ -130,7 +148,16 @@ def test_heatmap_excludes_submitted_claims(client):
     rows = testing_store.guided_step_dropoff()
     assert len(rows) == 1
     assert rows[0]["claim_count"] == 1
-    assert rows[0]["steps"][2] == {"step_index": 2, "touched": 1, "died_here": 1}
+    assert rows[0]["finisher_count"] == 1
+    assert rows[0]["steps"][2] == {
+        "step_index": 2, "touched": 1, "died_here": 1,
+        "finished": 0, "died_share": 1.0,
+    }
+    # the finisher's step-0 chat shows up as survival contrast, not touched
+    assert rows[0]["steps"][0] == {
+        "step_index": 0, "touched": 0, "died_here": 0,
+        "finished": 1, "died_share": 0.0,
+    }
 
 
 # --- owner page rendering -------------------------------------------------------
@@ -231,6 +258,83 @@ def test_heatmap_unknown_task_keeps_observed_only_strip(client, monkeypatch):
     assert "step 2 · 1 touched · 1 died" in html
     assert "never reached" not in html
     assert "· of " not in html
+
+
+# --- survival contrast (finishers' chats fold into the strip) -------------------
+
+def test_heatmap_survival_contrast_counts_finishers_and_died_share(client):
+    # one drop-off dies at step 1; two finishers also asked there but
+    # pushed through — the cell's lethality is 1 death over 3 touchers,
+    # not the raw all-drop-offs-died-here it would read without contrast
+    stuck = make_claim("wall@example.com")
+    testing_store.add_guide_exchange(stuck["id"], 1, "stuck", "try this")
+    make_finisher("f1@example.com", [0, 1])
+    make_finisher("f2@example.com", [1])
+    rows = testing_store.guided_step_dropoff()
+    assert len(rows) == 1
+    assert rows[0]["claim_count"] == 1
+    assert rows[0]["finisher_count"] == 2
+    step0, step1 = rows[0]["steps"]
+    assert step0 == {"step_index": 0, "touched": 0, "died_here": 0,
+                     "finished": 1, "died_share": 0.0}
+    assert step1["touched"] == 1
+    assert step1["died_here"] == 1
+    assert step1["finished"] == 2
+    assert step1["died_share"] == pytest.approx(1 / 3)
+
+
+def test_heatmap_finisher_only_step_extends_dense_range(client):
+    # the drop-off died at step 0; a finisher asked further along at step 2
+    # — the strip grows to cover it, and the untouched gap step in between
+    # stays an all-zero cell (zero touchers → died_share 0.0, no division)
+    stuck = make_claim("early@example.com")
+    testing_store.add_guide_exchange(stuck["id"], 0, "lost", "step one")
+    make_finisher("deep@example.com", [2])
+    rows = testing_store.guided_step_dropoff()
+    task = rows[0]
+    assert [s["step_index"] for s in task["steps"]] == [0, 1, 2]
+    assert task["steps"][0]["died_share"] == 1.0
+    assert task["steps"][1] == {"step_index": 1, "touched": 0, "died_here": 0,
+                                "finished": 0, "died_share": 0.0}
+    assert task["steps"][2] == {"step_index": 2, "touched": 0, "died_here": 0,
+                                "finished": 1, "died_share": 0.0}
+
+
+def test_heatmap_finishers_alone_create_no_task_row(client):
+    # the strip stays a drop-off view: a task where everyone finished has
+    # nothing to rank — finishers are contrast, not subject
+    make_finisher("solo@example.com", [0, 1])
+    assert testing_store.guided_step_dropoff() == []
+
+
+def test_heatmap_cell_renders_finisher_annotation_and_lethality_shading(
+    client, monkeypatch
+):
+    # one drop-off touches steps 0–1 and dies at 1; a finisher also asked
+    # at step 0. Step 0 (2 touchers, 0 deaths) renders pale with the
+    # finisher annotation; step 1 (1 toucher, 1 death) renders as the wall
+    stuck = make_claim("walker@example.com")
+    testing_store.add_guide_exchange(stuck["id"], 0, "start?", "header")
+    testing_store.add_guide_exchange(stuck["id"], 1, "then?", "footer")
+    make_finisher("f1@example.com", [0])
+    html = owner_page(client, monkeypatch)
+    assert "1 drop-off(s) · 1 finisher(s) chatted" in html
+    assert "step 1 · 1 touched · 0 died · 1 finisher(s) asked" in html
+    assert "1 finisher(s) also asked here" in html
+    # shading is died-share over ALL touchers: 0/2 pale, 1/1 full-dark
+    assert "background:rgba(214,69,49,0.00)" in html
+    assert "background:rgba(214,69,49,0.70)" in html
+    # the wall cell carries no finisher annotation — nobody asked there
+    assert "step 2 · 1 touched · 1 died · " not in html
+
+
+def test_heatmap_absent_when_only_finishers_chatted(client, monkeypatch):
+    # rendering twin of the store guard: finisher chats without any
+    # drop-off leave the Drop-offs section empty, heatmap and all
+    make_finisher("solo@example.com", [0, 1])
+    html = owner_page(client, monkeypatch)
+    assert "No drop-offs" in html
+    assert "Step heatmap" not in html
 
 
 def test_heatmap_step_text_truncates_and_bounds():
