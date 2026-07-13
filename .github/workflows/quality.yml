@@ -55,8 +55,24 @@ jobs:
           if [ -n "$files" ] && [ -z "$(printf '%s\n' "$files" | grep -v '^control/')" ]; then
             control_only=true
           fi
+          # Fast-lane grammar-pin selection (gate (c) below): a control-only
+          # diff that touches the outbox or the heartbeat still runs the ONE
+          # pytest pin file guarding that file's grammar. Empty when the
+          # fast lane is off (full lane runs the whole suite anyway) or when
+          # neither file is in the diff — the plain fast path is unchanged.
+          pin_tests=""
+          if [ "$control_only" = "true" ]; then
+            if printf '%s\n' "$files" | grep -Fxq 'control/outbox.md'; then
+              pin_tests="tests/test_outbox_grammar_pin.py"
+            fi
+            if printf '%s\n' "$files" | grep -Fxq 'control/status.md'; then
+              pin_tests="${pin_tests:+$pin_tests }tests/test_own_heartbeat.py"
+            fi
+          fi
           echo "control_only=$control_only" >> "$GITHUB_OUTPUT"
+          echo "pin_tests=$pin_tests" >> "$GITHUB_OUTPUT"
           echo "control-only diff: $control_only"
+          echo "fast-lane grammar pin tests: ${pin_tests:-<none>}"
 
       # Fast-lane control gates (kit staged-gate port #2, 2026-07-11 — the
       # #120 every-card port covered the session-card lanes; these cover the
@@ -102,6 +118,34 @@ jobs:
             git show "$base:control/inbox.md" > "$basefile" 2>/dev/null || : > "$basefile"
             python3 bootstrap.py check --strict --status-only --inbox-base "$basefile"
           fi
+
+      # (c) grammar pins gate — the fast lane skips pytest by design, but
+      #     control/outbox.md and control/status.md are machine-read by the
+      #     app (briefing REPORTS card, /fleet heartbeat parsers) and each
+      #     already has a committed-file pytest pin
+      #     (tests/test_outbox_grammar_pin.py from PR #289,
+      #     tests/test_own_heartbeat.py). Without this, the pin fires only
+      #     on the NEXT non-control PR — a typo'd outbox REPORT heading
+      #     merged green and rendered /owner/briefing honest-empty for a
+      #     morning, and incident PR #307 merged a heartbeat the fast lane
+      #     never parse-checked. When (and only when) a control-only diff
+      #     touches one of those two files, run exactly that file's pin.
+      #     The pins import app.briefing / app.fleet (→ httpx), so this
+      #     needs real deps — set up the same Python 3.12 as the full lane
+      #     but install only pytest + httpx, keeping the lane fast. A
+      #     control-only diff touching NEITHER file (inbox append, claim
+      #     file) skips both steps: today's fast path, unchanged.
+      - name: Set up Python 3.12 (fast lane — grammar pins only)
+        if: steps.lane.outputs.control_only == 'true' && steps.lane.outputs.pin_tests != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: control grammar pins (fast lane — outbox REPORT / status heartbeat)
+        if: steps.lane.outputs.control_only == 'true' && steps.lane.outputs.pin_tests != ''
+        run: |
+          python3 -m pip install --quiet pytest httpx
+          python3 -m pytest ${{ steps.lane.outputs.pin_tests }} -q
 
       - name: Set up Python 3.12
         if: steps.lane.outputs.control_only != 'true'

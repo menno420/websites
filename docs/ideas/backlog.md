@@ -9,6 +9,27 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Fast-lane pin-map drift pin — assert quality.yml's grammar-pin
+  selection stays aligned with the machine-read control files and real
+  test paths** · `captured` (2026-07-13, fastlane-outbox-gate session 💡)
+  — the fast-lane grammar-pins gate (PR #314) is shell text inside
+  `.github/workflows/quality.yml`: it hard-codes two test paths and two
+  control filenames, and nothing ever executes that mapping in the full
+  lane — rename `tests/test_outbox_grammar_pin.py`, move the outbox, or
+  add a third machine-read control file and the gate goes hollow while
+  staying green. A small pytest that parses the workflow's lane step
+  (YAML + the embedded shell) and asserts (1) every referenced pin test
+  file exists on disk and (2) every control file the app machine-reads
+  (`app/briefing.py`'s OUTBOX_PATH, `app/fleet.py`'s status parsing) has
+  a pin entry would redden the PR that breaks the mapping. Worth having
+  because a gate that exists only as unexecuted workflow shell decays
+  invisibly — exactly the merge-lag class PR #314 just closed for the
+  outbox. Deduped against this backlog: the shipped "Fast-lane control
+  gates in quality.yml" bullet is the gates themselves, not a pin on
+  their mapping; the env-sweep shape-coverage bullet covers the env
+  scanner, never CI. Source:
+  `.sessions/2026-07-13-fastlane-outbox-gate.md` 💡.
+
 - **Hostile-env import smoke — dynamically import every service module
   under a poisoned environment** · `built` (2026-07-13, PR #287 —
   `tests/test_hostile_env_smoke.py` imports every runtime module of all
@@ -1194,8 +1215,15 @@
   `.sessions/2026-07-13-env-poison-pin.md` 💡.
 
 - **Outbox grammar gate in the CI control fast lane — run the pin on the
-  PRs that write the outbox** · `captured` (2026-07-13, outbox-grammar-pin
-  session 💡) — `quality.yml`'s control fast lane short-circuits GREEN on a
+  PRs that write the outbox** · `built` (2026-07-13, PR #314, ORDER 027
+  item 7 — `quality.yml`'s lane step now emits a `pin_tests` output and a
+  fast-lane grammar-pins gate (setup-python + `pip install pytest httpx`
+  only — the pins' sole third-party import) runs
+  `tests/test_outbox_grammar_pin.py` when a control-only diff touches
+  `control/outbox.md`, plus `tests/test_own_heartbeat.py` when it touches
+  `control/status.md` (the incident-#307 heartbeat class); control-only
+  diffs touching neither keep the bare fast path unchanged) — original
+  capture: `quality.yml`'s control fast lane short-circuits GREEN on a
   control/**-only diff (pytest never runs), and outbox appends are exactly
   control/**-only PRs, so `tests/test_outbox_grammar_pin.py` (PR #289)
   fires only on the NEXT non-control PR — after the typo'd report has
