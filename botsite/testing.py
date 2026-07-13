@@ -1080,12 +1080,29 @@ async def _owner_page(
     # Join step_index → the walkthrough step's own text (the same `steps`
     # script the guide renders) so each cell's tooltip says WHAT the step
     # asks; unknown tasks / out-of-range indexes leave step_text empty and
-    # the cell keeps the bare number.
+    # the cell keeps the bare number. Then pad the strip out to the script's
+    # FULL length with zero-count `reached: False` cells — the store's
+    # aggregate stays observed-data-only, but the strip must not hide
+    # distance-to-finish: dying at step 2 of 6 and step 2 of 2 should not
+    # render the same. `script_len` (0 for unknown tasks / empty scripts,
+    # which keep today's observed-only strip) drives the "of N steps" label.
     dropoff_heatmap = store.guided_step_dropoff()
     for t in dropoff_heatmap:
         step_script = task_steps(task_by_id(t["task_id"]))
         for st in t["steps"]:
             st["step_text"] = _heatmap_step_text(step_script, st["step_index"])
+            st["reached"] = True
+        for idx in range(len(t["steps"]), len(step_script)):
+            t["steps"].append(
+                {
+                    "step_index": idx,
+                    "touched": 0,
+                    "died_here": 0,
+                    "step_text": _heatmap_step_text(step_script, idx),
+                    "reached": False,
+                }
+            )
+        t["script_len"] = len(step_script)
     # ORDER 019 PR2: filter/sort/search over the submissions queue (the
     # centralized listfilter core; state lives in the GET query string, so
     # POST-action re-renders simply show the unfiltered default).
