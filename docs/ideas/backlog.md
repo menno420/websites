@@ -1111,8 +1111,19 @@
   `.sessions/2026-07-13-env-hardening.md` 💡.
 
 - **Self-deriving poison list — pin the hostile-env smoke's ENV_VARS
-  against a live source sweep** · `captured` (2026-07-13, hostile-env-smoke
-  session 💡) — `tests/test_hostile_env_smoke.py` (PR #287) poisons a
+  against a live source sweep** · `built` (2026-07-13, branch
+  `claude/env-poison-pin-0713` — `tests/test_env_poison_pin.py` AST-sweeps
+  the SAME files the smoke discovers (service dirs + exclusions imported
+  from the smoke module, one source of truth) and fails BY NAME + read site
+  when source reads a name `ENV_VARS` misses; resolves literal reads,
+  module-constant `ENV_*` indirection, and guarded-wrapper call sites
+  (`_env_int("X", …)`); non-derivable reads must sit on an explicit
+  per-entry-justified dynamic allowlist with a stale-entry check (currently
+  one entry: `app/railway.py` `_committed_services`, a presence-only read
+  of committed-inventory names); per-service nonzero meta-test so a lost
+  read shape can't blank the sweep; red-proven on a planted unpoisoned
+  read; original capture 2026-07-13, hostile-env-smoke session 💡) —
+  `tests/test_hostile_env_smoke.py` (PR #287) poisons a
   hand-collected 38-name literal; a companion assertion (AST or regex sweep
   of `os.environ`/`os.getenv`/`ENV_* =` over app/, botsite/, dashboard/,
   review/ at test time, same exclusions as the smoke) failing when source
@@ -1148,6 +1159,24 @@
   `src/engine/grammar.py`); no bullet covers `control/outbox.md`'s REPORT
   grammar or a parse-the-committed-file pin for it. Source:
   `.sessions/2026-07-13-briefing-outbox.md` 💡.
+
+- **Environ-mention accounting leg for the poison pin** · `captured`
+  (2026-07-13, env-poison-pin session 💡) — `tests/test_env_poison_pin.py`
+  derives env-var names from a recognized-shape list
+  (`_name_expr_of_read`: get/getenv/subscript/in/pop/setdefault, constant
+  indirection, wrapper call sites), so aliasing (`e = os.environ` then
+  `e.get("X")`) or a novel access idiom is silently ignored rather than
+  loud. A completeness guard asserting every AST occurrence of
+  `environ`/`getenv` in service source is accounted for — consumed by a
+  recognized name-read, part of a whole-env use (`{**os.environ}` /
+  `dict(os.environ)`), or explicitly allowlisted — would make the
+  scanner's own shape coverage self-checking. Worth having because the
+  pin's guarantee is only as strong as its shape list, and an unrecognized
+  idiom today slips beneath it — the same silent-rot class, one level up.
+  Deduped against this backlog: the code-vs-inventory bullets check
+  documentation completeness against docs tables; nothing checks the
+  sweep's own shape coverage. Source:
+  `.sessions/2026-07-13-env-poison-pin.md` 💡.
 
 - **Outbox grammar gate in the CI control fast lane — run the pin on the
   PRs that write the outbox** · `captured` (2026-07-13, outbox-grammar-pin
