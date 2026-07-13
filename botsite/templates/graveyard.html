@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Strategy Graveyard — SuperBot{% endblock %}
+{% block description %}The Strategy Graveyard: the honest ledger of the trading-strategy lab — every configuration tested, what beat its benchmark and what didn't, and zero promoted.{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    {% if graveyard.available %}
+    <span class="sb-ey"><span class="dot">·</span> {{ "{:,}".format(graveyard.aggregate.config_evals) }} configuration evaluations · {{ graveyard.aggregate.verdicts.promoted }} promoted</span>
+    {% endif %}
+    <div class="head-row"><h1>Strategy Graveyard</h1></div>
+    <p class="sb-lead">The honest ledger of the fleet's trading-strategy research lab: every
+      backtest configuration it tried, which runs beat a plain buy-and-hold benchmark and which
+      didn't — and the headline truth, presented without spin: <strong>nothing has been promoted</strong>.
+      The lab's validation holdout is spent and promotion is closed; a KEEP below means
+      dev-candidate only, never a finding. Research only — no broker, no trades, no real money.</p>
+  </section>
+
+  {% if graveyard.available %}
+  <section class="section-sm">
+    <div class="sb-panel" style="text-align:center">
+      <p class="sb-mono" style="margin:0"><strong>{{ "{:,}".format(graveyard.aggregate.config_evals) }} CONFIGURATIONS TESTED ACROSS {{ "{:,}".format(graveyard.aggregate.runs) }} RECORDED RUNS · {{ graveyard.aggregate.verdicts.promoted }} PROMOTED</strong></p>
+      <p class="sb-muted" style="margin:6px 0 0">{{ graveyard.aggregate.strategies }} strategies ·
+        {{ graveyard.aggregate.instruments }} instruments · {{ graveyard.aggregate.timeframes|join(" + ") }} timeframes ·
+        best Sharpe {{ graveyard.aggregate.best_sharpe }} · median {{ graveyard.aggregate.median_sharpe }} · worst {{ graveyard.aggregate.worst_sharpe }}</p>
+    </div>
+  </section>
+
+  <section class="section-sm">
+    <h2>The verdict board</h2>
+    <p class="sb-muted" style="margin:6px 0 0">Verdicts are {{ graveyard.verdict_rule }}.</p>
+    <div class="card-grid section-sm">
+      <article class="sb-card sb-feat">
+        <div class="sb-feat-top">
+          <span class="sb-tile sb-tile-emoji">🏆</span>
+          <h3 style="font-size:var(--sb-text-lg)">Promoted</h3>
+          <span class="sb-badge sb-badge-neutral">{{ graveyard.aggregate.verdicts.promoted }}</span>
+        </div>
+        <div class="feat-desc">Zero. Not one configuration earned an out-of-sample promotion —
+          the holdout is spent, promotion is closed, and this page will keep saying zero until
+          a new owner-gated validation protocol says otherwise.</div>
+      </article>
+      <article class="sb-card sb-feat">
+        <div class="sb-feat-top">
+          <span class="sb-tile sb-tile-emoji">🌱</span>
+          <h3 style="font-size:var(--sb-text-lg)">Keep (dev only)</h3>
+          <span class="sb-badge sb-badge-ok">{{ "{:,}".format(graveyard.aggregate.verdicts.keep) }}</span>
+        </div>
+        <div class="feat-desc">Runs whose out-of-sample Sharpe beat their same-window buy-and-hold
+          benchmark. Dev-candidates only — the lab's own synthesis puts every one inside noise.</div>
+      </article>
+      <article class="sb-card sb-feat">
+        <div class="sb-feat-top">
+          <span class="sb-tile sb-tile-emoji">🪦</span>
+          <h3 style="font-size:var(--sb-text-lg)">Kill</h3>
+          <span class="sb-badge sb-badge-danger">{{ "{:,}".format(graveyard.aggregate.verdicts.kill) }}</span>
+        </div>
+        <div class="feat-desc">Runs that failed to beat buying and holding the same instrument
+          over the same window at the same costs. The majority — that is the point of the ledger.</div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section-sm">
+    <h2>Leaderboard by strategy</h2>
+    <p class="sb-muted" style="margin:6px 0 0">Every strategy family the lab has tried, best
+      KEEP-rate first. "Evals" counts every parameter variant its recorded runs evaluated.</p>
+    <div class="section-sm" style="overflow-x:auto">
+      <table class="sb-table">
+        <thead><tr><th>strategy</th><th>runs</th><th>evals</th><th>keep</th><th>kill</th><th>best Sharpe</th><th>best CAGR</th><th>worst drawdown</th></tr></thead>
+        <tbody>
+        {% for s in graveyard.strategies %}
+        <tr>
+          <td class="sb-mono">{{ s.strategy }}</td>
+          <td>{{ s.runs }}</td>
+          <td>{{ "{:,}".format(s.config_evals) }}</td>
+          <td><span class="sb-badge {{ 'sb-badge-ok' if s.keep else 'sb-badge-neutral' }}">{{ s.keep }}</span></td>
+          <td><span class="sb-badge {{ 'sb-badge-danger' if s.kill else 'sb-badge-neutral' }}">{{ s.kill }}</span></td>
+          <td class="sb-mono">{{ "%.3f"|format(s.best_sharpe) }}</td>
+          <td class="sb-mono">{{ "%.1f%%"|format(s.best_cagr * 100) }}</td>
+          <td class="sb-mono">{{ "%.1f%%"|format(s.worst_max_drawdown * 100) }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section-sm">
+    <h2>Best of the survivors — top KEEPs by Sharpe</h2>
+    <p class="sb-muted" style="margin:6px 0 0">The {{ graveyard.top.keep|length }} strongest
+      benchmark-beating runs. Dev-candidates only: none is a validated finding.</p>
+    <div class="section-sm" style="overflow-x:auto">
+      <table class="sb-table">
+        <thead><tr><th>strategy</th><th>instrument</th><th>timeframe</th><th>Sharpe</th><th>B&amp;H Sharpe</th><th>CAGR</th><th>max drawdown</th><th>variants</th></tr></thead>
+        <tbody>
+        {% for e in graveyard.top.keep %}
+        <tr>
+          <td class="sb-mono">{{ e.strategy }}</td>
+          <td class="sb-mono">{{ e.instrument }}</td>
+          <td>{{ e.timeframe }}</td>
+          <td class="sb-mono">{{ "%.3f"|format(e.sharpe) }}</td>
+          <td class="sb-mono">{{ "%.3f"|format(e.benchmark_sharpe) }}</td>
+          <td class="sb-mono">{{ "%.1f%%"|format(e.cagr * 100) }}</td>
+          <td class="sb-mono">{{ "%.1f%%"|format(e.max_drawdown * 100) }}</td>
+          <td>{{ e.variants_tried }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section-sm">
+    <h2>Best of the dead — top KILLs by Sharpe</h2>
+    <p class="sb-muted" style="margin:6px 0 0">The strongest runs that STILL lost to buy-and-hold —
+      a good Sharpe is not an edge when the benchmark's is better.</p>
+    <div class="section-sm" style="overflow-x:auto">
+      <table class="sb-table">
+        <thead><tr><th>strategy</th><th>instrument</th><th>timeframe</th><th>Sharpe</th><th>B&amp;H Sharpe</th><th>CAGR</th><th>max drawdown</th><th>variants</th></tr></thead>
+        <tbody>
+        {% for e in graveyard.top.kill %}
+        <tr>
+          <td class="sb-mono">{{ e.strategy }}</td>
+          <td class="sb-mono">{{ e.instrument }}</td>
+          <td>{{ e.timeframe }}</td>
+          <td class="sb-mono">{{ "%.3f"|format(e.sharpe) }}</td>
+          <td class="sb-mono">{{ "%.3f"|format(e.benchmark_sharpe) }}</td>
+          <td class="sb-mono">{{ "%.1f%%"|format(e.cagr * 100) }}</td>
+          <td class="sb-mono">{{ "%.1f%%"|format(e.max_drawdown * 100) }}</td>
+          <td>{{ e.variants_tried }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section-sm">
+    <div class="sb-panel">
+      <p class="sb-muted" style="margin:0;font-size:var(--sb-text-xs)">
+        Baked from <a href="{{ graveyard.source }}" target="_blank" rel="noopener">trading-strategy
+        <code>experiments/index.jsonl</code></a> as of {{ graveyard.as_of }}
+        {% if graveyard.source_sha %}(source HEAD <span class="sb-mono">{{ graveyard.source_sha[:8] }}</span>){% else %}(source HEAD sha unavailable at bake time{% if graveyard.source_sha_reason %} — {{ graveyard.source_sha_reason }}{% endif %}){% endif %} ·
+        committed JSON, no live fetch ·
+        window {{ graveyard.aggregate.data_start[:10] }} → {{ graveyard.aggregate.data_end[:10] }} ·
+        {{ graveyard.aggregate.holdout_unlocked_runs }} runs touched the (now spent) holdout
+        {% if graveyard.aggregate.skipped_ledger_lines %} · {{ graveyard.aggregate.skipped_ledger_lines }} malformed ledger lines skipped at bake{% endif %}.
+      </p>
+    </div>
+  </section>
+  {% else %}
+  <section class="section-sm">
+    <div class="sb-empty section"><span class="ico">🪦</span><h4>No graveyard data</h4>
+      <p>{{ graveyard.reason }}. Nothing is faked here — the leaderboard renders only from the
+        committed bake, so this page stays honestly empty until a valid
+        <code>botsite/data/graveyard.json</code> is committed.</p></div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

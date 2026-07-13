@@ -34,6 +34,7 @@ from fastapi.templating import Jinja2Templates
 from . import arcade as arcade_registry
 from . import catalog as catalog_registry
 from . import data_source as ds
+from . import graveyard as graveyard_registry
 from . import products as products_registry
 from . import puddle_museum as puddle_museum_registry
 from . import listfilter
@@ -50,6 +51,7 @@ NAV = [
     ("changelog", "Changelog", "/changelog"),
     ("status", "Status", "/status"),
     ("puddle-museum", "Puddle Museum", "/puddle-museum"),
+    ("graveyard", "Graveyard", "/graveyard"),
 ]
 
 
@@ -270,6 +272,23 @@ async def puddle_museum(request: Request):
     ctx = _base_ctx(request, "puddle-museum", res)
     ctx.update({"museum": puddle_museum_registry.load_museum()})
     return templates.TemplateResponse(request, "puddle_museum.html", ctx)
+
+
+@app.get("/graveyard", response_class=HTMLResponse)
+async def graveyard(request: Request):
+    """Strategy Graveyard — the honest leaderboard of the trading-strategy
+    lab's experiment ledger (ORDER 022 item 4, venture WEBSITE-IDEA batch-2
+    intake). Data is the committed ``botsite/data/graveyard.json`` read from
+    disk at request time (``botsite/graveyard.py``), baked by
+    ``botsite/gen_graveyard.py`` from trading-strategy's
+    ``experiments/index.jsonl`` — cross-repo data arrives only as committed
+    JSON, never a live fetch in the request path. GET-only. The headline
+    zero (0 promoted) is the page's point: the lab's promotion protocol is
+    closed (holdout spent), and the page presents that plainly."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "graveyard", res)
+    ctx.update({"graveyard": graveyard_registry.load_graveyard()})
+    return templates.TemplateResponse(request, "graveyard.html", ctx)
 
 
 @app.get("/changelog", response_class=HTMLResponse)
