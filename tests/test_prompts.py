@@ -1,5 +1,5 @@
 """Offline unit tests for /prompts (ORDER 014): the fleet prompt library —
-all 26 registry paste artifacts (8 seats x coordinator/instructions/failsafe
+all 29 registry paste artifacts (9 seats x coordinator/instructions/failsafe
 + the 2 fleet-wide docs) rendered inline from fleet-manager main over the
 raw-content pattern (generation metadata stripped to the clean paste body;
 the body itself verbatim).
@@ -69,13 +69,13 @@ def _registry_matches_by_default(monkeypatch):
 # --------------------------------------------------------------------------- #
 
 
-def test_registry_shape_is_8_seats_x_3_plus_2():
-    assert len(prompts.SEATS) == 8
+def test_registry_shape_is_9_seats_x_3_plus_2():
+    assert len(prompts.SEATS) == 9
     assert len(prompts.SEAT_FILES) == 3
     assert len(prompts.FLEET_WIDE) == 2
-    assert prompts.TOTAL_ARTIFACTS == 26
+    assert prompts.TOTAL_ARTIFACTS == 29
     spec = prompts._artifact_spec()
-    assert len(spec) == 26
+    assert len(spec) == 29
     # per-seat paths follow the registry layout; fleet-wide ones the v3 home
     assert {"seat": "websites", "label": "coordinator prompt",
             "path": "projects/websites/coordinator-prompt.md"} in spec
@@ -139,7 +139,7 @@ def test_overview_happy_covers_all_seats_and_fleet_wide(monkeypatch):
         return await prompts.overview()
 
     out = asyncio.run(run())
-    assert out["total"] == 26 and out["ok_count"] == 26
+    assert out["total"] == 29 and out["ok_count"] == 29
     assert out["error_count"] == 0
     assert [s["name"] for s in out["seats"]] == list(prompts.SEATS)
     for seat in out["seats"]:
@@ -268,7 +268,7 @@ def test_partial_failure_degrades_per_artifact(monkeypatch):
     assert r.status_code == 200
     # the failed cell says why; siblings still render; nothing fabricated
     assert "could not fetch" in r.text and "Not Found" in r.text
-    assert "1 of 26 artifacts could not be fetched" in r.text
+    assert "1 of 29 artifacts could not be fetched" in r.text
     assert "BODY OF projects/websites/coordinator-prompt.md" in r.text
     assert "BODY OF projects/websites/failsafe-prompt.md" not in r.text
 
@@ -287,7 +287,7 @@ def test_unreachable_upstream_is_200_banner_never_fabricated(monkeypatch):
     assert "BODY OF" not in r.text  # never fabricated
 
     out = asyncio.run(_overview_offline(monkeypatch))
-    assert out["ok_count"] == 0 and out["error_count"] == 26
+    assert out["ok_count"] == 0 and out["error_count"] == 29
     assert all(a["text"] is None for s in out["seats"] for a in s["artifacts"])
 
 
@@ -410,7 +410,7 @@ def test_drift_empty_registry_is_real_drift_not_unknown(monkeypatch):
     r = TestClient(app).get("/prompts")
     assert r.status_code == 200
     assert "pinned list drifted" in r.text
-    assert "−8 no longer present" in r.text
+    assert "−9 no longer present" in r.text
     assert "drift unknown" not in r.text
 
 
@@ -499,6 +499,7 @@ _SEAT_HUMAN = {
     "superbot-world": "SuperBot World", "superbot-2.0": "SuperBot 2.0",
     "ideas-lab": "Ideas Lab", "game-lab": "Game Lab",
     "self-improvement": "Self Improvement", "websites": "Websites",
+    "curious-research": "Curious Research",
 }
 
 
@@ -628,7 +629,7 @@ def test_deployed_failsafe_snapshot_in_sync(monkeypatch):
         assert fs["state"] == "in sync", s["name"]
         assert fs["as_of"] == "2026-07-13T00:39:53Z"
         assert "failsafe wake" in fs["deployed"]
-    assert dep["snapshot"]["ok"] and dep["counts"]["in sync"] == 8
+    assert dep["snapshot"]["ok"] and dep["counts"]["in sync"] == 9
 
 
 def test_deployed_failsafe_snapshot_drift_and_missing_seat(monkeypatch):
@@ -644,7 +645,7 @@ def test_deployed_failsafe_snapshot_drift_and_missing_seat(monkeypatch):
     missing = _seat_rows(dep, "game-lab")["failsafe prompt"]
     assert missing["state"] == "not recorded"
     assert "no failsafe trigger" in missing["reason"]
-    assert dep["counts"]["drift"] == 7
+    assert dep["counts"]["drift"] == 8
 
 
 def test_deployed_fetch_failures_degrade_to_unreachable(monkeypatch):
@@ -677,7 +678,53 @@ def test_deployed_universals_not_recorded(monkeypatch):
         assert u["state"] == "not recorded"
         assert "no deployed record" in u["reason"]
         assert u["canonical"].startswith("v3.3 · 2026-07-12")
-    assert dep["total"] == 26
+    assert dep["total"] == 29
+
+
+def test_deployed_rows_are_version_aware(monkeypatch):
+    """ORDER 041: every drift row WITH a deployed record carries a version
+    summary — "deployed <v> · canonical <v>" — both sides PARSED (the
+    canonical side from the HEAD registry copy, the deployed side from the
+    record's own text); a side with no version token says ``unstamped`` and
+    a row with no record makes no version claim at all. Never invented."""
+    _patch_fleet(monkeypatch, meta={"websites": _META_WEBSITES},
+                 snapshot=_snapshot_json())
+    dep = asyncio.run(prompts.overview())["deployed"]
+    rows = _seat_rows(dep, "websites")
+
+    # coordinator row: the record names the v1-era prompt → deployed v1
+    co = rows["coordinator prompt"]
+    assert co["deployed_version"] == "v1"
+    assert co["canonical_version"] == "v3.5"
+    assert co["version_line"] == "deployed v1 · canonical v3.5"
+    # CI row: record carries no version token → honest "unstamped"
+    ci = rows["Custom Instructions"]
+    assert ci["deployed_version"] == ""
+    assert ci["version_line"] == "deployed unstamped · canonical v3.5"
+    # failsafe: bodies are deliberately unstamped; canonical parses from the
+    # registry-copy header (v6) — no version is ever invented for the body
+    fs = rows["failsafe prompt"]
+    assert fs["version_line"] == "deployed unstamped · canonical v6"
+    # a seat with NO deployed record (404 meta.md) claims no versions
+    bare = _seat_rows(dep, "game-lab")["Custom Instructions"]
+    assert bare["deployed"] == "" and bare["version_line"] == ""
+
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert "deployed v1 · canonical v3.5" in r.text
+    assert "deployed unstamped · canonical v3.5" in r.text
+
+
+def test_prompts_links_every_seat_to_its_version_history(monkeypatch):
+    """ORDER 041 reachability: /prompts links each seat (card + drift table)
+    to /prompts/history/<seat> — any seat's historical prompts stay two
+    clicks from the site root (/ → /prompts → history)."""
+    _happy(monkeypatch)
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    for seat in prompts.SEATS:
+        assert f'href="/prompts/history/{seat}"' in r.text
+    assert "version history" in r.text
 
 
 def test_deployed_route_renders_drift_section(monkeypatch):
@@ -693,5 +740,5 @@ def test_deployed_route_renders_drift_section(monkeypatch):
     assert "recorded: DEPLOYED, but an OLDER text:" in r.text
     assert "not recorded" in r.text     # universals
     assert "v3.5 websites CI" in r.text  # canonical identity in the table
-    # summary chips carry counts (8 failsafes green in this fixture)
-    assert "8 in sync" in r.text
+    # summary chips carry counts (9 failsafes green in this fixture)
+    assert "9 in sync" in r.text

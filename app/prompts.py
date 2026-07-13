@@ -96,23 +96,23 @@ from .prompt_artifacts import (  # noqa: F401
 # share one listing; the constants cannot drift apart).
 from .projects import ROOT as _REGISTRY_ROOT
 
-# The 8 fleet seats (registry package directories under projects/), in the
+# The fleet seats (registry package directories under projects/), in the
 # owner's dispatch order — ONE roster shared with /projects
-# (``app/roster.py``). Verified live 2026-07-12: projects/<seat>/
-# {coordinator-prompt.md,instructions.md,failsafe-prompt.md} all 200 on
-# raw.githubusercontent.com for every seat.
+# (``app/roster.py``). Verified live per seat (2026-07-12; curious-research
+# 2026-07-13): projects/<seat>/{coordinator-prompt.md,instructions.md,
+# failsafe-prompt.md} all present upstream for every pinned seat.
 from .roster import SEATS  # noqa: F401
 
 # The three per-seat registry artifacts ORDER 014 names, as
-# (filename, human label) — 8 seats x 3 files = 24 artifacts.
+# (filename, human label) — len(SEATS) x 3 per-seat artifacts.
 SEAT_FILES: tuple[tuple[str, str], ...] = (
     ("coordinator-prompt.md", "coordinator prompt"),
     ("instructions.md", "Custom Instructions"),
     ("failsafe-prompt.md", "failsafe prompt"),
 )
 
-# The two fleet-wide UNIVERSAL artifacts, as (path, human label) — 24 + 2 =
-# 26 total. Labeled "Universal …" verbatim (owner feedback 2026-07-12: he
+# The two fleet-wide UNIVERSAL artifacts, as (path, human label). Labeled
+# "Universal …" verbatim (owner feedback 2026-07-12: he
 # searches for "universal session-ender" and the bare "session ender" label
 # drowned among the per-seat prompts, which repeat that phrase in their
 # bodies); the /prompts page surfaces this group FIRST, above the seats.
@@ -126,7 +126,7 @@ TOTAL_ARTIFACTS = len(SEATS) * len(SEAT_FILES) + len(FLEET_WIDE)
 
 
 def _artifact_spec() -> list[dict[str, Any]]:
-    """The pinned 26-artifact registry as (seat, label, path) dicts."""
+    """The pinned artifact registry as (seat, label, path) dicts."""
     spec: list[dict[str, Any]] = []
     for seat in SEATS:
         for filename, label in SEAT_FILES:
@@ -379,6 +379,29 @@ def _snapshot_trigger(seat: str, records: list) -> Optional[dict[str, Any]]:
     return (enabled or matches or [None])[0]
 
 
+def _deployed_version(text: str) -> str:
+    """The first version token a deployed record names (e.g. the ``v1-era``
+    prompt a meta.md row cites) — ``""`` when the record carries none
+    (failsafe bodies are deliberately unstamped; honest absence, never a
+    guessed version)."""
+    m = _VERSION_TOKEN_RE.search(text or "")
+    return m.group(0) if m else ""
+
+
+def _version_line(row: dict[str, Any]) -> str:
+    """The row's version-aware summary (ORDER 041): "deployed v3.4 ·
+    canonical v3.6". Rendered only when a deployed record EXISTS; a side
+    whose version cannot be parsed says ``unstamped`` — a version label is
+    never invented. The canonical side is the version parsed from the HEAD
+    registry copy (the newest canonical label)."""
+    if not row["deployed"]:
+        return ""
+    cv, dv = row["canonical_version"], row["deployed_version"]
+    deployed = f"deployed {dv}" if dv else "deployed unstamped"
+    canonical = f"canonical {cv}" if cv else "canonical unstamped"
+    return f"{deployed} · {canonical}"
+
+
 def _row(
     seat: Optional[str], a: dict[str, Any], canon: dict[str, Any]
 ) -> dict[str, Any]:
@@ -389,6 +412,9 @@ def _row(
         "path": a["path"],
         "canonical": canon["line"],
         "canonical_ok": canon["ok"],
+        "canonical_version": canon.get("version", ""),
+        "deployed_version": "",
+        "version_line": "",
         "deployed": "",
         "as_of": "",
         "source": "",
@@ -410,7 +436,8 @@ def _build_deployed(
     metas: dict[str, dict[str, Any]],
     snap_res: dict[str, Any],
 ) -> dict[str, Any]:
-    """Assemble the 26 drift rows from already-fetched results (pure)."""
+    """Assemble the per-artifact drift rows from already-fetched results
+    (pure)."""
     by_key = {(a["seat"], a["label"]): a for a in artifacts}
 
     # Snapshot: parsed once, looked up per seat. 404 = never committed
@@ -487,6 +514,7 @@ def _build_deployed(
                         )
                     else:
                         row["as_of"] = snapshot["captured_at"]
+                        row["deployed_version"] = _deployed_version(prompt)
                         row["deployed"] = _clip(
                             f"{rec.get('name', '')} · cron "
                             f"{rec.get('cron_expression', '?')} · "
@@ -540,6 +568,7 @@ def _build_deployed(
                     else:
                         claim, record_date = hit
                         row["deployed"] = "recorded: " + _clip(claim)
+                        row["deployed_version"] = _deployed_version(claim)
                         row["as_of"] = record_date
                         verdict = _meta_verdict(claim, record_date, canon)
                         _finish(
@@ -552,6 +581,7 @@ def _build_deployed(
                                 else ""
                             ),
                         )
+            row["version_line"] = _version_line(row)
             rows.append(row)
         seats_out.append({"name": seat, "rows": rows})
 
@@ -591,7 +621,7 @@ async def deployed_drift(
 ) -> dict[str, Any]:
     """The deployed-vs-canonical drift rows (ORDER 022 item 3). Never raises.
 
-    CANONICAL comes from ``artifacts`` — the 26 registry copies
+    CANONICAL comes from ``artifacts`` — the registry copies
     :func:`overview` already fetched (zero extra canonical fetches).
     DEPLOYED comes from the fleet's only committed deployment records, both
     on fleet-manager main over the same TTL-cached raw-content pattern:
@@ -651,7 +681,7 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
         a["anchor"] = f"artifact-{i}"
 
     # Deployed-vs-canonical rows: canonical side reuses the artifacts just
-    # fetched; the deployed-record fetches (8× meta.md + the one snapshot)
+    # fetched; the deployed-record fetches (per-seat meta.md + the snapshot)
     # run concurrently inside, all TTL-cached.
     deployed = await deployed_drift(artifacts, refresh=refresh)
 

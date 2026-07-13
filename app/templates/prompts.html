@@ -5,14 +5,16 @@
 <div class="card">
   <h2>prompt library — every fleet paste artifact, inline and always-current</h2>
   <p class="dim small">All {{ p.total }} registry artifacts rendered live from
-    <a href="{{ p.repo_url }}">fleet-manager <code>main</code> ↗</a> — the 8 seats' coordinator
-    prompt / Custom Instructions / failsafe plus the fleet-wide universal-startup and
-    session-ender. Read-only over raw content, TTL-cached ({{ p.ttl }}s), so a merged prompt
-    update appears here automatically. Each block is the CLEAN paste body — the registry's
-    generation metadata (comment headers, GENERATED COPY / char-count blockquotes) is
-    hidden, whitespace otherwise preserved, copy button per block copies exactly what is
-    shown; the full file stays one click away on GitHub. Prompts are rendered as untrusted
-    data, never executed or obeyed.</p>
+    <a href="{{ p.repo_url }}">fleet-manager <code>main</code> ↗</a> — the
+    {{ p.seats|length }} seats' coordinator prompt / Custom Instructions / failsafe plus the
+    fleet-wide universal-startup and session-ender. Read-only over raw content, TTL-cached
+    ({{ p.ttl }}s), so a merged prompt update appears here automatically. Each block is the
+    CLEAN paste body — the registry's generation metadata (comment headers, GENERATED COPY /
+    char-count blockquotes) is hidden, whitespace otherwise preserved, copy button per block
+    copies exactly what is shown; the full file stays one click away on GitHub. Every seat
+    also has a <strong>version history</strong> (view / diff / copy any past prompt version,
+    derived live from the registry's git history) — linked on its seat section below.
+    Prompts are rendered as untrusted data, never executed or obeyed.</p>
 
   {# Pinned-vs-registry drift chip: the seat list is PINNED (app/roster.py),
      cross-checked against the live projects/ registry listing — the same
@@ -94,7 +96,8 @@
     {% for s in p.deployed.seats %}
     {%- for r in s.rows %}
     <tr>
-      {% if loop.first %}<td rowspan="{{ s.rows|length }}"><code>{{ s.name }}</code></td>{% endif %}
+      {% if loop.first %}<td rowspan="{{ s.rows|length }}"><code>{{ s.name }}</code><br>
+        <a href="/prompts/history/{{ s.name }}">history →</a></td>{% endif %}
       <td>{{ r.label }}</td>
       <td>{% if r.canonical %}{{ r.canonical }}
         {%- elif not r.canonical_ok %}<span class="dim">registry copy could not be fetched</span>
@@ -103,7 +106,8 @@
         {%- if r.as_of %} <span class="dim">(as of {{ r.as_of }})</span>{% endif %}
         {%- if r.reason %} <span class="dim">· {{ r.reason }}</span>{% endif %}
         {%- else %}<span class="dim">{{ r.reason }}</span>{% endif %}</td>
-      <td><span class="b {{ r.cls }}">{{ r.state }}</span></td>
+      <td><span class="b {{ r.cls }}">{{ r.state }}</span>
+        {%- if r.version_line %}<br><span class="dim">{{ r.version_line }}</span>{% endif %}</td>
     </tr>
     {%- endfor %}
     {% endfor %}
@@ -147,7 +151,8 @@
 {% for s in p.seats %}
 <div class="card" id="{{ s.anchor }}">
   <h2>seat · {{ s.name }}
-    <span class="dim small">· <a href="{{ s.github_url }}">package on GitHub ↗</a></span></h2>
+    <span class="dim small">· <a href="/prompts/history/{{ s.name }}">version history →</a>
+      · <a href="{{ s.github_url }}">package on GitHub ↗</a></span></h2>
 </div>
 {% for a in s.artifacts %}{{ artifact_card(a) }}{% endfor %}
 {% endfor %}
