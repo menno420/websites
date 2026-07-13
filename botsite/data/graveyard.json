@@ -1,0 +1,677 @@
+{
+ "as_of": "2026-07-13T06:47:16Z",
+ "source": "https://github.com/menno420/trading-strategy/blob/main/experiments/index.jsonl",
+ "source_sha": "de5a477ee38c0793f3e44b339231f837f4d2e895",
+ "source_sha_reason": "",
+ "verdict_rule": "derived at bake time from the ledger's own fields \u2014 KEEP (dev-candidate only) when a run's stitched-OOS Sharpe beats its same-window buy-and-hold benchmark, KILL otherwise; PROMOTED requires the lab's closed validation protocol (holdout spent) and is 0 by the program's own record",
+ "aggregate": {
+  "runs": 551,
+  "config_evals": 7771,
+  "skipped_ledger_lines": 0,
+  "verdicts": {
+   "promoted": 0,
+   "keep": 190,
+   "kill": 361
+  },
+  "strategies": 24,
+  "instruments": 17,
+  "timeframes": [
+   "daily",
+   "hourly"
+  ],
+  "best_sharpe": 2.332,
+  "median_sharpe": 0.724,
+  "worst_sharpe": -1.243,
+  "holdout_unlocked_runs": 13,
+  "data_start": "1980-12-12 00:00:00",
+  "data_end": "2026-07-10 16:30:00"
+ },
+ "top": {
+  "keep": [
+   {
+    "strategy": "ema_crossover",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 2.332,
+    "benchmark_sharpe": 1.949,
+    "cagr": 1.025,
+    "max_drawdown": -0.195,
+    "variants_tried": 44
+   },
+   {
+    "strategy": "donchian",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 2.238,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.758,
+    "max_drawdown": -0.164,
+    "variants_tried": 41
+   },
+   {
+    "strategy": "sma_crossover",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 2.168,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.883,
+    "max_drawdown": -0.193,
+    "variants_tried": 44
+   },
+   {
+    "strategy": "bollinger_breakout",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 2.126,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.559,
+    "max_drawdown": -0.105,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "donchian",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 2.116,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.904,
+    "max_drawdown": -0.185,
+    "variants_tried": 1
+   },
+   {
+    "strategy": "donchian",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 2.116,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.904,
+    "max_drawdown": -0.185,
+    "variants_tried": 1
+   },
+   {
+    "strategy": "aroon_trend",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 2.094,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.229,
+    "max_drawdown": -0.07,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "trix_momentum",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 2.045,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.833,
+    "max_drawdown": -0.169,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "adx_filtered_sma",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.99,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.69,
+    "max_drawdown": -0.177,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "sma_crossover",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.978,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.214,
+    "max_drawdown": -0.07,
+    "variants_tried": 44
+   },
+   {
+    "strategy": "roc_momentum",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.961,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.87,
+    "max_drawdown": -0.206,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "williams_r_reversion",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.898,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.463,
+    "max_drawdown": -0.091,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "trix_momentum",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.874,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.18,
+    "max_drawdown": -0.06,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "adx_filtered_sma",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.83,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.182,
+    "max_drawdown": -0.087,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "sma_crossover",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.817,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.525,
+    "max_drawdown": -0.132,
+    "variants_tried": 44
+   },
+   {
+    "strategy": "xsec_momentum",
+    "instrument": "XSEC-9",
+    "timeframe": "daily",
+    "sharpe": 1.777,
+    "benchmark_sharpe": 1.288,
+    "cagr": 0.8,
+    "max_drawdown": -0.528,
+    "variants_tried": 6
+   },
+   {
+    "strategy": "stochastic_reversion",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.766,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.242,
+    "max_drawdown": -0.09,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "aroon_trend",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.765,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.53,
+    "max_drawdown": -0.182,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "roc_momentum",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.756,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.221,
+    "max_drawdown": -0.062,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "cci_reversion",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.735,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.211,
+    "max_drawdown": -0.085,
+    "variants_tried": 12
+   }
+  ],
+  "kill": [
+   {
+    "strategy": "aroon_trend",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.948,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.781,
+    "max_drawdown": -0.223,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "macd",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.922,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.636,
+    "max_drawdown": -0.267,
+    "variants_tried": 48
+   },
+   {
+    "strategy": "atr_trailing",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.887,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.646,
+    "max_drawdown": -0.148,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "sma_crossover",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.854,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.709,
+    "max_drawdown": -0.213,
+    "variants_tried": 1
+   },
+   {
+    "strategy": "ema_crossover",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.803,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.715,
+    "max_drawdown": -0.223,
+    "variants_tried": 1
+   },
+   {
+    "strategy": "ichimoku_trend",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.704,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.551,
+    "max_drawdown": -0.215,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "ema_crossover",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.639,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.176,
+    "max_drawdown": -0.07,
+    "variants_tried": 44
+   },
+   {
+    "strategy": "bollinger_breakout",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.572,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.159,
+    "max_drawdown": -0.051,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "macd",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.53,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.5,
+    "max_drawdown": -0.245,
+    "variants_tried": 1
+   },
+   {
+    "strategy": "bollinger_reversion",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.52,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.495,
+    "max_drawdown": -0.205,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "rsi_mean_reversion",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.498,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.164,
+    "max_drawdown": -0.066,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "ichimoku_trend",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.44,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.309,
+    "max_drawdown": -0.091,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "donchian",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.433,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.145,
+    "max_drawdown": -0.078,
+    "variants_tried": 41
+   },
+   {
+    "strategy": "ema_crossover",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.41,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.386,
+    "max_drawdown": -0.196,
+    "variants_tried": 1
+   },
+   {
+    "strategy": "bollinger_reversion",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.395,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.308,
+    "max_drawdown": -0.126,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "donchian",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.384,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.383,
+    "max_drawdown": -0.182,
+    "variants_tried": 41
+   },
+   {
+    "strategy": "donchian",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.384,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.383,
+    "max_drawdown": -0.182,
+    "variants_tried": 1
+   },
+   {
+    "strategy": "donchian",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.384,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.383,
+    "max_drawdown": -0.182,
+    "variants_tried": 1
+   },
+   {
+    "strategy": "ichimoku_trend",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.352,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.131,
+    "max_drawdown": -0.065,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "ema_crossover",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.349,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.143,
+    "max_drawdown": -0.074,
+    "variants_tried": 1
+   }
+  ]
+ },
+ "strategies": [
+  {
+   "strategy": "donchian",
+   "runs": 63,
+   "config_evals": 799,
+   "keep": 24,
+   "kill": 39,
+   "best_sharpe": 2.238,
+   "best_cagr": 0.904,
+   "worst_max_drawdown": -0.837
+  },
+  {
+   "strategy": "sma_crossover",
+   "runs": 47,
+   "config_evals": 765,
+   "keep": 22,
+   "kill": 25,
+   "best_sharpe": 2.168,
+   "best_cagr": 0.883,
+   "worst_max_drawdown": -0.713
+  },
+  {
+   "strategy": "ema_crossover",
+   "runs": 40,
+   "config_evals": 813,
+   "keep": 19,
+   "kill": 21,
+   "best_sharpe": 2.332,
+   "best_cagr": 1.025,
+   "worst_max_drawdown": -0.781
+  },
+  {
+   "strategy": "aroon_trend",
+   "runs": 21,
+   "config_evals": 252,
+   "keep": 13,
+   "kill": 8,
+   "best_sharpe": 2.094,
+   "best_cagr": 0.781,
+   "worst_max_drawdown": -0.681
+  },
+  {
+   "strategy": "trix_momentum",
+   "runs": 21,
+   "config_evals": 252,
+   "keep": 12,
+   "kill": 9,
+   "best_sharpe": 2.045,
+   "best_cagr": 0.833,
+   "worst_max_drawdown": -0.676
+  },
+  {
+   "strategy": "roc_momentum",
+   "runs": 17,
+   "config_evals": 204,
+   "keep": 12,
+   "kill": 5,
+   "best_sharpe": 1.961,
+   "best_cagr": 0.87,
+   "worst_max_drawdown": -0.697
+  },
+  {
+   "strategy": "atr_trailing",
+   "runs": 21,
+   "config_evals": 252,
+   "keep": 10,
+   "kill": 11,
+   "best_sharpe": 1.887,
+   "best_cagr": 0.646,
+   "worst_max_drawdown": -0.573
+  },
+  {
+   "strategy": "rsi_mean_reversion",
+   "runs": 45,
+   "config_evals": 605,
+   "keep": 10,
+   "kill": 35,
+   "best_sharpe": 1.616,
+   "best_cagr": 0.386,
+   "worst_max_drawdown": -0.743
+  },
+  {
+   "strategy": "bollinger_breakout",
+   "runs": 21,
+   "config_evals": 252,
+   "keep": 7,
+   "kill": 14,
+   "best_sharpe": 2.126,
+   "best_cagr": 0.559,
+   "worst_max_drawdown": -0.631
+  },
+  {
+   "strategy": "adx_filtered_sma",
+   "runs": 17,
+   "config_evals": 204,
+   "keep": 7,
+   "kill": 10,
+   "best_sharpe": 1.99,
+   "best_cagr": 0.69,
+   "worst_max_drawdown": -0.457
+  },
+  {
+   "strategy": "williams_r_reversion",
+   "runs": 23,
+   "config_evals": 276,
+   "keep": 7,
+   "kill": 16,
+   "best_sharpe": 1.898,
+   "best_cagr": 0.463,
+   "worst_max_drawdown": -0.586
+  },
+  {
+   "strategy": "cci_reversion",
+   "runs": 21,
+   "config_evals": 252,
+   "keep": 7,
+   "kill": 14,
+   "best_sharpe": 1.735,
+   "best_cagr": 0.346,
+   "worst_max_drawdown": -0.767
+  },
+  {
+   "strategy": "bollinger_reversion",
+   "runs": 22,
+   "config_evals": 552,
+   "keep": 6,
+   "kill": 16,
+   "best_sharpe": 1.52,
+   "best_cagr": 0.495,
+   "worst_max_drawdown": -0.623
+  },
+  {
+   "strategy": "ichimoku_trend",
+   "runs": 21,
+   "config_evals": 252,
+   "keep": 5,
+   "kill": 16,
+   "best_sharpe": 1.704,
+   "best_cagr": 0.551,
+   "worst_max_drawdown": -0.601
+  },
+  {
+   "strategy": "keltner_breakout",
+   "runs": 10,
+   "config_evals": 60,
+   "keep": 5,
+   "kill": 5,
+   "best_sharpe": 1.273,
+   "best_cagr": 0.522,
+   "worst_max_drawdown": -0.547
+  },
+  {
+   "strategy": "vol_filtered_trend",
+   "runs": 10,
+   "config_evals": 120,
+   "keep": 5,
+   "kill": 5,
+   "best_sharpe": 1.242,
+   "best_cagr": 0.479,
+   "worst_max_drawdown": -0.543
+  },
+  {
+   "strategy": "macd",
+   "runs": 30,
+   "config_evals": 848,
+   "keep": 4,
+   "kill": 26,
+   "best_sharpe": 1.922,
+   "best_cagr": 0.636,
+   "worst_max_drawdown": -0.679
+  },
+  {
+   "strategy": "stochastic_reversion",
+   "runs": 23,
+   "config_evals": 276,
+   "keep": 4,
+   "kill": 19,
+   "best_sharpe": 1.766,
+   "best_cagr": 0.271,
+   "worst_max_drawdown": -0.609
+  },
+  {
+   "strategy": "pullback",
+   "runs": 24,
+   "config_evals": 466,
+   "keep": 4,
+   "kill": 20,
+   "best_sharpe": 1.013,
+   "best_cagr": 0.2,
+   "worst_max_drawdown": -0.687
+  },
+  {
+   "strategy": "supertrend_flip",
+   "runs": 18,
+   "config_evals": 119,
+   "keep": 3,
+   "kill": 15,
+   "best_sharpe": 1.348,
+   "best_cagr": 0.468,
+   "worst_max_drawdown": -0.644
+  },
+  {
+   "strategy": "xsec_momentum",
+   "runs": 2,
+   "config_evals": 12,
+   "keep": 2,
+   "kill": 0,
+   "best_sharpe": 1.777,
+   "best_cagr": 0.8,
+   "worst_max_drawdown": -0.528
+  },
+  {
+   "strategy": "macd_supertrend",
+   "runs": 18,
+   "config_evals": 119,
+   "keep": 2,
+   "kill": 16,
+   "best_sharpe": 1.276,
+   "best_cagr": 0.365,
+   "worst_max_drawdown": -0.445
+  },
+  {
+   "strategy": "buy_and_hold",
+   "runs": 15,
+   "config_evals": 15,
+   "keep": 0,
+   "kill": 15,
+   "best_sharpe": 1.07,
+   "best_cagr": 0.473,
+   "worst_max_drawdown": -0.834
+  },
+  {
+   "strategy": "xsec_reversal",
+   "runs": 1,
+   "config_evals": 6,
+   "keep": 0,
+   "kill": 1,
+   "best_sharpe": 0.894,
+   "best_cagr": 0.225,
+   "worst_max_drawdown": -0.369
+  }
+ ]
+}
