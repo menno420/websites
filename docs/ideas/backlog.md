@@ -1034,3 +1034,22 @@
   products.json only); nothing compares pinned source shas against the
   upstream repo, and nothing covers catalog.json. Source:
   `.sessions/2026-07-13-venture-vetting-catalog.md` 💡.
+
+- **Cited-fact drift pin for /agent-pr-check — nag when the tree's quoted
+  sources move on main** · `captured` (2026-07-13, agent-pr-diagnostic
+  session 💡) — every leaf in `botsite/data/agent_pr_tree.json` quotes
+  facts pinned at `@2a4c78a` (enabler guard wording, the quality.yml
+  fast-lane rationale, the review-bake landing ladder, CAPABILITIES wall
+  entries). A CI-time check that extracts each `file@sha` citation,
+  verifies the path still exists, and diffs the cited file between the
+  pinned sha and HEAD (pure `git diff --name-only <sha>..HEAD -- <path>`,
+  no network) would nag when a cited source changed while the tree still
+  quotes its old text. Worth having because that page's whole value is
+  "every verdict cited" — a guard rewritten upstream while the tree still
+  quotes the old wording is exactly the rot the citations exist to
+  prevent. Deduped against this backlog: the catalog sha-drift pin above
+  compares a pin against a REMOTE repo's HEAD over the raw channel, and
+  the storefront-freshness bullet is time-based; nothing checks this
+  repo's own file@sha citations against local HEAD, and nothing covers
+  agent_pr_tree.json. Source:
+  `.sessions/2026-07-13-agent-pr-diagnostic.md` 💡.

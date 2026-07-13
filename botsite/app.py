@@ -31,6 +31,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from . import agent_pr_tree as agent_pr_tree_registry
 from . import arcade as arcade_registry
 from . import catalog as catalog_registry
 from . import data_source as ds
@@ -52,6 +53,7 @@ NAV = [
     ("status", "Status", "/status"),
     ("puddle-museum", "Puddle Museum", "/puddle-museum"),
     ("graveyard", "Graveyard", "/graveyard"),
+    ("agent-pr-check", "PR Check", "/agent-pr-check"),
 ]
 
 
@@ -289,6 +291,38 @@ async def graveyard(request: Request):
     ctx = _base_ctx(request, "graveyard", res)
     ctx.update({"graveyard": graveyard_registry.load_graveyard()})
     return templates.TemplateResponse(request, "graveyard.html", ctx)
+
+
+@app.get("/agent-pr-check", response_class=HTMLResponse)
+async def agent_pr_check(request: Request):
+    """Agent-PR diagnostic tree — "Can your agent land its own PR?" (ORDER
+    022 item 4, venture WEBSITE-IDEA batch-2 intake). A static, server-
+    rendered decision tree that walks a visitor through this fleet's PROVEN
+    agent merge-wall lore: the verbatim production errors an AI agent hits
+    when it tries to open or merge its own pull request, and the verified
+    fix for each — every leaf cited to a file@sha in this repo or a fleet
+    findings-doc URL. Data is the committed ``botsite/data/agent_pr_tree.json``
+    read from disk at request time (``botsite/agent_pr_tree.py``) — never a
+    live fetch in the request path; cross-repo facts arrive only as
+    committed JSON. GET-only: no forms, no state-changing routes. The tree
+    renders as nested native details/summary (progressive disclosure, zero
+    JS required). The end-of-tree CTA references The Agent Merge-Wall
+    Cookbook from the committed catalog HONESTLY: publish-ready with no URL
+    means coming-soon copy and a link to /products — never an invented buy
+    link."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "agent-pr-check", res)
+    cookbook = next(
+        (e for e in catalog_registry.load_catalog() if e["slug"] == "merge-wall-cookbook"),
+        None,
+    )
+    ctx.update(
+        {
+            "tree": agent_pr_tree_registry.load_tree(),
+            "cookbook": cookbook,
+        }
+    )
+    return templates.TemplateResponse(request, "agent_pr_check.html", ctx)
 
 
 @app.get("/changelog", response_class=HTMLResponse)
