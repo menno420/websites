@@ -1202,8 +1202,14 @@
   the fast lane's gate set. Source:
   `.sessions/2026-07-13-outbox-grammar-pin.md` 💡.
 
-- **Abandoned guided sessions surfaced on the owner queue** · `captured`
-  (2026-07-13, guide-transcript-evidence session 💡) — a claim that chats
+- **Abandoned guided sessions surfaced on the owner queue** · `built`
+  (2026-07-13, PR #293 — `abandoned_guided_claims()` in
+  `botsite/testing_store.py` joins `claims` × `guide_exchanges` filtered to
+  status='claimed' with no submission row and ≥1 exchange; `_owner_page`
+  builds a read-only `dropoffs` ctx list and `testing_owner.html` renders a
+  "Drop-offs" section with exchange count, last exchange time, and the
+  transcript behind the same collapsed `<details>` block as #292) —
+  original capture: a claim that chats
   with the AI guide but never submits now leaves persisted transcript rows
   (PR #292) the owner can never see: the owner queue iterates submissions,
   so drop-off evidence — where testers engaged, got confused, and gave
@@ -1217,3 +1223,20 @@
   only; the tester-task URL liveness bullet probes product URLs; nothing
   touches unsubmitted-claim visibility or drop-off signals. Source:
   `.sessions/2026-07-13-guide-transcript-evidence.md` 💡.
+
+- **Drop-off step heatmap on the owner queue** · `captured` (2026-07-13,
+  owner-queue-dropoff session 💡) — the Drop-offs section (PR #293) shows
+  each abandoned claim's transcript individually, but the signal the
+  capture named — "the walkthrough step where chats cluster before a claim
+  dies is exactly the step that needs rewriting" — still requires reading
+  every transcript. A tiny per-task aggregate over the same
+  `guide_exchanges` rows (per step_index: how many abandoned claims' chats
+  touched it, and how many died there — i.e. it was their LAST exchange)
+  rendered as a one-line count strip per task would rank the rewrite queue
+  at a glance. Worth having because per-claim transcripts are anecdotes;
+  the per-step aggregate is the actionable product-feedback number the
+  drop-off data exists to produce. Deduped against this backlog + the
+  queue-state NEXT list: the drop-off bullet above (now built) surfaces
+  claims, not step aggregates; the transcript bullet covers submissions;
+  nothing aggregates guide-chat activity per step. Source:
+  `.sessions/2026-07-13-owner-queue-dropoff.md` 💡.

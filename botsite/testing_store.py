@@ -412,6 +412,26 @@ def guide_transcript_for_claim(claim_id: int) -> list[dict[str, Any]]:
     return _rows(rows)
 
 
+def abandoned_guided_claims() -> list[dict[str, Any]]:
+    """Claimed-but-never-submitted claims with guide-chat activity.
+
+    The owner queue's drop-off view: the claim is still 'claimed' (no
+    submission row exists), yet at least one guide exchange persisted — the
+    tester engaged with the guide and gave up. Each row is the claim plus
+    ``exchange_count`` and ``last_exchange_at``, newest activity first."""
+    with closing(_connect()) as conn:
+        rows = conn.execute(
+            "SELECT c.*, COUNT(g.id) AS exchange_count,"
+            " MAX(g.created_at) AS last_exchange_at"
+            " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
+            " WHERE c.status = 'claimed'"
+            " AND NOT EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
+            " GROUP BY c.id"
+            " ORDER BY last_exchange_at DESC, c.id DESC"
+        ).fetchall()
+    return _rows(rows)
+
+
 # --- payout ledger ----------------------------------------------------------
 
 def add_ledger_entry(

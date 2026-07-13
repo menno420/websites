@@ -1054,6 +1054,12 @@ async def _owner_page(
             )
         else:
             s["autopay_preview"] = None
+    # Drop-offs: claimed-but-never-submitted claims with guide-chat activity —
+    # the transcript rows PR #292 persists that no submission ever surfaces.
+    # Read-only, same evidence framing as the submissions transcript block.
+    dropoffs = store.abandoned_guided_claims()
+    for d in dropoffs:
+        d["guide_transcript"] = store.guide_transcript_for_claim(d["id"])
     # ORDER 019 PR2: filter/sort/search over the submissions queue (the
     # centralized listfilter core; state lives in the GET query string, so
     # POST-action re-renders simply show the unfiltered default).
@@ -1063,6 +1069,7 @@ async def _owner_page(
     ctx.update(
         {
             "submissions_filter": submissions_filter,
+            "dropoffs": dropoffs,
             "tasks": shaped_tasks(),
             "claims": store.list_claims(),
             "submissions": submissions,

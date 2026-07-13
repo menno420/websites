@@ -188,6 +188,33 @@
   </div>
 
   <div class="section-sm">
+    <h3>Drop-offs — chatted with the guide, never submitted ({{ dropoffs|length }})</h3>
+    {% if not dropoffs %}<p class="sb-hint">No drop-offs — no claimed-but-unsubmitted claim has guide-chat activity.</p>{% endif %}
+    {% for d in dropoffs %}
+    <div class="sb-card" style="margin-bottom:14px; padding:16px">
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+        <strong>claim #{{ d.id }}</strong>
+        <span class="sb-badge sb-badge-warn">{{ d.status }} — never submitted</span>
+        <span class="sb-badge sb-mono">{{ d.task_id }}</span>
+        <span class="sb-badge">{{ d.name }} · {{ d.email }}</span>
+        <span class="sb-badge">{{ d.exchange_count }} exchange(s) · last {{ d.last_exchange_at }}</span>
+        <span class="sb-mono sb-hint">claimed {{ d.created_at }}</span>
+      </div>
+      {% if d.guide_transcript %}
+      <details style="margin-top:8px">
+        <summary><strong>guide chat transcript</strong> — {{ d.guide_transcript|length }} exchange(s)
+          (untrusted tester input; where the tester engaged before giving up)</summary>
+        {% for e in d.guide_transcript %}
+        <p class="sb-hint" style="margin-top:4px">[step {{ e.step_index + 1 }}] tester: {{ e.message }}<br>
+          guide: {{ e.reply }}</p>
+        {% endfor %}
+      </details>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="section-sm">
     <h3>Claims ({{ claims|length }})</h3>
     {% if claims %}
     <table class="sb-table">
