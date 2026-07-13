@@ -9,6 +9,20 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Hostile-env import smoke — dynamically import every service module
+  under a poisoned environment** · `captured` (2026-07-13, env-guard-gate
+  session 💡) — the dynamic complement to `tests/test_env_guard_gate.py`
+  (PR #285): set every documented env var (the envhub manifest knows the
+  names) to "" and "garbage", then `importlib.import_module` every module
+  in app/, botsite/, dashboard/, review/, proving no import-time crash of
+  ANY kind. Worth having because the static gate only sees `int()`/
+  `float()` — `json.loads`, date parsing, `.split()[0]`, or a `Path`
+  read over an env var at module level are the same crash class and
+  invisible to an AST cast-scan; a real import under hostile values
+  catches them all. Deduped: `test_env_parse_hardening.py` reloads only
+  `app.config` with hostile INT_VARS; the healthcheck bullets probe live
+  `/healthz`, never imports. Source:
+  `.sessions/2026-07-13-env-guard-gate.md` 💡.
 - **Suite-level token pin in `tests/conftest.py` — ambient-env independence
   as structure, not discipline** · `captured` (2026-07-13) — there is no
   `tests/conftest.py`; an autouse fixture pinning `config.GITHUB_TOKEN`
