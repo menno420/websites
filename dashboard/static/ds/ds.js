@@ -329,6 +329,7 @@
         menuBtn.innerHTML = icon(open ? "x" : "menu", "currentColor", 17);
       };
       menuBtn.setAttribute("aria-label", "Open menu");
+      menuBtn.innerHTML = icon("menu", "currentColor", 17); /* paint the initial glyph — setMenu only runs on interaction */
       menuBtn.addEventListener("click", () => setMenu(!drawer.classList.contains("open")));
       drawer.addEventListener("click", (e) => { if (e.target.closest("a")) setMenu(false); });
       document.addEventListener("keydown", (e) => {
