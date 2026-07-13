@@ -33,7 +33,12 @@ key) and the finished guide IS the submission, flowing into the same storage
 and exit-review as every other type. A side-panel AI guide (chat + optional,
 explicitly-consented screen sharing) rides on ``testing_ai.py`` with a
 per-claim message cap plus the shared daily cap; screen frames are analyzed
-IN MEMORY ONLY and never persisted (test-pinned).
+IN MEMORY ONLY and never persisted (test-pinned). Successful CHAT exchanges
+(text only — never anything from the frame path) ARE persisted per claim and
+attached to the submission as untrusted evidence: the exit-review grader sees
+the transcript, the owner queue shows it, the tester's status page shows it
+back, and the JSON export carries it. Disclosed on the guide page; bounded by
+the same per-claim guide cap.
 
 Anti-abuse on every state-changing route (re-implemented from the pattern in
 unmerged PR #159's ``app/owner.py``, independently — no cross-service import):
@@ -516,6 +521,7 @@ def _submission_ctx(claim: dict[str, Any]) -> dict[str, Any]:
         "answers": answers,
         "review": review,
         "screenshots": screenshots,
+        "guide_transcript": store.guide_transcript_for_claim(claim["id"]),
         "questionnaire": QUESTIONNAIRES.get(task.get("type") or "", []),
         "severities": SEVERITIES,
     }
@@ -592,7 +598,14 @@ def _run_exit_review(
         )
         return
     try:
-        report = ai.grade_submission(task or {}, answers, findings)
+        report = ai.grade_submission(
+            task or {},
+            answers,
+            findings,
+            # The guided-walkthrough chat transcript (empty for every other
+            # type) — engagement evidence, framed untrusted by the AI layer.
+            guide_transcript=store.guide_transcript_for_claim(claim["id"]),
+        )
     except ai.AIReviewUnavailable as exc:
         store.save_ai_review(
             submission["id"], status="degraded", degraded_reason=str(exc), calls_used=1
@@ -707,7 +720,11 @@ async def testing_followups(
     try:
         ai.check_submission_cap(calls_used)
         report = ai.regrade_with_followups(
-            task or {}, answers, submission.get("findings") or "", transcript
+            task or {},
+            answers,
+            submission.get("findings") or "",
+            transcript,
+            guide_transcript=store.guide_transcript_for_claim(claim["id"]),
         )
     except ai.AIReviewUnavailable as exc:
         # Honest fallback: keep the original grade, store the tester's answers,
@@ -933,6 +950,11 @@ async def testing_guide_chat(
             reply=f"The AI guide is unavailable right now ({exc}). "
             "The steps keep working without it.",
         )
+    # Persist the exchange (TEXT only) as exit-review + owner evidence —
+    # disclosed on the guide page. Only successful replies land here, so the
+    # per-claim guide cap bounds the row count; degraded copy carries no
+    # coaching and is never stored. The frame route stays write-free.
+    store.add_guide_exchange(claim["id"], step_index, message, reply)
     return _guide_panel_json(claim, ok=True, reply=reply)
 
 
@@ -1014,6 +1036,7 @@ async def _owner_page(
             s["answers"] = {}
         s["review"] = store.ai_review_for_submission(s["id"])
         s["screenshots"] = store.screenshots_for_submission(s["id"])
+        s["guide_transcript"] = store.guide_transcript_for_claim(s["claim_id"])
         # Would-auto-pay preview: the REAL eligibility gate, evaluated
         # read-only per submission so the owner sees yes/no + every reason.
         if s["claim_status"] in ("submitted", "reviewed"):

@@ -90,6 +90,9 @@
         {% if ai_available %}
         <p class="sb-hint">Ask about the current step — what to check, where to click, what a finding
           should look like. {{ guide_cap }} messages per claim (screen questions count too).</p>
+        <p class="sb-hint" style="margin-top:6px">Typed chat and the guide's replies are saved with your
+          submission as review evidence — the reviewer and the owner can read them. Shared-screen frames
+          and their replies are never stored.</p>
         <noscript><p class="sb-hint"><strong>JavaScript is off:</strong> the chat and screen sharing
           need it, but every step above works and submits without it.</p></noscript>
         <div id="guide-chat-log" aria-live="polite" style="max-height:320px; overflow-y:auto; margin-top:8px"></div>

@@ -118,6 +118,17 @@
       </p>
       {% endif %}
 
+      {% if s.guide_transcript %}
+      <details style="margin-top:8px">
+        <summary><strong>guide chat transcript</strong> — {{ s.guide_transcript|length }} exchange(s)
+          (untrusted tester input; the exit-review grader saw it too)</summary>
+        {% for e in s.guide_transcript %}
+        <p class="sb-hint" style="margin-top:4px">[step {{ e.step_index + 1 }}] tester: {{ e.message }}<br>
+          guide: {{ e.reply }}</p>
+        {% endfor %}
+      </details>
+      {% endif %}
+
       {% if s.review %}
       <div style="margin-top:10px; padding:10px; border:1px solid var(--sb-line, #444); border-radius:8px">
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
