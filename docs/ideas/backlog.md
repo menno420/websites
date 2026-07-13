@@ -1439,8 +1439,13 @@
   Source: `.sessions/2026-07-13-questions-answer-latency.md` 💡.
 
 - **Per-step question digest — surface WHAT testers asked at a hotspot,
-  not just how many** · `captured` (2026-07-13, finisher-hotspots
-  session 💡) — the heatmap and the finisher hotspots (PRs #294/#298/#303)
+  not just how many** · `built` (2026-07-13, PR #304 —
+  `guided_step_questions()` groups the persisted `guide_exchanges`
+  tester message text by (task, step) across ALL claims, drop-offs and
+  finishers alike, newest 5 per cell + a running total; the owner queue
+  renders one collapsed `<details>` per asked-at step under both strips,
+  autoescaped + truncated at 160 chars) — original capture (2026-07-13,
+  finisher-hotspots session 💡): the heatmap and the finisher hotspots (PRs #294/#298/#303)
   rank WHERE guide chats cluster, but the owner still has to open each
   drop-off's per-claim transcript one by one to learn what confused
   people — and finishers' transcripts on hotspot tasks aren't rendered
@@ -1458,3 +1463,24 @@
   claims per step but never render message text; nothing groups guide
   messages by step across claims.
   Source: `.sessions/2026-07-13-finisher-hotspots.md` 💡.
+
+- **Guide-question step provenance — pin what the step SAID when the
+  question was asked** · `captured` (2026-07-13, step-question-digest
+  session 💡) — `guide_exchanges` rows pin only `step_index`, so the
+  digest (PR #304) and both strips (#294/#298/#303) attribute every
+  persisted question to whatever text CURRENTLY sits at that index: the
+  moment a walkthrough script inserts, removes, or reorders a step,
+  history is silently re-attributed to the wrong step and a hotspot can
+  point the owner at a step nobody actually asked about. Persisting a
+  small step snapshot with each exchange (the step's title, or a hash of
+  it — the title already joins into tooltips via `_heatmap_step_text`)
+  would let the strips flag "asked against an older version of this
+  step" instead of misattributing. Worth having because the digest's
+  whole pitch is turning counts into trustworthy rewrite input — and the
+  first script rewrite the hotspots trigger is exactly the event that
+  corrupts the attribution. Deduped against this backlog: the heatmap,
+  survival-contrast, finisher-hotspots, and digest bullets all consume
+  `step_index` as-is; the step-text bullet (built, #294) joins the
+  CURRENT title for display only; nothing versions or snapshots step
+  identity.
+  Source: `.sessions/2026-07-13-step-question-digest.md` 💡.
