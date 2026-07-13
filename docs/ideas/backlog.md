@@ -1535,3 +1535,16 @@
   are status-code probes; the webhook-analyzer card used Playwright once,
   ad hoc, locally; no scheduled/browser-level crawl idea exists anywhere.
   Source: `.sessions/2026-07-13-cold-browser-review.md` 💡.
+
+- **Orientation-budget headroom readout in `bootstrap.py check` — print
+  the boot-set word total + remaining headroom even when green** ·
+  `captured` (2026-07-13, env-leads-close session 💡) — the 7000-word
+  orientation budget is invisible until breached: the env-leads-close
+  session edited `docs/current-state.md` blind, breached at 7065 words,
+  and needed four trim/re-run cycles to land 1 word under the cap. A
+  standing "6999/7000" line in every check run turns trim work from
+  iteration into arithmetic before writing starts. Kit-side
+  (`bootstrap.py` is generated) — also a substrate-kit worthiness relay
+  per the working agreement. Deduped against this backlog + the
+  queue-state NEXT list: no orientation-budget/headroom bullet exists.
+  Source: `.sessions/2026-07-13-env-leads-close.md` 💡.
