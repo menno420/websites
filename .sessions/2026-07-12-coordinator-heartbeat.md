@@ -4,7 +4,7 @@
 > parks READY; the auto-merge enabler lands it on green (control + card only,
 > no code changes).
 
-- **📊 Model:** claude-fable-5 · coordinator heartbeat · control
+- **📊 Model:** Claude Fable 5 · coordinator heartbeat · control
 
 **What this session was about:** the heartbeat file at HEAD (last updated
 15:17:20Z) predated the auto-merge wave that drained ORDERS 017/018/019 and

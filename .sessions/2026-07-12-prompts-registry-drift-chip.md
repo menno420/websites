@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — branch `claude/prompts-registry-drift-chip`, PR #213.
 
-- **📊 Model:** claude-fable-5 · worker · feature-slice
+- **📊 Model:** Claude Fable 5 · worker · feature-slice
 
 **What this session was about:** the /prompts library pins its seat list
 (`app/roster.py` `SEATS`) rather than discovering it, so a seat added or

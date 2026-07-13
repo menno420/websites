@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #133, branch `claude/order-pickup-latency`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 28 — 13:56Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 28 — 13:56Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 13:56Z nudge; ritual found a NEW
 sibling branch (claude/anthropic-review-site) — checked before picking:

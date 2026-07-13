@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #125, branch `claude/fastlane-control-gates`;
 > rescue #124 landed first this wake.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 25 — 12:07Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 25 — 12:07Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 12:07Z nudge, which rituals right
 after the ~12:00Z fire window. THE FIRE RAN and stranded its heartbeat

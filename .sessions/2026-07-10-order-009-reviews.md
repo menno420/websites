@@ -4,7 +4,7 @@
 > squash-merge on `quality` green. (Flipped after the PR existed — a sibling
 > took #74 in the gap, so predicting would have lied again.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 5 — 21:40Z nudge)
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 5 — 21:40Z nudge)
 
 **What this session was about:** the 21:40Z send_later continuation of the
 20:00Z continuous-mode wake. Inbox at HEAD has no order past 009; the

@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #137, branch `claude/nav-scan-glob`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 30 — 15:07Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 30 — 15:07Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 15:07Z nudge; ritual clean (no new
 orders, no collision; sibling PR #132 re-checked: open, green, updated

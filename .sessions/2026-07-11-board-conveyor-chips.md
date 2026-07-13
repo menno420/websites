@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #104 (`claude/board-conveyor-chips`),
 > squash-merge on `quality` green. (Flipped after the PR existed.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 17 — 07:00Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 17 — 07:00Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 07:00Z send_later continuation. Start
 ritual clean (no new orders past 010; heartbeat at HEAD is this chain's own

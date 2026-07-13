@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #105 (`claude/kit-upgrade-v1.10.0`), merged on
 > `quality` green.
 
-- **📊 Model:** claude-fable-5 · distribution worker · kit upgrade (fleet-wide v1.10.0 wave)
+- **📊 Model:** Claude Fable 5 · distribution worker · kit upgrade (fleet-wide v1.10.0 wave)
 
 **What this session was about:** Fleet-wide substrate-kit v1.10.0 distribution
 wave (rung: order — coordinator-directed upgrade, same lane as the v1.8.0 #85

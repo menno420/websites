@@ -4,7 +4,7 @@
 > parks as a READY PR to main (build worker; merge is deliberately not this
 > session's call — auto-merge arms itself).
 
-- **📊 Model:** claude-fable-5 · build worker · order
+- **📊 Model:** Claude Fable 5 · build worker · order
 
 **What this session was about:** Rung: order — ORDER 017 workstream D
 requires "the Pokémon lane stays private", but the public review site's

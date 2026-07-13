@@ -4,7 +4,7 @@
 > (READY + targeting main; merge is the coordinator/owner's call — this
 > worker opens, never merges).
 
-- **📊 Model:** claude-fable-5 · worker (ORDER 017 dispatch, PR 1 of the review-site refresh) · data-refresh + feature-build
+- **📊 Model:** Claude Fable 5 · worker (ORDER 017 dispatch, PR 1 of the review-site refresh) · data-refresh + feature-build
 
 **What this session was about:** ORDER 017 (control/inbox.md, 2026-07-12T13:46Z,
 P1, window through 2026-07-14 — the Anthropic Claude Code team reviews the

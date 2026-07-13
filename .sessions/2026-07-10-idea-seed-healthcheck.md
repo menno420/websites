@@ -2,7 +2,7 @@
 
 > **Status:** `complete`
 
-- **📊 Model:** claude-fable-5 · high · docs-only idea capture (single-push; the
+- **📊 Model:** Claude Fable 5 · high · docs-only idea capture (single-push; the
   grand-review session, owner-directed seeding)
 
 ## Scope

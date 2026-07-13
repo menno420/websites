@@ -4,7 +4,7 @@
 > PR1 (#176), parks READY + green for the owner (build worker; merge is
 > deliberately not this session's call).
 
-- **📊 Model:** claude-fable-5 · build worker · order
+- **📊 Model:** Claude Fable 5 · build worker · order
 
 **What this session was about:** Rung: order — ORDER 018 (tester-recruitment
 site), captured in `control/inbox.md` @ `704221d` on PR #173's branch; PR2 of

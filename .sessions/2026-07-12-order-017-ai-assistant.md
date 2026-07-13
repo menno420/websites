@@ -3,7 +3,7 @@
 > **Status:** `complete` — branch `claude/order-017-ai-assistant`; landed as the
 > ORDER 017 workstream-B PR (number assigned at open; see the PR for this branch).
 
-- **📊 Model:** claude-fable-5 · high · feature-build (order-directed)
+- **📊 Model:** Claude Fable 5 · high · feature-build (order-directed)
 
 **What this session was about:** ORDER 017 (inbox, P1, time-sensitive through
 2026-07-14), workstream B: make "review this with an agent" real on the public

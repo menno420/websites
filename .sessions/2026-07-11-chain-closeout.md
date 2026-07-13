@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #151, branch `claude/chain-closeout`.
 
-- **📊 Model:** claude-fable-5 · worker · chain close-out slice (continuous mode, slice 35 — hold-lift + archive-prep order) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · chain close-out slice (continuous mode, slice 35 — hold-lift + archive-prep order) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the owner-ordered archive-prep close-out
 delivered with the #141 hold-lift relay. The held queue landed in order

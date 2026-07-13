@@ -4,7 +4,7 @@
 > squash-merge on `quality` green. (Flipped after the PR existed; a sibling
 > took #101 in the gap — flip-after-open keeps paying.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 16 — 06:20Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 16 — 06:20Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 06:20Z send_later continuation, timed
 for the healthcheck-cron verdict. **Verdict: the schedule IS ALIVE — and its

@@ -5,7 +5,7 @@
 > path, verified green (pytest 67 passed exit 0; `check --strict` red only on
 > this card's own born-red badge until this flip).
 
-- **📊 Model:** claude-fable-5 (wind-down Phase-3 worker session)
+- **📊 Model:** Claude Fable 5 (wind-down Phase-3 worker session)
 
 **What this session was about:** the gen-1 → gen-2 handover ends with the
 succession pack committed to `main`. Drafts were written and reviewed by the

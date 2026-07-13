@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — upgrade applied, gates green, shipped as PR #101.
 
-- **📊 Model:** claude-fable-5 · coordinator-tasked distribution worker · kit-upgrade
+- **📊 Model:** Claude Fable 5 · coordinator-tasked distribution worker · kit-upgrade
 
 **What this session was about:** take the vendored `bootstrap.py` from kit
 v1.8.0 (PR #85) to the released **v1.9.0** (kit tag `v1.9.0` → `2a779b5`,

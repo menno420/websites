@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #64 (`claude/session-card-template`),
 > squash-merge on `quality` green.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice
 
 **What this session was about:** the 20:00Z wake of the 4-hourly routine.
 Work-ladder rung 2 (queue-state NEXT list): inbox at HEAD has no order past 008

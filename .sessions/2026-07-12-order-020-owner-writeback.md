@@ -4,7 +4,7 @@
 > parks READY + green for the owner (build worker; merge is deliberately
 > not this session's call).
 
-- **📊 Model:** claude-fable-5 · build worker · order
+- **📊 Model:** Claude Fable 5 · build worker · order
 
 **What this session was about:** ORDER 020 (control/inbox.md @ main
 `3bfdf18`): the owner wants to "directly write reviews on the websites…

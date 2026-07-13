@@ -4,7 +4,7 @@
 > coordinator). Work was finished before the PR opened, so the card ships
 > complete in one commit (no in-flight window for a born-red hold to protect).
 
-- **📊 Model:** claude-fable-5 · rescue + root-cause + console-text package
+- **📊 Model:** Claude Fable 5 · rescue + root-cause + console-text package
 
 ## What happened
 

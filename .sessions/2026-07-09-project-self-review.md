@@ -5,7 +5,7 @@
 > wrote the project-review document; `bootstrap.py check --strict` green; all three
 > services verified live at `main` HEAD. READY PR, auto-merge armed.
 
-- **📊 Model:** claude-opus-4-8 · worker · project-self-review
+- **📊 Model:** Claude Opus 4.8 · worker · project-self-review
 
 **What this session is about:** An owner-directed full self-review + wake-up pass.
 Read the inbox first (four orders: 001/002 already done; 003 retro + 004 Model

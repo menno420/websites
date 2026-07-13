@@ -23,7 +23,7 @@ Do not add one.
 > **Status:** `in-progress` — branch `claude/<slug>`; flips to `complete`
 > + PR number as the deliberate LAST code step.
 
-- **📊 Model:** <family only, e.g. claude-fable-5> · <effort or role> · <task-class>
+- **📊 Model:** <family only, e.g. Claude Fable 5> · <effort or role> · <task-class>
 
 **What this session was about:** <the goal; which work-ladder rung fired
 (order / queue-state NEXT / backlog promotion / self-initiated / upkeep)
@@ -54,7 +54,7 @@ session: say so here and why — honest "nothing" beats forced filler.>
 ## Ender checklist (run before flipping `complete`)
 
 - [ ] Status flipped to `complete` + PR number as the LAST code step — never earlier in the session.
-- [ ] `📊 Model:` line filled at FAMILY level only (e.g. `claude-fable-5`, `claude-opus-4-8`) — never a snapshot/full model ID, and model IDs never go in commit messages or PR bodies either. The value is the family-level model name **your own harness/environment reports this session** — the committed card's self-report is the attribution ground truth; never copy it from an external surface (schedule/Routines screens are evidenced to misattribute).
+- [ ] `📊 Model:` line filled at FAMILY level only (e.g. `Claude Fable 5`, `Claude Opus 4.8`) — never a snapshot/full model ID, and model IDs never go in commit messages or PR bodies either. The value is the family-level model name **your own harness/environment reports this session** — the committed card's self-report is the attribution ground truth; never copy it from an external surface (schedule/Routines screens are evidenced to misattribute).
 - [ ] 💡 Session idea carries its one-line "worth having because", is deduped against `docs/ideas/backlog.md`, and is captured there (bullet, or bullet + `docs/ideas/<slug>-<date>.md` file).
 - [ ] ⟲ Previous-session review written (one line, well/missed).
 - [ ] Real verification output summarized under "What was done" (actual test count + check verdict, not "should pass").

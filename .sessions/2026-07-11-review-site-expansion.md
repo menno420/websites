@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — branch `claude/review-site-expansion`, PR #141.
 
-- **📊 Model:** claude-fable-5 · worker (owner expansion directive) · feature-build
+- **📊 Model:** Claude Fable 5 · worker (owner expansion directive) · feature-build
 
 **What this session was about:** Owner expansion directive for the `review/`
 service (landed as PR #132): all fleet repos properly featured, dynamic

@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — branch `claude/arcade-url-drift-probe`, PR #214.
 
-- **📊 Model:** claude-fable-5 · worker · feature-slice
+- **📊 Model:** Claude Fable 5 · worker · feature-slice
 
 **What this session was about:** `botsite/data/arcade.json` presents games
 with `availability: "live"` URLs, but nothing re-verifies those URLs after

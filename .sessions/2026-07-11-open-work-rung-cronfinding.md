@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #90 (`claude/open-work-rung-cronfinding`),
 > squash-merge on `quality` green. (Flipped after the PR existed.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 12 — 02:22Z nudge)
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 12 — 02:22Z nudge)
 
 **What this session was about:** the 02:22Z send_later continuation (timed
 after what the record believed was the healthcheck cron's first slot).

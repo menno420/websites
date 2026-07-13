@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #88 (`claude/json-contracts-and-pr9-retire`),
 > squash-merge on `quality` green. (Flipped after the PR existed.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 11 — 01:40Z nudge)
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 11 — 01:40Z nudge)
 
 **What this session was about:** the 01:40Z send_later continuation.
 Collision check: heartbeat at HEAD is this chain's own 01:24Z stamp, no open

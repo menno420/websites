@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — shipped as PR `claude/activity-atom-feed` (squash-merged on green `quality`).
 
-- **📊 Model:** claude-opus-4-8 (worker session; self-directed continuation, orchestrator-relayed)
+- **📊 Model:** Claude Opus 4.8 (worker session; self-directed continuation, orchestrator-relayed)
 
 **What this session did:** built `/activity.xml`, a subscribable **Atom 1.0**
 feed over the existing cross-repo `/activity` timeline, realizing the captured

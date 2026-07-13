@@ -4,7 +4,7 @@
 > squash-merge on `quality` green. (Flipped after the PR existed — number
 > real, not predicted.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 4)
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 4)
 
 **What this session was about:** slice 4 of the 20:00Z continuous-mode wake —
 work-ladder rung 1: **ORDER 009** (inbox, appended 2026-07-10T20:58:44Z via

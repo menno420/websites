@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #132, branch `claude/anthropic-review-site`.
 
-- **📊 Model:** claude-fable-5 · worker · owner-directed build (full session goal, not a slice)
+- **📊 Model:** Claude Fable 5 · worker · owner-directed build (full session goal, not a slice)
 
 **What this session was about:** owner-directed (rung 1 equivalent — direct
 owner order, not an inbox ORDER): "create a website specifically for anthropic

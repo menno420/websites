@@ -4,7 +4,7 @@
 > (parks READY awaiting the owner's merge click — agent merges are
 > owner-gated on this repo).
 
-- **📊 Model:** claude-fable-5 · worker (order execution) · feature-build
+- **📊 Model:** Claude Fable 5 · worker (order execution) · feature-build
 
 **What this session was about:** ORDER 014 (control/inbox.md @ fd36644,
 2026-07-12T11:27Z, owner-directed via fleet manager): make every fleet paste

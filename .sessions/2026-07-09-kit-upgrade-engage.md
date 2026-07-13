@@ -4,7 +4,7 @@
 > release-artifact kit upgrade this repo has run; engagement gate reads
 > **ENGAGED**; full app suite green (95 passed).
 
-- **📊 Model:** claude-fable-5 · high · mechanical refactor
+- **📊 Model:** Claude Fable 5 · high · mechanical refactor
 
 ## Honest inventory first (the briefed premise was stale)
 

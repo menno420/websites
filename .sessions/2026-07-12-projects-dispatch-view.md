@@ -4,7 +4,7 @@
 > (parks READY + green awaiting the owner's merge click — no auto-merge on
 > this repo).
 
-- **📊 Model:** claude-fable-5 · worker (owner dispatch directive) · feature-build
+- **📊 Model:** Claude Fable 5 · worker (owner dispatch directive) · feature-build
 
 **What this session was about:** Owner single-screen dispatch ask (2026-07-12):
 dispatching all 8 fleet seats today means clicking through to GitHub raw files

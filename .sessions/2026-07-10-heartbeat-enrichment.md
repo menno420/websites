@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #67 (`claude/heartbeat-enrichment`),
 > squash-merge on `quality` green.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 2)
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 2)
 
 **What this session was about:** slice 2 of the 20:00Z continuous-mode wake
 (manager Q-0265). Work-ladder rung 2 again: inbox at HEAD has nothing past

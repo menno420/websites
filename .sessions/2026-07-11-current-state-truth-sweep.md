@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #111, branch `claude/current-state-truth-sweep`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired upkeep slice (continuous mode, slice 20 — 08:57Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired upkeep slice (continuous mode, slice 20 — 08:57Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 08:57Z nudge with the backlog DRY —
 orders re-read (ORDER 010 still newest, done), so rung 5 honest upkeep.

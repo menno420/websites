@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — upgrade applied + doctrine merged; shipped as PR #45 (this branch), PING-ACK as fast-lane PR #44 (merged `a447514`).
 
-- **📊 Model:** claude-fable-5 (coordinator-tasked worker session)
+- **📊 Model:** Claude Fable 5 (coordinator-tasked worker session)
 
 **What this session was about:** take the vendored `bootstrap.py` from kit
 v1.2.0 (D-0019, PR #31) to the released **v1.6.0** through the kit's own §4.3

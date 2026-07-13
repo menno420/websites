@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR branch `claude/order-envhub-hub`; one slice,
 > lands via the auto-merge-enabler on green.
 
-- **📊 Model:** claude-fable-5 · websites worker · order (ORDER 021)
+- **📊 Model:** Claude Fable 5 · websites worker · order (ORDER 021)
 
 **What this session was about:** ORDER 021 slice 1 — the owner-gated
 fleet-wide environments hub: one page listing every environment surface

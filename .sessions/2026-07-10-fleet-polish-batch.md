@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #81 (`claude/fleet-polish-batch`),
 > squash-merge on `quality` green. (Flipped after the PR existed.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 8 — 23:12Z nudge)
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 8 — 23:12Z nudge)
 
 **What this session was about:** the 23:12Z send_later continuation. Inbox at
 HEAD has no order past 009; latest heartbeat is this session's own (no

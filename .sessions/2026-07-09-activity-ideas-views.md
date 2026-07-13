@@ -5,7 +5,7 @@
 > +9 tests; app suite green; docs + ledger ([D-0020]) updated. Self-directed
 > improvement batch.
 
-- **📊 Model:** claude-opus-4-8 · high · feature build
+- **📊 Model:** Claude Opus 4.8 · high · feature build
 
 **What this session was about:** A self-directed improvement batch on the
 control-plane site — add a cross-repo **activity timeline** and an **idea-backlog**

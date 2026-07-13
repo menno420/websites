@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #216, branch `claude/envhub-completeness-diff`;
 > lands via the auto-merge-enabler on green.
 
-- **📊 Model:** claude-fable-5 · websites worker · backlog promotion
+- **📊 Model:** Claude Fable 5 · websites worker · backlog promotion
 
 **What this session was about:** Merge the slice-1 live Railway variable-NAME
 read (`app/railway.py`, project-scoped token, names never values) into the

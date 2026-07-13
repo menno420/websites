@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #120, branch `claude/quality-every-card-gate`.
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 23 — 10:55Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 23 — 10:55Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 10:55Z nudge; ritual clean (no new
 orders, no collision), so rung 3 with the twice-deferred designated pick:

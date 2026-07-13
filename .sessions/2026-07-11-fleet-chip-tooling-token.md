@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #107 (`claude/fleet-chip-tooling-token`),
 > squash-merge on `quality` green. (Flipped after the PR existed.)
 
-- **📊 Model:** claude-fable-5 · worker · routine-fired build slice (continuous mode, slice 18 — 07:39Z nudge) — family from this session's own harness, per ORDER 010.
+- **📊 Model:** Claude Fable 5 · worker · routine-fired build slice (continuous mode, slice 18 — 07:39Z nudge) — family from this session's own harness, per ORDER 010.
 
 **What this session was about:** the 07:39Z send_later continuation. Start
 ritual clean (no orders past 010; heartbeat at HEAD is this chain's 07:13Z —

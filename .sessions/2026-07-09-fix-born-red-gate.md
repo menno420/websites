@@ -4,7 +4,7 @@
 > with the work present (the gate is being fixed here — an `in-progress` card
 > could premature-merge this very PR empty until the fix lands).
 
-- **📊 Model:** claude-opus-4-8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
+- **📊 Model:** Claude Opus 4.8 (pre-v1.2.0 backfill; builder-session subagent, inherited — not independently confirmed)
 
 ## What I did
 
