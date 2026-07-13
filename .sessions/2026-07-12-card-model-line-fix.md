@@ -1,7 +1,7 @@
 # 2026-07-12 — housekeeping: family-level model line on the env-chip card
 
-> **Status:** `in-progress` — branch `claude/card-model-line-fix`; flips to
-> `complete` + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/card-model-line-fix`; PR opened
+> by the post-merge verification worker (small housekeeping fix).
 
 - **📊 Model:** Claude Fable 5 · worker · housekeeping fix
 
@@ -20,8 +20,8 @@ housekeeping, not a work-ladder rung.
   (`2026-07-12-envhub-group-chips.md`, `2026-07-12-arcade-download-probe.md`:
   `Claude Fable 5 · worker · feature-slice`). No other content touched.
 - Verified: `python3 -m pytest tests/ botsite/tests dashboard/tests
-  review/tests -q` — [[fill: run at close]]; `python3 bootstrap.py check
-  --strict` — [[fill: run at close]].
+  review/tests -q` — 891 passed, 1 warning; `python3 bootstrap.py check
+  --strict` — green (this card flipped complete before the final commit).
 
 ⚑ Self-initiated: no — coordinator-assigned post-merge verification pass
 flagged the line; the fix is one token, contained and reversible.
