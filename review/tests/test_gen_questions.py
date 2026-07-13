@@ -174,3 +174,62 @@ def test_write_refreshes_updated_stamp_and_keeps_the_note(tmp_path, monkeypatch)
     assert [r["url"] for r in out["questions"]] == [
         "https://github.com/menno420/websites/issues/301"
     ]
+
+
+# ---------------------------------------------------------------------------
+# closed-but-unanswered advisory — the broken promise nags every run
+# ---------------------------------------------------------------------------
+
+def _closed_record(**over):
+    base = {
+        "asked": "2026-07-12",
+        "title": "[program-review] How does the merge gate work?",
+        "url": "https://github.com/menno420/websites/issues/301",
+        "status": "closed",
+    }
+    base.update(over)
+    return base
+
+
+def test_unanswered_closed_flags_only_closed_records_without_answers():
+    closed_unanswered = _closed_record()
+    closed_answered = _closed_record(answer_url="/reviews/edition-1")
+    still_open = _closed_record(status="open")
+    defaulted_open = {k: v for k, v in _closed_record().items() if k != "status"}
+    records = [closed_unanswered, closed_answered, still_open, defaulted_open]
+    assert gen_questions.unanswered_closed(records) == [closed_unanswered]
+    # the app-side reading agrees — one promise, two surfaces
+    assert story.unanswered_closed(records) == [closed_unanswered]
+
+
+def test_bake_prints_advisory_for_closed_unanswered_records(
+    tmp_path, monkeypatch, capsys
+):
+    doc = _ledger(_closed_record())
+    _, rc = _run_main(tmp_path, monkeypatch, doc, [_issue(state="closed")])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "ADVISORY: closed without a published answer" in out
+    assert "issues/301" in out
+
+
+def test_advisory_fires_even_when_the_fetch_fails(tmp_path, monkeypatch, capsys):
+    p = tmp_path / "questions.json"
+    p.write_text(
+        json.dumps(_ledger(_closed_record()), indent=2) + "\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(gen_questions, "OUT_PATH", p)
+    monkeypatch.setattr(gen_questions, "fetch_issues", lambda: (None, "HTTP 403"))
+    assert gen_questions.main() == 0
+    assert "ADVISORY: closed without a published answer" in capsys.readouterr().out
+
+
+def test_no_advisory_when_every_closed_question_is_answered(
+    tmp_path, monkeypatch, capsys
+):
+    doc = _ledger(
+        _closed_record(answer_url="/reviews/edition-1", answer_label="edition 1")
+    )
+    _, rc = _run_main(tmp_path, monkeypatch, doc, [_issue(state="closed")])
+    assert rc == 0
+    assert "ADVISORY" not in capsys.readouterr().out

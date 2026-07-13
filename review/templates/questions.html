@@ -20,6 +20,13 @@
     {% if not q_ok %}
     <div class="sb-error" role="alert"><strong>Ledger unavailable.</strong> <span class="sb-mono">{{ q_error }}</span></div>
     {% elif ledger.questions %}
+    {% if q_nag %}
+    <div class="rv-aged" role="alert">
+      <strong>{{ q_nag | length }} question{{ "s" if q_nag | length != 1 }} closed without a published answer.</strong>
+      The ledger's promise is that every closed question links its published answer — these still need one:
+      {% for q in q_nag %}{% if q.url %}<a href="{{ q.url }}" target="_blank" rel="noopener">{{ q.title }}</a>{% else %}{{ q.title }}{% endif %}{{ " · " if not loop.last }}{% endfor %}
+    </div>
+    {% endif %}
     {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
     {% set lf = q_filter %}
     {% include "_listfilter.html" %}

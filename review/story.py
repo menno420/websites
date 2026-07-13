@@ -793,6 +793,20 @@ def question_answer_state(q: dict[str, Any]) -> str:
     return "answered" if q.get("answer_url") else "pending"
 
 
+def unanswered_closed(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Ledger records whose issue closed without a published answer link.
+
+    The bake sync flips ``status`` to ``closed`` from the live issue state,
+    but answer links stay hand-written — so a question can close without its
+    promised published answer. These records are that broken promise, read
+    straight off the committed ledger (no network, never fabricated)."""
+    return [
+        q
+        for q in records
+        if question_status(q) == "closed" and question_answer_state(q) == "pending"
+    ]
+
+
 QUESTIONS_FILTER_SPEC = listfilter.ListSpec(
     path="/questions",
     dimensions=(

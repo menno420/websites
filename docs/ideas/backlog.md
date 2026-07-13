@@ -1315,8 +1315,17 @@
   aggregates; nothing folds finished claims' guide activity into the
   step strip. Source: `.sessions/2026-07-13-heatmap-tail.md` 💡.
 
-- **Closed-but-unanswered nag for the questions ledger** · `captured`
-  (2026-07-13, review-questions-bake-sync session 💡) — the bake sync
+- **Closed-but-unanswered nag for the questions ledger** · `built`
+  (2026-07-13, PR #299, branch `claude/questions-answer-nag-0713` —
+  `story.unanswered_closed` over the existing `question_status`/
+  `question_answer_state` filter semantics feeds a warn banner on
+  `/questions` naming the closed-but-unanswered records;
+  `review/gen_questions.py` gained the same pure-read helper plus
+  `advise_unanswered`, printing one `ADVISORY: closed without a published
+  answer: <url>` line per record on EVERY run with a readable ledger —
+  merged, no-change, and fetch-failed paths alike; zero network) —
+  original capture (2026-07-13, review-questions-bake-sync session 💡):
+  the bake sync
   (PR #297) now flips a ledger record's status to `closed` when its
   GitHub issue closes, but the answer link stays hand-written — so a
   `[program-review]` issue closed without a published answer renders as
@@ -1353,3 +1362,22 @@
   claims; the transcript bullet is per-claim evidence, not per-step;
   nothing aggregates finisher chats on tasks without drop-offs.
   Source: `.sessions/2026-07-13-heatmap-survival-contrast.md` 💡.
+
+- **Stamp `closed_at` on questions-ledger records at bake time — turn the
+  closed-but-unanswered nag into an answer-debt age** · `captured`
+  (2026-07-13, questions-answer-nag session 💡) —
+  `gen_questions.issue_record` reads the issue's state but discards its
+  `closed_at` timestamp, so the nag (PR #299) is binary: "closed without a
+  published answer" reads the same whether the question closed an hour ago
+  (answer plausibly in flight) or two weeks ago (promise genuinely
+  broken). Recording `closed_at` on the record when the sync flips a
+  status to closed (one field, same single REST call, hand-written fields
+  untouched) would let the advisory and the /questions banner say "closed
+  N days without an answer" and let the ledger sort by answer debt. Worth
+  having because a nag with an age ranks itself — the oldest broken
+  promise is the one the next session should pay first, and today the
+  advisory can't tell it from this morning's. Deduped against this
+  backlog: the bake-sync and closed-but-unanswered bullets (both built)
+  cover intake and the binary flag; the owner-gated answer-bot bullet
+  generates answers; nothing carries closure timestamps or measures
+  answer lag. Source: `.sessions/2026-07-13-questions-answer-nag.md` 💡.
