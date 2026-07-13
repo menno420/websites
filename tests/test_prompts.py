@@ -375,13 +375,19 @@ def test_drift_added_and_missing_at_once(monkeypatch):
 def test_drift_unknown_when_listing_unavailable_never_false_green(monkeypatch):
     """No listing = drift UNKNOWN — the chip says so honestly; a matched
     green is never fabricated from a failed fetch. A 404 (registry not
-    landed) is also unknown, NOT '8 seats missing'."""
+    landed) is also unknown, NOT '8 seats missing'.
+
+    Token PINNED set: this asserts the token-set rung of the ladder — the
+    bare fetch reason, verbatim. (Unpinned, this test passed on BOTH rungs:
+    the token-unset composed text also contains the substring — #250's 💡.)
+    The token-unset rung for the same failure is pinned distinctly below."""
     _happy(monkeypatch)
     _patch_registry(monkeypatch, ok=False, status=0,
                     error="ConnectError: unreachable")
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
     out = asyncio.run(prompts.registry_drift())
     assert out["state"] == "unknown"
-    assert "ConnectError: unreachable" in out["reason"]
+    assert out["reason"] == "ConnectError: unreachable"
     assert out["added"] == [] and out["missing"] == []
 
     r = TestClient(app).get("/prompts")
@@ -395,6 +401,30 @@ def test_drift_unknown_when_listing_unavailable_never_false_green(monkeypatch):
     out = asyncio.run(prompts.registry_drift())
     assert out["state"] == "unknown" and "not landed" in out["reason"]
     assert out["missing"] == []
+
+
+def test_drift_unavailable_token_unset_rung_never_false_green(monkeypatch):
+    """The token-UNSET rung of the same never-false-green intent: the chip
+    is still unknown (no fabricated green, no invented drift) and the reason
+    is the composed not-configured wording, verbatim — deliberately NOT the
+    bare fetch reason the token-set rung renders."""
+    _happy(monkeypatch)
+    _patch_registry(monkeypatch, ok=False, status=0,
+                    error="ConnectError: unreachable")
+    monkeypatch.setattr(config, "GITHUB_TOKEN", "")
+    out = asyncio.run(prompts.registry_drift())
+    assert out["state"] == "unknown"
+    assert out["reason"] == (
+        "GITHUB_TOKEN is not set on this service and the fleet-manager "
+        "`projects/` listing failed (fetch: ConnectError: unreachable)"
+    )
+    assert out["added"] == [] and out["missing"] == []
+
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert "registry unavailable — drift unknown" in r.text
+    assert "pinned list matches registry" not in r.text  # no false green
+    assert "pinned list drifted" not in r.text  # and no invented drift
 
 
 def test_drift_unknown_reason_names_missing_token(monkeypatch):
