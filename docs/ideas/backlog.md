@@ -854,3 +854,15 @@
   list: the README-example fix above is now `built` and nothing else adds a
   gate/checker for model-line shape. Source:
   `.sessions/2026-07-13-model-line-hygiene.md` 💡.
+
+- **Structural clarity-bar gate** · `captured` (2026-07-13,
+  clarity-control-plane session 💡) — a test that walks every registered
+  page route on the control-plane app and asserts the header idiom (h2 with
+  em-dash purpose + `p.dim.small` lede), so a new page can never ship below
+  the clarity bar. Worth having because it turns the one-off manual 24-page
+  audit (PR #229) into a permanent structural gate — the ledes pinned in
+  `tests/test_clarity_ledes.py` protect existing pages only; a
+  route-walking assert protects pages that don't exist yet. Deduped against
+  this backlog + the queue-state NEXT list: nothing touches the clarity bar
+  or a header-idiom gate. Source:
+  `.sessions/2026-07-13-clarity-control-plane.md` 💡.
