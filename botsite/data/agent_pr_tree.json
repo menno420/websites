@@ -1,0 +1,218 @@
+{
+  "meta": {
+    "title": "Can your agent land its own PR?",
+    "as_of": "2026-07-13",
+    "sources": [
+      "docs/CAPABILITIES.md@2a4c78a",
+      "docs/owner/OWNER-ACTIONS.md@2a4c78a",
+      ".github/workflows/auto-merge-enabler.yml@2a4c78a",
+      ".github/workflows/host-automerge-extras.yml@2a4c78a",
+      ".github/workflows/quality.yml@2a4c78a",
+      ".github/workflows/review-bake.yml@2a4c78a",
+      "https://raw.githubusercontent.com/menno420/fleet-manager/main/docs/findings/enabler-install-verification-2026-07-11.md",
+      "https://raw.githubusercontent.com/menno420/substrate-kit/main/docs/operations/lab-loop.md"
+    ]
+  },
+  "root": "where-running",
+  "nodes": [
+    {
+      "id": "where-running",
+      "question": "Where is your agent running?",
+      "context": "The walls differ by surface: a workflow's ambient token, a platform-gated agent session, and a local CLI with a PAT each fail in their own characteristic ways.",
+      "options": [
+        {"label": "In a GitHub Actions workflow", "next": "actions-create"},
+        {"label": "In an agent session (MCP-gated platform)", "next": "session-error"},
+        {"label": "Local CLI + PAT — opening PRs works; landing them is the problem", "next": "merge"}
+      ]
+    },
+    {
+      "id": "actions-create",
+      "question": "Does `gh pr create` (createPullRequest) die in your workflow?",
+      "options": [
+        {"label": "Yes — a GraphQL error says Actions is \"not permitted\"", "next": "leaf-actions-toggle"},
+        {"label": "I want the job to SURVIVE that wall instead of failing", "next": "leaf-actions-degrade"},
+        {"label": "No — the PR opens fine; merging is the problem", "next": "merge"}
+      ]
+    },
+    {
+      "id": "session-error",
+      "question": "What does the GitHub tooling in your agent session say?",
+      "options": [
+        {"label": "A 403 says access \"is not enabled for this session\"", "next": "leaf-session-403"},
+        {"label": "An org admin must connect the app — or `gh` is missing entirely", "next": "leaf-session-org"},
+        {"label": "No wall here — the PR opens; merging is the problem", "next": "merge"}
+      ]
+    },
+    {
+      "id": "merge",
+      "question": "PR open — can the agent MERGE it?",
+      "context": "Opening a PR is the easy half. Landing it hits a different class of walls: reviewer-safety classifiers, branch protection, and token scope.",
+      "options": [
+        {"label": "It tries to merge its OWN PR — and gets refused", "next": "leaf-self-merge"},
+        {"label": "I want agent PRs to land automatically on green", "next": "automerge"},
+        {"label": "Branch protection / required checks are blocking it", "next": "protection"},
+        {"label": "Token or API calls 403 — or report state that seems wrong", "next": "tokens"}
+      ]
+    },
+    {
+      "id": "automerge",
+      "question": "How should agent PRs land without a human click?",
+      "options": [
+        {"label": "A repo workflow arms GitHub-native auto-merge at PR open", "next": "leaf-enabler"},
+        {"label": "No enabler installed — or the PR is ALREADY green", "next": "leaf-merge-on-green"}
+      ]
+    },
+    {
+      "id": "protection",
+      "question": "Branch protection & required checks — which symptom?",
+      "options": [
+        {"label": "Pushing straight to main is rejected (GH013)", "next": "leaf-gh013"},
+        {"label": "The PR sits at mergeable_state=blocked while a check pends", "next": "leaf-blocked-pending"},
+        {"label": "A required check never reports at all — merge jammed forever", "next": "leaf-never-reports"},
+        {"label": "ZERO required checks are configured and auto-merge is on", "next": "leaf-zero-checks"}
+      ]
+    },
+    {
+      "id": "tokens",
+      "question": "Token & scope walls — which one did you hit?",
+      "options": [
+        {"label": "Branch deletion / tag push / release create returns 403", "next": "leaf-git-proxy-403"},
+        {"label": "Issues my automation opens never trigger the label routines", "next": "leaf-pat-vs-app"},
+        {"label": "The PR state my tooling reads seems stale or wrong", "next": "leaf-stale-reads"}
+      ]
+    },
+    {
+      "id": "leaf-actions-toggle",
+      "verdict": "The repo/org toggle is off — GitHub refuses the workflow's own token at PR-creation time. Your workflow code is fine.",
+      "polarity": "danger",
+      "error": "GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)",
+      "fix": "Settings → Actions → General → Workflow permissions → check \"Allow GitHub Actions to create and approve pull requests\" (owner console only — no workflow content can change it). A PAT stored as an Actions secret bypasses it too. Proof of fix from this fleet: after the toggle flipped, run 29202721928 created PR #194 as github-actions[bot] and it auto-merged.",
+      "sources": [
+        "docs/CAPABILITIES.md@2a4c78a (2026-07-12 wall entry — runs 29167034060 and 29184552812 both died at this exact line)",
+        "docs/owner/OWNER-ACTIONS.md@2a4c78a (Decided row M — run 29202721928 → PR #194, merged_by github-actions[bot])"
+      ]
+    },
+    {
+      "id": "leaf-actions-degrade",
+      "verdict": "Design the workflow to degrade — a refused PR create must not fail the job when the work itself succeeded.",
+      "polarity": "ok",
+      "fix": "Copy the landing ladder: (1) try a direct push to main; (2) on ruleset rejection push a fallback branch — the data is safe on the remote regardless of what follows; (3) if PR creation is refused, exit 0 on purpose and write a run summary carrying the compare link so any session (or the owner) can open the PR by hand.",
+      "sources": [
+        ".github/workflows/review-bake.yml@2a4c78a (landing-ladder header + the exit-0-on-refusal step)"
+      ]
+    },
+    {
+      "id": "leaf-session-403",
+      "verdict": "That 403 is the platform proxy's per-session gate, not GitHub — the session was never granted this repository.",
+      "polarity": "danger",
+      "error": "{\"message\":\"GitHub access to this repository is not enabled for this session. Use add_repo to request access.\"}",
+      "fix": "Request repo access for the session (add_repo). And know the gates are separate: plain `git push` to a branch can still work while the API gate is closed — push the branch and hand PR-open/merge to a session that has the tooling. Never record \"pushed\" without proof (push exit 0 AND git ls-remote showing the commit).",
+      "sources": [
+        "docs/CAPABILITIES.md@2a4c78a (2026-07-10 append-log entries — verbatim 403 + the git-proxy-is-separate finding)"
+      ]
+    },
+    {
+      "id": "leaf-session-org",
+      "verdict": "An org-level install gate — no per-session request fixes it. And agent sandboxes often ship without the gh CLI at all.",
+      "polarity": "danger",
+      "error": "An org admin must connect the Claude GitHub App for this organization.",
+      "fix": "An organization admin has to connect/install the GitHub App — queue it as an owner action rather than retrying. Inside the sandbox, `gh: command not found` is normal: use the platform's API/MCP tooling instead of shelling out to gh.",
+      "sources": [
+        "https://raw.githubusercontent.com/menno420/fleet-manager/main/docs/findings/enabler-install-verification-2026-07-11.md"
+      ]
+    },
+    {
+      "id": "leaf-self-merge",
+      "verdict": "Safety classifiers terminally refuse author-side merges — this is a wall, not a flaky call to retry or re-prompt around.",
+      "polarity": "danger",
+      "error": "[Self-Approval] The sub-agent prompt instructs a REST squash merge of PR #68, which this session's own sub-agent authored — merging one's own PR defeats two-party review (also [Merge Without Review])",
+      "fix": "Land the merge server-side (GitHub-native auto-merge armed by a repo workflow, gated on the required check) or have a non-author do it. Two-party review is the point of the refusal; route around the AUTHOR, not the classifier.",
+      "sources": [
+        "https://raw.githubusercontent.com/menno420/fleet-manager/main/docs/findings/enabler-install-verification-2026-07-11.md"
+      ]
+    },
+    {
+      "id": "leaf-enabler",
+      "verdict": "The enabler pattern works in production: a repo workflow arms GitHub-native squash auto-merge on non-draft agent PRs the moment they open, and the required check does the gating.",
+      "polarity": "ok",
+      "fix": "Copy its two guards. Guard 1: count required status-check CONTEXTS (not rules) and refuse to arm on zero — with no required check, arming merges a PR INSTANTLY. Guard 2: a `do-not-automerge` label carve-out re-read FRESH from the API after a 15s sleep — the event payload snapshots labels at open time, and an MCP-created PR gets its label in a second call right after create (the stale-payload race).",
+      "sources": [
+        ".github/workflows/auto-merge-enabler.yml@2a4c78a (refuse-to-arm guard + fresh label re-read)"
+      ]
+    },
+    {
+      "id": "leaf-merge-on-green",
+      "verdict": "No enabler installed? A plain GITHUB_TOKEN workflow that squash-merges on green still lands PRs — on 2026-07-11 only 3 of 13 fleet repos had the enabler; the rest could only park PRs READY and green.",
+      "polarity": "ok",
+      "fix": "Add a merge-on-green workflow — and give it a direct-squash fallback: GitHub REJECTS arming auto-merge on an already-clean PR (nothing left to wait on), so `gh pr merge --auto --squash` must fall back to a plain `gh pr merge --squash`, which only succeeds if the ruleset's required check is already green — GitHub gates it, not the script.",
+      "sources": [
+        "https://raw.githubusercontent.com/menno420/fleet-manager/main/docs/findings/enabler-install-verification-2026-07-11.md",
+        ".github/workflows/host-automerge-extras.yml@2a4c78a (arm-on-open + sweep jobs, both with the direct-squash fallback)"
+      ]
+    },
+    {
+      "id": "leaf-gh013",
+      "verdict": "A GH013 push-to-main rejection is the ruleset WORKING — PR-only main is by design, not a bug to code around.",
+      "polarity": "ok",
+      "fix": "Land through a PR. Workflows that generate data should expect the rejection and degrade to a fallback branch on it — this fleet's daily bake tries main first, treats the GH013 as expected, then pushes its bake/ branch.",
+      "sources": [
+        "docs/CAPABILITIES.md@2a4c78a (2026-07-12 wall entry — \"ruleset-blocked from pushing main (GH013, expected)\")",
+        ".github/workflows/review-bake.yml@2a4c78a (landing ladder step 1→2)"
+      ]
+    },
+    {
+      "id": "leaf-blocked-pending",
+      "verdict": "A pending required check reads as mergeable_state=blocked — verified live on PR #18 while the required `quality` check pended.",
+      "polarity": "danger",
+      "fix": "Wait for the required check to report; the state flips on green. Don't fight `blocked` with merge retries — it is the ruleset holding the door, and every retry is wasted quota.",
+      "sources": [
+        "docs/owner/OWNER-ACTIONS.md@2a4c78a (Decided row A — owner-configured ruleset, verified live via PR #18)"
+      ]
+    },
+    {
+      "id": "leaf-never-reports",
+      "verdict": "A required context that never reports stays pending FOREVER and jams the merge — the classic paths-ignore trap.",
+      "polarity": "danger",
+      "fix": "Never paths-ignore a required check. Give it a fast lane instead: this repo's required `quality` job detects a control-only diff and short-circuits GREEN in-job, so the required context always reports — deliberately NOT a paths-ignore, because a required context that never reports stays pending forever and jams the merge.",
+      "sources": [
+        ".github/workflows/quality.yml@2a4c78a (control fast lane comment — the fleet-protocol heartbeat-lane lesson, 2026-07-09)"
+      ]
+    },
+    {
+      "id": "leaf-zero-checks",
+      "verdict": "Zero required checks + auto-merge is an instant-merge hazard: arming a PR with nothing to wait on merges it on the spot.",
+      "polarity": "danger",
+      "fix": "Make a real check (this repo: `quality`) REQUIRED on the base branch before any workflow arms auto-merge — and in the arming workflow, count required status-check CONTEXTS and refuse to arm when the count is zero, rather than inverting the gate.",
+      "sources": [
+        ".github/workflows/auto-merge-enabler.yml@2a4c78a (header warning + the refuse-to-arm-on-zero-contexts guard)"
+      ]
+    },
+    {
+      "id": "leaf-git-proxy-403",
+      "verdict": "Some git operations 403 on EVERY path from an agent environment: branch deletion (git push :branch AND the API), and tag push / release create through the git proxy.",
+      "polarity": "danger",
+      "fix": "For releases: `workflow_dispatch` a release workflow with a version input — the tag is created in-Actions, proven repeatedly fleet-wide after direct tag pushes 403'd. For branch deletion: no agent-side path — the owner deletes by hand or enables \"Automatically delete head branches\".",
+      "sources": [
+        "docs/CAPABILITIES.md@2a4c78a (Walls — verified blocked: tag push / release create; branch deletion)"
+      ]
+    },
+    {
+      "id": "leaf-pat-vs-app",
+      "verdict": "Issues authored by an app/integration token do NOT fire label-triggered routines — the automation chain dead-ends silently.",
+      "polarity": "danger",
+      "fix": "Author automation-triggering issues with a PAT (a real user identity), not the app token — label routines only fire for user-authored events.",
+      "sources": [
+        "https://raw.githubusercontent.com/menno420/substrate-kit/main/docs/operations/lab-loop.md"
+      ]
+    },
+    {
+      "id": "leaf-stale-reads",
+      "verdict": "MCP PR-state reads can run ~25 minutes stale — acting on a stale \"open\" or \"merged\" is how agents double-land work or abandon a PR that already merged.",
+      "polarity": "danger",
+      "fix": "Cross-check with a `git fetch` (or a direct API read) before acting on PR state — treat the cached answer as a hint, never as ground truth for an irreversible action.",
+      "sources": [
+        "https://raw.githubusercontent.com/menno420/substrate-kit/main/docs/operations/lab-loop.md"
+      ]
+    }
+  ]
+}

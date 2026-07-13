@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Can your agent land its own PR? — SuperBot{% endblock %}
+{% block description %}An interactive diagnostic tree: why your AI agent can't open or merge its own pull request — built from this fleet's real production walls, every verdict cited.{% endblock %}
+
+{# Recursive tree renderer: question nodes are native <details> with the
+   question as <summary>; each option nests its own <details> whose body is
+   the next node — progressive disclosure with ZERO JavaScript. Leaves are
+   verdict panels: badge + verbatim error + concrete fix + citations. ALL
+   content comes from the loaded committed JSON — no lore lives here. #}
+{% macro render_node(node_id, tree, depth=0) %}
+{% set node = tree.nodes[node_id] %}
+{% if node.question is defined or node.options is defined %}
+<details class="apc-node"{% if depth == 0 %} open{% endif %} style="margin:10px 0;padding:10px 14px;border:1px solid var(--sb-line-2);border-radius:var(--sb-r-md);background:var(--sb-surface-soft)">
+  <summary style="cursor:pointer;font-weight:600">{{ node.question }}</summary>
+  {% if node.context %}<p class="sb-muted" style="margin:8px 0 0;font-size:var(--sb-text-sm)">{{ node.context }}</p>{% endif %}
+  {% for opt in node.options %}
+  <details class="apc-opt" style="margin:8px 0 8px 16px;padding:8px 12px;border-left:2px solid var(--sb-line-2)">
+    <summary style="cursor:pointer">→ {{ opt.label }}</summary>
+    {{ render_node(opt.next, tree, depth + 1) }}
+  </details>
+  {% endfor %}
+</details>
+{% else %}
+<div class="sb-panel apc-leaf" style="margin:10px 0">
+  <span class="sb-badge {{ 'sb-badge-ok' if node.get('polarity', 'danger') == 'ok' else 'sb-badge-danger' }}">{{ 'PROVEN PATTERN' if node.get('polarity', 'danger') == 'ok' else 'VERIFIED WALL' }}</span>
+  <p style="margin:10px 0 0"><strong>{{ node.verdict }}</strong></p>
+  {% if node.error %}<p class="sb-mono apc-error" style="margin:10px 0 0;padding:10px 12px;border:1px solid var(--sb-line-2);border-radius:var(--sb-r-sm);background:var(--sb-surface);overflow-x:auto">{{ node.error }}</p>{% endif %}
+  <p style="margin:10px 0 0"><strong>Fix:</strong> {{ node.fix }}</p>
+  <p class="sb-muted apc-sources" style="margin:10px 0 0;font-size:var(--sb-text-xs)">Cited:
+    {% for s in node.sources %}<span class="sb-mono">{{ s }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    {% if tree.available %}
+    <span class="sb-ey"><span class="dot">·</span> {{ tree.question_count }} questions · {{ tree.leaf_count }} verified walls &amp; patterns · every verdict cited</span>
+    {% endif %}
+    <div class="head-row"><h1>Can your agent land its own PR?</h1></div>
+    <p class="sb-lead">An interactive diagnostic that tells you why your AI agent can't open
+      — or can't merge — its own pull request. Every branch below is drawn from this fleet's
+      real production walls: the verbatim errors agents actually hit, the fix that actually
+      worked, and a citation for every verdict. Open a question, pick the answer that matches
+      your symptom, and follow the tree to the wall you're standing at. No JavaScript, no
+      guesswork, nothing invented.</p>
+  </section>
+
+  {% if tree.available %}
+  <section class="section-sm">
+    <h2>The diagnostic tree</h2>
+    <p class="sb-muted" style="margin:6px 0 0">Click any question or option to expand it.
+      <span class="sb-badge sb-badge-danger">VERIFIED WALL</span> marks a hard stop with its
+      workaround; <span class="sb-badge sb-badge-ok">PROVEN PATTERN</span> marks a landing
+      path proven by production merge events.</p>
+    <div class="section-sm">
+      {{ render_node(tree.root, tree) }}
+    </div>
+  </section>
+
+  <section class="section-sm">
+    <div class="sb-panel">
+      <h2 style="font-size:var(--sb-text-lg)">Want all of this as recipes?</h2>
+      {% if cookbook %}
+      <p style="margin:8px 0 0"><strong>{{ cookbook.title }}</strong> — {{ cookbook.price }} —
+        packages these walls as copy-paste recipes: the enabler workflow, the landing ladder,
+        the guard patterns, the token walls.
+        {% if cookbook.has_link %}
+        <a class="sb-btn sb-btn-primary sb-btn-sm" href="{{ cookbook.link_url }}" target="_blank" rel="noopener">Buy — {{ cookbook.price }}</a>
+        {% else %}
+        It is <strong>coming soon</strong> — its pipeline status is
+        <span class="sb-mono">{{ cookbook.status }}</span> and there is no live store link yet,
+        so this page renders no buy button. Meanwhile, browse the
+        <a href="/products">fleet store</a> for what is really purchasable today.
+        {% endif %}
+      </p>
+      {% if not cookbook.has_link %}
+      <p class="sb-muted" style="margin:8px 0 0;font-size:var(--sb-text-xs)">Status per the committed
+        catalog ({{ cookbook.source }}, as of {{ cookbook.as_of }}): {{ cookbook.status_note }}</p>
+      {% endif %}
+      {% else %}
+      <p style="margin:8px 0 0">The Agent Merge-Wall Cookbook is not in the committed catalog
+        right now — browse the <a href="/products">fleet store</a> instead.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="section-sm">
+    <div class="sb-panel">
+      <p class="sb-muted" style="margin:0;font-size:var(--sb-text-xs)">
+        {{ tree.meta.title }} — curated from verified fleet findings as of {{ tree.meta.as_of }} ·
+        committed JSON (<span class="sb-mono">botsite/data/agent_pr_tree.json</span>), no live fetch ·
+        sources: {% for s in tree.meta.sources %}<span class="sb-mono">{{ s }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+      </p>
+    </div>
+  </section>
+  {% else %}
+  <section class="section-sm">
+    <div class="sb-empty section"><span class="ico">🧭</span><h4>No diagnostic tree data</h4>
+      <p>{{ tree.reason }}. Nothing is faked here — the tree renders only from the committed
+        <code>botsite/data/agent_pr_tree.json</code>, so this page stays honestly empty until
+        a valid tree is committed.</p></div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}
