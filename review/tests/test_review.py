@@ -424,3 +424,25 @@ def test_homepage_accuracy_floor():
     assert "pokemon" not in low and "pokémon" not in low
     assert "peaked ~15" in r.text
     assert "peaked 15" not in r.text
+
+
+# ---------------------------------------------------------------------------
+# Chrome wiring (2026-07-13 cold pass F1): ds.js only DEFINES SBDS.initChrome;
+# without a page script calling it the live site shipped a dead hamburger,
+# a dead theme toggle, and icon-less header buttons.
+# ---------------------------------------------------------------------------
+def test_pages_include_chrome_wiring_script_after_ds():
+    """Every page (base.html) must load site.js AFTER ds.js — site.js is
+    what actually calls SBDS.initChrome() (the botsite/dashboard idiom)."""
+    html = client.get("/").text
+    assert '<script src="/static/ds/ds.js"></script>' in html
+    assert '<script src="/static/site.js"></script>' in html
+    assert html.index("/static/ds/ds.js") < html.index("/static/site.js")
+
+
+def test_site_js_is_served_and_calls_init_chrome():
+    r = client.get("/static/site.js")
+    assert r.status_code == 200
+    assert "SBDS.initChrome()" in r.text
+    # guarded — a page never throws if ds.js failed to load
+    assert "if (!window.SBDS) return;" in r.text

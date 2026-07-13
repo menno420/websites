@@ -290,3 +290,19 @@ def test_questions_empty_ledger_keeps_its_empty_card(tmp_path, monkeypatch):
     r = client.get("/questions")
     assert r.status_code == 200
     assert "No external reviewer questions on record yet." in r.text
+
+
+def test_fleet_zero_count_facets_suppressed_unless_active(fleet_file):
+    """2026-07-13 cold pass F2 (synthetic): the fixed disposition universe
+    includes "hub" but the fixture has no hub lane — the dead pill must not
+    be offered, yet a deep link selecting it stays fully un-filterable."""
+    r = client.get("/fleet")
+    assert ">hub · 0</a>" not in r.text
+    assert ">live · 1</a>" in r.text  # nonzero options still offered
+    r = client.get("/fleet?disposition=hub")
+    assert r.status_code == 200
+    # the selected zero-count pill renders 'on', toggling back to a bare /fleet
+    assert '<a class="b lf-pill on" href="/fleet">hub · 0</a>' in r.text
+    assert "disposition: hub ✕" in r.text  # removable chip
+    assert "0 of 3" in r.text
+    assert "no items match the active filters" in r.text
