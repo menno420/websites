@@ -1,0 +1,1 @@
+- `claude/bake-check-wall` · **bake required-check wall docs + PAT ask** — document the ruleset-vs-dispatched-quality wall (PR #270 evidence) in CAPABILITIES + OWNER-ACTIONS, correct review-bake.yml header · docs/CAPABILITIES.md, docs/owner/OWNER-ACTIONS.md, .github/workflows/review-bake.yml · 2026-07-13
