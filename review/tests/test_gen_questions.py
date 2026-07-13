@@ -4,6 +4,7 @@ fail-soft tests assert the committed-file contract BYTE-identically."""
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import re
 
@@ -82,6 +83,22 @@ def test_closed_issue_state_maps_to_closed_status():
     assert rec["status"] == "closed"
 
 
+def test_closed_issue_record_stamps_closed_at_from_the_same_response():
+    rec = gen_questions.issue_record(
+        _issue(state="closed", closed_at="2026-07-10T12:00:00Z")
+    )
+    assert rec["status"] == "closed"
+    assert rec["closed_at"] == "2026-07-10T12:00:00Z"
+
+
+def test_open_issue_record_carries_no_closed_at():
+    assert "closed_at" not in gen_questions.issue_record(_issue())
+    assert "closed_at" not in gen_questions.issue_record(_issue(closed_at=None))
+    # a closed issue whose payload lacks the stamp stays honest too —
+    # no field beats an empty string the debt clock would choke on
+    assert "closed_at" not in gen_questions.issue_record(_issue(state="closed"))
+
+
 # ---------------------------------------------------------------------------
 # merge — hand-written fields survive, overrides pin status
 # ---------------------------------------------------------------------------
@@ -113,6 +130,40 @@ def test_merge_keeps_a_hand_set_status_override():
     }]
     merged = gen_questions.merge_questions(existing, [_issue(state="closed")])
     assert merged[0]["status"] == "answered"  # the hand's pin wins
+
+
+def test_merge_stamps_closed_at_and_drops_it_on_reopen():
+    existing = [{
+        "asked": "2026-07-12",
+        "title": "[program-review] How does the merge gate work?",
+        "url": "https://github.com/menno420/websites/issues/301",
+        "status": "open",
+        "answer_url": "https://example.test/reviews/edition-3#q1",
+    }]
+    closed = _issue(state="closed", closed_at="2026-07-10T12:00:00Z")
+    merged = gen_questions.merge_questions(existing, [closed])
+    assert merged[0]["status"] == "closed"
+    assert merged[0]["closed_at"] == "2026-07-10T12:00:00Z"
+    # hand-written fields still untouched alongside the bake-owned pair
+    assert merged[0]["answer_url"] == "https://example.test/reviews/edition-3#q1"
+    # the issue reopening drops the stamp with the status flip
+    reopened = gen_questions.merge_questions(merged, [_issue()])
+    assert reopened[0]["status"] == "open"
+    assert "closed_at" not in reopened[0]
+
+
+def test_merge_status_override_pins_the_closed_at_stamp_too():
+    existing = [{
+        "asked": "2026-07-12",
+        "title": "[program-review] How does the merge gate work?",
+        "url": "https://github.com/menno420/websites/issues/301",
+        "status": "answered",
+        "status_override": True,
+    }]
+    closed = _issue(state="closed", closed_at="2026-07-10T12:00:00Z")
+    merged = gen_questions.merge_questions(existing, [closed])
+    assert merged[0]["status"] == "answered"
+    assert "closed_at" not in merged[0]  # the pin covers the whole pair
 
 
 def test_merge_appends_new_questions_oldest_first_and_dedupes_by_url():
@@ -233,3 +284,56 @@ def test_no_advisory_when_every_closed_question_is_answered(
     _, rc = _run_main(tmp_path, monkeypatch, doc, [_issue(state="closed")])
     assert rc == 0
     assert "ADVISORY" not in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# answer-debt age — closed_at turns the binary nag into "closed N days"
+# ---------------------------------------------------------------------------
+
+_NOW = dt.datetime(2026, 7, 13, 12, 0, tzinfo=dt.timezone.utc)
+
+
+def test_answer_debt_days_counts_whole_utc_days():
+    rec = _closed_record(closed_at="2026-07-10T12:00:00Z")
+    assert gen_questions.answer_debt_days(rec, _NOW) == 3
+    # the app-side clock agrees — one debt, two surfaces
+    assert story.answer_debt_days(rec, _NOW) == 3
+    assert gen_questions.answer_debt_days(
+        _closed_record(closed_at="2026-07-12T13:00:00Z"), _NOW
+    ) == 0  # closed under a day ago
+
+
+def test_answer_debt_days_degrades_on_missing_or_bad_stamps():
+    assert gen_questions.answer_debt_days(_closed_record(), _NOW) is None
+    assert gen_questions.answer_debt_days(
+        _closed_record(closed_at="not-a-date"), _NOW
+    ) is None
+    assert gen_questions.answer_debt_days(_closed_record(closed_at=""), _NOW) is None
+    assert gen_questions.answer_debt_days(_closed_record(closed_at=None), _NOW) is None
+    # a future stamp (clock skew) clamps to 0 — never a negative debt
+    assert gen_questions.answer_debt_days(
+        _closed_record(closed_at="2026-07-14T00:00:00Z"), _NOW
+    ) == 0
+    # a naive timestamp is read as UTC rather than rejected
+    assert gen_questions.answer_debt_days(
+        _closed_record(closed_at="2026-07-10T12:00:00"), _NOW
+    ) == 3
+
+
+def test_bake_advisory_ages_the_debt_when_closed_at_is_known(
+    tmp_path, monkeypatch, capsys
+):
+    doc = _ledger(_closed_record())
+    _, rc = _run_main(
+        tmp_path,
+        monkeypatch,
+        doc,
+        [_issue(state="closed", closed_at="2026-07-01T00:00:00Z")],
+    )
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert re.search(
+        r"ADVISORY: closed \d+ days? without an answer: .*issues/301", out
+    )
+    # the aged line replaces the binary wording, never doubles it
+    assert "closed without a published answer" not in out

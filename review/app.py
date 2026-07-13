@@ -353,7 +353,7 @@ async def questions(request: Request):
             "q_ok": q["ok"],
             "q_error": q["error"],
             "ledger": q["data"],
-            "q_nag": story.unanswered_closed(records),
+            "q_nag": story.answer_debt(records),
             "q_filter": listfilter.apply(
                 story.QUESTIONS_FILTER_SPEC, records, state
             ),

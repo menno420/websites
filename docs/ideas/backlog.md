@@ -1364,8 +1364,15 @@
   Source: `.sessions/2026-07-13-heatmap-survival-contrast.md` 💡.
 
 - **Stamp `closed_at` on questions-ledger records at bake time — turn the
-  closed-but-unanswered nag into an answer-debt age** · `captured`
-  (2026-07-13, questions-answer-nag session 💡) —
+  closed-but-unanswered nag into an answer-debt age** · `built`
+  (2026-07-13, PR #301 — `gen_questions` stamps the issue's own
+  `closed_at` on closed records (same REST response; dropped on reopen,
+  `status_override` pins the pair); the advisory and the /questions
+  banner say "closed N days without an answer" via a mirrored
+  `answer_debt_days` (UTC, `None` on missing/bad stamps → binary-wording
+  fallback for old baked data) and the banner ranks offenders
+  oldest-`closed_at`-first; captured 2026-07-13,
+  questions-answer-nag session 💡) —
   `gen_questions.issue_record` reads the issue's state but discards its
   `closed_at` timestamp, so the nag (PR #299) is binary: "closed without a
   published answer" reads the same whether the question closed an hour ago
@@ -1381,3 +1388,21 @@
   cover intake and the binary flag; the owner-gated answer-bot bullet
   generates answers; nothing carries closure timestamps or measures
   answer lag. Source: `.sessions/2026-07-13-questions-answer-nag.md` 💡.
+
+- **Answer-latency stat on /questions — measure the promise kept, not
+  just broken** · `captured` (2026-07-13, answer-debt-age session 💡) —
+  the bake (PR #301) stamps `closed_at` on EVERY closed ledger record,
+  answered ones included, so `closed_at − asked` is a real per-question
+  resolution time; a small honest stat over the answered records
+  ("answered questions resolved in a median of N days", hidden until ≥1
+  answered record exists) on /questions would measure the intake promise
+  being KEPT — the positive complement to the answer-debt nag, which only
+  measures it breaking. Worth having because the ledger's whole pitch to
+  reviewers is "ask and it lands answered here": a measured turnaround
+  number is stronger evidence than an empty nag banner, and it costs zero
+  new fields — both timestamps are already baked. Deduped against this
+  backlog: the bake-sync, closed-but-unanswered, and answer-debt-age
+  bullets (all `built`) cover intake and failure signals; the
+  pickup-latency rollup measures order pickup, not question resolution;
+  nothing computes asked→closed turnaround.
+  Source: `.sessions/2026-07-13-answer-debt-age.md` 💡.
