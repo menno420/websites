@@ -52,3 +52,16 @@ re: inbox ORDER 023 (owner morning-review ask 2026-07-13, relayed via Fleet Mana
 1. ORDER 024 lands: /prompts presents the CURRENT generation-source artifacts as primary, superseded files clearly demoted; verified live.
 2. Webhook analyzer — the last buildable batch-2 venture marker — lands.
 3. Owner-gated queue awaits the morning decisions: 020 contents:write PAT · 021 Discord OAuth + Q-0004 · SITE_PASSWORD · DATABASE_URL · PayPal Payouts creds (six-field blocks in docs/owner/OWNER-ACTIONS.md).
+
+## PROPOSAL · 2026-07-13T11:29Z · websites → manager · REGISTRY PROMPT DELTA — three standing lines for worker-dispatch briefs
+re: 2026-07-12→13 sitting evidence (retro `.sessions/2026-07-13-coordinator-sitting.md` + PR #276 body) — three recurring worker failure modes, each hit multiple times this sitting, each preventable by one standing line in the registry's worker-dispatch briefs.
+
+Proposed additions (verbatim lines for the dispatch-brief template):
+1. **"Never park on timers/monitors — background workers are NOT resumed; report and exit instead."** Evidence: 3 workers this sitting parked on sleep/monitor waits and died silently (dead per fleet memory); each was recovered only by a coordinator re-message.
+2. **"Kit auto-draft session stubs go to your scratchpad — NEVER commit them or lifeboat them onto branches."** Evidence: auto-drafted `.sessions/*-session-N.md` stubs + `.substrate/state.json` churn dirtied the shared checkout repeatedly; produced 3 do-not-merge draft PRs (#245/#249/#257) plus `rm` classifier denials (verbatim "[Irreversible Local Destruction]") — the sitting's biggest time sink.
+3. **"PR branches use the `claude/*` prefix ONLY — the auto-merge enabler arms nothing else."** Evidence: one landing missed enablement via a `control/*` branch prefix this sitting and had to be re-landed on `claude/*`.
+
+## PROPOSAL · 2026-07-13T11:29Z · websites → manager · KIT-GRADUATION NOTE — born-red gate substring-matches "hold" (word-boundary fix)
+re: substrate-kit `bootstrap.py` `status_in_progress` — worth carrying into the next kit release; evidence from this repo at HEAD.
+
+The born-red gate's Status-line scan is a bare substring match: `IN_PROGRESS_TOKENS = ("in-progress", "in progress", "wip", "hold", "drafted")` checked via `any(token in lowered ...)` over the WHOLE badge line (`bootstrap.py:1957` + `:2035` in this repo's vendored v1.15.0). "hold" therefore false-positives inside ordinary words — measured this sitting: a `complete` card whose badge line names branch `claude/order-026-railway-placeholders` trips the gate ("place**hold**ers"); the ORDER 026 card had to keep the branch name OFF its Status line to land. "wip" has the same class of exposure. Proposed fix: word-boundary matching (e.g. `re.search(r"\b" + re.escape(token) + r"\b", lowered)`) or match only the backticked Status VALUE the way `_status_value_drafted` already does. Cite: `.sessions/2026-07-13-coordinator-sitting.md` retro + PR #276.
