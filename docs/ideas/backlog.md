@@ -1602,3 +1602,19 @@
   docstring; no import/restore bullet exists anywhere; the
   submissions-Postgres OWNER-ACTIONS ask is infrastructure, not this
   repo-side bridge. Source: `.sessions/2026-07-13-step-provenance.md` 💡.
+
+- **Wire `scripts/review_row_check.py` into `quality.yml` as the advisory
+  owed-row step** · `captured` (2026-07-13, build-direct session 💡) — the
+  script shipped 2026-07-11 (slice 14) but no workflow calls it: idea A's
+  named CI-wiring slice stayed open, and it unblocks now that the
+  fastlane-outbox-gate PR (#314) has landed and the workflow is free
+  again. One advisory (never exit-affecting) full-lane step that runs the
+  range check and prints ROW OWED keeps the review-queue ledger honest
+  without waiting on a manager sweep. Worth having because a shipped
+  checker nobody invokes is drift waiting to happen — the same hollow-gate
+  class the fast-lane pin-map bullet warns about. Deduped against this
+  backlog + the queue-state NEXT list: the review-queue row auto-check
+  bullet records the script as shipped and defers row-APPENDING to the
+  manager; no bullet covers invoking the CHECK from CI, and `quality.yml`
+  contains zero references to the script. Source:
+  `.sessions/2026-07-13-build-direct.md` 💡.
