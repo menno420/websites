@@ -256,3 +256,15 @@ END ORDER TEXT
 Context (coordinator note, not owner text): /prompts leads with docs/prompts/v3/universal-startup.md, whose own header says SUPERSEDED as the generation source (v3.3 rebuild made per-project/<seat>-startup.md the authored current files). The owner wants /prompts to present the CURRENT canonical artifacts as primary.
 why: the /prompts console currently leads with a superseded artifact; the owner needs the current generation-source files front and center.
 done-when: /prompts presents current generation-source artifacts as primary; superseded/historical files clearly demoted; verified live.
+
+## ORDER 025 · 2026-07-13T10:35Z · status: new
+priority: P1
+executor: Websites coordinator
+provenance: owner live in the coordinator session 2026-07-13 ~10:35Z, landed verbatim by the coordinator
+do: CONTROL-PLANE IMPROVEMENTS + ENV CREDENTIALS GUIDANCE — the owner's ask VERBATIM between the markers:
+BEGIN ORDER TEXT
+is there anything else you could do to improve the control plane website? and could you also explain again how I get the right password for the env vars etc
+END ORDER TEXT
+Context (coordinator note, not owner text): (1) open invitation for control-plane improvements — coordinator proposed a composed owner morning-briefing page and dispatched it decide-and-flag; (2) credentials question answered live in chat (values are owner-chosen/owner-retrieved, set in Railway variables; paste-ready steps in docs/owner/OWNER-ACTIONS.md; /owner/environments-hub shows missing-live per group).
+why: open owner invitation to keep improving the control-plane website, plus a repeat credentials question that needs durable, findable guidance.
+done-when: improvement slice(s) landed + credentials guidance delivered (chat + ledger current).
