@@ -1053,3 +1053,17 @@
   repo's own file@sha citations against local HEAD, and nothing covers
   agent_pr_tree.json. Source:
   `.sessions/2026-07-13-agent-pr-diagnostic.md` 💡.
+
+- **Embed the manager outbox tally in /owner/briefing — one URL for the
+  owner read AND the manager roll-up** · `captured` (2026-07-13,
+  coordinator-sitting ender 💡) — give `/owner/briefing` (PR #273) a
+  "reports to the manager" section rendering the newest `control/outbox.md`
+  REPORT entry over the same committed-file read path the fleet pages
+  already use (`app/briefing.py` sections today: shipped / orders / asks /
+  fleet-attention / watches — no outbox section). Worth having because the
+  owner's morning read and the manager's roll-up currently live at two
+  URLs; one briefing URL carrying both means an ORDER 023-style "post your
+  night report" ask is satisfied by a page the owner already opens.
+  Deduped against this backlog (no briefing/outbox bullet) and against
+  `app/briefing.py` at HEAD. Source:
+  `.sessions/2026-07-13-coordinator-sitting.md` 💡.
