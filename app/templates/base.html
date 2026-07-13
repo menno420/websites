@@ -159,6 +159,11 @@ details.pagehelp > summary::before { content:"ⓘ "; }
 .copywrap .copy-btn:hover { border-color:var(--blue); color:var(--blue); }
 .copywrap pre { background:var(--bg); border:1px solid var(--border); border-radius:6px;
      padding:.7rem; overflow-x:auto; font-size:13px; margin-top:.3rem; }
+/* supersession warnings (/prompts + dispatch + history): red unmissable
+   banner on artifacts whose OWN header says superseded/do-not-paste, and a
+   red border on the demoted (still copyable) paste body. */
+.banner.superseded { color:var(--red); border-color:var(--red); }
+pre.superseded, .copywrap pre.superseded { border:1px solid var(--red); }
 
 /* --- mobile polish: tablet/phone (owner browses at ~375px) --- */
 @media (max-width: 640px) {
