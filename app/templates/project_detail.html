@@ -52,6 +52,44 @@
   {% endif %}
 </div>
 
+{# ORDER 041 remainder: prompt-versions strip — the seat's registry version
+   ladder (prompt_history.history, the /prompts/history data path) + its
+   deployed-vs-canonical state (prompts.seat_drift, the /prompts drift-row
+   model). Views over ONE source: the fleet-manager registry; nothing is
+   stored here. Honest degradation: no ladder → "history not available"
+   with the reason, per-row drift states degrade exactly as on /prompts. #}
+{% if pv %}
+<div class="card" id="prompt-versions">
+  <h2>prompt versions <span class="dim small">— seat <code>{{ pv.seat }}</code>
+    · <a href="{{ pv.history_link }}">full history →</a></span></h2>
+  <p class="dim small">The registry versions of what you paste below ({{ pv.file_label }} shown) —
+    derived live from fleet-manager git history, the same single source as
+    <a href="/prompts">/prompts</a>; a stale paste is caught here, before dispatch.</p>
+  {% if pv.available %}
+  <p class="small">
+    {% if pv.current %}<span class="b ok">current {{ pv.current }}</span>
+    {% else %}<span class="b unknown">current unstamped</span>{% endif %}
+    <span class="dim">· ladder:</span>
+    {% for l in pv.labels %}<code>{{ l }}</code>{{ " · " if not loop.last }}{% endfor %}
+    {% if pv.more %}<span class="dim">· +{{ pv.more }} older on the
+      <a href="{{ pv.history_link }}">history page</a></span>{% endif %}
+  </p>
+  {% else %}
+  <p class="small"><span class="b unknown">history not available</span>
+    <span class="dim">— {{ pv.reason }} · nothing shown rather than a fabricated ladder
+      · <a href="{{ pv.history_link }}">history page</a></span></p>
+  {% endif %}
+  <p class="small">deployed vs canonical:
+    {% for r in pv.rows %}
+    <span class="b {{ r.cls }}" title="{{ r.reason }}">{{ r.label }}: {{ r.state }}</span>
+    {% endfor %}
+    {% if pv.version_line %}<span class="dim">· {{ pv.version_line }}</span>{% endif %}
+    {% if pv.stale %}<span class="b warn">{{ pv.stale }} of {{ pv.rows|length }} stale/drifted</span>{% endif %}
+    <span class="dim">· full table on <a href="/prompts#deployed-drift">/prompts</a></span>
+  </p>
+</div>
+{% endif %}
+
 {% if d.state == 'ok' and pkg and not pkg.error %}
 <div class="card">
   <h2>dispatch checklist</h2>

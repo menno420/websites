@@ -435,9 +435,11 @@ def _build_deployed(
     artifacts: list[dict[str, Any]],
     metas: dict[str, dict[str, Any]],
     snap_res: dict[str, Any],
+    seats: tuple[str, ...] = SEATS,
 ) -> dict[str, Any]:
     """Assemble the per-artifact drift rows from already-fetched results
-    (pure)."""
+    (pure). ``seats`` defaults to the full roster; :func:`seat_drift` passes
+    a single seat to reuse the exact same row model for one seat's strip."""
     by_key = {(a["seat"], a["label"]): a for a in artifacts}
 
     # Snapshot: parsed once, looked up per seat. 404 = never committed
@@ -467,7 +469,7 @@ def _build_deployed(
         snap_unreachable = True
 
     seats_out: list[dict[str, Any]] = []
-    for seat in SEATS:
+    for seat in seats:
         rows: list[dict[str, Any]] = []
 
         # meta.md once per seat — 404 = no ledger (not recorded);
@@ -640,6 +642,122 @@ async def deployed_drift(
     fetches.append(github.fetch_file(REPO, SNAPSHOT_PATH, refresh=refresh))
     *meta_res, snap_res = await asyncio.gather(*fetches)
     return _build_deployed(artifacts, dict(zip(SEATS, meta_res)), snap_res)
+
+
+# --------------------------------------------------------------------------- #
+# ORDER 041 remainder — the drift rows reduced for the other surfaces
+# (the dispatch screen's strip + the owner console's per-seat rows).
+# Views over the ONE source the /prompts table already renders: same
+# canonical registry copies, same two committed deployment records, same
+# row model (:func:`_build_deployed`) — no second fetch path, no copies.
+# --------------------------------------------------------------------------- #
+
+# Attention order for a seat's worst state: byte-proven drift first, then
+# provably stale prose, then the couldn't-check states, "in sync" last.
+_SEVERITY: tuple[str, ...] = (
+    "drift", "stale", "unreachable", "unverified", "not recorded", "in sync",
+)
+
+
+def _worst_state(rows: list[dict[str, Any]]) -> str:
+    return next(
+        (s for s in _SEVERITY if any(r["state"] == s for r in rows)),
+        "not recorded",
+    )
+
+
+async def seat_drift(seat: str, refresh: bool = False) -> Optional[dict[str, Any]]:
+    """ONE seat's deployed-vs-canonical rows — the exact row model the
+    /prompts drift table renders (:func:`_build_deployed`), fetched for a
+    single seat: its 3 registry artifacts + its meta.md + the trigger
+    snapshot, all over the same TTL-cached client (URLs identical to the
+    /prompts fetches → shared cache entries; zero new fetch semantics).
+
+    ``None`` for a non-roster seat. Never raises; every upstream failure
+    degrades inside its row (unreachable / not recorded), equality is never
+    invented.
+    """
+    if seat not in SEATS:
+        return None
+    *artifacts, meta_res, snap_res = await asyncio.gather(
+        *[
+            prompt_artifacts.fetch_artifact(
+                f"projects/{seat}/{filename}", label, seat=seat, refresh=refresh
+            )
+            for filename, label in SEAT_FILES
+        ],
+        github.fetch_file(REPO, f"projects/{seat}/meta.md", refresh=refresh),
+        github.fetch_file(REPO, SNAPSHOT_PATH, refresh=refresh),
+    )
+    built = _build_deployed(
+        list(artifacts), {seat: meta_res}, snap_res, seats=(seat,)
+    )
+    rows = built["seats"][0]["rows"]
+    return {
+        "seat": seat,
+        "rows": rows,
+        "snapshot": built["snapshot"],
+        "worst": _worst_state(rows),
+        "worst_cls": STATE_CLASS[_worst_state(rows)],
+        "stale": sum(1 for r in rows if r["state"] in ("stale", "drift")),
+    }
+
+
+async def console_rollup(refresh: bool = False) -> dict[str, Any]:
+    """The owner console's per-seat prompt-state rows (ORDER 041 remainder):
+    every roster seat reduced to one row — deployed vs canonical (the
+    Custom-Instructions version line), stale count across the seat's 3
+    artifacts, worst state, and the /prompts/history deep link.
+
+    Pure reduction over :func:`deployed_drift` — the same canonical
+    registry copies and committed deployment records the /prompts table
+    renders (identical URLs → shared TTL cache), no new fetch path, no
+    prompt copy stored. Never raises; failures degrade per row exactly as
+    they do on /prompts.
+    """
+    spec = [s for s in _artifact_spec() if s["seat"] is not None]
+    artifacts = list(
+        await asyncio.gather(
+            *[
+                prompt_artifacts.fetch_artifact(
+                    s["path"], s["label"], seat=s["seat"], refresh=refresh
+                )
+                for s in spec
+            ]
+        )
+    )
+    built = await deployed_drift(artifacts, refresh=refresh)
+    rows: list[dict[str, Any]] = []
+    for s in built["seats"]:
+        seat_rows = s["rows"]
+        ci = next(
+            (r for r in seat_rows if r["label"] == "Custom Instructions"), None
+        )
+        worst = _worst_state(seat_rows)
+        rows.append(
+            {
+                "seat": s["name"],
+                "version_line": ci["version_line"] if ci else "",
+                "note": (ci["reason"] if ci else "") or "no deployed record",
+                "stale": sum(
+                    1 for r in seat_rows if r["state"] in ("stale", "drift")
+                ),
+                "total": len(seat_rows),
+                "state": worst,
+                "cls": STATE_CLASS[worst],
+                "states": [
+                    {"label": r["label"], "state": r["state"], "cls": r["cls"]}
+                    for r in seat_rows
+                ],
+                "history_url": f"/prompts/history/{s['name']}",
+            }
+        )
+    return {
+        "rows": rows,
+        "snapshot": built["snapshot"],
+        "counts": built["counts"],
+        "stale_total": sum(r["stale"] for r in rows),
+    }
 
 
 async def overview(refresh: bool = False) -> dict[str, Any]:

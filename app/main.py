@@ -511,8 +511,19 @@ async def project_detail(request: Request, package: str):
     data = await projects.detail(package, refresh=_refresh(request))
     if data["state"] == "not-found":
         return HTMLResponse("unknown package", status_code=404)
+    # ORDER 041 remainder: the prompt-versions strip — the seat's version
+    # ladder + deployed-vs-canonical state as a VIEW over the same modules
+    # /prompts/history and /prompts render (prompt_history.history +
+    # prompts.seat_drift; no second fetch path, no stored copies). Only for
+    # packages that map to a roster seat, and only when the page itself is
+    # healthy; ladder/drift failures degrade inside the strip, never a 500.
+    pv = None
+    if data["state"] == "ok" and data["package"] and not data["package"]["error"]:
+        pv = await prompt_history.strip(package, refresh=_refresh(request))
     return templates.TemplateResponse(
-        request, "project_detail.html", {"d": data, "active": "projects"}
+        request,
+        "project_detail.html",
+        {"d": data, "pv": pv, "active": "projects"},
     )
 
 
