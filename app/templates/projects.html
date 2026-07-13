@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}projects{% endblock %}
-{% block headright %}<a href="/projects?refresh=1">refresh now</a>{% endblock %}
+{% block headright %}<a href="/projects.json">json</a> · <a href="/projects?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
 {% set seats = p.packages | rejectattr('stub') | list %}
 {% set stubs = p.packages | selectattr('stub') | list %}

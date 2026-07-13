@@ -5,6 +5,8 @@
 <div class="card">
   <h2>{{ repo }} <span class="dim">/ {{ path }}</span>
       <span class="refresh small"><a href="/journal/{{ repo }}">← back to {{ repo }} journal</a></span></h2>
+  <p class="dim small">committed file, rendered read-only from GitHub ({{ ref }}) —
+    the file on GitHub is the source of truth.</p>
   {% if res.ok %}
   <div class="md">{{ body_html | safe }}</div>
   {% else %}

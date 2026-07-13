@@ -4,6 +4,8 @@
 {% block content %}
 <div class="card">
   <h2>review queue — the fleet's post-merge second-eyes ledger</h2>
+  <p class="dim small">PRs that merged without waiting for review, queued here for
+    post-merge second eyes — read-only from fleet-manager's ledger; a veto means revert.</p>
 
   {% if r.state == 'empty' %}
   <div class="banner">◌ <strong>ledger not landed yet</strong> — {{ r.reason }}
