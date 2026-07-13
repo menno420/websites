@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Should I build it? — the fleet's vetting rubric — SuperBot{% endblock %}
+{% block description %}Score your product idea on venture-eval-001 — the distribution-first, weighted 0–5 rubric this fleet's venture lane really vets every candidate with. Verdict computed in your browser.{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ rubric.axes|length }} axes · weighted 0–5 · scored in your browser</span>
+    <div class="head-row"><h1>Should I build it?</h1></div>
+    <p class="sb-lead">Score your product idea on the fleet's real vetting rubric — not a toy quiz.
+      This is <strong>venture-eval-001</strong> (venture-lab
+      <span class="sb-mono">docs/research/venture-eval-001.md</span>), the distribution-first,
+      weighted 0–5 rubric the venture lane scores every candidate intake with before anything gets
+      built; the anchors and verdict bands below are the ones it ships in its own Kill-Rule Intake
+      Kit. Slide each axis, and the weighted verdict computes right here in your browser — nothing
+      is sent anywhere.</p>
+    {% if rubric.framing %}
+    <p class="sb-muted" style="margin:8px 0 0"><em>{{ rubric.framing }}</em></p>
+    {% endif %}
+  </section>
+
+  {% if rubric.axes %}
+  <section class="section-sm">
+    <form id="rubric-form" method="get" action="/should-i-build-it">
+      {% for axis in rubric.axes %}
+      <article class="sb-card" style="margin:0 0 14px;padding:16px" id="axis-{{ axis.id }}">
+        <h3 style="margin:0 0 4px;font-size:var(--sb-text-lg)">{{ loop.index }}. {{ axis.name }}
+          <span class="sb-muted" style="font-weight:normal">— weight {{ (axis.weight * 100)|round|int }}%</span></h3>
+        <p style="margin:0 0 4px"><strong>The question:</strong> {{ axis.question }}</p>
+        <p style="margin:0 0 6px"><strong>What it measures:</strong> {{ axis.measures }}</p>
+        <p class="sb-muted" style="margin:0 0 8px">{{ axis.plain }}{% if axis.kit_name %}
+          <em>(The kit edition names this axis “{{ axis.kit_name }}”.)</em>{% endif %}</p>
+        <p style="margin:0 0 4px;font-size:var(--sb-text-sm)"><strong>What a score means:</strong></p>
+        <ul style="margin:0 0 10px;font-size:var(--sb-text-sm)">
+          {% for anchor in axis.anchors %}
+          <li><strong>{{ anchor.score }}</strong> — {{ anchor.text }}</li>
+          {% endfor %}
+        </ul>
+        <label for="score-{{ axis.id }}" style="display:block;margin:0 0 4px">
+          Your score: <output id="out-{{ axis.id }}" for="score-{{ axis.id }}" class="sb-mono">3</output> / {{ rubric.scale.max|int }}
+        </label>
+        <input type="range" id="score-{{ axis.id }}" name="{{ axis.id }}"
+               data-axis="{{ axis.id }}"
+               min="{{ rubric.scale.min }}" max="{{ rubric.scale.max }}"
+               step="{{ rubric.scale.step }}" value="3"
+               style="width:100%;max-width:420px">
+      </article>
+      {% endfor %}
+    </form>
+
+    <article class="sb-card" style="margin:0 0 14px;padding:16px" id="verdict-card">
+      <h2 style="margin:0 0 6px">Your weighted total</h2>
+      <p id="rubric-arithmetic" class="sb-mono" style="margin:0 0 8px;font-size:var(--sb-text-sm);overflow-x:auto"></p>
+      <p style="margin:0 0 6px;font-size:var(--sb-text-lg)"><strong>Total:</strong>
+        <span id="rubric-total" class="sb-mono">—</span> / {{ rubric.scale.max|int }}</p>
+      <p style="margin:0 0 6px"><strong>Verdict:</strong> <span id="rubric-verdict">move a slider to score</span></p>
+      <p id="rubric-weakest" class="sb-muted" style="margin:0 0 6px"></p>
+      {% if rubric.reading_note %}
+      <p class="sb-muted" style="margin:0"><strong>Read it the way the lane does:</strong>
+        {{ rubric.reading_note }} The total is comparative, not absolute.</p>
+      {% endif %}
+      <noscript><p class="sb-muted" style="margin:8px 0 0">Scoring runs in your browser and needs
+        JavaScript. Without it, the rubric above is still the real thing — score by hand with the
+        arithmetic shown below.</p></noscript>
+    </article>
+
+    {% if rubric.bands %}
+    <article class="sb-card" style="margin:0 0 14px;padding:16px">
+      <h2 style="margin:0 0 6px">How the lane reads a total</h2>
+      <ul style="margin:0">
+        {% for band in rubric.bands %}
+        <li><strong>{{ band.range }}</strong> — {{ band.label }}{% if band.caveat %},
+          {{ band.caveat }}{% endif %}.</li>
+        {% endfor %}
+      </ul>
+    </article>
+    {% endif %}
+
+    {% if rubric.worked_example %}
+    <article class="sb-card" style="margin:0 0 14px;padding:16px">
+      <h2 style="margin:0 0 6px">Worked arithmetic (the kit's own example)</h2>
+      <pre class="sb-mono" style="margin:0;padding:12px;overflow-x:auto;font-size:var(--sb-text-xs);border:1px solid var(--sb-border, #333);border-radius:8px"><code>{{ rubric.worked_example.arithmetic }}</code></pre>
+    </article>
+    {% endif %}
+
+    {% if rubric.anti_gaming %}
+    <article class="sb-card" style="margin:0 0 14px;padding:16px">
+      <h2 style="margin:0 0 6px">Anti-gaming rules</h2>
+      <p class="sb-muted" style="margin:0 0 6px">The rubric ships with its own discipline — the
+        rules that keep a score honest:</p>
+      <ol style="margin:0">
+        {% for rule in rubric.anti_gaming %}
+        <li>{{ rule }}</li>
+        {% endfor %}
+      </ol>
+    </article>
+    {% endif %}
+
+    {% if rubric.provenance %}
+    <p class="sb-muted" style="margin:0;font-size:var(--sb-text-xs)">Rubric reproduced
+      verbatim-faithfully from {{ rubric.provenance.repo }}
+      ({% for p in rubric.provenance.paths %}{{ p }}{% if not loop.last %}, {% endif %}{% endfor %})
+      @ {{ rubric.provenance.commit[:7] }} (full sha {{ rubric.provenance.commit }}),
+      retrieved {{ rubric.provenance.retrieved }}. Weights, anchors, and verdict bands unchanged.</p>
+    {% endif %}
+  </section>
+  {% else %}
+  <div class="sb-empty section-sm"><span class="ico">{{ icon("layers", 20) }}</span><h4>Rubric unavailable right now</h4>
+    <p>The committed rubric data is missing or unreadable, so nothing renders. Nothing is faked
+      here — see the <a href="/products/catalog">vetting catalog</a> for what the rubric has
+      really been applied to.</p></div>
+  {% endif %}
+
+  <section class="section-sm">
+    <p class="sb-muted">This rubric in action: the <a href="/products/catalog">vetting catalog</a>
+      lists every venture-lab packet scored with it — live, publish-ready, hard-gated, and parked
+      titles alike — and the <a href="/products">fleet store</a> carries what actually shipped.
+      The <a href="/graveyard">strategy graveyard</a> shows the same kill-don't-polish discipline
+      applied to trading experiments.</p>
+  </section>
+</div>
+
+<script type="application/json" id="rubric-config">{{ scorer_config | safe }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/rubric_scorer.js"></script>
+{% endblock %}

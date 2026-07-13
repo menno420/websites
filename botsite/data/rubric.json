@@ -1,0 +1,105 @@
+{
+  "provenance": {
+    "repo": "menno420/venture-lab",
+    "commit": "0679327a463c063dcd9fc62b33ffb9a3789fa7d3",
+    "paths": [
+      "docs/research/venture-eval-001.md",
+      "candidates/kill-rule-intake-kit/pack/SCORING-RUBRIC.md"
+    ],
+    "retrieved": "2026-07-13"
+  },
+  "framing": "Every candidate scored distribution-first: the first-ten-customers path is the heaviest-weighted axis, and any candidate that cannot name a credible one scores down automatically (mission rule). Scores are a weighted 0–5 blend.",
+  "scale": {"min": 0, "max": 5, "step": 0.5},
+  "axes": [
+    {
+      "id": "distribution",
+      "name": "Distribution",
+      "weight": 0.35,
+      "measures": "Credibility + timeliness of the first-ten-customers path. Human-sales-gated paths (agents can't own the channel) score down.",
+      "question": "Is there a named, reachable surface where buyers with this pain already look — and can YOU reach it?",
+      "plain": "Where will the first ten customers actually come from? Most side projects die here, which is why this axis alone is worth more than a third of the total.",
+      "anchors": [
+        {"score": 5, "text": "an owned or proven channel with demonstrated pull (an audience, a ranking page, a marketplace category you already convert in)."},
+        {"score": 3, "text": "a real, named channel exists but is crowded, low-intent, or gated by someone else's approval (communities with self-promo rules, directories)."},
+        {"score": 1, "text": "“I'll post it and people will find it.”"},
+        {"score": 0, "text": "no named channel at all."}
+      ]
+    },
+    {
+      "id": "buildability",
+      "name": "Agent-buildability",
+      "kit_name": "Buildability",
+      "weight": 0.20,
+      "measures": "Share of the work agents can do with zero owner involvement.",
+      "question": "Can you ship a real v0.1 with the skills/tools you have, without new accounts, hires, or unknowns?",
+      "plain": "How much of the build can be done with what you already have — no new skills, accounts, or paid services standing between you and version 0.1.",
+      "anchors": [
+        {"score": 5, "text": "fully buildable from what you already have; no new accounts or paid services needed for v0.1."},
+        {"score": 3, "text": "buildable with one or two learnable unknowns or minor dependencies."},
+        {"score": 1, "text": "depends on a skill, dataset, or access you do not have today."}
+      ]
+    },
+    {
+      "id": "owner_click_cost",
+      "name": "Owner-click cost",
+      "kit_name": "Launch-effort cost",
+      "weight": 0.15,
+      "measures": "Fewer, one-time clicks beat recurring owner labor (ongoing sales/outreach is a recurring cost).",
+      "question": "How many manual, gated, or high-friction steps stand between “built” and “purchasable”?",
+      "plain": "The launch friction: one-time publish clicks are cheap; recurring human work (sales calls, outreach, support) is a cost you pay forever.",
+      "anchors": [
+        {"score": 5, "text": "one publish click on an existing storefront."},
+        {"score": 3, "text": "several manual steps (listings, submissions, payout setup)."},
+        {"score": 1, "text": "approvals, reviews, compliance, or partner sign-off before day one."}
+      ]
+    },
+    {
+      "id": "speed",
+      "name": "Speed to first dollar",
+      "weight": 0.15,
+      "measures": "Calendar time to a plausible first payment.",
+      "question": "How soon after starting could the FIRST dollar arrive (not scale — the first dollar)?",
+      "plain": "Not how big it could get — how soon the very first payment could plausibly land.",
+      "anchors": [
+        {"score": 5, "text": "sellable the week it's built."},
+        {"score": 3, "text": "sellable after a build measured in weeks, or dependent on an upstream artifact shipping first."},
+        {"score": 1, "text": "revenue only after traction on a free layer (funnel-first plays)."}
+      ]
+    },
+    {
+      "id": "wtp_moat",
+      "name": "WTP / moat",
+      "weight": 0.15,
+      "measures": "Willingness-to-pay durability vs free/commodity substitutes.",
+      "question": "Will this audience actually PAY, and is there anything a free substitute can't copy in an afternoon?",
+      "plain": "Will anyone pay, and will they keep paying once a free alternative shows up? Advice, templates, and calculators with abundant free substitutes score low.",
+      "anchors": [
+        {"score": 5, "text": "buyers already pay for worse versions of this; switching or DIY is genuinely painful."},
+        {"score": 3, "text": "narrow but real pain; few alternatives for those who have it."},
+        {"score": 1, "text": "advice, templates, or calculators with abundant free substitutes."}
+      ]
+    }
+  ],
+  "bands": [
+    {"id": "do-not-build", "range": "below ~3.0", "max": 3.0,
+     "label": "do not build without a named exception in writing"},
+    {"id": "borderline", "range": "3.0–3.5", "max": 3.5,
+     "label": "borderline — only with a tight budget"},
+    {"id": "best-available", "range": "above 3.5", "max": null,
+     "label": "best available candidate",
+     "caveat": "which is still not a promise anyone will buy it"}
+  ],
+  "reading_note": "There is no magic pass mark. The total ranks candidates against each other; the kill-rule fields (deadline, path, budget) decide when a built one dies.",
+  "anti_gaming": [
+    "Score distribution first, before you're attached to the total.",
+    "Rationale is mandatory per axis — a score without a sentence is a feeling, not a score.",
+    "The two lowest scores are the honest ones. Copy them into “Why this might fail” in plain words.",
+    "Show the arithmetic in the total row so a reviewer can recompute it.",
+    "Never tune weights to save a candidate (Kill Rule 4)."
+  ],
+  "worked_example": {
+    "scores": {"distribution": 3, "buildability": 5, "owner_click_cost": 4, "speed": 3, "wtp_moat": 3},
+    "arithmetic": "0.35·3 + 0.20·5 + 0.15·4 + 0.15·3 + 0.15·3 = 1.05 + 1.00 + 0.60 + 0.45 + 0.45 = 3.55",
+    "total": 3.55
+  }
+}
