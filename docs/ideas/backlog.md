@@ -1390,7 +1390,14 @@
   answer lag. Source: `.sessions/2026-07-13-questions-answer-nag.md` 💡.
 
 - **Answer-latency stat on /questions — measure the promise kept, not
-  just broken** · `captured` (2026-07-13, answer-debt-age session 💡) —
+  just broken** · `built`
+  (2026-07-13, PR #302 — `story.answer_latency` medians the whole-day
+  asked→closed turnaround over the answered records
+  (`answer_latency_days`: `None` on a missing/unparseable timestamp →
+  record ignored, clamped at 0; int when whole, exact half-day float on
+  even counts) and /questions renders the one-line stat only when ≥1
+  record qualifies, so the committed pre-stamp ledger renders
+  byte-identically; captured 2026-07-13, answer-debt-age session 💡) —
   the bake (PR #301) stamps `closed_at` on EVERY closed ledger record,
   answered ones included, so `closed_at − asked` is a real per-question
   resolution time; a small honest stat over the answered records
@@ -1406,3 +1413,22 @@
   pickup-latency rollup measures order pickup, not question resolution;
   nothing computes asked→closed turnaround.
   Source: `.sessions/2026-07-13-answer-debt-age.md` 💡.
+
+- **Bake a full `asked_at` timestamp on questions-ledger records — give
+  the latency stat sub-day resolution** · `captured` (2026-07-13,
+  questions-answer-latency session 💡) — `gen_questions.issue_record`
+  truncates the issue's `created_at` to a date (`created[:10]`) while
+  `closed_at` keeps its full timestamp, so `answer_latency_days` (PR
+  #302) can never resolve finer than whole days and a same-day answer
+  reads "0 days" — the stat's weakest wording exactly when the
+  turnaround is most impressive. Baking `asked_at` alongside the display
+  date (same single REST response, `asked` untouched for the table and
+  existing sorts) would let the stat say "resolved in a median of 6
+  hours" once real turnarounds are fast, honest at the resolution the
+  data actually has. Worth having because the ledger's pitch is
+  turnaround speed, and the current floor understates precisely the best
+  evidence. Deduped against this backlog: the bake-sync,
+  closed-but-unanswered, answer-debt-age, and answer-latency bullets all
+  read or write only the date-precision `asked` plus `closed_at`;
+  nothing carries a full asked timestamp.
+  Source: `.sessions/2026-07-13-questions-answer-latency.md` 💡.
