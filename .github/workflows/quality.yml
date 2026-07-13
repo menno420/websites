@@ -9,6 +9,16 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Dispatch-chained required check for bake PRs (review-bake.yml): a PR
+  # created with the Actions GITHUB_TOKEN triggers no pull_request run of
+  # its own (GitHub's recursion guard), but workflow_dispatch events created
+  # WITH that token are the documented exception — review-bake dispatches
+  # this workflow on its bake branch, and the resulting `quality` check run
+  # lands on the branch head SHA (= the PR head SHA), which is how required
+  # status checks match (by check-run name on the SHA, not by event). The
+  # diff-range steps below derive their range from the merge base with
+  # origin/main when no event range exists.
+  workflow_dispatch:
 
 jobs:
   quality:
@@ -33,6 +43,10 @@ jobs:
         run: |
           if [ -n "${{ github.base_ref }}" ]; then
             range="origin/${{ github.base_ref }}...HEAD"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # No event diff range exists on a dispatch — grade the branch's
+            # own diff vs its merge base with main (the bake-PR chain).
+            range="$(git merge-base origin/main HEAD)..HEAD"
           else
             range="${{ github.event.before }}..${{ github.sha }}"
           fi
@@ -73,6 +87,9 @@ jobs:
           if [ -n "${{ github.base_ref }}" ]; then
             base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)"
             range="origin/${{ github.base_ref }}...HEAD"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            base="$(git merge-base origin/main HEAD)"
+            range="$base..HEAD"
           else
             base="${{ github.event.before }}"
             range="${{ github.event.before }}..${{ github.sha }}"
@@ -141,6 +158,8 @@ jobs:
         run: |
           if [ -n "${{ github.base_ref }}" ]; then
             range="origin/${{ github.base_ref }}...HEAD"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            range="$(git merge-base origin/main HEAD)..HEAD"
           else
             range="${{ github.event.before }}..${{ github.sha }}"
           fi
