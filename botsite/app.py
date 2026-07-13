@@ -41,6 +41,7 @@ from . import products as products_registry
 from . import puddle_museum as puddle_museum_registry
 from . import rubric as rubric_registry
 from . import stripe_gotchas as stripe_gotchas_registry
+from . import webhook_analyzer as webhook_analyzer_registry
 from . import listfilter
 from . import testing
 
@@ -60,6 +61,7 @@ NAV = [
     ("agent-pr-check", "PR Check", "/agent-pr-check"),
     ("stripe-gotchas", "Stripe Gotchas", "/stripe-gotchas"),
     ("should-i-build-it", "Rubric Scorer", "/should-i-build-it"),
+    ("webhook-analyzer", "Webhook Analyzer", "/webhook-analyzer"),
 ]
 
 
@@ -415,6 +417,38 @@ async def should_i_build_it(request: Request):
         }
     )
     return templates.TemplateResponse(request, "should_i_build_it.html", ctx)
+
+
+@app.get("/webhook-analyzer", response_class=HTMLResponse)
+async def webhook_analyzer(request: Request):
+    """Webhook payload analyzer — a CLIENT-SIDE-ONLY tool page (ORDER 022
+    item 4 SCAN AND INITIATE; marker: the LAST venture WEBSITE-IDEA batch-2
+    marker "webhook-payload analyzer", venture-lab ``control/outbox.md``
+    2026-07-13 morning tally @ 0679327). Paste a webhook JSON payload into
+    the textarea and vanilla in-browser JS (``static/webhook_analyzer.js``)
+    parses and classifies it: provider detection from body shape (Stripe /
+    GitHub / Discord, evidence shown, never claimed with certainty), a
+    depth-capped field walk with honest type inference, and per-provider
+    signature-verification guidance — every guidance line cited to its
+    source (SWTK material via ``botsite/data/stripe_gotchas.json`` @
+    venture-lab 0679327 for Stripe; official docs fetched 2026-07-13 for
+    GitHub; Discord's signature specifics honestly downgraded to a docs
+    pointer). GET-only; pasted payloads never reach the server — no form
+    POST, no network calls from the analyzer JS, zero server state. The
+    knowledge base is the committed ``botsite/data/webhook_analyzer.json``
+    read from disk at request time (``botsite/webhook_analyzer.py``); a
+    missing/corrupt file degrades to the honest unavailable state."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    ctx = _base_ctx(request, "webhook-analyzer", res)
+    analyzer = webhook_analyzer_registry.load_analyzer()
+    ctx.update(
+        {
+            "analyzer": analyzer,
+            "analyzer_config": (webhook_analyzer_registry.analyzer_config(analyzer)
+                                if analyzer else None),
+        }
+    )
+    return templates.TemplateResponse(request, "webhook_analyzer.html", ctx)
 
 
 @app.get("/changelog", response_class=HTMLResponse)

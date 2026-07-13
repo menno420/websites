@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Webhook Payload Analyzer — runs entirely in your browser — SuperBot{% endblock %}
+{% block description %}Paste a webhook JSON payload and get provider detection, field classification, and signature-verification guidance — analyzed entirely in your browser. GET-only page, zero network calls: your payload never leaves the tab.{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> paste a payload · analyzed in your browser · nothing uploaded</span>
+    <div class="head-row"><h1>Webhook Payload Analyzer</h1></div>
+    <p class="sb-lead">Paste a webhook JSON payload below and this page tells you what it looks
+      like: which provider likely sent it (Stripe, GitHub, or a Discord interaction — with the
+      evidence shown), what every field is (timestamps decoded, ids named, unknowns honestly
+      unknown), and how that provider's signature verification works. <strong>All analysis runs
+      in your browser: this page is GET-only, and the analyzer script makes no network calls —
+      your payload never leaves the tab.</strong></p>
+  </section>
+
+  {% if analyzer %}
+  <section class="section-sm">
+    <article class="sb-card" style="margin:0 0 14px;padding:16px">
+      <label for="wa-input" style="display:block;margin:0 0 6px"><strong>Your webhook payload
+        (JSON)</strong></label>
+      <p class="sb-muted" style="margin:0 0 8px;font-size:var(--sb-text-sm)" id="wa-privacy-note">
+        Privacy: nothing you paste here is sent anywhere. There is no form submit, no POST route,
+        and <span class="sb-mono">webhook_analyzer.js</span> contains no fetch/XHR/beacon/socket
+        call — analysis is local to this tab. Real payloads can hold customer emails and ids;
+        they stay yours.</p>
+      <textarea id="wa-input" rows="12" spellcheck="false" aria-describedby="wa-privacy-note"
+                style="width:100%;font-family:var(--sb-font-mono, monospace);font-size:var(--sb-text-sm)"
+                placeholder='{"id": "evt_...", "object": "event", "type": "checkout.session.completed", ...}'></textarea>
+      <div style="margin:10px 0 0;display:flex;gap:10px;flex-wrap:wrap">
+        <button type="button" class="sb-btn sb-btn-primary" id="wa-analyze">Analyze</button>
+        <button type="button" class="sb-btn" id="wa-sample">Load sample payload</button>
+      </div>
+      <p class="sb-muted" style="margin:8px 0 0;font-size:var(--sb-text-xs)">The sample is a
+        clearly-labeled SYNTHETIC Stripe <span class="sb-mono">checkout.session.completed</span>
+        skeleton (ids like <span class="sb-mono">evt_TESTsample…</span>) — not a real event.</p>
+      <noscript><p class="sb-muted" style="margin:8px 0 0">The analyzer runs in your browser and
+        needs JavaScript. Nothing renders without it — and nothing is sent anywhere either
+        way.</p></noscript>
+    </article>
+
+    <div id="wa-results" aria-live="polite"></div>
+
+    <article class="sb-card" style="margin:0 0 14px;padding:16px">
+      <h2 style="margin:0 0 6px">What the classifications mean</h2>
+      <p class="sb-muted" style="margin:0 0 6px">The field walk only labels what is genuinely
+        inferable from shape — the same heuristics the script runs, single-sourced from the
+        committed knowledge base:</p>
+      <ul style="margin:0;font-size:var(--sb-text-sm)">
+        {% for h in analyzer.generic.heuristics %}
+        <li>{{ h.label }}</li>
+        {% endfor %}
+      </ul>
+      {% if analyzer.generic.limits %}
+      <p class="sb-muted" style="margin:6px 0 0;font-size:var(--sb-text-sm)">{{ analyzer.generic.limits }}</p>
+      {% endif %}
+      {% if analyzer.generic.header_reminder %}
+      <p style="margin:8px 0 0;font-size:var(--sb-text-sm)"><strong>Remember:</strong>
+        {{ analyzer.generic.header_reminder }}</p>
+      {% endif %}
+    </article>
+
+    {% if analyzer.provenance %}
+    <article class="sb-card" style="margin:0 0 14px;padding:16px">
+      <h2 style="margin:0 0 6px">Where the guidance comes from</h2>
+      {% if analyzer.provenance.note %}
+      <p class="sb-muted" style="margin:0 0 8px;font-size:var(--sb-text-sm)">{{ analyzer.provenance.note }}</p>
+      {% endif %}
+      <ul style="margin:0;font-size:var(--sb-text-sm)">
+        {% for s in analyzer.provenance.sources %}
+        <li><strong>{{ s.label }}</strong>{% if not s.verified %} <em>(not verified from source
+          this session)</em>{% endif %}{% if s.detail %} — {{ s.detail }}{% endif %}{% if s.url %}
+          · <a href="{{ s.url }}" target="_blank" rel="noopener" class="sb-mono">{{ s.url }}</a>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </article>
+    {% endif %}
+  </section>
+  {% else %}
+  <div class="sb-empty section-sm"><span class="ico">{{ icon("layers", 20) }}</span><h4>Analyzer unavailable right now</h4>
+    <p>The committed analyzer knowledge base is missing or unreadable, so the tool does not
+      render. Nothing is faked here — see the <a href="/stripe-gotchas">Stripe webhook
+      gotchas</a> for the material its Stripe guidance comes from.</p></div>
+  {% endif %}
+
+  <section class="section-sm">
+    <p class="sb-muted">Go deeper: the <a href="/stripe-gotchas">Stripe webhook gotchas</a> page
+      carries the SWTK material this analyzer's Stripe guidance comes from — six real
+      checkout-webhook gotchas, symptom → fix. And the <a href="/products">fleet store</a> has
+      the Stripe Webhook Test Kit ($29), which fires correctly-signed and forged events at your
+      real handler — the verification this page, by design, cannot do from a pasted body.</p>
+  </section>
+</div>
+
+{% if analyzer %}
+<script type="application/json" id="webhook-analyzer-config">{{ analyzer_config | safe }}</script>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/webhook_analyzer.js"></script>
+{% endblock %}

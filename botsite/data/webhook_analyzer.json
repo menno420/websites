@@ -1,0 +1,144 @@
+{
+  "provenance": {
+    "note": "Every signature-guidance line on the page carries one of these source ids. Stripe facts are the SWTK material already committed in this repo; GitHub facts were verified against the official docs on the fetch date; Discord's interaction-object body fields were verified against the official docs, but the signature-verification specifics were NOT on the fetched page, so that guidance is honestly downgraded to a bare pointer at the official docs.",
+    "sources": [
+      {
+        "id": "swtk",
+        "label": "SWTK material via botsite/data/stripe_gotchas.json @ venture-lab 0679327",
+        "url": null,
+        "detail": "menno420/venture-lab @ 0679327a463c063dcd9fc62b33ffb9a3789fa7d3, curated into this repo as botsite/data/stripe_gotchas.json (retrieved 2026-07-13)",
+        "verified": true,
+        "fetched": "2026-07-13"
+      },
+      {
+        "id": "github-validating",
+        "label": "GitHub Docs — Validating webhook deliveries (fetched 2026-07-13)",
+        "url": "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "detail": "Verified from source this session: X-Hub-Signature-256 header, HMAC-SHA256 hex digest of the payload keyed by the webhook secret, sha256= prefix, constant-time comparison.",
+        "verified": true,
+        "fetched": "2026-07-13"
+      },
+      {
+        "id": "github-payloads",
+        "label": "GitHub Docs — Webhook events and payloads (fetched 2026-07-13)",
+        "url": "https://docs.github.com/en/webhooks/webhook-events-and-payloads",
+        "detail": "Verified from source this session: common body properties action, sender, repository (plus organization / installation when applicable).",
+        "verified": true,
+        "fetched": "2026-07-13"
+      },
+      {
+        "id": "discord-interactions",
+        "label": "Discord Docs — Receiving and responding (fetched 2026-07-13; body fields only)",
+        "url": "https://docs.discord.com/developers/interactions/receiving-and-responding",
+        "detail": "Verified from source this session: the interaction object carries id, application_id, type, token (and data). The signature-verification specifics were NOT on the fetched page, so Discord signature guidance is downgraded to a pointer at the official docs — nothing invented.",
+        "verified": true,
+        "fetched": "2026-07-13"
+      },
+      {
+        "id": "discord-signature-unverified",
+        "label": "Discord signature scheme — not verified from source this session; see the official docs",
+        "url": "https://discord.com/developers/docs/interactions/receiving-and-responding",
+        "detail": "The page fetched this session documented the interaction object but not the request-signing scheme. Rather than repeat signature specifics from memory, this analyzer only points at the official docs for them.",
+        "verified": false,
+        "fetched": "2026-07-13"
+      }
+    ]
+  },
+  "providers": [
+    {
+      "id": "stripe",
+      "name": "Stripe",
+      "markers": [
+        {"id": "object-event", "label": "top-level object == \"event\""},
+        {"id": "type-string", "label": "top-level type is a string (e.g. checkout.session.completed)"},
+        {"id": "data-object", "label": "has data.object"},
+        {"id": "evt-id", "label": "id carries the evt_ prefix"},
+        {"id": "livemode", "label": "has a boolean livemode flag"}
+      ],
+      "strong_markers": ["object-event", "type-string", "data-object"],
+      "id_prefixes": {
+        "evt_": "Stripe event id",
+        "cus_": "Stripe customer id",
+        "ch_": "Stripe charge id",
+        "pi_": "Stripe payment-intent id",
+        "sub_": "Stripe subscription id",
+        "cs_": "Stripe checkout-session id",
+        "in_": "Stripe invoice id",
+        "prod_": "Stripe product id",
+        "price_": "Stripe price id"
+      },
+      "signature": {
+        "header": "Stripe-Signature",
+        "lines": [
+          {"text": "The Stripe-Signature value is HMAC-SHA256 over \"{t}.\" + raw_body, keyed by your whsec_ secret — recompute it and constant-time compare against each v1=, rejecting on mismatch.", "source": "swtk"},
+          {"text": "Enforce the 300-second timestamp tolerance on t= — without it, a captured request can be replayed indefinitely.", "source": "swtk"},
+          {"text": "Verify over the RAW request bytes: re-serialising the JSON (different key order or whitespace) changes the bytes and breaks the signature.", "source": "swtk"},
+          {"text": "Return 2xx fast and process idempotently — Stripe retries on any non-2xx, so dedupe on event.id and do heavy work out-of-band.", "source": "swtk"}
+        ]
+      },
+      "field_notes": [
+        {
+          "id": "customer-email-null",
+          "text": "This payload has data.object.customer_email = null — that is NORMAL for checkout.session.completed. The buyer's address is at customer_details.email; reading only customer_email silently drops the sale.",
+          "source": "swtk"
+        },
+        {
+          "id": "success-url-placeholder",
+          "text": "Stripe's success_url expands only {CHECKOUT_SESSION_ID} — any other placeholder is passed through literally.",
+          "source": "swtk"
+        }
+      ]
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "markers": [
+        {"id": "action-repo-sender", "label": "action + repository + sender (the common event-payload shape)"},
+        {"id": "push-shape", "label": "ref + commits + repository (the push-event shape)"},
+        {"id": "ping-shape", "label": "zen + hook_id (the ping-event shape)"}
+      ],
+      "strong_markers": [],
+      "id_prefixes": {},
+      "signature": {
+        "header": "X-Hub-Signature-256",
+        "lines": [
+          {"text": "GitHub sends the signature in the X-Hub-Signature-256 header: an HMAC-SHA256 hex digest of the payload, keyed by your webhook secret, always prefixed sha256=.", "source": "github-validating"},
+          {"text": "Compare with a constant-time method — GitHub's docs say never use a plain == comparison, to mitigate timing attacks.", "source": "github-validating"}
+        ]
+      },
+      "field_notes": []
+    },
+    {
+      "id": "discord",
+      "name": "Discord (interaction)",
+      "markers": [
+        {"id": "type-numeric", "label": "numeric type"},
+        {"id": "application-id", "label": "has application_id"},
+        {"id": "token", "label": "has token"},
+        {"id": "id", "label": "has id"}
+      ],
+      "strong_markers": ["type-numeric", "application-id", "token", "id"],
+      "id_prefixes": {},
+      "signature": {
+        "header": null,
+        "lines": [
+          {"text": "Discord signs interaction requests, but the signature-verification specifics were not verified from source this session — see the official docs: https://discord.com/developers/docs/interactions/receiving-and-responding", "source": "discord-signature-unverified"}
+        ]
+      },
+      "field_notes": []
+    }
+  ],
+  "generic": {
+    "header_reminder": "Signature headers ride the HTTP request, not the JSON body — a pasted payload alone can never be signature-verified. This tool reads shapes; verification needs the raw request bytes plus its headers.",
+    "heuristics": [
+      {"id": "epoch", "label": "unix epoch seconds/millis whose value falls in 2001–2286 decode to an ISO date and are labeled \"epoch timestamp (inferred)\" — a plausible-range guess, not a certainty"},
+      {"id": "iso8601", "label": "ISO-8601-shaped strings are labeled as such"},
+      {"id": "stripe-prefix", "label": "Stripe-style prefixed ids (evt_, cus_, ch_, pi_, sub_, cs_, in_, prod_, price_) are labeled with which object they name"},
+      {"id": "uuid", "label": "UUID-shaped strings are labeled as such"},
+      {"id": "snowflake", "label": "long numeric strings (17+ digits) are labeled \"possible snowflake id (unverified)\""},
+      {"id": "email", "label": "email-shaped strings and http(s) URLs are labeled by shape"},
+      {"id": "unknown", "label": "everything else is honestly \"unknown\" — no classification is invented"}
+    ],
+    "limits": "The field walk is capped at 6 levels deep and 500 fields; the results say so when truncated."
+  }
+}
