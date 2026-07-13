@@ -105,6 +105,64 @@ def test_questions_ledger_renders_entries(monkeypatch, tmp_path: Path):
     assert r.status_code == 200
     assert "How do gates work?" in r.text
     assert "edition 1" in r.text
+    # every listed question has its answer link — no broken-promise nag
+    assert "closed without a published answer" not in r.text
+
+
+def test_questions_page_nags_closed_unanswered_records(monkeypatch, tmp_path: Path):
+    # keep the site-wide snapshot-aging banner (also rv-aged) out of the page
+    monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
+    monkeypatch.delenv("GIT_SHA", raising=False)
+    p = tmp_path / "questions.json"
+    p.write_text(
+        json.dumps(
+            {
+                "updated": "2026-07-13",
+                "note": "n",
+                "questions": [
+                    {
+                        "asked": "2026-07-12",
+                        "title": "Closed but never answered?",
+                        "url": "https://github.com/menno420/websites/issues/998",
+                        "status": "closed",
+                    },
+                    {
+                        "asked": "2026-07-12",
+                        "title": "Closed and answered?",
+                        "url": "https://github.com/menno420/websites/issues/997",
+                        "status": "closed",
+                        "answer_url": "/reviews/2026-07-11-edition-001",
+                        "answer_label": "edition 1",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    real = story.load_questions
+
+    def fake(path=None):
+        return real(p)
+
+    monkeypatch.setattr(story, "load_questions", fake)
+    r = client.get("/questions")
+    assert r.status_code == 200
+    assert "1 question closed without a published answer" in r.text
+    # the nag names the offending question, not the answered one
+    banner = r.text.split('class="rv-aged"', 1)[1].split("</div>", 1)[0]
+    assert "Closed but never answered?" in banner
+    assert "Closed and answered?" not in banner
+
+
+def test_unanswered_closed_helper_semantics():
+    closed_unanswered = {"title": "a", "status": "closed"}
+    closed_answered = {"title": "b", "status": "closed", "answer_url": "/reviews/x"}
+    open_unanswered = {"title": "c", "status": "open"}
+    defaulted_open = {"title": "d"}
+    assert story.unanswered_closed(
+        [closed_unanswered, closed_answered, open_unanswered, defaulted_open]
+    ) == [closed_unanswered]
+    assert story.unanswered_closed([]) == []
 
 
 def test_load_questions_degrades(tmp_path: Path):

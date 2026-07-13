@@ -32,6 +32,11 @@ unexpected shape, unreadable committed file — leaves the committed
 questions.json byte-identical and exits 0. A no-change run also writes
 nothing, so the bake's diff stays honest (no daily stamp-only churn).
 
+Advisory (every run with a readable ledger): records whose ``status`` is
+``closed`` but whose ``answer_url`` is missing get one ``ADVISORY:`` line
+each — a question closed without its promised published answer nags the
+bake log instead of rotting silently as "closed / pending".
+
     python3 review/gen_questions.py
 """
 
@@ -105,6 +110,27 @@ def issue_record(issue: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def unanswered_closed(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Records whose issue closed without a hand-written answer link.
+
+    The sync flips ``status`` from the live issue state but never writes
+    answers — so a closed-but-unanswered record is the ledger silently
+    breaking its own promise. Pure read of the given records, no network.
+    """
+    return [
+        rec
+        for rec in records
+        if str(rec.get("status") or "open") == "closed" and not rec.get("answer_url")
+    ]
+
+
+def advise_unanswered(records: list[dict[str, Any]]) -> None:
+    """One loud advisory line per closed-but-unanswered record, every run."""
+    for rec in unanswered_closed(records):
+        ref = str(rec.get("url") or rec.get("title") or "?")
+        print(f"ADVISORY: closed without a published answer: {ref}")
+
+
 def merge_questions(
     existing: list[dict[str, Any]], issues: list[Any]
 ) -> list[dict[str, Any]]:
@@ -150,9 +176,11 @@ def main() -> int:
         # Nothing real to merge: the committed ledger stays byte-identical —
         # honest absence beats recording this container's proxy errors.
         print(f"issue fetch failed ({err}) — questions bake skipped (fail-soft).")
+        advise_unanswered(doc["questions"])
         return 0
 
     merged = merge_questions(doc["questions"], issues)
+    advise_unanswered(merged)
     if merged == doc["questions"]:
         print(f"questions ledger unchanged ({len(merged)} records) — nothing to write.")
         return 0

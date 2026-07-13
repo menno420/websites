@@ -1315,8 +1315,17 @@
   aggregates; nothing folds finished claims' guide activity into the
   step strip. Source: `.sessions/2026-07-13-heatmap-tail.md` 💡.
 
-- **Closed-but-unanswered nag for the questions ledger** · `captured`
-  (2026-07-13, review-questions-bake-sync session 💡) — the bake sync
+- **Closed-but-unanswered nag for the questions ledger** · `built`
+  (2026-07-13, PR #299, branch `claude/questions-answer-nag-0713` —
+  `story.unanswered_closed` over the existing `question_status`/
+  `question_answer_state` filter semantics feeds a warn banner on
+  `/questions` naming the closed-but-unanswered records;
+  `review/gen_questions.py` gained the same pure-read helper plus
+  `advise_unanswered`, printing one `ADVISORY: closed without a published
+  answer: <url>` line per record on EVERY run with a readable ledger —
+  merged, no-change, and fetch-failed paths alike; zero network) —
+  original capture (2026-07-13, review-questions-bake-sync session 💡):
+  the bake sync
   (PR #297) now flips a ledger record's status to `closed` when its
   GitHub issue closes, but the answer link stays hand-written — so a
   `[program-review]` issue closed without a published answer renders as
