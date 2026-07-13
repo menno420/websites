@@ -73,6 +73,42 @@
   </div>
 </div>
 
+{# Fleet prompt state (ORDER 041 remainder): one row per roster seat —
+   deployed vs canonical (the Custom-Instructions version line), stale
+   count across the seat's 3 artifacts, worst state, history deep link.
+   A pure VIEW over the same drift rows /prompts renders (same registry
+   copies + committed deployment records, same TTL cache) — no second
+   source, no prompt copy stored. Fetch failures degrade per row
+   (unreachable / not recorded), never a fabricated verdict. #}
+<div class="card" id="prompt-state">
+  <h2>fleet prompt state <span class="dim small">— deployed vs canonical, per seat
+    · <a href="/prompts#deployed-drift">full drift table</a></span></h2>
+  <p class="dim small">Which seats run a stale or drifted paste right now — reduced from the
+    fleet-manager registry (the single prompt source; this console only renders it).
+    {% if promptstate.stale_total %}<span class="b warn">{{ promptstate.stale_total }} artifact{{ 's' if promptstate.stale_total != 1 }} stale/drifted fleet-wide</span>
+    {% elif promptstate.counts['unreachable'] %}<span class="b unknown">{{ promptstate.counts['unreachable'] }} row{{ 's' if promptstate.counts['unreachable'] != 1 }} unreachable — no verdict assumed</span>
+    {% else %}<span class="b ok">no stale or drifted record</span>{% endif %}
+    · failsafe snapshot:
+    {% if promptstate.snapshot.ok %}captured {{ promptstate.snapshot.captured_at }}
+    {% else %}unavailable — {{ promptstate.snapshot.error }}{% endif %}</p>
+  <table class="small">
+    <tr><th>seat</th><th>deployed vs canonical <span class="note">(Custom Instructions)</span></th>
+      <th>stale</th><th>per artifact</th><th>state</th><th>history</th></tr>
+    {% for s in promptstate.rows %}
+    <tr>
+      <td><code>{{ s.seat }}</code></td>
+      <td>{% if s.version_line %}{{ s.version_line }}
+        {% else %}<span class="dim">{{ s.note }}</span>{% endif %}</td>
+      <td>{% if s.stale %}{{ badge('warn', s.stale ~ ' of ' ~ s.total) }}
+        {% else %}<span class="dim">0</span>{% endif %}</td>
+      <td>{% for st in s.states %}<span class="b {{ st.cls }}" title="{{ st.label }}">{{ st.state }}</span> {% endfor %}</td>
+      <td>{{ badge(s.cls, s.state) }}</td>
+      <td><a href="/prompts/history/{{ s.seat }}">history →</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
 {% for r in rows %}
 <div class="card">
   <h2><a href="{{ r.github_url }}">{{ r.repo }}</a>
