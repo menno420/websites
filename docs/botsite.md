@@ -35,6 +35,7 @@ mounted on the private control-plane app (the public/private split the plan requ
 | `/status` | Honest status band — subsystems "as of last deploy" (not live-probed) | `status.html` |
 | `/design` | Living style guide for the `ds/` system | `design.html` |
 | `/submit` | Suggestion/bug form — **write path stubbed** (see open items) | `submit.html` |
+| `/puddle-museum` | The Puddle Museum — venture-lab picture-book marketing page: emoji exhibit gallery + EN/NL/DE edition status (honest coming-soon, no buy links; data: committed `botsite/data/puddle_museum.json`) | `puddle_museum.html` |
 | `/palette.json` | Command-palette index (pages + features + games + commands) | `app.py` |
 | `/healthz` | Liveness probe (JSON, unauthenticated, no network dependency) | `app.py` |
 | `/version` | Deployed commit SHA `{service, sha, short}` — read from `RAILWAY_GIT_COMMIT_SHA` → `GIT_SHA` → `"unknown"`; powers the control-plane deploy-state cell (see `docs/site.md`) | `app.py` |

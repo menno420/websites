@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}The Puddle Museum — SuperBot{% endblock %}
+{% block description %}The Puddle Museum: a rainy-day picture book (ages 4–8) — the exhibit gallery, the EN/NL/DE editions, and what is honestly ready today.{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> {{ museum.exhibits|length }} exhibits · {{ museum.editions|length }} editions</span>
+    <div class="head-row"><h1>The Puddle Museum</h1></div>
+    <p class="sb-lead">The interactive museum and marketing page for <em>The Puddle Museum</em>,
+      a rainy-day picture book for ages 4–8: after the rain, Juno opens a museum of puddles on
+      the lane — and her big brother Theo (Teun in Dutch, Tobi in German) wants to know what kind
+      of museum disappears by lunchtime. Below: the exhibit collection, the three editions in
+      progress, and exactly what is — and is not — available today.</p>
+  </section>
+
+  <section class="section-sm">
+    <div class="sb-panel" style="text-align:center">
+      <p class="sb-mono" style="margin:0"><strong>THE PUDDLE MUSEUM — OPEN TODAY ONLY — ADMISSION: ONE LEAF</strong></p>
+      <p class="sb-muted" style="margin:6px 0 0">Mind the ropes (they're skipping ropes).</p>
+    </div>
+  </section>
+
+  <section class="section-sm">
+    <h2>The story</h2>
+    <blockquote class="sb-panel" style="margin:10px 0 0">
+      <p style="margin:0">The rain has stopped, and that means one thing on Juno's lane: the museum
+        is open. Admission, one leaf. Mind the ropes (they're skipping ropes). Here is the Sky
+        Mirror, the famous Upside-Down Tree, the Worm Rescue Wing — and the museum's greatest
+        treasure, a puddle exactly the shape of a whale. But the sun is out, the exhibits are
+        shrinking, and Juno's big brother wants to know what kind of museum disappears by
+        lunchtime. The best kind, as it turns out. A story for ages 4–8 about curating wonder —
+        while it lasts.</p>
+    </blockquote>
+  </section>
+
+  <section class="section-sm">
+    <h2>The collection</h2>
+    <p class="sb-muted" style="margin:6px 0 0">Illustrated exhibits arrive with the book — for now
+      the collection is text and emoji, like all the best temporary museums.</p>
+    {% if museum.exhibits %}
+    <div class="card-grid section-sm">
+      {% for e in museum.exhibits %}
+      <article class="sb-card sb-feat">
+        <div class="sb-feat-top">
+          <span class="sb-tile sb-tile-emoji">{{ e.emoji }}</span>
+          <h3 style="font-size:var(--sb-text-lg)">{{ e.name_en }}</h3>
+        </div>
+        {% if e.name_nl or e.name_de %}
+        <p class="sb-muted" style="margin:6px 0 0">
+          {% if e.name_nl %}NL: {{ e.name_nl }}{% endif %}{% if e.name_nl and e.name_de %} · {% endif %}{% if e.name_de %}DE: {{ e.name_de }}{% endif %}
+        </p>
+        {% endif %}
+        <div class="feat-desc">{{ e.description }}</div>
+        <div class="sb-feat meta">
+          <span class="sb-muted" style="font-size:var(--sb-text-xs)">Curated from {{ e.source }}, as of {{ e.as_of }}</span>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="sb-empty section"><span class="ico">💧</span><h4>No exhibits on display</h4>
+      <p>The exhibit registry is empty or unavailable right now. Nothing is faked here.</p></div>
+    {% endif %}
+  </section>
+
+  <section class="section-sm">
+    <h2>Editions</h2>
+    <p class="sb-muted" style="margin:6px 0 0">Three languages, one museum. Each card says honestly
+      where its edition stands — a buy link would only ever appear for a live edition with a real
+      store URL, and none exists yet.</p>
+    {% if museum.editions %}
+    <div class="card-grid section-sm">
+      {% for ed in museum.editions %}
+      <article class="sb-card sb-feat">
+        <div class="sb-feat-top">
+          <span class="sb-tile sb-tile-emoji">📖</span>
+          <h3 style="font-size:var(--sb-text-lg)">{{ ed.title }}</h3>
+          <span class="sb-badge {{ 'sb-badge-ok' if ed.is_buyable else 'sb-badge-neutral' }}">{{ "live" if ed.is_buyable else "coming soon" }}</span>
+        </div>
+        <p class="sb-muted" style="margin:6px 0 0">{{ ed.language }}</p>
+        {% if ed.is_buyable %}
+        <p style="margin:10px 0 0"><a class="sb-btn sb-btn-primary sb-btn-sm" href="{{ ed.url }}" target="_blank" rel="noopener">Get the book {{ icon("external", 13) }}</a></p>
+        {% else %}
+        <p class="sb-muted" style="margin:10px 0 0"><em>{{ ed.status_note }}</em></p>
+        <p class="sb-muted" style="margin:6px 0 0">In production — illustration decision pending.</p>
+        {% endif %}
+        <div class="sb-feat meta">
+          <span class="sb-muted" style="font-size:var(--sb-text-xs)">Curated from {{ ed.source }}, as of {{ ed.as_of }}</span>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="sb-empty section"><span class="ico">📖</span><h4>No editions registered</h4>
+      <p>The edition registry is empty or unavailable right now. Nothing is faked here.</p></div>
+    {% endif %}
+  </section>
+
+  <section class="section-sm">
+    <h2>Submit your puddle</h2>
+    <div class="sb-panel" style="margin:10px 0 0">
+      <p style="margin:0"><strong>Submissions open soon.</strong></p>
+      <p class="sb-muted" style="margin:6px 0 0">Visitor puddle photos need storage and a moderation
+        ring that aren't provisioned yet — the same wall as this site's <code>/submit</code> intake
+        stub — so there is no upload form here until they are.</p>
+    </div>
+  </section>
+
+  <section class="section-sm">
+    <blockquote class="sb-panel" style="text-align:center">
+      <p style="margin:0"><em>"You don't get to keep the exhibits. You get to keep the looking."</em></p>
+    </blockquote>
+  </section>
+</div>
+{% endblock %}
