@@ -1088,3 +1088,19 @@
   the code-vs-inventory bullets (#227 and its per-service generalization)
   check env-var NAME documentation completeness, never parse safety.
   Source: `.sessions/2026-07-13-env-hardening.md` 💡.
+
+- **Outbox REPORT grammar drift pin — parse the committed outbox at HEAD
+  in CI** · `captured` (2026-07-13, briefing-outbox session 💡) — a small
+  offline test feeding this repo's own committed `control/outbox.md`
+  (read from disk, zero network) through `briefing.latest_report` and
+  failing when the real file drifts out of the grammar the briefing reads
+  (REPORT-like headings skipped, or zero reports found while `## REPORT`
+  text exists). Worth having because the /owner/briefing REPORTS card
+  (PR #286) and the coordinator's hand-written outbox entries share a
+  grammar enforced by nothing — one heading typo silently demotes the
+  newest night report to the honest-empty state on the page the owner
+  opens every morning. Deduped against this backlog: the grammar
+  source-of-truth notes pin status.md/inbox/claims formats (kit-owned,
+  `src/engine/grammar.py`); no bullet covers `control/outbox.md`'s REPORT
+  grammar or a parse-the-committed-file pin for it. Source:
+  `.sessions/2026-07-13-briefing-outbox.md` 💡.
