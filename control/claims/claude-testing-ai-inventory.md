@@ -1,1 +1,0 @@
-- `claude/testing-ai-inventory` · **scope** — document TESTING_AI_* config vars in both committed inventories + extend the code-vs-inventory consistency pin · expected files: app/railway.py, app/data/environments.json, tests/test_inventory_consistency.py, .sessions/, docs/ideas/backlog.md · 2026-07-13
