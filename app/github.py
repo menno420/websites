@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import re
 import time
 from typing import Any, Optional
 
@@ -63,12 +64,51 @@ def get_client(raw: bool = False) -> httpx.AsyncClient:
     return client
 
 
+# User-visible failure reasons are banner/cell text everywhere downstream:
+# cap them hard AT THE SOURCE so an upstream error DOCUMENT can never flood
+# a page again (observed live: a transient GitHub failure returned a full
+# HTML error page, which rendered wholesale into /freshness cells — PR #237
+# bounded that page; this bounds every envelope so /fleet banners, the
+# owner UI, and any future consumer inherit the guard for free). Same cap
+# as the #237 precedent (app/freshness.py REASON_MAX_CHARS).
+REASON_MAX_CHARS = 140
+
+
+def short_reason(
+    text: Any, limit: int = REASON_MAX_CHARS, status: Any = None
+) -> str:
+    """A render-safe failure reason — short, single-line, human.
+
+    Collapses whitespace runs (newlines included) to single spaces; a body
+    that looks like markup (an HTML error page is a document, not a reason)
+    is replaced with a generic "HTTP <status> — non-JSON error body" phrase
+    (the envelope status when known); anything still longer than ``limit``
+    is hard-truncated with an ellipsis, keeping the head (status code /
+    first meaningful words) intact. Meaningful short reasons ("HTTP 404",
+    "Not Found") pass through verbatim — honest degradation still says
+    WHY, just never in document form.
+    """
+    flat = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not flat:
+        return ""
+    low = flat.lower()
+    if flat.startswith("<") or "<!doctype" in low or "<html" in low:
+        prefix = f"HTTP {status} — " if status else ""
+        return f"{prefix}non-JSON error body"
+    if len(flat) > limit:
+        return flat[: limit - 1].rstrip() + "…"
+    return flat
+
+
 def _result(url: str, status: int, data: Any = None, error: str = "") -> dict:
     return {
         "ok": 200 <= status < 300,
         "status": status,
         "data": data,
-        "error": error,
+        # Every envelope any consumer sees is minted here — sanitizing the
+        # error field at this choke point is what bounds ALL downstream
+        # reason text (fleet, freshness, owner UI, directory probes, …).
+        "error": short_reason(error, status=status or None),
         "fetched_at": time.strftime("%H:%M:%S UTC", time.gmtime()),
         "cached": False,
         "url": url,
@@ -264,7 +304,7 @@ async def fetch_file(
             return out
         except Exception as exc:  # pragma: no cover - corrupt payload
             out["ok"] = False
-            out["error"] = f"decode failed: {exc}"
+            out["error"] = short_reason(f"decode failed: {exc}")
             return out
     return api_res if not res["ok"] else res
 
