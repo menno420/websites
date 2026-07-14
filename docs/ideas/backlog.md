@@ -1907,3 +1907,16 @@
   backlog + the queue-state NEXT list: no checklist-export/renderer bullet
   exists (the backlog's owner-queue bullets are page features, not
   exports). Source: `.sessions/2026-07-14-order-030-closeout.md` 💡.
+
+- **Teach the sweep job the `do-not-automerge` label** · `captured`
+  (2026-07-14, automerge-reconcile session 💡) — the half-hourly sweep in
+  `.github/workflows/host-automerge-extras.yml` selects open unarmed
+  `claude/*` PRs and arms them without ever checking labels; a PR parked
+  with `do-not-automerge` that does NOT touch `.github/workflows/**`
+  (owner discretion, or a future rail) gets re-armed by the next sweep,
+  silently overriding the kit enabler's own carve-out. One `--jq` clause
+  in the sweep's PR selection (drop PRs whose labels contain
+  `do-not-automerge`) closes the only remaining writer that ignores the
+  label. Worth having because the reconciled workflow-touching rail (this
+  session) made the label load-bearing for automerge parking. Source:
+  `.sessions/2026-07-14-automerge-reconcile.md` 💡.

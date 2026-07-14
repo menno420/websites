@@ -15,16 +15,26 @@ name: host-automerge-extras
 #     eligible claude/* PR, with a direct-squash fallback for already-clean
 #     PRs (GitHub rejects arming a PR with nothing left to wait on);
 #   * the workflow-touching-PR rail: any PR whose diff touches
-#     .github/workflows/** is skipped/disarmed — workflow PRs stay
-#     owner-merge-only.
+#     .github/workflows/** is PARKED — labeled `do-not-automerge` and
+#     disarmed — so workflow PRs stay owner-merge-only (the owner removes
+#     the label and merges by hand to land one).
 #
-# KNOWN OVERLAP (lane-owed to reconcile): the kit-owned enabler also arms on
-# pull_request events and does NOT carry the workflow-touching rail, so on a
-# workflow-touching PR the kit's arm and this file's disarm race — the rail
-# is best-effort until the lane reconciles the two files.
+# RECONCILED (2026-07-14; audit 2026-07-13 finding 4): the kit-owned enabler
+# arms on the same pull_request events and carries no workflow rail, so the
+# two files used to race on workflow-touching PRs — PR #321 observed
+# arm/disarm churn with the kit's arm landing LAST (its 15 s label-grace
+# sleep runs after this rail's disarm). The rail now speaks the kit's own
+# carve-out protocol instead of fighting its arm: it applies the
+# `do-not-automerge` label FIRST — the kit enabler job-skips labeled PRs on
+# every future event, and its fresh pre-arm label re-read refuses to arm on
+# the current event — then disarms, then re-checks once after the kit's arm
+# window to catch the one interleaving where the kit's re-read predates the
+# label. Deterministic final state: parked, never armed, no ping-pong.
 #
 # Original rails retained: only non-draft claude/* head branches; GITHUB_TOKEN
-# only; permissions limited to contents + pull-requests write.
+# only; permissions limited to contents + pull-requests + issues write
+# (issues: write added for the repo-level ensure-create of the
+# `do-not-automerge` label).
 
 on:
   pull_request:
@@ -36,6 +46,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 concurrency:
   group: host-automerge-extras-${{ github.event.pull_request.number || github.event_name }}
@@ -50,16 +61,50 @@ jobs:
       startsWith(github.head_ref, 'claude/')
     runs-on: ubuntu-latest
     steps:
-      - name: Arm native squash auto-merge (skip workflow-touching PRs)
+      - name: Arm native squash auto-merge (park workflow-touching PRs)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           files="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')"
           if printf '%s\n' "$files" | grep -q '^\.github/workflows/'; then
-            echo "PR #$PR touches .github/workflows/** — owner-merge-only; disarming if armed, never arming."
+            echo "PR #$PR touches .github/workflows/** — owner-merge-only; parking."
+            # (1) Label FIRST. `do-not-automerge` is the kit enabler's own
+            # documented carve-out: its job-level `if` skips labeled PRs on
+            # every future pull_request event, and its pre-arm fresh label
+            # re-read (15 s grace + API re-read) refuses to arm when the
+            # label is present NOW. Ensure the repo label exists (the call
+            # 422s harmlessly once it does), then apply it to the PR.
+            gh api "repos/$GITHUB_REPOSITORY/labels" \
+              -f name='do-not-automerge' -f color='b60205' \
+              -f description='parked: owner-merge-only (workflow-touching PR rail)' \
+              >/dev/null 2>&1 || true
+            label_ok=1
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" \
+              -f 'labels[]=do-not-automerge' >/dev/null || label_ok=0
+            echo "do-not-automerge label applied: $([ "$label_ok" = "1" ] && echo yes || echo FAILED)"
+            # (2) Disarm anything already armed.
             gh pr merge --disable-auto "$PR" --repo "$GITHUB_REPOSITORY" 2>/dev/null \
               || echo "auto-merge was not armed on PR #$PR (nothing to disarm)."
+            # (3) Settle. A kit-enabler run for THIS SAME event may have
+            # passed its label re-read before (1) and armed moments later —
+            # an arm follows its re-read within seconds (one gh call), so
+            # outwait that window once, then disarm any straggler arm. A
+            # labeled PR can never be re-armed by a later event (the kit
+            # job-skips it), so this is the last possible flip: the final
+            # state is deterministically PARKED.
+            sleep 75
+            if [ "$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" \
+                    --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
+              echo "kit enabler armed inside the race window — final disarm."
+              gh pr merge --disable-auto "$PR" --repo "$GITHUB_REPOSITORY"
+            else
+              echo "settled: PR #$PR is parked (not armed)."
+            fi
+            if [ "$label_ok" = "0" ]; then
+              echo "::error::could not apply do-not-automerge to PR #$PR — the park is not durable (the kit enabler re-arms on the next push). Failing loudly."
+              exit 1
+            fi
             exit 0
           fi
           if gh pr merge --auto --squash "$PR" --repo "$GITHUB_REPOSITORY"; then
