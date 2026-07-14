@@ -332,3 +332,10 @@ why: the fm fence-exposure index (fm `docs/fence-index.md` @ `3b335a8`, central-
 done-when: both fence markers present at main HEAD wrapping the existing walls content of `docs/CAPABILITIES.md`, and `python3 bootstrap.py check --strict` green.
 
 Provenance: relayed by the Fleet Manager seat, coordinator dispatch 2026-07-14, fm docs/dispatch-log.md @ 3b335a8.
+
+## ORDER 029 · 2026-07-14T07:47Z · status: new
+priority: P2
+do: (a) INC-23 — fix `docs/current-state.md:125` ("control-plane GitHub token is currently UNSET") to the resolved state per this repo's own `docs/CAPABILITIES.md` 2026-07-12 entry ("RESOLVES the 2026-07-09 GITHUB_TOKEN wall — the live control-plane now runs with a working GITHUB_TOKEN"). (b) INC-24 — refresh `.session-journal.md` ⚡ Quick reference: "one repo, three independent … services" → four (review/ live since 2026-07-12) and "Tests (60 total)" → the current four-suite count + the four-suite pytest command (derive counts at fix time; CLAUDE.md's verify line is the model).
+why: INC-23/24 — the boot-set state doc contradicts the capability ledger, and the journal's first lines undercount the running system; re-verified live at dispatch.
+done-when: both surfaces name four services; the token line cites the CAPABILITIES resolution; journal test command matches the CLAUDE.md four-suite line.
+provenance: relayed by the Fleet Manager seat, coordinator dispatch 2026-07-14, fm docs/dispatch-log.md @ 1694bfc
