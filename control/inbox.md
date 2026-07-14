@@ -321,3 +321,14 @@ closes 07-14 · `[relay]` fm routing/relay debt.
 
 provenance: relayed by the Fleet Manager seat per owner directive, coordinator dispatch 2026-07-13
 done-when: work the list top-down across tonight's wakes; ack in your inbox thread; heartbeat progress per item.
+
+## ORDER 028 · 2026-07-14T05:39:56Z · status: new
+priority: routine
+do: restore the kit `substrate-kit:capability-seed` fence markers in `docs/CAPABILITIES.md` so they wrap the existing walls section ("## Walls — verified blocked", line 47 at `2b5947d`) — fence RESTORE only; the walls content itself is healthy (the digest renders 6 walls "…plus 1 more"), do NOT rewrite it. Use the exact marker format the substrate-kit seed plants — canonical example at superbot-next `docs/CAPABILITIES.md:19`/`:101` (@ `e2d792a`):
+  `<!-- substrate-kit:capability-seed BEGIN — kit-owned, refreshed at upgrade. Append your findings BELOW the fence (## Append log), never inside it. -->`
+  `<!-- substrate-kit:capability-seed END -->`
+  Keep session-appended findings (the "## Append log" section) BELOW/outside the fence, per the marker's own convention.
+why: the fm fence-exposure index (fm `docs/fence-index.md` @ `3b335a8`, central-docs plan Phase 1 B4) found the `capability-seed` fence ABSENT from `docs/CAPABILITIES.md` at websites @ `2b5947d` (0 marker hits) while the seat digest is exposed — an un-fenced capabilities surface blinds the seatdigest/walls tooling (fence-prefix extraction contract, kit `src/engine/grammar.py`) to the section (INC-48 class).
+done-when: both fence markers present at main HEAD wrapping the existing walls content of `docs/CAPABILITIES.md`, and `python3 bootstrap.py check --strict` green.
+
+Provenance: relayed by the Fleet Manager seat, coordinator dispatch 2026-07-14, fm docs/dispatch-log.md @ 3b335a8.
