@@ -56,10 +56,11 @@ jobs:
             control_only=true
           fi
           # Fast-lane grammar-pin selection (gate (c) below): a control-only
-          # diff that touches the outbox or the heartbeat still runs the ONE
-          # pytest pin file guarding that file's grammar. Empty when the
-          # fast lane is off (full lane runs the whole suite anyway) or when
-          # neither file is in the diff — the plain fast path is unchanged.
+          # diff that touches the outbox, the heartbeat, or a claim file
+          # still runs the ONE pytest pin file guarding that file's grammar
+          # (or, for claims, its drift state). Empty when the fast lane is
+          # off (full lane runs the whole suite anyway) or when none of
+          # those files is in the diff — the plain fast path is unchanged.
           pin_tests=""
           if [ "$control_only" = "true" ]; then
             if printf '%s\n' "$files" | grep -Fxq 'control/outbox.md'; then
@@ -67,6 +68,9 @@ jobs:
             fi
             if printf '%s\n' "$files" | grep -Fxq 'control/status.md'; then
               pin_tests="${pin_tests:+$pin_tests }tests/test_own_heartbeat.py"
+            fi
+            if printf '%s\n' "$files" | grep -q '^control/claims/'; then
+              pin_tests="${pin_tests:+$pin_tests }tests/test_claims_drift_gate.py"
             fi
           fi
           echo "control_only=$control_only" >> "$GITHUB_OUTPUT"
@@ -133,8 +137,14 @@ jobs:
       #     The pins import app.briefing / app.fleet (→ httpx), so this
       #     needs real deps — set up the same Python 3.12 as the full lane
       #     but install only pytest + httpx, keeping the lane fast. A
-      #     control-only diff touching NEITHER file (inbox append, claim
-      #     file) skips both steps: today's fast path, unchanged.
+      #     third pin (claims-drift, audit 2026-07-13 suggestion 2) fires
+      #     when the diff touches control/claims/**: a claim landing or
+      #     being released on the fast lane must not reference a branch
+      #     that already merged into main (orphaned claim) —
+      #     tests/test_claims_drift_gate.py grades terminality with pure
+      #     git plumbing against the fetch-depth-0 checkout, no network.
+      #     A control-only diff touching NONE of those files (an inbox
+      #     append) skips these steps: today's fast path, unchanged.
       - name: Set up Python 3.12 (fast lane — grammar pins only)
         if: steps.lane.outputs.control_only == 'true' && steps.lane.outputs.pin_tests != ''
         uses: actions/setup-python@v5
