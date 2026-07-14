@@ -1798,3 +1798,21 @@
   the import bullets are the valve (#320), the referential pass (#323),
   and the spec pin; nothing asserts export/import round-trip equality.
   Source: `.sessions/2026-07-14-import-schema-pin.md` 💡.
+
+- **Freeze a real export.json as a committed golden legacy fixture** ·
+  `captured` (2026-07-14, roundtrip-pin session 💡) — every "legacy
+  backup" in the import tests is a hand-simulated shape: the test author
+  guesses which columns old exports lacked, and if that guess is wrong
+  the valve's legacy tolerance is tested against a fiction. Commit a
+  REAL `export_all()` output now (tiny fixture data, secrets-free by
+  construction — the export carries no secret), e.g.
+  `botsite/tests/data/export-2026-07.json`, and assert forever that THIS
+  file imports cleanly through `import_all()`; each future schema era
+  freezes one more file instead of re-simulating history. Worth having
+  because the valve's whole purpose is restoring backups taken by OLDER
+  code, and no test currently exercises bytes an older version actually
+  wrote. Deduped against this backlog + the queue-state NEXT list: the
+  import bullets are the valve (#320), the referential pass (#323), the
+  spec pin (#326), and the round-trip pin (branch
+  `claude/roundtrip-pin-0714`); nothing commits a frozen real-export
+  fixture. Source: `.sessions/2026-07-14-roundtrip-pin.md` 💡.
