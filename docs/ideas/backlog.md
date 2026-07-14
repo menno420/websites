@@ -1685,3 +1685,23 @@
   instead of signalling neglect. Deduped against this backlog + the
   queue-state NEXT list: no bullet mentions contextpacks or
   project.index.json. Source: `.sessions/2026-07-14-project-index.md` 💡.
+
+- **Rewrite relative links inside rendered remote markdown to their GitHub
+  source (or de-linkify them)** · `captured` (2026-07-14, smoke-crawl
+  session 💡) — the control-plane renders other repos' markdown verbatim in
+  `<div class="md">` (heartbeats on /fleet, the fleet-manager ledger on
+  /reviews, environment docs on /environments), and relative links inside
+  that content (`README.md`, `gen2-blueprint.md`, `docs/retro/…`) resolve
+  against this origin and 404 — the first smoke-crawl run (PR #321) flagged
+  20 of them live, every one clickable by a real visitor today. The
+  renderer already knows each document's source repo + path, so rewriting
+  relative hrefs to the GitHub blob URL (or the in-app
+  `/journal/{repo}/file` view for fleet repos) is a contained fix. Worth
+  having because three public pages serve clickable 404s right now, and
+  fixing it lets `scripts/smoke_crawl.py` delete its documented
+  `.md`-container exclusion — restoring browser-gate coverage over exactly
+  the surfaces that degrade silently. Deduped against this backlog + the
+  queue-state NEXT list: the "Deep-link fleet lane files into the widened
+  /journal/{repo}/file view" bullet ADDS chrome links via the in-app
+  renderer; nothing touches relative hrefs inside rendered markdown bodies.
+  Source: `.sessions/2026-07-14-smoke-crawl.md` 💡.
