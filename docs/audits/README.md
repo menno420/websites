@@ -5,6 +5,10 @@
 > anything inside one if they disagree. Reports are never edited after
 > landing; corrections go in a newer report.
 
+- [../eap-closeout-walkthrough-2026-07-14.md](../eap-closeout-walkthrough-2026-07-14.md)
+  — the ORDER 030 (b) owner-facing EAP close-out walkthrough: shipped-work
+  summary, run/verify commands, the owner-actions checklist with
+  recommendations + verify steps, the 5-minute live tour, handoff notes.
 - [eap-project-audit-2026-07-14.md](eap-project-audit-2026-07-14.md) — the
   seat's definitive EAP close-out audit (owner directive 2026-07-14): scale,
   tooling verdicts, walls with verbatim denials, merge/scheduling/environment

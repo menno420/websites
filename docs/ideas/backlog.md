@@ -1893,3 +1893,17 @@
   this backlog + the queue-state NEXT list: no journal-drift or
   quick-reference bullet exists. Source:
   `.sessions/2026-07-14-order-029-truing.md` 💡.
+
+- **Owner-actions renderer: generate the checklist from the ⚑ blocks** ·
+  `captured` (2026-07-14, order-030-closeout session 💡) — the close-out
+  walkthrough's section C hand-copies what/where/verify from the 9
+  six-field ⚑ blocks in `docs/owner/OWNER-ACTIONS.md`; the control-plane
+  already parses six-field blocks for `/queue` (`app/` owner-queue
+  pipeline), so a small `scripts/owner_checklist.py` (or a `/queue.md`
+  export) could emit the same compact checklist on demand and never drift
+  from the source blocks. Worth having because every close-out/briefing
+  that hand-copies the asks is a drift surface — one renderer keeps
+  recommendation docs honest as asks are struck. Deduped against this
+  backlog + the queue-state NEXT list: no checklist-export/renderer bullet
+  exists (the backlog's owner-queue bullets are page features, not
+  exports). Source: `.sessions/2026-07-14-order-030-closeout.md` 💡.
