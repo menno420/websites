@@ -1618,3 +1618,18 @@
   manager; no bullet covers invoking the CHECK from CI, and `quality.yml`
   contains zero references to the script. Source:
   `.sessions/2026-07-13-build-direct.md` 💡.
+
+- **Claim bullet carries its PR number once opened — closes the claims-drift
+  gate's pruned-ref blind spot** · `captured` (2026-07-14, claims-drift-gate
+  session 💡) — the drift gate (PR #318) treats a claim whose branch
+  resolves to no ref as LIVE (fail-safe), so a repo that prunes branches on
+  merge would never flag an orphan. An optional `PR #N` token appended to
+  the claim bullet when the PR opens would give the gate a fallback:
+  `git log origin/main --grep='(#N)'` — the squash-merge subject survives
+  the pruned ref, same zero-network git plumbing. Worth having because the
+  gate's one documented indeterminate lane is exactly the state GitHub's
+  "delete branch on merge" setting would make the common case. Deduped
+  against this backlog + the queue-state NEXT list: existing claim bullets
+  cover order-claim pickup latency, stalled-claim aging on /orders, and
+  sweep-hold claim files — nothing touches claim grammar or branch
+  terminality. Source: `.sessions/2026-07-14-claims-drift-gate.md` 💡.
