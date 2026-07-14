@@ -1,8 +1,8 @@
 # 2026-07-14 — ORDER 030 EAP close-out: walkthrough doc + final-day finish list
 
-> **Status:** `in-progress` — branch `claude/order-030-closeout-0714`; flips to
-> `complete` + PR number as the deliberate LAST code step (a finalize pass —
-> this card is born-red by design and holds quality red until that pass).
+> **Status:** `complete` — PR #336, branch `claude/order-030-closeout-0714`;
+> the ORDER 030 (b) close-out walkthrough landed, trued at the finalize pass
+> (#334 merged `ecfe435`, #330 merged `7d5fa47`, `origin/main` merged in).
 
 - **📊 Model:** Claude Fable 5 · worker · order close-out (walkthrough doc + finish-list items)
 
@@ -28,10 +28,18 @@ session; this branch carries the walkthrough.
   URLs · E. handoff notes.
 - `docs/audits/README.md` — inbound link added (reachability).
 - `control/claims/2026-07-14-order-030-closeout.md` — claim file (branch ·
-  scope · date), per `control/claims/README.md`.
-- Verified: `python3 -m pytest tests/ botsite/tests dashboard/tests
-  review/tests -q` — result recorded at the finalize pass; `python3
-  bootstrap.py check --strict` — result recorded at the finalize pass.
+  scope · date), per `control/claims/README.md`; deleted at the finalize
+  pass per the claim protocol.
+- Finalize pass: `origin/main` merged in (post-open landings #334 `ecfe435`
+  + bake #330 `7d5fa47`; clean merge, docs-only branch), the ORDER 028
+  done-when re-verified on the merged tree (both `capability-seed` markers
+  present in `docs/CAPABILITIES.md`), the walkthrough's #334/#330
+  one-liners trued from "being resolved" to merged facts, and this
+  session's 💡 appended to `docs/ideas/backlog.md`.
+- Verified at the finalize pass: `python3 -m pytest tests/ botsite/tests
+  dashboard/tests review/tests -q` — 1414 passed, 1 warning; `python3
+  bootstrap.py check --strict` — all checks passed, exit 0 (the designed
+  born-red hold released by this card flip).
 
 ⚑ Self-initiated: no — ORDER 030 item (b) (`control/inbox.md` @ `a17de3b`).
 
@@ -47,8 +55,7 @@ having because every close-out/briefing that hand-copies the asks is a drift
 surface — one renderer keeps recommendation docs honest as asks are struck.
 Deduped against `docs/ideas/backlog.md` + the queue-state NEXT list: no
 checklist-export/renderer bullet exists (the backlog's owner-queue bullets
-are page features, not exports). Capture in `docs/ideas/backlog.md` at the
-finalize pass.
+are page features, not exports). Captured in `docs/ideas/backlog.md`.
 
 ## ⟲ Previous-session review
 
