@@ -1722,8 +1722,16 @@
   Source: `.sessions/2026-07-14-smoke-crawl.md` 💡.
 
 - **Sample-verify rewritten source-link targets — a bounded existence check
-  on the github.com blob URLs the markdown rewriter mints** · `captured`
-  (2026-07-14, md-relative-links session 💡) — the relative-link fix
+  on the github.com blob URLs the markdown rewriter mints** · `built`
+  (2026-07-14, branch `claude/md-link-sample-0714` — `scripts/smoke_crawl.py`
+  pass 4: collects the rewriter's github.com blob/raw +
+  raw.githubusercontent.com URL shapes from crawled control-plane pages
+  only, deterministically samples ≤10 (sorted + evenly strided, no
+  randomness/clock), HEAD-checks each with GET fallback (~5s/request, own
+  30s budget) — 2xx/3xx pass, 403 passes with a private-repo note, 404
+  fails naming the URL + its source page, network errors warn; pure-logic
+  pins in `tests/test_smoke_crawl_rewritten_links.py`; original capture
+  2026-07-14, md-relative-links session 💡) — the relative-link fix
   (PR #322) converts same-origin 404s inside rendered remote markdown into
   EXTERNAL github.com/raw links, and the smoke-crawl never follows or
   fetches external links by documented design — so the failure class did
@@ -1816,3 +1824,24 @@
   spec pin (#326), and the round-trip pin (branch
   `claude/roundtrip-pin-0714`); nothing commits a frozen real-export
   fixture. Source: `.sessions/2026-07-14-roundtrip-pin.md` 💡.
+
+- **Disambiguate the smoke-crawl pass-4 404s from repo privacy — GitHub
+  answers anonymous requests to PRIVATE repos with 404, not 403** ·
+  `captured` (2026-07-14, md-link-sample session 💡) — the sampled
+  rewritten-link check (branch `claude/md-link-sample-0714`) passes 403 as
+  "private repo", but the 403 observed from the agent container is the CCR
+  egress proxy's per-session GitHub gate (verified: the response body is
+  the proxy's "access not enabled for this session" JSON, not GitHub's);
+  in proxy-less CI, GitHub itself returns 404 for a private repo's blob
+  URL — indistinguishable from a genuine rewrite defect, so a scheduled
+  smoke-crawl FAIL can be repo privacy rather than rot. A small
+  disambiguator — probe the failing repo's public visibility (e.g. one
+  extra request to the repo root or the already-used raw host) or keep a
+  committed known-private-repo list, and downgrade those 404s to the
+  private-repo PASS note — would keep the gate's reds honest. Worth having
+  because the first real scheduled-run 404 will otherwise be triaged as a
+  rewriter bug when it may just be a private lane repo. Deduped against
+  this backlog + the queue-state NEXT list: the sample-verify bullet ships
+  the check itself; the private-lane bullets are botsite/review-side;
+  nothing addresses 404-vs-privacy ambiguity in the crawl.
+  Source: `.sessions/2026-07-14-md-link-sample.md` 💡.
