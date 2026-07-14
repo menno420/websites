@@ -33,9 +33,9 @@
   "review_log": [],
   "session_anchor": {
     "branch": null,
-    "epoch": 1783871335.70832,
-    "head": "0fd2f48998fb6743456ab49cf4fb915c3b3ec230",
-    "ts": "2026-07-12T15:48:55+00:00"
+    "epoch": 1784026168.924014,
+    "head": "a17de3bf2c439e9a5ca5384f332d883f5551deb8",
+    "ts": "2026-07-14T10:49:28+00:00"
   },
   "session_count": 12,
   "slot_values": {
