@@ -324,6 +324,18 @@ def test_autorefresh_js_served_static(client):
     assert "live-content" in r.text and "setInterval" in r.text
 
 
+def test_favicon_is_linked_and_served(client):
+    """Every page declares an icon link (stops Chromium's automatic
+    /favicon.ico 404 — the PR #311 cold-pass finding, ported to the
+    control-plane, the one service that pass skipped) and the linked SVG
+    actually exists under /static."""
+    html = client.get("/").text
+    assert '<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">' in html
+    r = client.get("/static/favicon.svg")
+    assert r.status_code == 200
+    assert "svg" in r.headers["content-type"]
+
+
 def test_secret_names_never_reach_served_html(monkeypatch):
     """The public board masks secrets to a COUNT: the real GitHub secret NAMES
     (admin-scope-only data) must be absent from the served HTML, and the count

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Control-plane tile: the board's dark panel (base.html :root palette —
+       panel #161b22, border #30363d) with status-badge dots in the board's
+       ok/warn/blue badge colors. Same cold-pass rationale as the other three
+       services' favicons (PR #311): a declared icon link stops Chromium's
+       automatic /favicon.ico 404. -->
+  <rect width="32" height="32" rx="7" fill="#161b22"/>
+  <rect x="1" y="1" width="30" height="30" rx="6" fill="none" stroke="#30363d" stroke-width="2"/>
+  <circle cx="10.5" cy="11" r="3.2" fill="#3fb950"/>
+  <circle cx="21.5" cy="11" r="3.2" fill="#d29922"/>
+  <circle cx="10.5" cy="21.5" r="3.2" fill="#58a6ff"/>
+  <rect x="18.3" y="18.3" width="6.4" height="6.4" rx="1.6" fill="#8b949e"/>
+</svg>
