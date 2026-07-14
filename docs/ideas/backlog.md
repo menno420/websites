@@ -1722,8 +1722,16 @@
   Source: `.sessions/2026-07-14-smoke-crawl.md` 💡.
 
 - **Sample-verify rewritten source-link targets — a bounded existence check
-  on the github.com blob URLs the markdown rewriter mints** · `captured`
-  (2026-07-14, md-relative-links session 💡) — the relative-link fix
+  on the github.com blob URLs the markdown rewriter mints** · `built`
+  (2026-07-14, branch `claude/md-link-sample-0714` — `scripts/smoke_crawl.py`
+  pass 4: collects the rewriter's github.com blob/raw +
+  raw.githubusercontent.com URL shapes from crawled control-plane pages
+  only, deterministically samples ≤10 (sorted + evenly strided, no
+  randomness/clock), HEAD-checks each with GET fallback (~5s/request, own
+  30s budget) — 2xx/3xx pass, 403 passes with a private-repo note, 404
+  fails naming the URL + its source page, network errors warn; pure-logic
+  pins in `tests/test_smoke_crawl_rewritten_links.py`; original capture
+  2026-07-14, md-relative-links session 💡) — the relative-link fix
   (PR #322) converts same-origin 404s inside rendered remote markdown into
   EXTERNAL github.com/raw links, and the smoke-crawl never follows or
   fetches external links by documented design — so the failure class did
@@ -1740,7 +1748,18 @@
   `.sessions/2026-07-14-md-relative-links.md` 💡.
 
 - **Pin `_IMPORT_SPEC`/`_IMPORT_REFS` against the live schema with a drift
-  test** · `captured` (2026-07-14, import-referential session 💡) — the
+  test** · `built` (2026-07-14, branch `claude/import-schema-pin-0714` —
+  `botsite/tests/test_import_schema_drift.py` builds an in-memory DB from
+  the real `_SCHEMA` and derives tables via `sqlite_master`, columns via
+  `PRAGMA table_info`, FK edges via `PRAGMA foreign_key_list`, then asserts
+  exact two-way coverage against `_IMPORT_SPEC`/`_IMPORT_REFS`/
+  `_IMPORT_ENUMS`, failing with the drifted table/column/edge named; the
+  two deliberate spec↔schema gaps are pinned explicitly, never skipped —
+  `screenshots.data_base64`→`data` as a rename pin, and the
+  `payout_ledger.claim_id`→claims edge (checked on import, undeclared in
+  the schema) as an extra-refs pin that must shrink if the schema gains
+  the REFERENCES clause) — original capture (import-referential session
+  💡): the
   import valve's field spec and its new reference-edge list
   (`botsite/testing_store.py`) are hand-kept constants that mirror
   `_SCHEMA` by convention only: the next table or FK column added to
@@ -1757,6 +1776,137 @@
   against this backlog + the queue-state NEXT list: no
   import-spec/schema-drift/foreign_key_list bullet exists anywhere.
   Source: `.sessions/2026-07-14-import-referential.md` 💡.
+
+- **Export→import→export deep-equality round-trip pin** · `built`
+  (2026-07-14, branch `claude/roundtrip-pin-0714` —
+  `botsite/tests/test_import_roundtrip.py`: every `_IMPORT_SPEC` table
+  populated via the real store writers (non-default values, unicode,
+  null-vs-set score, all-256-byte blobs, every `_IMPORT_REFS` FK edge),
+  exported, restored into a fresh DB through `import_all()`, re-exported,
+  and the two exports asserted DEEPLY equal — only the export-act
+  metadata (`exported_at`, `db_path`) is normalized, each with a
+  documented reason; a spec-driven guard fails if any `_IMPORT_SPEC`
+  table is left empty in the fixture so future tables must join the pin.
+  Plus the legacy-shape round trip: an old backup missing newer
+  columns/tables imports to explicit expected defaults-filled rows, and
+  the upgraded export then round-trips deep-equal) — original capture
+  (import-schema-pin session 💡): populate every table, run
+  `export_all()`, import the result into a fresh DB via `import_all()`,
+  re-export, and assert the two exports are DEEPLY equal (ids, values,
+  base64 blobs — everything), instead of the current round-trip test's
+  spot-checks of fields someone remembered to assert
+  (`botsite/tests/test_testing_import.py`
+  `test_round_trip_export_then_import_after_wipe`). Worth having because
+  this pin plus the schema-drift pin (branch
+  `claude/import-schema-pin-0714`) makes every current AND future column
+  value-fidelity-checked for free: the drift pin proves the spec covers
+  the schema, deep equality proves the covered values survive the trip —
+  an import that quietly coerces or defaults a value today passes the
+  spot-checks. Deduped against this backlog + the queue-state NEXT list:
+  the import bullets are the valve (#320), the referential pass (#323),
+  and the spec pin; nothing asserts export/import round-trip equality.
+  Source: `.sessions/2026-07-14-import-schema-pin.md` 💡.
+
+- **Freeze a real export.json as a committed golden legacy fixture** ·
+  `captured` (2026-07-14, roundtrip-pin session 💡) — every "legacy
+  backup" in the import tests is a hand-simulated shape: the test author
+  guesses which columns old exports lacked, and if that guess is wrong
+  the valve's legacy tolerance is tested against a fiction. Commit a
+  REAL `export_all()` output now (tiny fixture data, secrets-free by
+  construction — the export carries no secret), e.g.
+  `botsite/tests/data/export-2026-07.json`, and assert forever that THIS
+  file imports cleanly through `import_all()`; each future schema era
+  freezes one more file instead of re-simulating history. Worth having
+  because the valve's whole purpose is restoring backups taken by OLDER
+  code, and no test currently exercises bytes an older version actually
+  wrote. Deduped against this backlog + the queue-state NEXT list: the
+  import bullets are the valve (#320), the referential pass (#323), the
+  spec pin (#326), and the round-trip pin (branch
+  `claude/roundtrip-pin-0714`); nothing commits a frozen real-export
+  fixture. Source: `.sessions/2026-07-14-roundtrip-pin.md` 💡.
+
+- **Disambiguate the smoke-crawl pass-4 404s from repo privacy — GitHub
+  answers anonymous requests to PRIVATE repos with 404, not 403** ·
+  `captured` (2026-07-14, md-link-sample session 💡) — the sampled
+  rewritten-link check (branch `claude/md-link-sample-0714`) passes 403 as
+  "private repo", but the 403 observed from the agent container is the CCR
+  egress proxy's per-session GitHub gate (verified: the response body is
+  the proxy's "access not enabled for this session" JSON, not GitHub's);
+  in proxy-less CI, GitHub itself returns 404 for a private repo's blob
+  URL — indistinguishable from a genuine rewrite defect, so a scheduled
+  smoke-crawl FAIL can be repo privacy rather than rot. A small
+  disambiguator — probe the failing repo's public visibility (e.g. one
+  extra request to the repo root or the already-used raw host) or keep a
+  committed known-private-repo list, and downgrade those 404s to the
+  private-repo PASS note — would keep the gate's reds honest. Worth having
+  because the first real scheduled-run 404 will otherwise be triaged as a
+  rewriter bug when it may just be a private lane repo. Deduped against
+  this backlog + the queue-state NEXT list: the sample-verify bullet ships
+  the check itself; the private-lane bullets are botsite/review-side;
+  nothing addresses 404-vs-privacy ambiguity in the crawl.
+  Source: `.sessions/2026-07-14-md-link-sample.md` 💡.
+
+- **Synthetic zero-commit-branch pin for the claims-drift gate — settle the
+  relayed #319 false-positive LEAD** · `captured` (2026-07-14, eap-audit
+  session 💡) — the gate's Lane 1 (`git merge-base --is-ancestor branch
+  main`, `tests/test_claims_drift_gate.py:99`) is trivially TRUE for a
+  claim whose branch was pushed with zero unique commits (tip = a main
+  commit), so the gate would call a brand-new claim "merged" and red the
+  build on honest in-flight work. A coordinator-relayed false positive
+  "reported by PR #319" was NOT found in the repo record (body, comments,
+  commits, check runs all clean — EAP close-out audit §11), so the lead is
+  unconfirmed; one synthetic-repo test arming a claim on a zero-commit
+  branch would either pin the bug (and motivate a not-yet-merged guard,
+  e.g. require the branch tip to predate the claim or have unique commits)
+  or retire the lead for good. Worth having because the gate is one day
+  old, already load-bearing in the control fast lane, and this is its one
+  alleged failure the synthetic suite doesn't cover. Deduped against this
+  backlog + the queue-state NEXT list: the only claims-gate bullet (claim
+  bullet carries its PR number) covers the pruned-ref indeterminate lane,
+  not the zero-commit lane-1 false positive; no other bullet touches the
+  gate. Source: `.sessions/2026-07-14-eap-audit.md` 💡.
+
+- **Kit-gate advisory for the capability-seed fence itself** · `captured`
+  (2026-07-14, order-028-fence session 💡) — extend the `bootstrap.py
+  check` docs scan with an advisory that flags `docs/CAPABILITIES.md` when
+  the `capability-seed` BEGIN/END pair is missing, unpaired, or
+  out-of-order, so the fence can't be silently dropped again by a future
+  rewrite of the file. Worth having because that is exactly what ORDER 028
+  exists to repair — the fence vanished in a content rewrite and only a
+  manual audit caught it, an order and a full PR later; the seat-digest
+  render degrades silently meanwhile. Kit-owned surface, so the build
+  routes via the kit lane, not this repo. Deduped against this backlog +
+  the queue-state NEXT list: the only marker-scan bullet ("Kit-gate
+  advisory for exact-ID model lines") covers session-card model lines;
+  nothing covers the CAPABILITIES fence.
+  Source: `.sessions/2026-07-14-order-028-fence.md` 💡.
+
+- **Quick-reference drift check in the kit gate — pin the journal's pytest
+  command to the CLAUDE.md verify line** · `captured` (2026-07-14,
+  order-029-truing session 💡) — `bootstrap.py check` could grep
+  `.session-journal.md`'s ⚡ Quick reference for the pytest command string
+  and warn/fail when it diverges from the CLAUDE.md "Verifying a change"
+  line, the way the word-budget gate already pins `docs/current-state.md`.
+  Worth having because INC-23 and INC-24 are the same failure class (a
+  boot-set surface nobody re-reads after the world changes) and the
+  journal's test command is exactly machine-checkable. Deduped against
+  this backlog + the queue-state NEXT list: no journal-drift or
+  quick-reference bullet exists. Source:
+  `.sessions/2026-07-14-order-029-truing.md` 💡.
+
+- **Owner-actions renderer: generate the checklist from the ⚑ blocks** ·
+  `captured` (2026-07-14, order-030-closeout session 💡) — the close-out
+  walkthrough's section C hand-copies what/where/verify from the 9
+  six-field ⚑ blocks in `docs/owner/OWNER-ACTIONS.md`; the control-plane
+  already parses six-field blocks for `/queue` (`app/` owner-queue
+  pipeline), so a small `scripts/owner_checklist.py` (or a `/queue.md`
+  export) could emit the same compact checklist on demand and never drift
+  from the source blocks. Worth having because every close-out/briefing
+  that hand-copies the asks is a drift surface — one renderer keeps
+  recommendation docs honest as asks are struck. Deduped against this
+  backlog + the queue-state NEXT list: no checklist-export/renderer bullet
+  exists (the backlog's owner-queue bullets are page features, not
+  exports). Source: `.sessions/2026-07-14-order-030-closeout.md` 💡.
 
 - **Teach the sweep job the `do-not-automerge` label** · `captured`
   (2026-07-14, automerge-reconcile session 💡) — the half-hourly sweep in
