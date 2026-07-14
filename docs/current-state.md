@@ -122,12 +122,11 @@ trued 2026-07-13 late night, ORDER 027 item 2.)
   botsite-copy `ANTHROPIC_API_KEY` not measured — walled
   (`docs/botsite.md:108`, `docs/CAPABILITIES.md` 2026-07-13; row K).
   Unused-var deletion = new ⚑ OWNER-ACTIONS ask.
-- The `control-plane` service **GitHub token is currently UNSET**
-  (live finding 2026-07-10/11: the board shows the honest "unknown (token
-  lacks admin scope)" / "needs push-scope token" cells and every fleet
-  surface still serves real content on the anonymous rate limit). The
-  durable-PAT ask is the ORDER 020 ⚑ above; setup steps in
-  `docs/deployment.md`.
+- The `control-plane` service **GitHub token is SET and working**
+  (RESOLVED 2026-07-12, `docs/CAPABILITIES.md`: the live board returns
+  authenticated-only cells — secret counts, `auto_merge.allowed`,
+  deploy-drift all known; the owner set it — OWNER-ACTIONS Decided row
+  H). Still open: the durable contents:write PAT, the ORDER 020 ⚑ above.
 
 ## Recently shipped (newest first)
 
