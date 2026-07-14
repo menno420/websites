@@ -1740,7 +1740,18 @@
   `.sessions/2026-07-14-md-relative-links.md` 💡.
 
 - **Pin `_IMPORT_SPEC`/`_IMPORT_REFS` against the live schema with a drift
-  test** · `captured` (2026-07-14, import-referential session 💡) — the
+  test** · `built` (2026-07-14, branch `claude/import-schema-pin-0714` —
+  `botsite/tests/test_import_schema_drift.py` builds an in-memory DB from
+  the real `_SCHEMA` and derives tables via `sqlite_master`, columns via
+  `PRAGMA table_info`, FK edges via `PRAGMA foreign_key_list`, then asserts
+  exact two-way coverage against `_IMPORT_SPEC`/`_IMPORT_REFS`/
+  `_IMPORT_ENUMS`, failing with the drifted table/column/edge named; the
+  two deliberate spec↔schema gaps are pinned explicitly, never skipped —
+  `screenshots.data_base64`→`data` as a rename pin, and the
+  `payout_ledger.claim_id`→claims edge (checked on import, undeclared in
+  the schema) as an extra-refs pin that must shrink if the schema gains
+  the REFERENCES clause) — original capture (import-referential session
+  💡): the
   import valve's field spec and its new reference-edge list
   (`botsite/testing_store.py`) are hand-kept constants that mirror
   `_SCHEMA` by convention only: the next table or FK column added to
@@ -1757,3 +1768,21 @@
   against this backlog + the queue-state NEXT list: no
   import-spec/schema-drift/foreign_key_list bullet exists anywhere.
   Source: `.sessions/2026-07-14-import-referential.md` 💡.
+
+- **Export→import→export deep-equality round-trip pin** · `captured`
+  (2026-07-14, import-schema-pin session 💡) — populate every table, run
+  `export_all()`, import the result into a fresh DB via `import_all()`,
+  re-export, and assert the two exports are DEEPLY equal (ids, values,
+  base64 blobs — everything), instead of the current round-trip test's
+  spot-checks of fields someone remembered to assert
+  (`botsite/tests/test_testing_import.py`
+  `test_round_trip_export_then_import_after_wipe`). Worth having because
+  this pin plus the schema-drift pin (branch
+  `claude/import-schema-pin-0714`) makes every current AND future column
+  value-fidelity-checked for free: the drift pin proves the spec covers
+  the schema, deep equality proves the covered values survive the trip —
+  an import that quietly coerces or defaults a value today passes the
+  spot-checks. Deduped against this backlog + the queue-state NEXT list:
+  the import bullets are the valve (#320), the referential pass (#323),
+  and the spec pin; nothing asserts export/import round-trip equality.
+  Source: `.sessions/2026-07-14-import-schema-pin.md` 💡.
