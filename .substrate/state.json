@@ -7,20 +7,21 @@
     "soft_target_sessions": 50
   },
   "graduation_proposed": false,
-  "kit_version": "1.15.0",
+  "kit_version": "1.16.0",
   "last_compaction_session": 0,
   "mode": "guided",
   "mode_history": [],
   "open_questions": [],
   "planted_doc_hashes": {
     ".claude/CLAUDE.md": "26af862a36e83f202c0b08febdf22ca6346b0871cc4681c2320d0d48072864e4",
-    "control/claims/README.md": "14cb7a6a66bc2b9ee6d97c0c72e8642356907ffec3ff706d27a732470b3a19ac",
+    "control/claims/README.md": "1375a91217d36c8fa0ef0af4ff5241deb0d325001a2b73dc62dc5065784138a7",
     "docs/CAPABILITIES.md": "b0b2b57311a27a1c04d76743e3ff3db1d9b50fd67b84c5ea57033645867fafdf",
-    "docs/ROUTINES.md": "1b5a41971e142e358202006ebafb929d92c4db352a062228106ef1205643b1f5",
-    "docs/SKILLS.md": "7de2326f2793f1318fc039e30b15e0d96356d26cd3935fc9ca483943c9cc4ae4",
+    "docs/ROUTINES.md": "f4cad19e97544062a4335c565c3cfdc3111e08473adf1c96cd8608fd020983d5",
+    "docs/SKILLS.md": "4aa4807c18e3d76b4c5cb5a0db00b73807c150070a140e531380fabbdc466de8",
     "docs/ai-project-workflow.md": "35932f33b9b5d3e1af227c36cafcc5299e47aaeef19cc3f82dfddb60bcc67fc9",
     "docs/helper-policy.md": "21b91ac9c09bca03e6dcf8350680513b639a47367e5373ca73ac909bc201b0c3",
     "docs/owner-profile.md": "27c5748bb6d087a9a8384723fd499b91e9b4634d635aa5bf397bf69702c67b00",
+    "docs/reading-path.md": "9fc502ef075c25811d27b40ae0661e0cb726456a389e7479e7ddb5d52e7d9fc9",
     "docs/seat-digest.md": "126d63a9e931a3ee34ad2c97b8956b37e32643fe36ec55298abf097104e13152"
   },
   "project_id": "4b6a55b0bafb",
@@ -53,6 +54,21 @@
       "question_id": "Q-011",
       "source": "user",
       "value": "Source code and merged PRs win over any doc. When a doc and a source file disagree, treat the doc as stale, follow the source, and fix the doc in the same session \u2014 drift you can see (a wrong ledger entry, a stale pointer) is fixed on sight, not deferred."
+    },
+    "fleet_dark_repos": {
+      "question_id": "Q-016",
+      "source": "user",
+      "value": "All fleet sibling repos are public and read-only readable (standing authorization, superbot Q-0272) EXCEPT `pokemon-mod-lab` \u2014 private/auth-walled; never read it, never guess about its contents."
+    },
+    "fleet_siblings": {
+      "question_id": "Q-015",
+      "source": "user",
+      "value": "superbot (hub \u2014 coordination surface; truth: docs/current-state.md, control/status.md) \u00b7 superbot-next (rebuild lane; control/status.md) \u00b7 fleet-manager (manager \u2014 GENERATED docs/roster.md is the canonical fleet snapshot; control/status.md) \u00b7 substrate-kit (workflow kit source \u2014 releases this repo vendors as bootstrap.py; docs/adopters.md) \u00b7 trading-strategy, venture-lab, superbot-games, superbot-idle, superbot-mineverse, gba-homebrew, idea-engine, sim-lab, product-forge (lane repos; each one's truth: its control/status.md heartbeat + docs/current-state.md) \u00b7 pokemon-mod-lab (PRIVATE \u2014 dark, see above)."
+    },
+    "fleet_status_command": {
+      "question_id": "Q-014",
+      "source": "user",
+      "value": "Fetch the fleet-manager generated roster (regenerated \u2264~2h by the manager wake; kill-switch: if its generated-at is >24h stale, trust lane heartbeats directly): `curl -sSL https://raw.githubusercontent.com/menno420/fleet-manager/main/docs/roster.md` \u2014 one table row per lane: heartbeat age, verdict, phase, orders, kit version, wake trigger."
     },
     "integration_mode": {
       "question_id": "Q-001",
@@ -109,6 +125,9 @@
     "architecture_layers": "filled",
     "doc_roots": "filled",
     "drift_resolution": "filled",
+    "fleet_dark_repos": "filled",
+    "fleet_siblings": "filled",
+    "fleet_status_command": "filled",
     "integration_mode": "filled",
     "mutation_seam": "filled",
     "new_area_ownership": "filled",
