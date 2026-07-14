@@ -44,6 +44,8 @@ credential is missing:
   release workflow (with a version input) creates the tag in-Actions —
   proven repeatedly fleet-wide after direct tag pushes 403'd.
 
+<!-- substrate-kit:capability-seed BEGIN — kit-owned, refreshed at upgrade. Append your findings BELOW the fence (## Append log), never inside it. -->
+
 ## Walls — verified blocked (use the workaround; don't rediscover)
 
 - **Tag push / release create via git**: HTTP 403 from the environment's git
@@ -63,6 +65,8 @@ credential is missing:
   which kind of session hit which boundary.
 - **GraphQL API quota**: tight — batch queries and prefer the REST-backed
   MCP tools for bulk reads.
+
+<!-- substrate-kit:capability-seed END -->
 
 ## Append log — newest first
 

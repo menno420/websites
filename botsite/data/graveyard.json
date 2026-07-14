@@ -1,26 +1,26 @@
 {
- "as_of": "2026-07-13T10:28:43Z",
+ "as_of": "2026-07-14T07:22:38Z",
  "source": "https://github.com/menno420/trading-strategy/blob/main/experiments/index.jsonl",
- "source_sha": "d5597457b10fb42ae646ccb2c8fc61690671d52a",
+ "source_sha": "01aa0cec532e45463e04743e4406d6ea2ef6aa8c",
  "source_sha_reason": "",
  "verdict_rule": "derived at bake time from the ledger's own fields \u2014 KEEP (dev-candidate only) when a run's stitched-OOS Sharpe beats its same-window buy-and-hold benchmark, KILL otherwise; PROMOTED requires the lab's closed validation protocol (holdout spent) and is 0 by the program's own record",
  "aggregate": {
-  "runs": 566,
-  "config_evals": 7846,
+  "runs": 658,
+  "config_evals": 8678,
   "skipped_ledger_lines": 0,
   "verdicts": {
    "promoted": 0,
-   "keep": 191,
-   "kill": 375
+   "keep": 234,
+   "kill": 424
   },
-  "strategies": 25,
+  "strategies": 31,
   "instruments": 17,
   "timeframes": [
    "daily",
    "hourly"
   ],
-  "best_sharpe": 2.332,
-  "median_sharpe": 0.719,
+  "best_sharpe": 2.435,
+  "median_sharpe": 0.716,
   "worst_sharpe": -1.243,
   "holdout_unlocked_runs": 13,
   "data_start": "1980-12-12 00:00:00",
@@ -28,6 +28,16 @@
  },
  "top": {
   "keep": [
+   {
+    "strategy": "committee_equal_weight",
+    "instrument": "AAPL",
+    "timeframe": "hourly",
+    "sharpe": 2.435,
+    "benchmark_sharpe": 1.57,
+    "cagr": 0.262,
+    "max_drawdown": -0.048,
+    "variants_tried": 1
+   },
    {
     "strategy": "ema_crossover",
     "instrument": "NVDA",
@@ -139,6 +149,16 @@
     "variants_tried": 12
    },
    {
+    "strategy": "committee_equal_weight",
+    "instrument": "GOOGL",
+    "timeframe": "hourly",
+    "sharpe": 1.953,
+    "benchmark_sharpe": 1.01,
+    "cagr": 0.177,
+    "max_drawdown": -0.046,
+    "variants_tried": 1
+   },
+   {
     "strategy": "williams_r_reversion",
     "instrument": "META",
     "timeframe": "hourly",
@@ -179,6 +199,16 @@
     "variants_tried": 44
    },
    {
+    "strategy": "stochastic_reversion",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.792,
+    "benchmark_sharpe": 0.494,
+    "cagr": 0.219,
+    "max_drawdown": -0.09,
+    "variants_tried": 1
+   },
+   {
     "strategy": "xsec_momentum",
     "instrument": "XSEC-9",
     "timeframe": "daily",
@@ -196,36 +226,6 @@
     "benchmark_sharpe": 1.463,
     "cagr": 0.242,
     "max_drawdown": -0.09,
-    "variants_tried": 12
-   },
-   {
-    "strategy": "aroon_trend",
-    "instrument": "META",
-    "timeframe": "hourly",
-    "sharpe": 1.765,
-    "benchmark_sharpe": 1.463,
-    "cagr": 0.53,
-    "max_drawdown": -0.182,
-    "variants_tried": 12
-   },
-   {
-    "strategy": "roc_momentum",
-    "instrument": "GLD",
-    "timeframe": "hourly",
-    "sharpe": 1.756,
-    "benchmark_sharpe": 1.702,
-    "cagr": 0.221,
-    "max_drawdown": -0.062,
-    "variants_tried": 12
-   },
-   {
-    "strategy": "cci_reversion",
-    "instrument": "META",
-    "timeframe": "hourly",
-    "sharpe": 1.735,
-    "benchmark_sharpe": 1.463,
-    "cagr": 0.211,
-    "max_drawdown": -0.085,
     "variants_tried": 12
    }
   ],
@@ -301,6 +301,16 @@
     "variants_tried": 44
    },
    {
+    "strategy": "obv_trend",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.58,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.576,
+    "max_drawdown": -0.301,
+    "variants_tried": 12
+   },
+   {
     "strategy": "bollinger_breakout",
     "instrument": "GLD",
     "timeframe": "hourly",
@@ -308,6 +318,16 @@
     "benchmark_sharpe": 1.702,
     "cagr": 0.159,
     "max_drawdown": -0.051,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "mfi_reversion",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 1.568,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.12,
+    "max_drawdown": -0.069,
     "variants_tried": 12
    },
    {
@@ -328,6 +348,16 @@
     "benchmark_sharpe": 1.949,
     "cagr": 0.495,
     "max_drawdown": -0.205,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "mfi_reversion",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.507,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.082,
+    "max_drawdown": -0.068,
     "variants_tried": 12
    },
    {
@@ -399,36 +429,6 @@
     "cagr": 0.383,
     "max_drawdown": -0.182,
     "variants_tried": 1
-   },
-   {
-    "strategy": "donchian",
-    "instrument": "META",
-    "timeframe": "hourly",
-    "sharpe": 1.384,
-    "benchmark_sharpe": 1.463,
-    "cagr": 0.383,
-    "max_drawdown": -0.182,
-    "variants_tried": 1
-   },
-   {
-    "strategy": "ichimoku_trend",
-    "instrument": "GLD",
-    "timeframe": "hourly",
-    "sharpe": 1.352,
-    "benchmark_sharpe": 1.702,
-    "cagr": 0.131,
-    "max_drawdown": -0.065,
-    "variants_tried": 12
-   },
-   {
-    "strategy": "ema_crossover",
-    "instrument": "GLD",
-    "timeframe": "hourly",
-    "sharpe": 1.349,
-    "benchmark_sharpe": 1.702,
-    "cagr": 0.143,
-    "max_drawdown": -0.074,
-    "variants_tried": 1
    }
   ]
  },
@@ -455,9 +455,9 @@
   },
   {
    "strategy": "ema_crossover",
-   "runs": 40,
-   "config_evals": 813,
-   "keep": 19,
+   "runs": 42,
+   "config_evals": 815,
+   "keep": 21,
    "kill": 21,
    "best_sharpe": 2.332,
    "best_cagr": 1.025,
@@ -472,6 +472,16 @@
    "best_sharpe": 2.094,
    "best_cagr": 0.781,
    "worst_max_drawdown": -0.681
+  },
+  {
+   "strategy": "committee_equal_weight",
+   "runs": 12,
+   "config_evals": 12,
+   "keep": 12,
+   "kill": 0,
+   "best_sharpe": 2.435,
+   "best_cagr": 0.426,
+   "worst_max_drawdown": -0.529
   },
   {
    "strategy": "trix_momentum",
@@ -492,6 +502,16 @@
    "best_sharpe": 1.961,
    "best_cagr": 0.87,
    "worst_max_drawdown": -0.697
+  },
+  {
+   "strategy": "williams_r_reversion",
+   "runs": 27,
+   "config_evals": 280,
+   "keep": 11,
+   "kill": 16,
+   "best_sharpe": 1.898,
+   "best_cagr": 0.463,
+   "worst_max_drawdown": -0.586
   },
   {
    "strategy": "atr_trailing",
@@ -515,13 +535,23 @@
   },
   {
    "strategy": "bollinger_breakout",
-   "runs": 21,
-   "config_evals": 252,
-   "keep": 7,
+   "runs": 23,
+   "config_evals": 254,
+   "keep": 9,
    "kill": 14,
    "best_sharpe": 2.126,
    "best_cagr": 0.559,
    "worst_max_drawdown": -0.631
+  },
+  {
+   "strategy": "ichimoku_trend",
+   "runs": 24,
+   "config_evals": 255,
+   "keep": 8,
+   "kill": 16,
+   "best_sharpe": 1.704,
+   "best_cagr": 0.551,
+   "worst_max_drawdown": -0.601
   },
   {
    "strategy": "adx_filtered_sma",
@@ -534,14 +564,14 @@
    "worst_max_drawdown": -0.457
   },
   {
-   "strategy": "williams_r_reversion",
-   "runs": 23,
-   "config_evals": 276,
+   "strategy": "stochastic_reversion",
+   "runs": 26,
+   "config_evals": 279,
    "keep": 7,
-   "kill": 16,
-   "best_sharpe": 1.898,
-   "best_cagr": 0.463,
-   "worst_max_drawdown": -0.586
+   "kill": 19,
+   "best_sharpe": 1.792,
+   "best_cagr": 0.271,
+   "worst_max_drawdown": -0.609
   },
   {
    "strategy": "cci_reversion",
@@ -554,6 +584,26 @@
    "worst_max_drawdown": -0.767
   },
   {
+   "strategy": "mfi_reversion",
+   "runs": 23,
+   "config_evals": 276,
+   "keep": 7,
+   "kill": 16,
+   "best_sharpe": 1.639,
+   "best_cagr": 0.294,
+   "worst_max_drawdown": -0.617
+  },
+  {
+   "strategy": "obv_trend",
+   "runs": 23,
+   "config_evals": 276,
+   "keep": 6,
+   "kill": 17,
+   "best_sharpe": 1.58,
+   "best_cagr": 0.576,
+   "worst_max_drawdown": -0.613
+  },
+  {
    "strategy": "bollinger_reversion",
    "runs": 22,
    "config_evals": 552,
@@ -562,16 +612,6 @@
    "best_sharpe": 1.52,
    "best_cagr": 0.495,
    "worst_max_drawdown": -0.623
-  },
-  {
-   "strategy": "ichimoku_trend",
-   "runs": 21,
-   "config_evals": 252,
-   "keep": 5,
-   "kill": 16,
-   "best_sharpe": 1.704,
-   "best_cagr": 0.551,
-   "worst_max_drawdown": -0.601
   },
   {
    "strategy": "keltner_breakout",
@@ -604,16 +644,6 @@
    "worst_max_drawdown": -0.679
   },
   {
-   "strategy": "stochastic_reversion",
-   "runs": 23,
-   "config_evals": 276,
-   "keep": 4,
-   "kill": 19,
-   "best_sharpe": 1.766,
-   "best_cagr": 0.271,
-   "worst_max_drawdown": -0.609
-  },
-  {
    "strategy": "pullback",
    "runs": 24,
    "config_evals": 466,
@@ -622,6 +652,16 @@
    "best_sharpe": 1.013,
    "best_cagr": 0.2,
    "worst_max_drawdown": -0.687
+  },
+  {
+   "strategy": "regime_switch",
+   "runs": 6,
+   "config_evals": 84,
+   "keep": 4,
+   "kill": 2,
+   "best_sharpe": 0.966,
+   "best_cagr": 0.393,
+   "worst_max_drawdown": -0.594
   },
   {
    "strategy": "supertrend_flip",
@@ -682,6 +722,26 @@
    "best_sharpe": 0.894,
    "best_cagr": 0.225,
    "worst_max_drawdown": -0.369
+  },
+  {
+   "strategy": "crossasset_gate",
+   "runs": 2,
+   "config_evals": 26,
+   "keep": 0,
+   "kill": 2,
+   "best_sharpe": 0.75,
+   "best_cagr": 0.091,
+   "worst_max_drawdown": -0.257
+  },
+  {
+   "strategy": "overnight_gap",
+   "runs": 12,
+   "config_evals": 144,
+   "keep": 0,
+   "kill": 12,
+   "best_sharpe": 0.497,
+   "best_cagr": 0.094,
+   "worst_max_drawdown": -0.657
   }
  ]
 }
