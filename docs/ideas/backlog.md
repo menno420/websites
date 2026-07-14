@@ -1722,8 +1722,16 @@
   Source: `.sessions/2026-07-14-smoke-crawl.md` 💡.
 
 - **Sample-verify rewritten source-link targets — a bounded existence check
-  on the github.com blob URLs the markdown rewriter mints** · `captured`
-  (2026-07-14, md-relative-links session 💡) — the relative-link fix
+  on the github.com blob URLs the markdown rewriter mints** · `built`
+  (2026-07-14, branch `claude/md-link-sample-0714` — `scripts/smoke_crawl.py`
+  pass 4: collects the rewriter's github.com blob/raw +
+  raw.githubusercontent.com URL shapes from crawled control-plane pages
+  only, deterministically samples ≤10 (sorted + evenly strided, no
+  randomness/clock), HEAD-checks each with GET fallback (~5s/request, own
+  30s budget) — 2xx/3xx pass, 403 passes with a private-repo note, 404
+  fails naming the URL + its source page, network errors warn; pure-logic
+  pins in `tests/test_smoke_crawl_rewritten_links.py`; original capture
+  2026-07-14, md-relative-links session 💡) — the relative-link fix
   (PR #322) converts same-origin 404s inside rendered remote markdown into
   EXTERNAL github.com/raw links, and the smoke-crawl never follows or
   fetches external links by documented design — so the failure class did
