@@ -1687,7 +1687,13 @@
   project.index.json. Source: `.sessions/2026-07-14-project-index.md` 💡.
 
 - **Rewrite relative links inside rendered remote markdown to their GitHub
-  source (or de-linkify them)** · `captured` (2026-07-14, smoke-crawl
+  source (or de-linkify them)** · `built` (2026-07-14, PR #322 —
+  `app/journal.py` `render_markdown(source=)` rewrites relative hrefs to
+  github.com blob URLs and relative img srcs to raw-content URLs, resolved
+  against the fetched file's directory; unknown source or a root-escaping
+  `../` de-linkifies instead; all 7 render sites pass their source; the
+  smoke-crawl `.md`-container carve-out deleted, and `/favicon.ico` added
+  fleet-wide for the sibling #321 finding; captured 2026-07-14, smoke-crawl
   session 💡) — the control-plane renders other repos' markdown verbatim in
   `<div class="md">` (heartbeats on /fleet, the fleet-manager ledger on
   /reviews, environment docs on /environments), and relative links inside
@@ -1705,3 +1711,21 @@
   /journal/{repo}/file view" bullet ADDS chrome links via the in-app
   renderer; nothing touches relative hrefs inside rendered markdown bodies.
   Source: `.sessions/2026-07-14-smoke-crawl.md` 💡.
+
+- **Sample-verify rewritten source-link targets — a bounded existence check
+  on the github.com blob URLs the markdown rewriter mints** · `captured`
+  (2026-07-14, md-relative-links session 💡) — the relative-link fix
+  (PR #322) converts same-origin 404s inside rendered remote markdown into
+  EXTERNAL github.com/raw links, and the smoke-crawl never follows or
+  fetches external links by documented design — so the failure class did
+  not die, it moved outside every gate's scope: a wrong path resolution, or
+  an upstream file rename after the TTL cache refreshes, now yields a
+  GitHub 404 nothing measures. A bounded sample (say 10 rewritten targets
+  per scheduled crawl, HEAD via the raw host the app already uses) would
+  put a floor back under the rewrite without hammering GitHub. Worth having
+  because a rewriter that mints dead external links is exactly as broken
+  for the visitor as the 404s it replaced — just invisible to the gate that
+  caught the originals. Deduped against this backlog + the queue-state NEXT
+  list: the rewrite bullet above ships the rewriter itself; no bullet
+  checks external/rewritten link liveness anywhere. Source:
+  `.sessions/2026-07-14-md-relative-links.md` 💡.
