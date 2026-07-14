@@ -1865,3 +1865,16 @@
   bullet carries its PR number) covers the pruned-ref indeterminate lane,
   not the zero-commit lane-1 false positive; no other bullet touches the
   gate. Source: `.sessions/2026-07-14-eap-audit.md` 💡.
+
+- **Quick-reference drift check in the kit gate — pin the journal's pytest
+  command to the CLAUDE.md verify line** · `captured` (2026-07-14,
+  order-029-truing session 💡) — `bootstrap.py check` could grep
+  `.session-journal.md`'s ⚡ Quick reference for the pytest command string
+  and warn/fail when it diverges from the CLAUDE.md "Verifying a change"
+  line, the way the word-budget gate already pins `docs/current-state.md`.
+  Worth having because INC-23 and INC-24 are the same failure class (a
+  boot-set surface nobody re-reads after the world changes) and the
+  journal's test command is exactly machine-checkable. Deduped against
+  this backlog + the queue-state NEXT list: no journal-drift or
+  quick-reference bullet exists. Source:
+  `.sessions/2026-07-14-order-029-truing.md` 💡.
