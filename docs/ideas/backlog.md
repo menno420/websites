@@ -1596,8 +1596,8 @@
   Source: `.sessions/2026-07-13-env-leads-close.md` 💡.
 
 - **Cross-table reference check on the testing-DB import valve — reject
-  backups with orphan rows** · `built` (2026-07-14, branch
-  `claude/import-referential-0714` — a referential pass in
+  backups with orphan rows** · `built` (2026-07-14, PR #323 — a
+  referential pass in
   `_validated_import_rows` (`botsite/testing_store.py`): every cross-table
   reference edge (`submissions.claim_id` / `guide_exchanges.claim_id` /
   `payout_ledger.claim_id` → claims, `ai_reviews.submission_id` /
@@ -1738,3 +1738,22 @@
   list: the rewrite bullet above ships the rewriter itself; no bullet
   checks external/rewritten link liveness anywhere. Source:
   `.sessions/2026-07-14-md-relative-links.md` 💡.
+
+- **Pin `_IMPORT_SPEC`/`_IMPORT_REFS` against the live schema with a drift
+  test** · `captured` (2026-07-14, import-referential session 💡) — the
+  import valve's field spec and its new reference-edge list
+  (`botsite/testing_store.py`) are hand-kept constants that mirror
+  `_SCHEMA` by convention only: the next table or FK column added to
+  `_SCHEMA` imports as silently-absent (spec) or silently-unchecked
+  (refs), and nothing goes red — the hand-kept-list drift class this repo
+  has been bitten by before. A test that opens an in-memory DB, walks
+  `PRAGMA table_info` + `PRAGMA foreign_key_list` per table, and asserts
+  the derived column set and FK edges match the two constants would make
+  schema growth un-forgettable, while keeping the constants explicit and
+  reviewable (runtime introspection would trade that away for magic).
+  Worth having because the referential session hand-derived the edges from
+  `REFERENCES` clauses and a JOIN grep — a derivation that was manual
+  exactly once and should never need to be trusted manual again. Deduped
+  against this backlog + the queue-state NEXT list: no
+  import-spec/schema-drift/foreign_key_list bullet exists anywhere.
+  Source: `.sessions/2026-07-14-import-referential.md` 💡.
