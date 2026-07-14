@@ -1554,7 +1554,18 @@
 
 - **Scheduled browser-level smoke-crawl in CI — a Playwright job that
   cold-crawls the three live sites the way the manual cold passes do** ·
-  `captured` (2026-07-13, cold-browser-review session 💡) — the existing
+  `built` (2026-07-14, PR #321 — `scripts/smoke_crawl.py` +
+  `.github/workflows/smoke-crawl.yml`: headless Chromium crawls the three
+  public sites + the control-plane root every 6h (cron `47 2-23/6 * * *`,
+  offset from healthcheck's `17 */6 * * *` on both fields), same-site link
+  discovery, desktop 1280×900 + mobile 375×812, failing on console errors /
+  non-200 pages / 4xx-5xx same-site links; per-site page cap + global
+  deadline keep a run well under 5 minutes and blowing the deadline is
+  itself a FAILURE; console-error allowlist seeded EMPTY (the #311 pass
+  left zero known noise); gated `/owner` corner skipped by documented
+  design; env/CLI overrides carry the agent-container proxy workaround so
+  CI runs plain; proven by a local live crawl of all four sites —
+  original capture, 2026-07-13 cold-browser-review session 💡) — the existing
   `healthcheck.yml` smoke is curl-level (`/healthz` + `/` status codes);
   both 2026-07-13 cold passes found real regressions it can never see
   (dead chrome wiring, a blank hamburger, a lost footer gutter, a favicon
@@ -1674,3 +1685,23 @@
   instead of signalling neglect. Deduped against this backlog + the
   queue-state NEXT list: no bullet mentions contextpacks or
   project.index.json. Source: `.sessions/2026-07-14-project-index.md` 💡.
+
+- **Rewrite relative links inside rendered remote markdown to their GitHub
+  source (or de-linkify them)** · `captured` (2026-07-14, smoke-crawl
+  session 💡) — the control-plane renders other repos' markdown verbatim in
+  `<div class="md">` (heartbeats on /fleet, the fleet-manager ledger on
+  /reviews, environment docs on /environments), and relative links inside
+  that content (`README.md`, `gen2-blueprint.md`, `docs/retro/…`) resolve
+  against this origin and 404 — the first smoke-crawl run (PR #321) flagged
+  20 of them live, every one clickable by a real visitor today. The
+  renderer already knows each document's source repo + path, so rewriting
+  relative hrefs to the GitHub blob URL (or the in-app
+  `/journal/{repo}/file` view for fleet repos) is a contained fix. Worth
+  having because three public pages serve clickable 404s right now, and
+  fixing it lets `scripts/smoke_crawl.py` delete its documented
+  `.md`-container exclusion — restoring browser-gate coverage over exactly
+  the surfaces that degrade silently. Deduped against this backlog + the
+  queue-state NEXT list: the "Deep-link fleet lane files into the widened
+  /journal/{repo}/file view" bullet ADDS chrome links via the in-app
+  renderer; nothing touches relative hrefs inside rendered markdown bodies.
+  Source: `.sessions/2026-07-14-smoke-crawl.md` 💡.

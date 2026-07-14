@@ -1,0 +1,55 @@
+name: smoke-crawl
+
+# Scheduled browser-level smoke-crawl (docs/ideas/backlog.md "Scheduled
+# browser-level smoke-crawl in CI", the #311 cold-browser session's 💡):
+# every 6 hours, real headless Chromium crawls the public pages of the three
+# public sites + the control-plane root — same-site link discovery, desktop
+# 1280×900 + mobile 375×812 — and fails on console errors, non-200 pages, or
+# broken same-site links. The rendering-layer complement to the curl-level
+# healthcheck.yml smoke: both 2026-07-13 manual cold passes found real
+# regressions (dead chrome wiring, blank hamburger, lost footer gutter,
+# favicon 404) that a status-code probe can never see.
+#
+# READ-ONLY by design: crawls public pages anonymously; no secret, no write
+# anywhere. NOT a required check — it is schedule-driven, gates nothing, and
+# has no pull_request trigger; a failed run notifies via the failed-workflow
+# email the owner already receives (the same mechanism healthcheck.yml uses)
+# and shows red on the Actions tab. Cron offset from healthcheck.yml's
+# `17 */6 * * *` on BOTH fields (minute 47, hours 2/8/14/20) so the two
+# smokes never contend for the same scheduling slot; off-top-of-hour minutes
+# dodge the cron congestion GitHub documents.
+#
+# HONESTY NOTE: a green workflow_dispatch run proves the JOB, not the
+# SCHEDULE — the scheduled path is proven only by the first on-schedule run
+# appearing on the Actions tab.
+#
+# Playwright is pinned HERE, workflow-only, on purpose: no service
+# requirements.txt grows a browser-automation dependency for a crawl that
+# never runs inside a service. GitHub runners need none of the agent-container
+# proxy overrides documented in docs/CAPABILITIES.md — the script runs plain.
+
+on:
+  schedule:
+    - cron: "47 2-23/6 * * *"
+  workflow_dispatch:
+
+jobs:
+  smoke-crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright (pinned) + Chromium
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install playwright==1.61.0
+          python3 -m playwright install --with-deps chromium
+
+      - name: Crawl the live sites (desktop + mobile, console + link checks)
+        run: python3 scripts/smoke_crawl.py
