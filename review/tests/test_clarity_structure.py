@@ -74,6 +74,7 @@ def _no_network(monkeypatch):
 NON_PAGE_GET_ROUTES: dict[str, str] = {
     "/healthz": "JSON health probe (Railway healthcheck) — no page shell",
     "/version": "JSON deployed-sha endpoint — machine twin, no page shell",
+    "/favicon.ico": "the site icon at the browser-probed path — a file, not a page",
     "/story.json": "JSON data feed for the front-page charts — machine data",
     "/fleet.json": "JSON twin of /fleet (the filtered committed mirror)",
     "/reviews/feed.xml": "Atom feed twin of /reviews — XML, not HTML",

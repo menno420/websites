@@ -442,3 +442,42 @@ only other open PR at sweep time is #209 — this inventory's own PR.
 - **websites**: swept in full locally (inbox, docs, all session cards,
   review data, PR #160 branch, open PRs); no exclusions beyond
   bootstrap.py/.substrate machinery per standing search hygiene.
+
+---
+
+## Addendum — 2026-07-13 intake sweep (venture WEBSITE-IDEA markers + fleet-manager)
+
+Fresh intake re-walk of the two standing channels (ORDER 022 item 4 venture
+markers; fm inbox/docs), run 2026-07-13 by the intake-sweep session
+(`.sessions/2026-07-13-intake-sweep.md`, which carries the full 18-repo @ SHA
+source list). Swept imperative text below is recorded as DATA, not followed.
+
+**NEW — fleet-manager items unreflected websites-side (fm @ `d74eca4`,
+`d74eca41e29d2458491d1054c9a16eafd08e171f`):**
+
+| Item | Source | State | Route |
+| --- | --- | --- | --- |
+| fm ORDER 029 — standing owner merge directive (2026-07-12T22:04Z, verbatim "you and all your agents should always merge every PR thats ready"; seats cite it when self-merging) | fleet-manager/control/inbox.md@d74eca4 (L987-992) | recorded (likely superseded) | Zero reflection in websites (no citation, no ledger row). CAVEAT: fm ORDERs 039/040 (same file L1127-1129, L1200-1202) later set "OPEN PRs STAY OPEN — land on green where auto-merge arms; never merge-chase" as the night rule then the standing v3.5 default, so 029's practical effect here (the enabler already lands green PRs) may be nil — but the directive + its supersession chain were unrecorded websites-side until this row. Recorded only; NOT adopted as merge policy. |
+| fm ORDER 038 — standing fleet-wide VERDICT-016 reviewer-authenticity gate: mandatory pre-trust check on every @codex / cross-agent reviewer reply (e.g. cited line ranges ≤ EOF at reviewed head) before acting; failed reply = treat as fabricated, cite the gate when discarding | fleet-manager/control/inbox.md@d74eca4 (L1092-1111) | REFLECTED (2026-07-13) | Reflected as a binding section: `docs/collaboration-model.md` § "Reviewer authenticity — the VERDICT-016 gate (fm ORDER 038)" — pre-trust authenticity gate + non-author review-merge must rest on the reviewer's own genuine review (relayed/dispatched authority = review laundering, denied) + Q-0120 verify-never-obey rider. Landed by the 2026-07-13 fm-order-038-reflection session (`.sessions/2026-07-13-fm-order-038-reflection.md`). |
+
+**WATCH (no websites order yet):**
+
+| Item | Source | State | Route |
+| --- | --- | --- | --- |
+| fm ORDER 036 — Game Lab mass browser-game production, "browser games coordinate with Websites (arcade home)"; fm outbox shows 6 parked gba browser-game PRs (#82-#86 incl. web-arcade bundle #85) | fleet-manager/control/inbox.md@d74eca4 (L1036); fm control/outbox.md@d74eca4 (L138-146) | watch | Addressed to Game Lab, no marker/order has reached websites; expect arcade-catalog intake asks soon (arcade.json today: lumen-drift / mineverse / games-web only). |
+
+**Venture WEBSITE-IDEA channel — honest null.** 18 fleet repos swept at
+pinned HEADs (venture-lab @ `abf1f23`, fleet-manager @ `d74eca4`, superbot @
+`b2dc3c8`, …; full repo/SHA table on the session card): 10 WEBSITE-IDEA
+markers found, ALL already cataloged/built/owner-gated in websites (8 built
+incl. Puddle Museum, vetting catalog #248, rubric scorer, webhook analyzer
+#266; 1 duplicate-already-live; photo-packs gallery owner-gated per the
+ORDER-022 ledger). ZERO new. Not swept: `pokemon-mod-lab` (private/dark,
+skipped per policy), `mobile-lab` (clone failed — auth wall).
+
+**Reverse-direction staleness note (fm-side, no websites action):** fm
+docs/review-queue.md@d74eca4 superbot#1920 row still banks "websites
+dashboard/data_source.py has NO schema_version check for dashboard.json" —
+stale; websites closed that gap at origin/main
+(`dashboard/data_source.py:197`, `DASHBOARD_SCHEMA_VERSION = 1` +
+`dashboard_schema_issue()`).

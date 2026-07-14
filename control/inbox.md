@@ -280,3 +280,73 @@ END ORDER TEXT
 Context (coordinator note, not owner text): pre-create the missing env-var entries on Railway services so the owner only pastes values. Coordinator dispatched with discovery protocol (Railway write capability untested) + safety rails: empty values only where the app treats empty as unset; no fake auth values; DATABASE_URL excluded (requires Postgres provisioning = cost/infra, stays owner-click).
 why: the owner wants the missing env-var entries pre-created on Railway so filling credentials is a paste-values-only step.
 done-when: writable → placeholders created + verified by name via the existing read path + envhub honesty preserved; unwritable → exact denial recorded in docs/CAPABILITIES.md + six-field fallback ask.
+
+## ORDER 027 · 2026-07-13T22:14Z · status: new
+priority: P1
+do: work the EAP final-night worklist below, top-down (8 items) — relay of fm ORDER 045 / docs/eap-final-night-worklists-2026-07-13.md @ ca1ce28
+why: owner directive 2026-07-13 — every seat gets a full list to work tonight, the last day of the EAP
+**EAP final-night worklist — owner directive relay (fm ORDER 045, Phase 3 fan-out).**
+
+Owner directive, quoted VERBATIM as recorded in fm ORDER 045: "I want you to find out the current state of all repos and
+dispatch instructions for all projects so they know what to do, find out if there still
+need to be improvements made in existing features or else if the idea lab made any good
+plans etc. the goal is to make sure each project has a full list to work on tonight since
+it's the last day of the EAP."
+
+Citations: fm ORDER 045, control/inbox.md @ ca1ce28 · docs/eap-final-night-worklists-2026-07-13.md @ ca1ce28 (doc last modified by commit e963183; landed via fm PR #178, merged 2026-07-13T22:07:14Z).
+
+**Your seat's full night worklist, copied faithfully from the doc:**
+
+## websites — swept @ `31b5d00`
+
+Heartbeat ~10h stale at HEAD despite an active evening wave (#291–#304); FENCE
+through 2026-07-14 (no live-URL moves, no Railway consolidation).
+
+1. Shepherd #304 (per-step question digest) to green + build its follow-on — declared raw input for the tester-question→rewrite loop (websites PR #304; `docs/ideas/backlog.md:1442@31b5d00`) `[lane]`
+2. Truing pass: heartbeat 11:31Z + current-state "nothing in flight" contradicted by #291–#304 and 7 open lifeboats vs 3 documented (`control/status.md:2`, `docs/current-state.md:103@31b5d00`) `[drift]`
+3. Cold-browser pass over the review site before EAP close 07-14 (ORDER 022 item 5, `control/inbox.md@31b5d00`) `[standing]` `[deadline]`
+4. Read-path check of the two #275 env leads — dashboard's undocumented `SITE_PASSWORD`; possible `ANTHROPIC_API_KEY` on the parallel botsite copy (`docs/current-state.md@31b5d00`, queued "next session") `[lane]`
+5. Suite-level token pin in `tests/conftest.py` — autouse sentinel for `GITHUB_TOKEN`/`RAILWAY_TOKEN`, kills the unpinned-reason-assertion flake class (`docs/ideas/backlog.md:33@31b5d00`) `[improve]`
+6. Full `asked_at` timestamp on questions-ledger records — unblocks the #302 latency stat for same-day answers (`backlog.md:1421@31b5d00`) `[improve]`
+7. Outbox grammar gate on the control fast lane — `quality.yml` short-circuits green on control/**-only diffs (`backlog.md:1192@31b5d00`) `[improve]`
+8. One idea-engine build-direct slice: review-queue row auto-check or open-PR awareness at wake (idea-engine `ideas/websites/review-queue-row-auto-check-2026-07-11.md`, `open-pr-awareness-at-wake-2026-07-10.md` @`2e5d73f`) `[build-direct]`
+
+**Blocked (do not schedule):** ORDER 020 writeback (owner contents:write PAT paste) · ORDER 021 environments hub (owner Discord-auth decision/Q-0004) · lifeboat disposal #245/#249/#257/#278/#279/#280/#300 (owner-click) · photo-pack originals (owner).
+
+Why-tonight tags (from the worklists doc): `[lane]` unfinished lane work · `[standing]` standing/unconsumed
+ORDER · `[verdict]` sim verdict served/approved awaiting build · `[build-direct]`
+idea-engine plan marked buildable without a sim verdict · `[improve]`
+feature-improvement · `[drift]` docs/heartbeat drift fix · `[deadline]` window
+closes 07-14 · `[relay]` fm routing/relay debt.
+
+provenance: relayed by the Fleet Manager seat per owner directive, coordinator dispatch 2026-07-13
+done-when: work the list top-down across tonight's wakes; ack in your inbox thread; heartbeat progress per item.
+
+## ORDER 028 · 2026-07-14T05:39:56Z · status: new
+priority: routine
+do: restore the kit `substrate-kit:capability-seed` fence markers in `docs/CAPABILITIES.md` so they wrap the existing walls section ("## Walls — verified blocked", line 47 at `2b5947d`) — fence RESTORE only; the walls content itself is healthy (the digest renders 6 walls "…plus 1 more"), do NOT rewrite it. Use the exact marker format the substrate-kit seed plants — canonical example at superbot-next `docs/CAPABILITIES.md:19`/`:101` (@ `e2d792a`):
+  `<!-- substrate-kit:capability-seed BEGIN — kit-owned, refreshed at upgrade. Append your findings BELOW the fence (## Append log), never inside it. -->`
+  `<!-- substrate-kit:capability-seed END -->`
+  Keep session-appended findings (the "## Append log" section) BELOW/outside the fence, per the marker's own convention.
+why: the fm fence-exposure index (fm `docs/fence-index.md` @ `3b335a8`, central-docs plan Phase 1 B4) found the `capability-seed` fence ABSENT from `docs/CAPABILITIES.md` at websites @ `2b5947d` (0 marker hits) while the seat digest is exposed — an un-fenced capabilities surface blinds the seatdigest/walls tooling (fence-prefix extraction contract, kit `src/engine/grammar.py`) to the section (INC-48 class).
+done-when: both fence markers present at main HEAD wrapping the existing walls content of `docs/CAPABILITIES.md`, and `python3 bootstrap.py check --strict` green.
+
+Provenance: relayed by the Fleet Manager seat, coordinator dispatch 2026-07-14, fm docs/dispatch-log.md @ 3b335a8.
+
+## ORDER 029 · 2026-07-14T07:47Z · status: new
+priority: P2
+do: (a) INC-23 — fix `docs/current-state.md:125` ("control-plane GitHub token is currently UNSET") to the resolved state per this repo's own `docs/CAPABILITIES.md` 2026-07-12 entry ("RESOLVES the 2026-07-09 GITHUB_TOKEN wall — the live control-plane now runs with a working GITHUB_TOKEN"). (b) INC-24 — refresh `.session-journal.md` ⚡ Quick reference: "one repo, three independent … services" → four (review/ live since 2026-07-12) and "Tests (60 total)" → the current four-suite count + the four-suite pytest command (derive counts at fix time; CLAUDE.md's verify line is the model).
+why: INC-23/24 — the boot-set state doc contradicts the capability ledger, and the journal's first lines undercount the running system; re-verified live at dispatch.
+done-when: both surfaces name four services; the token line cites the CAPABILITIES resolution; journal test command matches the CLAUDE.md four-suite line.
+provenance: relayed by the Fleet Manager seat, coordinator dispatch 2026-07-14, fm docs/dispatch-log.md @ 1694bfc
+
+## ORDER 030 · 2026-07-14T09:34:13Z · status: new
+
+priority: P1
+from: fleet-manager (relayed by the Fleet Manager seat per owner directive, coordinator dispatch 2026-07-14; fm PR #193 carries the dispatch log)
+executor: next websites session
+do:
+  (a) FINISH — today (2026-07-14) is the EAP final day. Complete what is completable today from this cited list; anything that can't finish gets parked HONESTLY with a one-line citation of why: (1) resolve the PR #334 conflict so ORDER 028 completes — head fb1481b is quality-green with auto-merge armed but `mergeable_state: dirty` vs main after #332/#333 landed; merge main INTO the branch, never rebase the published branch — the armed auto-merge then fires; (2) unstick bake PR #330 — quality green on head 6e6df1e since 07:23:36Z, bot-authored (github-actions[bot]) so a non-author merge/re-arm is agent-reachable; data-only diff; (3) true the heartbeat — status.md `updated: 2026-07-14T03:21:07Z` is ~6 h stale and its orders line omits ORDERs 028/029 (029 is DONE at HEAD da19824 via #333; 028 in flight via #334); (4) run the smoke-crawl re-verify that came due after 08:47Z (status.md § standing-ladder wave #321: "02:47Z first slot did not fire — zero runs at 03:15Z check … re-verify at/after 08:47Z before calling it wedged"). Parked (cite, do not chase): ORDER 020 (owner contents:write PAT paste) · ORDER 021 (owner Discord-auth decision / Q-0004) · PR #324 (parked green by design, owner-click, do-not-automerge — untouchable) · 7 draft lifeboats #245/#249/#257/#278/#279/#280/#300 (owner-click disposal). Premises are from fm recon at websites HEAD da19824 — re-verify each live before acting (Q-0120).
+  (b) WALKTHROUGH — land docs/eap-closeout-walkthrough-2026-07-14.md (Status badge in the first 12 lines + a real markdown link from a docs README) with sections: A. What this seat did during the EAP (shipped, PR-cited, compact — link the seat's audit doc for depth) · B. Current state + how to run/verify (exact commands) · C. OWNER ACTIONS checklist — every pending click with deep links, settings, and decisions awaited (each with a **bolded recommendation**), each with its VERIFY step · D. a 5-minute verify-it-yourself tour · E. handoff notes (batons, what the next phase needs). Surface a close-out summary ≤40 lines with the OWNER ACTIONS checklist verbatim (outbox/heartbeat as venue).
+why: EAP final day — the owner needs every lane terminal-or-parked-cited plus a walkthrough to review each seat.
+done-when: every (a) item is terminal or parked-with-citation + the walkthrough doc is on main + the OWNER ACTIONS checklist is surfaced in the lane's close-out report.

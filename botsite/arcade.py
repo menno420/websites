@@ -30,6 +30,12 @@ ARCADE_JSON_PATH = BASE_DIR / "data" / "arcade.json"
 
 MATURITIES = ("playable", "beta", "prototype")
 AVAILABILITIES = ("live", "download", "unavailable")
+# The SINGLE source of truth for which availabilities carry an outbound link
+# on the /arcade page (``has_link``). The drift probe's coverage
+# (``arcade_probe.PROBED_AVAILABILITIES``) is defined AS this constant, so the
+# probe can never silently under-cover a link-bearing availability the page
+# renders — add a new linked value here and both surfaces move together.
+LINKED_AVAILABILITIES = ("live", "download")
 REF_QUERY = "ref=fleet-arcade"
 
 _REQUIRED = ("slug", "name", "tagline", "description", "maturity", "availability", "source_repo")
@@ -83,7 +89,7 @@ def load_games(path: Path | None = None) -> list[dict[str, Any]]:
         game["url"] = url
         game["status_note"] = str(game.get("status_note") or "").strip()
         game["is_live"] = game["availability"] == "live" and url is not None
-        game["has_link"] = game["availability"] in ("live", "download") and url is not None
+        game["has_link"] = game["availability"] in LINKED_AVAILABILITIES and url is not None
         game["link_url"] = _with_ref(url) if game["has_link"] and url else None
         games.append(game)
     return games

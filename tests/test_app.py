@@ -93,6 +93,16 @@ def test_version_returns_env_sha(client, monkeypatch):
     }
 
 
+def test_favicon_ico_serves_site_icon(client):
+    """/favicon.ico answers the browser's own probe (raw JSON views carry no
+    <link rel="icon"> — the PR #321 fleet-wide 404 finding) with the same SVG
+    the HTML pages declare."""
+    r = client.get("/favicon.ico")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("image/svg+xml")
+    assert b"<svg" in r.content
+
+
 def test_version_unknown_when_unset(client, monkeypatch):
     """No env var set → honest 'unknown', not a crash or a fabricated sha."""
     monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
@@ -322,6 +332,18 @@ def test_autorefresh_js_served_static(client):
     assert "javascript" in r.headers["content-type"]
     # the module polls the current page and swaps the live region in place
     assert "live-content" in r.text and "setInterval" in r.text
+
+
+def test_favicon_is_linked_and_served(client):
+    """Every page declares an icon link (stops Chromium's automatic
+    /favicon.ico 404 — the PR #311 cold-pass finding, ported to the
+    control-plane, the one service that pass skipped) and the linked SVG
+    actually exists under /static."""
+    html = client.get("/").text
+    assert '<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">' in html
+    r = client.get("/static/favicon.svg")
+    assert r.status_code == 200
+    assert "svg" in r.headers["content-type"]
 
 
 def test_secret_names_never_reach_served_html(monkeypatch):
@@ -589,6 +611,75 @@ def test_render_markdown_sanitizes_script():
     # The executable <script> tag must be gone; inert leftover text is harmless.
     assert "<script>" not in html
     assert "</script>" not in html
+
+
+def test_render_markdown_rewrites_relative_links_to_source():
+    """With a known source, relative links/images inside remotely-fetched
+    markdown rewrite to absolute URLs at the SOURCE repo (github.com blob for
+    links, raw content for images) — they used to 404 against this origin
+    (the PR #321 smoke-crawl finding). Absolute and #fragment links stay."""
+    src = (
+        "[bare](docs/x.md) then [dot](./y.md) then [up](../other/z.md#frag) "
+        "then [root](/control/inbox.md) then "
+        "[abs](https://example.com/keep) then [anchor](#section) then "
+        "[mail](mailto:a@b.c)\n\n"
+        "![shot](img/pic.png)\n"
+    )
+    html = journal.render_markdown(
+        src, source={"repo": "superbot", "path": "control/status.md"}
+    )
+    blob = "https://github.com/menno420/superbot/blob/main"
+    # relative → source blob URL, resolved against the file's directory
+    assert f'href="{blob}/control/docs/x.md"' in html
+    assert f'href="{blob}/control/y.md"' in html
+    # ../ traversal resolves out of control/ — fragment preserved
+    assert f'href="{blob}/other/z.md#frag"' in html
+    # root-relative resolves against the repo root
+    assert f'href="{blob}/control/inbox.md"' in html
+    # images → raw content URL at the source
+    assert (
+        f'src="{config.GITHUB_RAW_BASE}/menno420/superbot/main/control/img/pic.png"'
+        in html
+    )
+    # absolute, pure-fragment, and mailto links are untouched
+    assert 'href="https://example.com/keep"' in html
+    assert 'href="#section"' in html
+    assert 'href="mailto:a@b.c"' in html
+
+
+def test_render_markdown_respects_source_ref():
+    """A non-main ref (the /journal/{repo}/file view's ?ref=) lands in the
+    rewritten blob URL."""
+    html = journal.render_markdown(
+        "[l](a.md)", source={"repo": "websites", "path": "docs/n.md", "ref": "dev"}
+    )
+    assert 'href="https://github.com/menno420/websites/blob/dev/docs/a.md"' in html
+
+
+def test_render_markdown_delinkifies_without_source():
+    """Without a known source, a relative link CANNOT be rewritten — it is
+    de-linkified (text survives, no anchor) instead of serving a guaranteed
+    404; absolute links still render as anchors."""
+    html = journal.render_markdown(
+        "see [the details](docs/x.md) and [kept](https://example.com/ok)\n"
+    )
+    assert "the details" in html  # the text survives
+    assert "docs/x.md" not in html  # the dead target is gone
+    assert html.count("<a") == 1  # only the absolute link stays an anchor
+    assert 'href="https://example.com/ok"' in html
+    # a relative image without a source degrades to its alt text
+    html_img = journal.render_markdown("![alt text](img/p.png)\n")
+    assert "<img" not in html_img and "alt text" in html_img
+
+
+def test_render_markdown_delinkifies_root_escape():
+    """A ../ path that escapes the repo root is unresolvable even with a known
+    source — de-linkified, never a fabricated URL."""
+    html = journal.render_markdown(
+        "[esc](../../outside.md)",
+        source={"repo": "superbot", "path": "docs/n.md"},
+    )
+    assert "<a" not in html and "esc" in html
 
 
 def test_search_journal_cross_repo(monkeypatch):

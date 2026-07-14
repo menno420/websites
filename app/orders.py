@@ -246,7 +246,9 @@ async def _repo_orders(
         order["pickup_latency_mins"] = lat["mins"]
         order["pickup_latency_human"] = lat["human"]
         order["provenance_unverified"] = provenance_unverified(order)
-        order["body_html"] = journal.render_markdown(order["body"])
+        order["body_html"] = journal.render_markdown(
+            order["body"], source={"repo": repo, "path": INBOX_PATH}
+        )
         out["orders"].append(order)
         out[f"{cls['state']}_count"] += 1
 

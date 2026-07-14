@@ -35,7 +35,12 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    Response,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -113,6 +118,17 @@ async def version() -> dict[str, Any]:
     (Docker build-arg fallback) -> honest ``"unknown"``."""
     sha = (os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("GIT_SHA") or "").strip()
     return {"service": "review", "sha": sha or "unknown", "short": sha[:8] if sha else "unknown"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> FileResponse:
+    """Serve the site icon at the path browsers probe on their own — raw
+    JSON/XML views (story.json, the Atom feed) carry no <link rel="icon">,
+    so the viewer requests /favicon.ico directly (the PR #321 fleet-wide
+    404 finding). Same SVG the HTML pages declare in base.html."""
+    return FileResponse(
+        BASE_DIR / "static" / "favicon.svg", media_type="image/svg+xml"
+    )
 
 
 @app.get("/story.json")
@@ -353,6 +369,8 @@ async def questions(request: Request):
             "q_ok": q["ok"],
             "q_error": q["error"],
             "ledger": q["data"],
+            "q_nag": story.answer_debt(records),
+            "q_latency": story.answer_latency(records),
             "q_filter": listfilter.apply(
                 story.QUESTIONS_FILTER_SPEC, records, state
             ),

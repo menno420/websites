@@ -522,3 +522,144 @@ def test_owner_queue_shows_guide_cap(client, monkeypatch):
     r = client.get("/testing/owner", auth=("owner", PW))
     assert "guide cap:" in r.text
     assert "TESTING_AI_GUIDE_CAP" in r.text
+
+
+# --- guide chat transcript as exit-review evidence -----------------------------
+# Successful chat exchanges (TEXT only) persist per claim and attach to the
+# submission: grader prompt, owner queue, tester status page, JSON export.
+# Degraded/capped chat and the frame path never write a transcript row.
+
+def test_guide_page_discloses_chat_persistence(client, ai_mock):
+    token = claim(client)
+    r = client.get(f"/testing/s/{token}/guide")
+    assert "saved with your" in r.text
+    assert "submission as review evidence" in r.text
+    # the frame privacy contract stays stated verbatim alongside it
+    assert "analyzed in memory and immediately discarded" in r.text
+
+
+def test_chat_transcript_persisted_and_visible_everywhere(
+    client, monkeypatch, ai_mock
+):
+    monkeypatch.setenv("SITE_PASSWORD", PW)
+    ai_mock.responses.append(FakeResponse(text_payload="Check the header first."))
+    ai_mock.responses.append(FakeResponse(text_payload="Try the theme toggle."))
+    ai_mock.responses.append(FakeResponse(text_payload=json.dumps(make_report())))
+    token = claim(client)
+    assert chat(client, token, message="Where do I start?", step=0).json()["ok"] is True
+    assert chat(client, token, message="Is the toggle a bug?", step=2).json()["ok"] is True
+
+    claim_id = testing_store.claim_by_token(token)["id"]
+    transcript = testing_store.guide_transcript_for_claim(claim_id)
+    assert [t["message"] for t in transcript] == [
+        "Where do I start?", "Is the toggle a bug?",
+    ]
+    assert transcript[0]["reply"] == "Check the header first."
+    assert transcript[1]["step_index"] == 2
+
+    walk_all_steps(client, token)
+    # the grader (3rd API call) saw the transcript, framed untrusted
+    grade_prompt = ai_mock.calls[2]["payload"]["messages"][0]["content"]
+    assert "<untrusted_guide_chat_transcript>" in grade_prompt
+    assert "tester (on step 3): Is the toggle a bug?" in grade_prompt
+    assert "guide: Try the theme toggle." in grade_prompt
+    assert "judge engagement" in grade_prompt
+
+    # tester status page shows the stored transcript back
+    status_page = client.get(f"/testing/s/{token}")
+    assert "Your guide chat, as stored" in status_page.text
+    assert "Where do I start?" in status_page.text
+    # owner queue shows it as untrusted evidence
+    owner = client.get("/testing/owner", auth=("owner", PW))
+    assert "guide chat transcript" in owner.text
+    assert "2 exchange(s)" in owner.text
+    assert "Is the toggle a bug?" in owner.text
+    # the export backup valve carries it
+    export = client.get("/testing/owner/export.json", auth=("owner", PW)).json()
+    assert len(export["guide_exchanges"]) == 2
+    assert export["guide_exchanges"][0]["message"] == "Where do I start?"
+
+
+def test_regrade_prompt_carries_guide_transcript(client, ai_mock):
+    ai_mock.responses.append(FakeResponse(text_payload="Look at the footer."))
+    ai_mock.responses.append(
+        FakeResponse(
+            text_payload=json.dumps(
+                make_report(followup_questions=["Which browser exactly?"])
+            )
+        )
+    )
+    ai_mock.responses.append(FakeResponse(text_payload=json.dumps(make_report())))
+    token = claim(client)
+    assert chat(client, token, message="What about the footer?").json()["ok"] is True
+    walk_all_steps(client, token)
+    r = client.post(
+        f"/testing/s/{token}/followups",
+        data={"followup_0": "Firefox 128 on Linux."},
+        headers=ORIGIN,
+    )
+    assert r.status_code == 200
+    regrade_prompt = ai_mock.calls[2]["payload"]["messages"][0]["content"]
+    assert "<untrusted_guide_chat_transcript>" in regrade_prompt
+    assert "What about the footer?" in regrade_prompt
+    assert "Firefox 128 on Linux." in regrade_prompt
+
+
+def test_non_guided_grade_prompt_has_no_transcript_block(client, ai_mock):
+    ai_mock.responses.append(FakeResponse(text_payload=json.dumps(make_report())))
+    token = claim(client, task_id=PLAIN_TASK, email="plain@example.com")
+    r = client.post(
+        f"/testing/s/{token}",
+        data={"what_worked": "Search worked.", "findings": "Fine overall."},
+        headers=ORIGIN,
+    )
+    assert r.status_code == 200
+    prompt = ai_mock.calls[0]["payload"]["messages"][0]["content"]
+    assert "<untrusted_guide_chat_transcript>" not in prompt
+
+
+def test_chat_pins_step_title_at_persist_time(client, ai_mock):
+    # provenance pin: the persisted exchange snapshots the step's title AS
+    # THE ASKER SAW IT (untruncated, from the same `steps` script the guide
+    # rendered) — step_index alone re-attributes history once the script is
+    # rewritten or reordered
+    token = claim(client)
+    assert chat(client, token, message="Search finds nothing?", step=2).json()["ok"] is True
+    claim_id = testing_store.claim_by_token(token)["id"]
+    transcript = testing_store.guide_transcript_for_claim(claim_id)
+    assert transcript[0]["step_index"] == 2
+    assert transcript[0]["step_title"] == "Commands and search"
+
+
+def test_degraded_chat_is_never_persisted(client):
+    # no key → honest degraded copy, and no transcript row (nothing coached)
+    token = claim(client)
+    assert chat(client, token).json()["degraded"] is True
+    claim_id = testing_store.claim_by_token(token)["id"]
+    assert testing_store.guide_transcript_for_claim(claim_id) == []
+    walk_all_steps(client, token)
+    assert "Your guide chat, as stored" not in client.get(f"/testing/s/{token}").text
+
+
+def test_capped_chat_is_never_persisted(client, monkeypatch, ai_mock):
+    # the per-claim guide cap bounds the stored transcript too
+    monkeypatch.setenv("TESTING_AI_GUIDE_CAP", "1")
+    token = claim(client)
+    assert chat(client, token, message="first").json()["ok"] is True
+    assert chat(client, token, message="second").json()["ok"] is False
+    claim_id = testing_store.claim_by_token(token)["id"]
+    transcript = testing_store.guide_transcript_for_claim(claim_id)
+    assert [t["message"] for t in transcript] == ["first"]
+
+
+def test_frame_path_writes_no_transcript_row(client, ai_mock):
+    # the screen-frame privacy contract extends to the transcript: nothing
+    # derived from a shared screen — not even the guide's TEXT reply — lands
+    ai_mock.responses.append(
+        FakeResponse(text_payload="Do you see the theme toggle?")
+    )
+    token = claim(client)
+    assert post_frame(client, token).json()["ok"] is True
+    claim_id = testing_store.claim_by_token(token)["id"]
+    assert testing_store.guide_transcript_for_claim(claim_id) == []
+    assert testing_store.export_all()["guide_exchanges"] == []

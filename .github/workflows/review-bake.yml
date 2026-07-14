@@ -8,6 +8,12 @@ name: review-bake
 #                                 uses the Actions GITHUB_TOKEN for rate headroom;
 #                                 a durable owner PAT would unlock richer stats —
 #                                 queued in docs/owner/OWNER-ACTIONS.md)
+#   review/data/questions.json   (/questions ledger intake — gen_questions.py;
+#                                 one capped issues call, merges issues titled
+#                                 [program-review] into the committed ledger,
+#                                 hand-written answer links preserved; fail-soft:
+#                                 any fetch failure keeps the committed file and
+#                                 exits 0)
 #   botsite/data/graveyard.json  (trading-strategy experiment-ledger aggregate —
 #                                 botsite/gen_graveyard.py; anonymous raw fetch +
 #                                 ls-remote, fail-soft: on any fetch failure it
@@ -102,6 +108,7 @@ jobs:
           python3 review/gen_snapshot.py
           python3 review/gen_fleet.py
           python3 review/gen_stats.py
+          python3 review/gen_questions.py
           python3 botsite/gen_graveyard.py
 
       - name: Commit and land the refreshed data
@@ -113,6 +120,7 @@ jobs:
           # Stage ONLY the baked data files — never a blanket add.
           git add review/data/snapshot.json review/data/fleet.json
           git add review/data/stats.json 2>/dev/null || true
+          git add review/data/questions.json 2>/dev/null || true
           git add botsite/data/graveyard.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "bake produced no changes — nothing to land."

@@ -33,7 +33,12 @@ key) and the finished guide IS the submission, flowing into the same storage
 and exit-review as every other type. A side-panel AI guide (chat + optional,
 explicitly-consented screen sharing) rides on ``testing_ai.py`` with a
 per-claim message cap plus the shared daily cap; screen frames are analyzed
-IN MEMORY ONLY and never persisted (test-pinned).
+IN MEMORY ONLY and never persisted (test-pinned). Successful CHAT exchanges
+(text only — never anything from the frame path) ARE persisted per claim and
+attached to the submission as untrusted evidence: the exit-review grader sees
+the transcript, the owner queue shows it, the tester's status page shows it
+back, and the JSON export carries it. Disclosed on the guide page; bounded by
+the same per-claim guide cap.
 
 Anti-abuse on every state-changing route (re-implemented from the pattern in
 unmerged PR #159's ``app/owner.py``, independently — no cross-service import):
@@ -516,6 +521,7 @@ def _submission_ctx(claim: dict[str, Any]) -> dict[str, Any]:
         "answers": answers,
         "review": review,
         "screenshots": screenshots,
+        "guide_transcript": store.guide_transcript_for_claim(claim["id"]),
         "questionnaire": QUESTIONNAIRES.get(task.get("type") or "", []),
         "severities": SEVERITIES,
     }
@@ -592,7 +598,14 @@ def _run_exit_review(
         )
         return
     try:
-        report = ai.grade_submission(task or {}, answers, findings)
+        report = ai.grade_submission(
+            task or {},
+            answers,
+            findings,
+            # The guided-walkthrough chat transcript (empty for every other
+            # type) — engagement evidence, framed untrusted by the AI layer.
+            guide_transcript=store.guide_transcript_for_claim(claim["id"]),
+        )
     except ai.AIReviewUnavailable as exc:
         store.save_ai_review(
             submission["id"], status="degraded", degraded_reason=str(exc), calls_used=1
@@ -707,7 +720,11 @@ async def testing_followups(
     try:
         ai.check_submission_cap(calls_used)
         report = ai.regrade_with_followups(
-            task or {}, answers, submission.get("findings") or "", transcript
+            task or {},
+            answers,
+            submission.get("findings") or "",
+            transcript,
+            guide_transcript=store.guide_transcript_for_claim(claim["id"]),
         )
     except ai.AIReviewUnavailable as exc:
         # Honest fallback: keep the original grade, store the tester's answers,
@@ -891,6 +908,15 @@ def _guide_step_index(raw: Any, steps: list[dict[str, Any]]) -> int:
     return max(0, min(idx, len(steps) - 1))
 
 
+def _step_title(steps: list[dict[str, Any]], step_index: int) -> str:
+    """The step's title, untruncated ('' when out of range or untitled) —
+    the exact text the guide-exchange provenance pin snapshots at persist
+    time, and the CURRENT-script side of the digest's staleness compare."""
+    if not (0 <= step_index < len(steps)):
+        return ""
+    return str(steps[step_index].get("title") or "").strip()
+
+
 @router.post("/s/{token}/guide/chat")
 async def testing_guide_chat(
     request: Request, token: str, _: None = Depends(guard_state_change)
@@ -933,6 +959,16 @@ async def testing_guide_chat(
             reply=f"The AI guide is unavailable right now ({exc}). "
             "The steps keep working without it.",
         )
+    # Persist the exchange (TEXT only) as exit-review + owner evidence —
+    # disclosed on the guide page. Only successful replies land here, so the
+    # per-claim guide cap bounds the row count; degraded copy carries no
+    # coaching and is never stored. The frame route stays write-free.
+    # step_title pins the step AS THE ASKER SAW IT (untruncated) — step_index
+    # alone re-attributes history the moment the script is rewritten.
+    store.add_guide_exchange(
+        claim["id"], step_index, message, reply,
+        step_title=_step_title(steps, step_index),
+    )
     return _guide_panel_json(claim, ok=True, reply=reply)
 
 
@@ -1003,6 +1039,60 @@ async def testing_guide_frame(
 # --------------------------------------------------------------------------
 # owner queue (auth + same guards on state changes)
 # --------------------------------------------------------------------------
+HEATMAP_STEP_TEXT_MAX = 80
+QUESTION_DIGEST_TEXT_MAX = 160
+
+
+def _digest_question_text(message: str) -> str:
+    """A tester question for the per-step digest, truncated so one long
+    message can't swallow the strip. The text stays raw untrusted tester
+    input otherwise — escaping is the template's (autoescape) job."""
+    text = str(message or "").strip()
+    if len(text) > QUESTION_DIGEST_TEXT_MAX:
+        text = text[: QUESTION_DIGEST_TEXT_MAX - 1].rstrip() + "…"
+    return text
+
+
+def _heatmap_step_text(steps: list[dict[str, Any]], step_index: int) -> str:
+    """The walkthrough step's title for a heatmap cell tooltip, truncated so
+    long titles don't bloat the attribute. Empty when the task/index has no
+    step text — the cell then falls back to the bare step number."""
+    text = _step_title(steps, step_index)
+    if len(text) > HEATMAP_STEP_TEXT_MAX:
+        text = text[: HEATMAP_STEP_TEXT_MAX - 1].rstrip() + "…"
+    return text
+
+
+def _digest_question(
+    q: dict[str, Any], steps: list[dict[str, Any]], step_index: int
+) -> dict[str, Any]:
+    """One digest question with its step provenance resolved for display.
+
+    The store pins the step's title at ask time (``step_title`` on the
+    exchange row); comparing that pin against the CURRENT script says
+    whether "step N" still means what the asker was looking at:
+
+    - the pin matches the current title → attribution holds, no flag;
+    - the pin differs (the script was rewritten or reordered since) →
+      ``stale`` + ``pinned_title`` (truncated like the tooltips) so the
+      owner reads the step as the asker saw it instead of a misattribution;
+    - no pin (rows persisted before the snapshot existed, ``.get`` default
+      per the legacy-row convention) → ``unpinned``: the honest "wording at
+      ask time not recorded" state — never guessed from the current script.
+    """
+    pinned = str(q.get("step_title") or "").strip()
+    stale = bool(pinned) and pinned != _step_title(steps, step_index)
+    title = pinned if stale else ""
+    if len(title) > HEATMAP_STEP_TEXT_MAX:
+        title = title[: HEATMAP_STEP_TEXT_MAX - 1].rstrip() + "…"
+    return {
+        "text": _digest_question_text(q["message"]),
+        "stale": stale,
+        "pinned_title": title,
+        "unpinned": not pinned,
+    }
+
+
 async def _owner_page(
     request: Request, banner: Optional[dict[str, Any]] = None, status_code: int = 200
 ) -> HTMLResponse:
@@ -1014,6 +1104,7 @@ async def _owner_page(
             s["answers"] = {}
         s["review"] = store.ai_review_for_submission(s["id"])
         s["screenshots"] = store.screenshots_for_submission(s["id"])
+        s["guide_transcript"] = store.guide_transcript_for_claim(s["claim_id"])
         # Would-auto-pay preview: the REAL eligibility gate, evaluated
         # read-only per submission so the owner sees yes/no + every reason.
         if s["claim_status"] in ("submitted", "reviewed"):
@@ -1031,6 +1122,93 @@ async def _owner_page(
             )
         else:
             s["autopay_preview"] = None
+    # Drop-offs: claimed-but-never-submitted claims with guide-chat activity —
+    # the transcript rows PR #292 persists that no submission ever surfaces.
+    # Read-only, same evidence framing as the submissions transcript block.
+    dropoffs = store.abandoned_guided_claims()
+    for d in dropoffs:
+        d["guide_transcript"] = store.guide_transcript_for_claim(d["id"])
+    # Per-task step heatmap over the same rows: where chats cluster before a
+    # claim dies — the rankable aggregate the per-claim transcripts can't give.
+    # Join step_index → the walkthrough step's own text (the same `steps`
+    # script the guide renders) so each cell's tooltip says WHAT the step
+    # asks; unknown tasks / out-of-range indexes leave step_text empty and
+    # the cell keeps the bare number. Then pad the strip out to the script's
+    # FULL length with zero-count `reached: False` cells — the store's
+    # aggregate stays observed-data-only, but the strip must not hide
+    # distance-to-finish: dying at step 2 of 6 and step 2 of 2 should not
+    # render the same. `script_len` (0 for unknown tasks / empty scripts,
+    # which keep today's observed-only strip) drives the "of N steps" label.
+    # The store rows carry the survival contrast too — per-step `finished`
+    # (finisher claims that also asked there) and `died_share` (died over
+    # ALL touchers) — the template shades by lethality, not raw death count.
+    dropoff_heatmap = store.guided_step_dropoff()
+    for t in dropoff_heatmap:
+        step_script = task_steps(task_by_id(t["task_id"]))
+        for st in t["steps"]:
+            st["step_text"] = _heatmap_step_text(step_script, st["step_index"])
+            st["reached"] = True
+        for idx in range(len(t["steps"]), len(step_script)):
+            t["steps"].append(
+                {
+                    "step_index": idx,
+                    "touched": 0,
+                    "died_here": 0,
+                    "finished": 0,
+                    "died_share": 0.0,
+                    "step_text": _heatmap_step_text(step_script, idx),
+                    "reached": False,
+                }
+            )
+        t["script_len"] = len(step_script)
+    # Finisher-question hotspots: the same strip mechanics for tasks with
+    # ZERO drop-offs — every tester finished, but their persisted chats
+    # (PR #292) still say which steps needed hints. Tasks with any drop-off
+    # stay off this list (the heatmap above already shows their finisher
+    # counts as contrast). Same step-text join and full-length padding;
+    # no lethality anywhere — nobody died, the counts are the signal.
+    finisher_hotspots = store.guided_finisher_hotspots()
+    for t in finisher_hotspots:
+        step_script = task_steps(task_by_id(t["task_id"]))
+        for st in t["steps"]:
+            st["step_text"] = _heatmap_step_text(step_script, st["step_index"])
+        for idx in range(len(t["steps"]), len(step_script)):
+            t["steps"].append(
+                {
+                    "step_index": idx,
+                    "finished": 0,
+                    "step_text": _heatmap_step_text(step_script, idx),
+                }
+            )
+        t["script_len"] = len(step_script)
+    # Per-step question digest: the strips above say WHERE chats cluster
+    # ("step 3 · 4 asked"); this joins WHAT was asked — the persisted
+    # guide_exchanges message text (tester side only, never the guide's
+    # replies) grouped by (task, step) across ALL claims, drop-offs and
+    # finishers alike. The store keeps the newest QUESTION_DIGEST_CAP per
+    # cell; truncated here, rendered collapsed behind the cell and escaped
+    # by autoescape — untrusted tester input, same framing as the
+    # transcript blocks. Padded never-reached cells stay question-free.
+    # Each question resolves its step provenance (`_digest_question`): the
+    # row's pinned ask-time title vs the CURRENT script, so a rewritten or
+    # reordered walkthrough flags old questions instead of silently
+    # re-attributing them to whatever text now sits at that index.
+    step_questions = store.guided_step_questions()
+    for strip in (dropoff_heatmap, finisher_hotspots):
+        for t in strip:
+            cells = step_questions.get(t["task_id"], {})
+            step_script = task_steps(task_by_id(t["task_id"]))
+            for st in t["steps"]:
+                cell = cells.get(st["step_index"])
+                st["question_total"] = cell["total"] if cell else 0
+                st["questions"] = (
+                    [
+                        _digest_question(q, step_script, st["step_index"])
+                        for q in cell["questions"]
+                    ]
+                    if cell
+                    else []
+                )
     # ORDER 019 PR2: filter/sort/search over the submissions queue (the
     # centralized listfilter core; state lives in the GET query string, so
     # POST-action re-renders simply show the unfiltered default).
@@ -1040,6 +1218,9 @@ async def _owner_page(
     ctx.update(
         {
             "submissions_filter": submissions_filter,
+            "dropoffs": dropoffs,
+            "dropoff_heatmap": dropoff_heatmap,
+            "finisher_hotspots": finisher_hotspots,
             "tasks": shaped_tasks(),
             "claims": store.list_claims(),
             "submissions": submissions,
@@ -1185,3 +1366,60 @@ async def owner_screenshot(
 async def owner_export(request: Request, _: None = Depends(require_owner)):
     """Full-DB JSON export — the backup valve for the ephemeral SQLite disk."""
     return JSONResponse(store.export_all())
+
+
+# Import size bound: exports carry screenshots as base64 blobs (≤2 MB each,
+# ≤3 per submission), so the valve allows more than a "few KB" of JSON but
+# still refuses unbounded bodies loudly.
+IMPORT_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+@router.post("/owner/import.json")
+async def owner_import(
+    request: Request,
+    _guard: None = Depends(guard_state_change),
+    _auth: None = Depends(require_owner),
+):
+    """Import valve — restore a previously downloaded ``export.json`` backup
+    after a redeploy wiped the ephemeral SQLite disk (the other half of the
+    export valve above). Owner-auth like every owner route (503 fail-closed
+    when SITE_PASSWORD is unset, 401 on bad credentials) plus the standard
+    state-change guard (same-origin + rate limit).
+
+    Body: the raw export.json document. Untrusted input: bounded at
+    ``IMPORT_MAX_BYTES`` (413 beyond), shape- and enum-validated per record
+    (400 with the exact reason), and legacy backups missing columns added
+    after they were taken (e.g. ``guide_exchanges.step_title``) restore with
+    the schema defaults.
+
+    Semantics: REPLACE-into-empty — refuses with 409 when the testing DB
+    already holds any rows, unless ``?replace=1`` is passed, in which case
+    every table is wiped and the backup inserted in one atomic transaction.
+
+        curl -X POST -u owner:$SITE_PASSWORD -H 'Origin: https://<host>' \\
+             --data-binary @export.json https://<host>/testing/owner/import.json
+    """
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > IMPORT_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"backup too large — the import valve accepts at most {IMPORT_MAX_BYTES} bytes",
+        )
+    body = await request.body()
+    if len(body) > IMPORT_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"backup too large — the import valve accepts at most {IMPORT_MAX_BYTES} bytes",
+        )
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="request body is not valid JSON")
+    replace = str(request.query_params.get("replace") or "") == "1"
+    try:
+        imported = store.import_all(payload, replace=replace)
+    except store.ImportValidationError as exc:
+        raise HTTPException(status_code=400, detail=f"invalid backup: {exc}")
+    except store.ImportNotEmptyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return JSONResponse({"ok": True, "replaced": replace, "imported": imported})

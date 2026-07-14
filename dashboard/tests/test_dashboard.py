@@ -143,6 +143,16 @@ def test_version_falls_back_to_git_sha(client, monkeypatch):
     assert body["sha"] == "cafebabecafebabe" and body["short"] == "cafebabe"
 
 
+def test_favicon_ico_serves_site_icon(client):
+    """/favicon.ico answers the browser's own probe (raw JSON views carry no
+    <link rel="icon"> — the PR #321 fleet-wide 404 finding) with the same SVG
+    the HTML pages declare."""
+    r = client.get("/favicon.ico")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("image/svg+xml")
+    assert b"<svg" in r.content
+
+
 def test_version_unknown_when_unset(client, monkeypatch):
     """Neither env var set → honest 'unknown', never a crash or a faked value."""
     monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)

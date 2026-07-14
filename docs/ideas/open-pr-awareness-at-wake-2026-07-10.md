@@ -49,3 +49,15 @@ of failure the order-claim ritual fixed for orders, applied to branches/PRs.
 Deduped against `docs/ideas/backlog.md` + queue-state NEXT: heartbeat
 enrichment adds a `landing:` line describing a session's OWN branch state;
 nothing covers discovering OTHER sessions' open PRs/branches at wake.
+
+## Forward-only note — doc-step slice shipped (2026-07-13)
+
+The wake-ritual DOC step — the idea's original ask, and the idea-engine
+probe report's named smallest shippable slice (§8), explicitly skipped when
+`scripts/open_work.py` self-served via PR #90 — shipped 2026-07-13 in this
+PR: the sweep step now lives in `docs/project/routine-prompt.md` (v2 WAKE
+paste block) and `docs/project/project-instructions.md` (ROUTINE-FIRED
+protocol, with the shipped script's real state table), drift-guarded by
+`tests/test_wake_ritual_docs.py` against the script source's literal state
+labels. The sweep stays a live read — its output is never committed (the
+probe's staleness-inversion trap).

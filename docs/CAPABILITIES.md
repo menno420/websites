@@ -44,6 +44,8 @@ credential is missing:
   release workflow (with a version input) creates the tag in-Actions —
   proven repeatedly fleet-wide after direct tag pushes 403'd.
 
+<!-- substrate-kit:capability-seed BEGIN — kit-owned, refreshed at upgrade. Append your findings BELOW the fence (## Append log), never inside it. -->
+
 ## Walls — verified blocked (use the workaround; don't rediscover)
 
 - **Tag push / release create via git**: HTTP 403 from the environment's git
@@ -64,6 +66,8 @@ credential is missing:
 - **GraphQL API quota**: tight — batch queries and prefer the REST-backed
   MCP tools for bulk reads.
 
+<!-- substrate-kit:capability-seed END -->
+
 ## Append log — newest first
 
 Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
@@ -71,6 +75,17 @@ Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 (Hand-filled by sessions, per the discovery rule. Seed walls/capabilities
 above came from the fleet's lived 2026-07 findings; local ones go here.)
 
+- 2026-07-13 · capability · **Real-Chromium browsing of the live sites works
+  from this environment — but ONLY with `--ssl-version-max=tls1.2`** — the
+  agent egress proxy resets a TLS 1.3 ClientHello, so a default Chromium
+  launch fails the handshake; capping the browser at TLS 1.2 (certificate
+  verification stays ON, proxy CA bundle `/root/.ccr/ca-bundle.crt`)
+  connects cleanly · evidence: the 2026-07-13 cold-browser pass #2 crawled
+  all 15 review-site routes at 1280 + 375 with playwright-core driving the
+  pre-installed Chromium 1194 launched with that flag (console capture,
+  request log, and screenshots all real) · workaround-for: "browser
+  automation can't get through the proxy" — it can; pass the flag, never
+  disable verification.
 - 2026-07-13 · wall · **Railway variable WRITES are harness-denied before
   the request ever leaves the session — and would be DISHONEST even if they
   worked** (ORDER 026 discovery). (i) The single probe attempt — a GraphQL

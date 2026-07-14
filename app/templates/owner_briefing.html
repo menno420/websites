@@ -210,6 +210,28 @@
   {% endif %}
 </div>
 
+{# 6 · REPORTS — the newest control/outbox.md REPORT to the manager #}
+<div class="card" id="reports">
+  <h2>REPORTS <span class="dim small">— newest report to the manager · <a href="{{ b.outbox.url }}">full outbox on GitHub ↗</a></span></h2>
+  {% if b.outbox.state != 'ok' %}
+  {{ unknown_line(b.outbox) }}
+  {% else %}
+  {% if b.outbox.note %}<p class="banner">⚠ {{ b.outbox.note }}</p>{% endif %}
+  {% if not b.outbox.found %}
+  <p class="small dim">no REPORT entries in <code>control/outbox.md</code> yet — an honest absence, not a fetch failure.</p>
+  {% else %}
+  <p class="small">{{ badge('ok', b.outbox.issued or 'undated') }}
+    <strong>{{ b.outbox.title }}</strong>
+    <span class="dim">· {{ b.outbox.route }}</span>
+    {% if b.outbox.total_reports > 1 %}<span class="dim">— newest of {{ b.outbox.total_reports }} reports; the rest in the outbox</span>{% endif %}</p>
+  <pre class="small" style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:.6rem .8rem; overflow-x:auto; white-space:pre-wrap;">{{ b.outbox.lines | join('\n') }}</pre>
+  {% if b.outbox.truncated %}
+  <p class="small dim">…showing the first {{ b.outbox.limit }} lines — the full report lives in the outbox.</p>
+  {% endif %}
+  {% endif %}
+  {% endif %}
+</div>
+
 <p class="dim small">🔒 morning briefing — gated by <code>SITE_PASSWORD</code>, GET-only;
 every number above comes from the same TTL-cached GitHub reads as the rest of the console,
 and a failed source says <em>unknown — why</em> instead of pretending.</p>

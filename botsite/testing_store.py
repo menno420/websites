@@ -91,6 +91,15 @@ CREATE TABLE IF NOT EXISTS screenshots (
     data BLOB NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS guide_exchanges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    claim_id INTEGER NOT NULL REFERENCES claims(id),
+    step_index INTEGER NOT NULL DEFAULT 0,
+    step_title TEXT NOT NULL DEFAULT '',
+    message TEXT NOT NULL,
+    reply TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS payout_ledger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     claim_id INTEGER NOT NULL,
@@ -113,7 +122,25 @@ def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(db_path())
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA)  # idempotent — no separate migration step
+    _ensure_step_title_column(conn)
     return conn
+
+
+def _ensure_step_title_column(conn: sqlite3.Connection) -> None:
+    """Retrofit ``guide_exchanges.step_title`` onto DB files created before
+    the provenance pin — ``CREATE TABLE IF NOT EXISTS`` never adds columns to
+    an existing table. Retrofitted rows keep the ``''`` default: "no snapshot
+    was taken" is their honest state, never backfilled from the current
+    script (that would fake exactly the attribution this column disproves)."""
+    cols = {
+        r["name"]
+        for r in conn.execute("PRAGMA table_info(guide_exchanges)").fetchall()
+    }
+    if "step_title" not in cols:
+        conn.execute(
+            "ALTER TABLE guide_exchanges"
+            " ADD COLUMN step_title TEXT NOT NULL DEFAULT ''"
+        )
 
 
 def _now() -> str:
@@ -372,6 +399,264 @@ def screenshot_by_id(shot_id: int) -> Optional[dict[str, Any]]:
     return dict(row) if row else None
 
 
+# --- guide chat transcript (TEXT only — never screen frames) -----------------
+# One row per successful tester↔guide chat exchange. Bounded per claim by the
+# guide-message cap (writes happen only after ai.consume_guide_call succeeded
+# and a reply came back), and per row by the route's input cap + the guide's
+# reply cap. The screen-frame path stays write-free (test-pinned privacy
+# contract) — nothing derived from a shared screen ever lands here.
+
+def add_guide_exchange(
+    claim_id: int, step_index: int, message: str, reply: str,
+    step_title: str = "",
+) -> dict[str, Any]:
+    """``step_title`` is the provenance pin: the step's title AS THE ASKER SAW
+    IT, snapshotted by the route at persist time. ``step_index`` alone decays —
+    the moment the walkthrough script inserts, removes, or reorders a step,
+    the index points at different text and history silently re-attributes.
+    Default ``''`` = no snapshot (rows persisted before the pin existed)."""
+    with closing(_connect()) as conn, conn:
+        cur = conn.execute(
+            "INSERT INTO guide_exchanges (claim_id, step_index, step_title,"
+            " message, reply, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (claim_id, step_index, step_title, message, reply, _now()),
+        )
+        row = conn.execute(
+            "SELECT * FROM guide_exchanges WHERE id = ?", (cur.lastrowid,)
+        ).fetchone()
+    return dict(row)
+
+
+def guide_transcript_for_claim(claim_id: int) -> list[dict[str, Any]]:
+    """The claim's chat transcript, oldest first (the conversation order)."""
+    with closing(_connect()) as conn:
+        rows = conn.execute(
+            "SELECT * FROM guide_exchanges WHERE claim_id = ? ORDER BY id",
+            (claim_id,),
+        ).fetchall()
+    return _rows(rows)
+
+
+def abandoned_guided_claims() -> list[dict[str, Any]]:
+    """Claimed-but-never-submitted claims with guide-chat activity.
+
+    The owner queue's drop-off view: the claim is still 'claimed' (no
+    submission row exists), yet at least one guide exchange persisted — the
+    tester engaged with the guide and gave up. Each row is the claim plus
+    ``exchange_count`` and ``last_exchange_at``, newest activity first."""
+    with closing(_connect()) as conn:
+        rows = conn.execute(
+            "SELECT c.*, COUNT(g.id) AS exchange_count,"
+            " MAX(g.created_at) AS last_exchange_at"
+            " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
+            " WHERE c.status = 'claimed'"
+            " AND NOT EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
+            " GROUP BY c.id"
+            " ORDER BY last_exchange_at DESC, c.id DESC"
+        ).fetchall()
+    return _rows(rows)
+
+
+def guided_step_dropoff() -> list[dict[str, Any]]:
+    """Per-task step heatmap over the abandoned guided claims.
+
+    Same scope as ``abandoned_guided_claims()`` (status 'claimed', no
+    submission row, at least one guide exchange). For each task and each
+    step_index: ``touched`` counts claims whose chat has ≥1 exchange at that
+    step, ``died_here`` counts claims whose chat ENDED there (their highest
+    step_index — the step where the tester gave up). Steps run dense from 0
+    to the task's highest observed step so gaps render as zeros; tasks are
+    ordered by task_id. ``claim_count`` is the task's drop-off total (the
+    died_here denominator).
+
+    Survival contrast: ``finished`` counts FINISHER claims — a submission
+    row exists, the tester pushed through — whose chat has ≥1 exchange at
+    that step (PR #292 persists their transcripts too; the drop-off scope
+    merely excludes them), and ``died_share`` is died_here over ALL
+    touchers of the step (drop-off + finisher claims; 0.0 when nobody
+    touched it) — the lethality signal that separates "hard but passable"
+    (many finishers asked, few died) from "wall" (every toucher died).
+    ``finisher_count`` is the task's total of finisher claims with any
+    guide chat. Finisher chats extend the dense range when they reach past
+    the last drop-off step; tasks still appear only when they have
+    drop-offs — the strip stays a drop-off view, finishers are contrast."""
+    with closing(_connect()) as conn:
+        rows = conn.execute(
+            "SELECT c.task_id, g.claim_id, g.step_index"
+            " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
+            " WHERE c.status = 'claimed'"
+            " AND NOT EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
+            " GROUP BY c.task_id, g.claim_id, g.step_index"
+        ).fetchall()
+        finisher_rows = conn.execute(
+            "SELECT c.task_id, g.claim_id, g.step_index"
+            " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
+            " WHERE EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
+            " GROUP BY c.task_id, g.claim_id, g.step_index"
+        ).fetchall()
+    # (task_id, claim_id) → the steps that claim's chat touched; the max of
+    # that set is where the claim died.
+    steps_by_claim: dict[tuple[str, int], set[int]] = {}
+    for r in rows:
+        key = (r["task_id"], r["claim_id"])
+        steps_by_claim.setdefault(key, set()).add(int(r["step_index"]))
+    claims_by_task: dict[str, list[set[int]]] = {}
+    for (task_id, _claim_id), steps in steps_by_claim.items():
+        claims_by_task.setdefault(task_id, []).append(steps)
+    # Same shape for the finishers — their max is just "furthest step they
+    # asked at", nothing died there.
+    fin_by_claim: dict[tuple[str, int], set[int]] = {}
+    for r in finisher_rows:
+        key = (r["task_id"], r["claim_id"])
+        fin_by_claim.setdefault(key, set()).add(int(r["step_index"]))
+    finishers_by_task: dict[str, list[set[int]]] = {}
+    for (task_id, _claim_id), steps in fin_by_claim.items():
+        finishers_by_task.setdefault(task_id, []).append(steps)
+    out: list[dict[str, Any]] = []
+    for task_id in sorted(claims_by_task):
+        claim_steps = claims_by_task[task_id]
+        fin_steps = finishers_by_task.get(task_id, [])
+        top = max(max(steps) for steps in claim_steps)
+        if fin_steps:
+            top = max(top, max(max(steps) for steps in fin_steps))
+        steps_out: list[dict[str, Any]] = []
+        for idx in range(top + 1):
+            touched = sum(1 for s in claim_steps if idx in s)
+            died_here = sum(1 for s in claim_steps if max(s) == idx)
+            finished = sum(1 for s in fin_steps if idx in s)
+            touchers = touched + finished
+            steps_out.append(
+                {
+                    "step_index": idx,
+                    "touched": touched,
+                    "died_here": died_here,
+                    "finished": finished,
+                    "died_share": died_here / touchers if touchers else 0.0,
+                }
+            )
+        out.append(
+            {
+                "task_id": task_id,
+                "claim_count": len(claim_steps),
+                "finisher_count": len(fin_steps),
+                "steps": steps_out,
+            }
+        )
+    return out
+
+
+def guided_finisher_hotspots() -> list[dict[str, Any]]:
+    """Per-task step aggregate over FINISHER chats on tasks with NO drop-offs.
+
+    The complement of ``guided_step_dropoff()``'s survival contrast: that
+    strip only renders tasks that HAVE drop-offs, so a task where every
+    tester finished but half of them asked the guide about one step surfaces
+    nothing — the "needs a hint" signal is invisible exactly where it's
+    purest. This aggregate covers the leftover tasks: at least one finisher
+    claim (a submission row EXISTS — same scope as the contrast side of the
+    drop-off strip) with guide-chat activity, and zero drop-off claims
+    (status 'claimed', no submission, ≥1 exchange — tasks with any drop-off
+    already show their finisher counts as contrast on the heatmap).
+
+    For each task and each step_index: ``finished`` counts finisher claims
+    whose chat has ≥1 exchange at that step (claims, not exchanges — same
+    counting rule as the heatmap). Steps run dense from 0 to the task's
+    highest observed step so gaps render as zeros; tasks are ordered by
+    task_id. ``finisher_count`` is the task's total of finisher claims with
+    any guide chat. No lethality here — nobody died; the counts alone are
+    the hotspot signal."""
+    with closing(_connect()) as conn:
+        finisher_rows = conn.execute(
+            "SELECT c.task_id, g.claim_id, g.step_index"
+            " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
+            " WHERE EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
+            " GROUP BY c.task_id, g.claim_id, g.step_index"
+        ).fetchall()
+        dropoff_tasks = {
+            r["task_id"]
+            for r in conn.execute(
+                "SELECT DISTINCT c.task_id"
+                " FROM claims c JOIN guide_exchanges g ON g.claim_id = c.id"
+                " WHERE c.status = 'claimed'"
+                " AND NOT EXISTS"
+                " (SELECT 1 FROM submissions s WHERE s.claim_id = c.id)"
+            ).fetchall()
+        }
+    fin_by_claim: dict[tuple[str, int], set[int]] = {}
+    for r in finisher_rows:
+        if r["task_id"] in dropoff_tasks:
+            continue  # already on the drop-off strip as contrast
+        key = (r["task_id"], r["claim_id"])
+        fin_by_claim.setdefault(key, set()).add(int(r["step_index"]))
+    finishers_by_task: dict[str, list[set[int]]] = {}
+    for (task_id, _claim_id), steps in fin_by_claim.items():
+        finishers_by_task.setdefault(task_id, []).append(steps)
+    out: list[dict[str, Any]] = []
+    for task_id in sorted(finishers_by_task):
+        fin_steps = finishers_by_task[task_id]
+        top = max(max(steps) for steps in fin_steps)
+        steps_out = [
+            {
+                "step_index": idx,
+                "finished": sum(1 for s in fin_steps if idx in s),
+            }
+            for idx in range(top + 1)
+        ]
+        out.append(
+            {
+                "task_id": task_id,
+                "finisher_count": len(fin_steps),
+                "steps": steps_out,
+            }
+        )
+    return out
+
+
+QUESTION_DIGEST_CAP = 5  # newest tester questions kept per (task, step) cell
+
+
+def guided_step_questions(
+    cap: int = QUESTION_DIGEST_CAP,
+) -> dict[str, dict[int, dict[str, Any]]]:
+    """Tester questions grouped by (task, step) across ALL claims.
+
+    The digest behind the heatmap / hotspot cells: the strips
+    (``guided_step_dropoff()`` / ``guided_finisher_hotspots()``) count WHO
+    asked per step; this returns WHAT they asked — the persisted
+    ``guide_exchanges`` MESSAGE text (tester side only, never the guide's
+    replies), keyed ``task_id → step_index → cell``. Scope is every claim
+    with chat activity regardless of outcome — drop-offs AND finishers
+    (PR #292 persists both) — because a hint-needing step reads the same
+    whatever became of the asker; a task only surfaces where a strip row
+    exists to hang it on, so extra tasks in the mapping are inert.
+
+    Each cell carries ``total`` (every exchange at that task+step) and
+    ``questions`` — the newest ``cap`` entries, newest first, so one chatty
+    claim can't scroll the strip. Each entry is ``{"message", "step_title"}``:
+    the message is RAW tester input (the caller renders it escaped and
+    truncated for display) and ``step_title`` is the row's provenance pin —
+    the step's title at ask time, ``''`` for rows persisted before the pin
+    existed. The caller compares the pin against the CURRENT script to flag
+    questions asked against an older version of the step."""
+    with closing(_connect()) as conn:
+        rows = conn.execute(
+            "SELECT c.task_id, g.step_index, g.step_title, g.message"
+            " FROM guide_exchanges g JOIN claims c ON c.id = g.claim_id"
+            " ORDER BY g.id DESC"
+        ).fetchall()
+    out: dict[str, dict[int, dict[str, Any]]] = {}
+    for r in rows:
+        cell = out.setdefault(r["task_id"], {}).setdefault(
+            int(r["step_index"]), {"total": 0, "questions": []}
+        )
+        cell["total"] += 1
+        if len(cell["questions"]) < cap:
+            cell["questions"].append(
+                {"message": r["message"], "step_title": r["step_title"]}
+            )
+    return out
+
+
 # --- payout ledger ----------------------------------------------------------
 
 def add_ledger_entry(
@@ -438,6 +723,222 @@ def paid_total_since(since_iso: str) -> float:
     return float(total)
 
 
+# --- import (the other half of the backup valve — restore after a wipe) ------
+
+class ImportValidationError(ValueError):
+    """The uploaded payload is not a valid export.json backup (route → 400)."""
+
+
+class ImportNotEmptyError(RuntimeError):
+    """Refusal to import over live rows without the explicit replace flag
+    (route → 409). Losing current data to a stale backup must be opt-in."""
+
+
+_REQUIRED = object()  # sentinel: the field must be present in every backup
+
+# Per-table import spec: (export field, default). ``_REQUIRED`` marks fields
+# every export version carried; everything else takes its schema default via
+# ``.get`` so LEGACY backups restore cleanly — e.g. ``step_title`` on
+# guide_exchanges (the provenance pin added after early exports) falls back
+# to ``''``, the same honest "no snapshot was taken" state the column
+# retrofit uses. A whole missing table key also imports as empty (tables
+# were added over time). ``screenshots.data_base64`` is decoded to the
+# ``data`` blob column at insert time.
+_IMPORT_SPEC: dict[str, tuple[tuple[str, Any], ...]] = {
+    "claims": (
+        ("id", _REQUIRED),
+        ("task_id", _REQUIRED),
+        ("name", _REQUIRED),
+        ("email", _REQUIRED),
+        ("paypal_email", ""),
+        ("token", _REQUIRED),
+        ("status", "claimed"),
+        ("created_at", _REQUIRED),
+    ),
+    "submissions": (
+        ("id", _REQUIRED),
+        ("claim_id", _REQUIRED),
+        ("answers_json", "{}"),
+        ("findings", ""),
+        ("created_at", _REQUIRED),
+    ),
+    "ai_reviews": (
+        ("id", _REQUIRED),
+        ("submission_id", _REQUIRED),
+        ("status", _REQUIRED),
+        ("score", None),
+        ("low_effort", 0),
+        ("summary", ""),
+        ("findings_json", "[]"),
+        ("followups_json", "[]"),
+        ("degraded_reason", ""),
+        ("calls_used", 0),
+        ("created_at", _REQUIRED),
+        ("updated_at", _REQUIRED),
+    ),
+    "screenshots": (
+        ("id", _REQUIRED),
+        ("submission_id", _REQUIRED),
+        ("filename", _REQUIRED),
+        ("content_type", _REQUIRED),
+        ("data_base64", _REQUIRED),
+        ("created_at", _REQUIRED),
+    ),
+    "guide_exchanges": (
+        ("id", _REQUIRED),
+        ("claim_id", _REQUIRED),
+        ("step_index", 0),
+        ("step_title", ""),  # pre-provenance-pin backups lack this column
+        ("message", _REQUIRED),
+        ("reply", _REQUIRED),
+        ("created_at", _REQUIRED),
+    ),
+    "payout_ledger": (
+        ("id", _REQUIRED),
+        ("claim_id", _REQUIRED),
+        ("task_id", _REQUIRED),
+        ("email", _REQUIRED),
+        ("amount_usd", _REQUIRED),
+        ("state", _REQUIRED),
+        ("note", ""),
+        ("created_at", _REQUIRED),
+    ),
+}
+
+# Enum columns re-checked on import — a backup edited by hand (or the wrong
+# file entirely) fails loudly instead of planting impossible states.
+_IMPORT_ENUMS: dict[str, tuple[str, tuple[str, ...]]] = {
+    "claims": ("status", CLAIM_STATUSES),
+    "ai_reviews": ("status", AI_REVIEW_STATUSES),
+    "payout_ledger": ("state", LEDGER_STATES),
+}
+
+# Cross-table reference edges re-checked on import: (referencing table, FK
+# column, target table). SQLite foreign keys are OFF by default (``_connect``
+# never enables the pragma), so an orphan row — a truncated or hand-edited
+# backup whose submissions reference missing claims, say — would insert
+# cleanly and the owner queue's INNER JOINs (``list_submissions`` et al.)
+# would then silently drop it: a restore that reports ok yet shows less than
+# it inserted. Targets are the UPLOADED rows of the target table (the import
+# lands into an empty DB, so the backup must be self-contained). Every FK
+# column below is ``_REQUIRED`` NOT NULL in the schema — there is no
+# legitimately-null reference to wave through.
+_IMPORT_REFS: tuple[tuple[str, str, str], ...] = (
+    ("submissions", "claim_id", "claims"),
+    ("ai_reviews", "submission_id", "submissions"),
+    ("screenshots", "submission_id", "submissions"),
+    ("guide_exchanges", "claim_id", "claims"),
+    ("payout_ledger", "claim_id", "claims"),
+)
+
+
+def _validated_import_rows(payload: Any) -> dict[str, list[dict[str, Any]]]:
+    """export.json payload → per-table row dicts, or ImportValidationError."""
+    if not isinstance(payload, dict):
+        raise ImportValidationError(
+            "backup must be a JSON object (the export.json shape)"
+        )
+    if not isinstance(payload.get("claims"), list):
+        raise ImportValidationError(
+            "backup has no 'claims' list — this is not an export.json backup"
+        )
+    tables: dict[str, list[dict[str, Any]]] = {}
+    for table, spec in _IMPORT_SPEC.items():
+        raw = payload.get(table, [])
+        if not isinstance(raw, list):
+            raise ImportValidationError(f"'{table}' must be a list of records")
+        rows: list[dict[str, Any]] = []
+        for i, rec in enumerate(raw):
+            if not isinstance(rec, dict):
+                raise ImportValidationError(f"{table}[{i}] is not an object")
+            row: dict[str, Any] = {}
+            for field, default in spec:
+                if default is _REQUIRED:
+                    if rec.get(field) is None:
+                        raise ImportValidationError(
+                            f"{table}[{i}] is missing required field '{field}'"
+                        )
+                    row[field] = rec[field]
+                else:
+                    # Legacy backups lack columns added after they were taken
+                    # — the schema default is their honest value.
+                    value = rec.get(field, default)
+                    row[field] = default if value is None else value
+            rows.append(row)
+        tables[table] = rows
+    for table, (field, allowed) in _IMPORT_ENUMS.items():
+        for i, row in enumerate(tables[table]):
+            if row[field] not in allowed:
+                raise ImportValidationError(
+                    f"{table}[{i}] has unknown {field} {row[field]!r}"
+                )
+    # Referential pass — every cross-table reference must resolve WITHIN the
+    # backup, or the orphan would import silently (FKs off) and then vanish
+    # from every INNER JOIN view. Ids are untrusted JSON: only hashable
+    # scalar ids can ever match (that is all ``export_all`` writes), so a
+    # structured/exotic value on either side is simply never a valid target.
+    for table, fk, target in _IMPORT_REFS:
+        target_ids = {
+            row["id"]
+            for row in tables[target]
+            if isinstance(row["id"], (int, float, str))
+        }
+        for row in tables[table]:
+            ref = row[fk]
+            if not isinstance(ref, (int, float, str)) or ref not in target_ids:
+                raise ImportValidationError(
+                    f"{table} row id {row['id']!r} references {target} id"
+                    f" {ref!r} via '{fk}', but no {target} row with that id"
+                    f" is in the backup — orphan rows are refused (they would"
+                    f" import silently and vanish from the owner queue)"
+                )
+    for i, row in enumerate(tables["screenshots"]):
+        raw_b64 = row.pop("data_base64")
+        try:
+            row["data"] = base64.b64decode(str(raw_b64), validate=True)
+        except (ValueError, TypeError):
+            raise ImportValidationError(
+                f"screenshots[{i}] has undecodable base64 in 'data_base64'"
+            )
+    return tables
+
+
+def import_all(payload: Any, *, replace: bool = False) -> dict[str, int]:
+    """Restore an ``export_all()`` backup into the store — the import valve.
+
+    REPLACE-into-empty semantics: without ``replace`` the import REFUSES
+    (``ImportNotEmptyError``) when any table already holds rows; with
+    ``replace=True`` every table is wiped and the backup inserted, all in
+    ONE transaction (a failed import rolls back to the pre-call state, never
+    a half-restored DB). Row ids are preserved so cross-table references
+    (claim_id, submission_id) survive the round trip. Returns the per-table
+    inserted-row counts.
+    """
+    tables = _validated_import_rows(payload)
+    with closing(_connect()) as conn, conn:
+        existing = sum(
+            conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+            for t in _IMPORT_SPEC
+        )
+        if existing and not replace:
+            raise ImportNotEmptyError(
+                f"testing DB already holds {existing} rows — import only "
+                "restores into an empty DB unless replace is explicitly set"
+            )
+        if replace:
+            for table in _IMPORT_SPEC:
+                conn.execute(f"DELETE FROM {table}")
+        for table, rows in tables.items():
+            for row in rows:
+                cols = list(row)
+                conn.execute(
+                    f"INSERT INTO {table} ({', '.join(cols)})"
+                    f" VALUES ({', '.join('?' for _ in cols)})",
+                    [row[c] for c in cols],
+                )
+    return {table: len(rows) for table, rows in tables.items()}
+
+
 # --- export (the ephemeral-disk backup valve) --------------------------------
 
 def export_all() -> dict[str, Any]:
@@ -451,6 +952,9 @@ def export_all() -> dict[str, Any]:
         )
         shots = _rows(
             conn.execute("SELECT * FROM screenshots ORDER BY id").fetchall()
+        )
+        guide_exchanges = _rows(
+            conn.execute("SELECT * FROM guide_exchanges ORDER BY id").fetchall()
         )
         ledger = _rows(
             conn.execute("SELECT * FROM payout_ledger ORDER BY id").fetchall()
@@ -469,5 +973,6 @@ def export_all() -> dict[str, Any]:
         "submissions": submissions,
         "ai_reviews": ai_reviews,
         "screenshots": shots,
+        "guide_exchanges": guide_exchanges,
         "payout_ledger": ledger,
     }

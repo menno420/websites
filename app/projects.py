@@ -344,7 +344,9 @@ async def _build_package(
     if meta_path:
         meta = await github.fetch_file(REPO, meta_path, refresh=refresh)
         if meta["ok"] and isinstance(meta["data"], str):
-            out["meta_html"] = journal.render_markdown(meta["data"])
+            out["meta_html"] = journal.render_markdown(
+                meta["data"], source={"repo": REPO, "path": meta_path}
+            )
             out["state"] = extract_state(meta["data"])
             out["stub"] = is_stub(out["state"], meta["data"])
         else:

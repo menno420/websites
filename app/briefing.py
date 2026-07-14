@@ -2,7 +2,7 @@
 happened while I was away?" — what shipped, what's waiting on you, what's
 stale, what's being watched.
 
-ORDER 025. Five sections over a bounded time window (default: the last
+ORDER 025. Six sections over a bounded time window (default: the last
 16 hours; ``?hours=`` override clamped to 1–168, invalid values fall back
 to the default with the fallback noted honestly on the page):
 
@@ -23,6 +23,12 @@ to the default with the fallback noted honestly on the page):
 5. **WATCHES** — the latest review-bake workflow run's conclusion, plus
    every open non-draft PR across the board repos with its head check
    state.
+6. **REPORTS** — the newest ``## REPORT`` entry of this repo's
+   ``control/outbox.md`` (the lane→manager channel), fetched over the same
+   committed-file read path as ASKS. One briefing URL carries both the
+   owner's morning read and the manager roll-up. The outbox is append-only
+   with one writer, so the newest report is the LAST report heading in
+   document order.
 
 Honesty contract (the #240/#250 idiom): every section carries its own
 ``state`` (``ok`` | ``unknown``) and, when unknown, the exact bounded
@@ -69,12 +75,21 @@ OWNER_ACTIONS_URL = (
 REVIEW_BAKE_REPO = "websites"
 REVIEW_BAKE_WORKFLOW = "review-bake.yml"
 
+OUTBOX_REPO = "websites"
+OUTBOX_PATH = "control/outbox.md"
+OUTBOX_URL = (
+    f"https://github.com/{OWNER}/{OUTBOX_REPO}/blob/main/{OUTBOX_PATH}"
+)
+
 # Bounded fan-out: how many closed PRs to scan per repo for the SHIPPED
 # window, how many open ⚑ asks to headline, how many open PRs to carry
-# check states for. All fetches ride the shared TTL cache.
+# check states for, how many body lines of the newest outbox report to
+# render before pointing at the full file. All fetches ride the shared
+# TTL cache.
 SHIPPED_SCAN_PER_REPO = 30
 ASKS_TOP_LIMIT = 5
 WATCH_PR_LIMIT = 12
+OUTBOX_REPORT_MAX_LINES = 40
 
 # Check-run conclusions that count as a red verdict (the readiness board's
 # broken-run set — same taxonomy, no fork).
@@ -529,6 +544,120 @@ async def watches(refresh: bool = False) -> dict[str, Any]:
 
 
 # --------------------------------------------------------------------------- #
+# 6 · REPORTS — the newest control/outbox.md REPORT entry
+# --------------------------------------------------------------------------- #
+def latest_report(text: str) -> dict[str, Any]:
+    """The newest ``## REPORT`` entry of an outbox document.
+
+    Entry grammar (``control/README.md`` + the file's own header): a
+    level-2 heading ``## REPORT · <ISO8601> · <from → to> · <TITLE>``,
+    body running to the next level-2 heading (``###`` subsections belong
+    to the entry). The outbox is append-only with one writer, so the
+    newest report is the LAST report heading in document order — no
+    timestamp arithmetic, no guessing. Non-REPORT entries (PROPOSAL,
+    SIM-REQUEST, markers) are ignored; a heading that starts ``## REPORT``
+    but does not parse to the grammar is skipped and COUNTED honestly in
+    ``note`` — never rendered as if it were a report, never fabricated
+    around. No reports at all → ``found: False`` (the honest-empty state;
+    the caller renders the absence explicitly).
+    """
+    lines = (text or "").splitlines()
+    heading_idx = [i for i, ln in enumerate(lines) if ln.startswith("## ")]
+    reports: list[dict[str, Any]] = []
+    malformed = 0
+    for pos, i in enumerate(heading_idx):
+        if not lines[i].startswith("## REPORT"):
+            continue
+        parts = [p.strip() for p in lines[i][3:].split("·")]
+        if (
+            len(parts) < 4
+            or parts[0] != "REPORT"
+            or not parts[1]
+            or "→" not in parts[2]
+        ):
+            malformed += 1
+            continue
+        end = (
+            heading_idx[pos + 1]
+            if pos + 1 < len(heading_idx)
+            else len(lines)
+        )
+        body = lines[i + 1 : end]
+        while body and not body[0].strip():
+            body.pop(0)
+        while body and not body[-1].strip():
+            body.pop()
+        reports.append(
+            {
+                "issued": parts[1],
+                "route": parts[2],
+                "title": " · ".join(parts[3:]),
+                "body": body,
+            }
+        )
+    note = (
+        f"{malformed} REPORT-like heading(s) skipped — "
+        "not in the entry grammar"
+        if malformed
+        else ""
+    )
+    if not reports:
+        return {
+            "found": False,
+            "issued": "",
+            "route": "",
+            "title": "",
+            "lines": [],
+            "truncated": False,
+            "limit": OUTBOX_REPORT_MAX_LINES,
+            "total_reports": 0,
+            "note": note,
+        }
+    newest = reports[-1]  # append-only file → newest entry is last
+    truncated = len(newest["body"]) > OUTBOX_REPORT_MAX_LINES
+    return {
+        "found": True,
+        "issued": newest["issued"],
+        "route": newest["route"],
+        "title": newest["title"],
+        "lines": newest["body"][:OUTBOX_REPORT_MAX_LINES],
+        "truncated": truncated,
+        "limit": OUTBOX_REPORT_MAX_LINES,
+        "total_reports": len(reports),
+        "note": note,
+    }
+
+
+async def outbox_report(refresh: bool = False) -> dict[str, Any]:
+    """The newest REPORT entry of the committed lane→manager outbox,
+    fetched with the same ``github.fetch_file`` path ASKS rides (raw host
+    first, TTL-cached). Unreadable file → ``state: unknown`` with the
+    bounded reason; readable file with no REPORT entries → ``state: ok``
+    with ``found: False`` (an honest absence, not a failure)."""
+    res = await github.fetch_file(OUTBOX_REPO, OUTBOX_PATH, refresh=refresh)
+    if not (res["ok"] and isinstance(res["data"], str) and res["data"].strip()):
+        return {
+            "state": "unknown",
+            "reason": github.short_reason(
+                res.get("error") or f"HTTP {res.get('status')}",
+                status=res.get("status"),
+            ),
+            "found": False,
+            "issued": "",
+            "route": "",
+            "title": "",
+            "lines": [],
+            "truncated": False,
+            "limit": OUTBOX_REPORT_MAX_LINES,
+            "total_reports": 0,
+            "note": "",
+            "url": OUTBOX_URL,
+        }
+    report = latest_report(res["data"])
+    return {"state": "ok", "reason": "", "url": OUTBOX_URL, **report}
+
+
+# --------------------------------------------------------------------------- #
 # The page payload
 # --------------------------------------------------------------------------- #
 async def overview(
@@ -536,18 +665,26 @@ async def overview(
     refresh: bool = False,
     now: Optional[datetime] = None,
 ) -> dict[str, Any]:
-    """Everything /owner/briefing renders: the window + the five sections,
+    """Everything /owner/briefing renders: the window + the six sections,
     fetched concurrently. Never raises for an upstream failure — each
     section degrades to its own honest unknown; the route stays 200."""
     now = now or clock.now()
     window = parse_window(hours_raw)
     cutoff = now - timedelta(hours=window["hours"])
-    shipped_s, orders_s, asks_s, fleet_s, watches_s = await asyncio.gather(
+    (
+        shipped_s,
+        orders_s,
+        asks_s,
+        fleet_s,
+        watches_s,
+        outbox_s,
+    ) = await asyncio.gather(
         shipped(cutoff, refresh=refresh),
         orders_digest(refresh=refresh, now=now),
         asks(refresh=refresh),
         fleet_attention(refresh=refresh, now=now),
         watches(refresh=refresh),
+        outbox_report(refresh=refresh),
     )
     return {
         "window": window,
@@ -561,4 +698,5 @@ async def overview(
         "asks": asks_s,
         "fleet": fleet_s,
         "watches": watches_s,
+        "outbox": outbox_s,
     }

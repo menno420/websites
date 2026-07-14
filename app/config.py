@@ -27,6 +27,21 @@ import os
 OWNER = "menno420"
 
 
+def _env_int(name: str, default: int) -> int:
+    """Parse an integer env var, falling back to ``default``.
+
+    Unset, empty-string and malformed values ALL fall back. On Railway an
+    empty entry is NOT "unset" — a bare module-level ``int("")`` would crash
+    the whole service at import (docs/CAPABILITIES.md, 2026-07-13 ORDER 026
+    finding). Mirrors the runtime idiom of ``daily_cap()`` in
+    app/owner_assist.py: degrade to the documented default, never crash.
+    """
+    try:
+        return int(os.environ.get(name) or default)
+    except ValueError:
+        return default
+
+
 def deployed_sha() -> str:
     """The commit SHA this container is actually running.
 
@@ -80,7 +95,7 @@ SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "")
 # Deliberately NOT the account key and NOT an ambient ID — see the docstring
 # above and docs/RAILWAY-SAFETY.md. Read only behind the /owner gate.
 RAILWAY_TOKEN = os.environ.get("RAILWAY_TOKEN", "")
-CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "180"))
+CACHE_TTL_SECONDS = _env_int("CACHE_TTL_SECONDS", 180)
 # Client-side poll interval for the LIVE-MONITORING pages only (the board `/`
 # and `/fleet`). A small unobtrusive JS refresh (app/static/autorefresh.js)
 # re-fetches the page and swaps its `#live-content` region in place every
@@ -88,7 +103,7 @@ CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "180"))
 # manual reload. Polling more often than the 180s server cache TTL just
 # re-renders the same cached data cheaply (fine); 45s is a responsive-but-gentle
 # default. The content/journal pages are deliberately NOT auto-refreshed.
-AUTOREFRESH_SECONDS = int(os.environ.get("AUTOREFRESH_SECONDS", "45"))
+AUTOREFRESH_SECONDS = _env_int("AUTOREFRESH_SECONDS", 45)
 
 # Per-repo knowledge the API cannot tell us: what the required checks are
 # *supposed* to be (seeded from superbot docs/operations/repo-settings-state.md,
@@ -196,13 +211,13 @@ REPOS: dict = {
 # absence, not an error). `stale_hours` is the heartbeat-freshness threshold: an
 # `updated:` older than this badges the lane stale (the manager treats a stale
 # heartbeat as a dark Project).
-FLEET_STALE_HOURS = int(os.environ.get("FLEET_STALE_HOURS", "12"))
+FLEET_STALE_HOURS = _env_int("FLEET_STALE_HOURS", 12)
 
 # Order-claim staleness threshold for /orders: the claim ritual
 # (control/README.md) says a claim with no visible build activity after ~24h
 # may be treated as abandoned and re-claimed — a claimed order older than
 # this badges `claim stale?` so a dead lane can't silently deadlock an order.
-CLAIM_STALE_HOURS = int(os.environ.get("CLAIM_STALE_HOURS", "24"))
+CLAIM_STALE_HOURS = _env_int("CLAIM_STALE_HOURS", 24)
 
 # Hand-kept FALLBACK copy of the fleet-manager registry (LANES in
 # scripts/gen_roster.py) — used only when the live registry fetch/parse

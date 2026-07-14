@@ -1,26 +1,27 @@
-# Websites seat — coordinator heartbeat
+# websites · status
 
-updated: Mon Jul 13 20:53:03 UTC 2026 · phase: ACTIVE (coordinator session 12, mid-sitting refresh 2)
+updated: 2026-07-14T03:21:07Z
+phase: EAP FINAL NIGHT — ORDER 027 complete + standing-ladder wave (coordinator session 12)
+health: green (main green; live-verified through #323)
+last-shipped: standing-ladder wave #318–#323 merged; #324 parked green by design
+blockers: none
+orders: acked=001-027 done=001-019,023-027 (020/021 owner-gated; 022 standing)
+routine: armed · failsafe cron trig_01GV8kBK92CSZWEWwNZo1rhk · 45 */2 * * * · live coordinator session · pacemaker send_later chain ~15 min
+notes: ORDER 027 final ledger, standing-ladder wave, sitting total, open PRs and asks in the body sections below.
 
-## routine
-- failsafe cron: trig_01GV8kBK92CSZWEWwNZo1rhk "Websites failsafe wake" · 45 */2 * * * · enabled, bound to the live coordinator session (predecessor bridge trig_019cGrUpfHSMv4qLk5tn2hgr deleted at boot cutover, verified).
-- pacemaker: send_later chain live, ~15 min cadence, one pending at a time.
+## ORDER 027 final ledger
+item 1 #304 (pre-order) + follow-on #316 step-provenance pin · item 2 #307/#310 heartbeat + #308 current-state truing · item 3 #311 cold-browser pass (3 fixes: favicons, hamburger glyph, footer gutter — live-verified; evidence in .sessions/2026-07-13-cold-browser-review.md) · item 4 #313 env-leads CLOSED (SITE_PASSWORD = unused drift, new ⚑ deletion ask; ANTHROPIC_API_KEY = not measured, walled) · item 5 #309 conftest token pin · item 6 #305 (pre-order) asked_at bake · item 7 #314 fast-lane outbox+heartbeat gate (per-path proven) · item 8 #315 build-direct open-work-sweep docs + drift-guard test.
+Blocked per order (not scheduled): ORDER 020 PAT · ORDER 021 Discord decision · lifeboat disposal (owner-click) · photo-pack originals.
 
-## orders
-acked=001-026 done=001-019,023-026 (020/021 owner-gated; 022 executed, standing). Re-verified through 20:38Z — nothing beyond 026.
+## standing-ladder wave
+#318 claims-drift gate (squash-aware) + stale ORDER-026 claim swept + control-plane favicon · #319 project.index.json populated (4 real areas) · #320 testing-DB import valve (owner-auth, CSRF same-origin guard, replace-into-empty) · #321 scheduled Playwright smoke-crawl (47 2-23/6; WATCH: 02:47Z first slot did not fire — zero runs at 03:15Z check; GitHub cron lag on new workflows is common; re-verify at/after 08:47Z before calling it wedged) · #322 md relative-link rewrite + /favicon.ico on all four services (live-verified) · #323 import-valve referential pass (5 FK edges) · #324 automerge race reconciliation — PARKED GREEN BY DESIGN (its new rail labels workflow-touching PRs do-not-automerge; owner-click merge; landing path owner-click).
 
-## shipped this sitting (20 merges, all quality-green auto-merge; merge = deploy; live-verified at each step)
-#277 intake sweep · #282 env hardening · #284 VERDICT-016 reflection · #285 env-guard AST gate · #286 briefing REPORTS card · #287 hostile-env smoke · #288 arcade availability SoT · #289 outbox grammar pin · #290 poison-list pin · #291 healthcheck review probe + truing · #292 guide-transcript evidence · #293 owner-queue drop-offs · #294 drop-off heatmap · #295 heatmap step labels · #296 heatmap full-length tail · #297 review questions bake-sync · #298 heatmap survival contrast · #299 closed-unanswered nag · #300 (draft lifeboat, not a merge) · #301 answer-debt age · #302 answer-latency stat.
-Suite 1206 → 1319. Healthcheck 09:47Z red = transient (rerun green); "forced update" reports = shallow-clone artifact (deep merge-base verified, history intact).
+## sitting total
+38 landed/parked #277–#324; suite 1206→1389; blocked-per-order items unchanged.
 
 ## open PRs
-- #281 coordinator session PR (this heartbeat rides it; born-red card flips at session end) — landing path: enabler on green after flip.
-- Draft lifeboats, owner-close whenever: #245 #249 #257 #278 #279 #280 #300.
+#281 (coordinator, flips at ender) + #324 (parked green, owner-click) + draft lifeboats #245 #249 #257 #278 #279 #280 #300.
 
 ## asks
-8 open ⚑ in docs/owner/OWNER-ACTIONS.md — unchanged. Highest-leverage: botsite SITE_PASSWORD (unlocks the entire /testing/owner surface built today: drop-offs + heatmap).
-
-## next-2
-1. Further mission increments from docs/ideas/backlog.md (fresh captured: asked_at full timestamp; finisher-question hotspots; fast-lane outbox-pin gap).
-2. Ender housekeeping: sweep stale claim control/claims/2026-07-13-railway-placeholders.md (ORDER 026 terminal via #275).
+docs/owner/OWNER-ACTIONS.md (9 ⚑; highest-leverage botsite SITE_PASSWORD).
 kit: v1.15.0

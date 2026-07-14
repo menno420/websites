@@ -57,8 +57,11 @@ EXPECTED_STATUS = 200
 USER_AGENT = "websites-healthcheck-arcade-probe"
 
 # The availabilities the /arcade page renders an outbound link for (its
-# ``has_link`` covers live AND download) — exactly these get probed.
-PROBED_AVAILABILITIES = ("live", "download")
+# ``has_link`` covers live AND download) — exactly these get probed. Defined
+# AS the page's own ``LINKED_AVAILABILITIES`` (the single source of truth in
+# ``botsite/arcade.py``), never a duplicate literal, so probe coverage and
+# page links can never drift apart.
+PROBED_AVAILABILITIES = arcade.LINKED_AVAILABILITIES
 
 
 def make_client() -> httpx.Client:

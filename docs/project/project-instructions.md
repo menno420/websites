@@ -37,7 +37,19 @@ a stale clone reads stale orders.
 ## ROUTINE-FIRED SESSION protocol (unattended wakes)
 You may be a fresh session fired by the 4-hourly wake routine. Then:
 1. `git pull`; re-read `control/inbox.md` at HEAD; claim before building
-   (`control/README.md`); execute ONE bounded slice, not a marathon.
+   (`control/README.md`); run the open-work sweep — `python3
+   scripts/open_work.py` (`git ls-remote --heads origin` where it can't
+   run) — BEFORE picking a rung; execute ONE bounded slice, not a
+   marathon. Sweep states (live read — never commit its output):
+
+   | state | action |
+   |---|---|
+   | PR-OPEN | a session's landing in flight — leave it to its session, avoid its files |
+   | PR-LESS | unmerged commits, no open PR — rescue candidate (stranded-work protocol) or mid-work; check age |
+   | NO-DIFF | commits but zero content diff vs main — ignorable prune candidate, never a rescue alarm |
+   | MERGED-STALE | landed content — prune candidate; fix any ledger calling it unmerged |
+   | PR-UNKNOWN | unmerged commits, PR list unreachable from this seat — say so, never guess (Q-0120) |
+   | UNKNOWN | could not compare against main — say so, never guess |
 2. **Probe your landing tools before writing "done".** Routine-fired toolsets
    have been observed WITHOUT GitHub PR tooling, with `api.github.com` 403'd
    ("not enabled for this session. Use add_repo"), and with `git push` failing

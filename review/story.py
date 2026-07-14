@@ -20,7 +20,9 @@ Two kinds of content live here:
 
 from __future__ import annotations
 
+import datetime as dt
 import json
+import statistics
 from pathlib import Path
 from typing import Any
 
@@ -775,7 +777,9 @@ def overview_stats(snapshot_data: dict[str, Any]) -> list[dict[str, Any]]:
 # ORDER 019 PR2 — /questions ledger filter/sort/search over the centralized
 # listfilter core (review/listfilter.py, a byte-identical vendored copy of
 # app/listfilter.py). The ledger records carry ``asked``/``title``/``url``/
-# ``status``/``answer_url``/``answer_label`` (see data/questions.json + the
+# ``status``/``answer_url``/``answer_label`` — plus a bake-stamped
+# ``closed_at`` on closed records synced after the answer-debt slice —
+# (see data/questions.json + the
 # template) — the dimensions read exactly those fields, defaulting the same
 # way the template does (missing status renders as "open").
 # --------------------------------------------------------------------------- #
@@ -791,6 +795,159 @@ def question_answer_state(q: dict[str, Any]) -> str:
     """``answered`` when an answer link exists, else ``pending`` — the same
     reading the template renders in its "Answered where" column."""
     return "answered" if q.get("answer_url") else "pending"
+
+
+def unanswered_closed(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Ledger records whose issue closed without a published answer link.
+
+    The bake sync flips ``status`` to ``closed`` from the live issue state,
+    but answer links stay hand-written — so a question can close without its
+    promised published answer. These records are that broken promise, read
+    straight off the committed ledger (no network, never fabricated)."""
+    return [
+        q
+        for q in records
+        if question_status(q) == "closed" and question_answer_state(q) == "pending"
+    ]
+
+
+def answer_debt_days(q: dict[str, Any], now: dt.datetime | None = None) -> int | None:
+    """Whole days since the record's bake-stamped ``closed_at``, UTC.
+
+    ``None`` when the field is missing or unparseable — committed ledgers
+    baked before the stamp existed (and hand-mangled timestamps) degrade to
+    the binary nag, never to a crash or an invented age. Clamped at 0 so a
+    just-closed record under clock skew never reads negative. Mirrors
+    ``gen_questions.answer_debt_days`` — one debt clock, two surfaces."""
+    raw = str(q.get("closed_at") or "").strip()
+    if not raw:
+        return None
+    try:
+        closed = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if closed.tzinfo is None:
+        closed = closed.replace(tzinfo=dt.timezone.utc)
+    now = now if now is not None else dt.datetime.now(dt.timezone.utc)
+    return max((now - closed).days, 0)
+
+
+def answer_debt(
+    records: list[dict[str, Any]], now: dt.datetime | None = None
+) -> list[dict[str, Any]]:
+    """``unanswered_closed`` ranked by answer debt, each record copied with a
+    computed ``debt_days`` (int, or None when ``closed_at`` is absent/bad).
+
+    Oldest ``closed_at`` first — the longest-broken promise is the one to pay
+    first; records whose debt is unknowable keep their ledger order after the
+    dated ones. Pure read: the given records are never mutated."""
+    nag = []
+    for q in unanswered_closed(records):
+        q = dict(q)
+        q["debt_days"] = answer_debt_days(q, now)
+        nag.append(q)
+    nag.sort(
+        key=lambda q: (
+            q["debt_days"] is None,
+            str(q.get("closed_at") or "") if q["debt_days"] is not None else "",
+        )
+    )
+    return nag
+
+
+def answer_latency_days(q: dict[str, Any]) -> int | float | None:
+    """Days from a record's asked stamp to its bake-stamped ``closed_at``,
+    UTC — the question's real resolution time.
+
+    Prefers the full-precision ``asked_at`` timestamp when it parses
+    (fractional days, so a same-day answer resolves to real hours instead
+    of flooring to 0; int when whole) and falls back to the date-precision
+    ``asked`` (whole days, exactly the pre-``asked_at`` arithmetic) so
+    committed ledgers baked before the stamp existed compute unchanged.
+    ``None`` when the timestamps are missing or unparseable — old records
+    and hand-mangled fields are ignored, never guessed. Clamped at 0 so
+    clock skew between the two stamps never reads negative."""
+    raw_closed = str(q.get("closed_at") or "").strip()
+    if not raw_closed:
+        return None
+    try:
+        closed = dt.datetime.fromisoformat(raw_closed.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if closed.tzinfo is None:
+        closed = closed.replace(tzinfo=dt.timezone.utc)
+    closed = closed.astimezone(dt.timezone.utc)
+    raw_asked_at = str(q.get("asked_at") or "").strip()
+    if raw_asked_at:
+        try:
+            asked_at = dt.datetime.fromisoformat(raw_asked_at.replace("Z", "+00:00"))
+        except ValueError:
+            asked_at = None  # unparseable stamp degrades to the date fallback
+        if asked_at is not None:
+            if asked_at.tzinfo is None:
+                asked_at = asked_at.replace(tzinfo=dt.timezone.utc)
+            days = max((closed - asked_at).total_seconds() / 86400.0, 0.0)
+            return int(days) if days.is_integer() else days
+    raw_asked = str(q.get("asked") or "").strip()
+    if not raw_asked:
+        return None
+    try:
+        asked = dt.date.fromisoformat(raw_asked)
+    except ValueError:
+        return None
+    return max((closed.date() - asked).days, 0)
+
+
+def latency_label(median: int | float) -> str:
+    """Human wording for a median latency in days — honest at the resolution
+    the data has, byte-identical to the pre-``asked_at`` wording for the
+    whole/half-day medians date-precision records can produce.
+
+    Whole days say "N days"; sub-day medians say hours ("under an hour"
+    below one); anything else rounds to one decimal ("1.3 days")."""
+    if float(median).is_integer():
+        n = int(median)
+        return f"{n} day" + ("" if n == 1 else "s")
+    hours = round(median * 24)
+    if hours < 1:
+        return "under an hour"
+    if hours < 24:
+        return f"{hours} hour" + ("" if hours == 1 else "s")
+    days = round(median, 1)
+    if float(days).is_integer():
+        n = int(days)
+        return f"{n} day" + ("" if n == 1 else "s")
+    return f"{days} days"
+
+
+def answer_latency(records: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The promise-KEPT stat: count + median whole-day asked→closed
+    turnaround over the ANSWERED ledger records — the positive complement
+    to ``answer_debt``, which only measures the promise breaking.
+
+    ``None`` until at least one answered record carries both parseable
+    timestamps (honest absence — the stat is hidden, never fabricated).
+    ``median_days`` is an int when the median is whole, else the exact
+    float (fractional once ``asked_at`` records resolve sub-day);
+    ``median_label`` is the display wording (``latency_label``). Pure
+    read: records untouched."""
+    days = []
+    for q in records:
+        if question_answer_state(q) != "answered":
+            continue
+        d = answer_latency_days(q)
+        if d is not None:
+            days.append(d)
+    if not days:
+        return None
+    median = statistics.median(days)
+    if float(median).is_integer():
+        median = int(median)
+    return {
+        "count": len(days),
+        "median_days": median,
+        "median_label": latency_label(median),
+    }
 
 
 QUESTIONS_FILTER_SPEC = listfilter.ListSpec(
