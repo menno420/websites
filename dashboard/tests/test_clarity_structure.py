@@ -157,6 +157,7 @@ def client():
 NON_PAGE_GET_ROUTES: dict[str, str] = {
     "/healthz": "JSON health probe (Railway healthcheck) — no page shell",
     "/version": "JSON deployed-sha endpoint — machine twin, no page shell",
+    "/favicon.ico": "the site icon at the browser-probed path — a file, not a page",
     "/palette.json": "JSON design-palette feed — machine data, no page shell",
 }
 

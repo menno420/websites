@@ -689,7 +689,9 @@ async def lane_status(
         out["orders_info"] = parse_orders(fields.get("orders", ""))
         out["routine_info"] = classify_routine(fields.get("routine", ""), now=now)
         out["landing_info"] = classify_landing(fields.get("landing", ""))
-        out["body_html"] = journal.render_markdown(fetch["data"])
+        out["body_html"] = journal.render_markdown(
+            fetch["data"], source={"repo": repo, "path": path}
+        )
     elif fetch["status"] == 404:
         # A 404 is a legitimate "this lane has no status file yet" — an absence,
         # never an error banner. (The bare `superbot` lane is expected here.)

@@ -95,26 +95,12 @@ LINK_TIMEOUT_MS = 15_000
 # docs/current-state.md "Stability baseline").
 SKIP_PATH_PREFIXES = ("/owner",)
 
-# Anchors inside rendered REMOTE-markdown containers are excluded from link
-# discovery: the control-plane renders other repos' markdown documents
-# verbatim inside `<div class="md">` (heartbeats on /fleet, the fleet-manager
-# ledger on /reviews, environment docs on /environments), and relative links
-# INSIDE that remote content (`README.md`, `gen2-blueprint.md`, …) cannot
-# resolve on this origin by construction — they are the DOCUMENT's links, not
-# the site's, and they change with upstream repo content. Verified live
-# 2026-07-14: every 404 link the first crawl found sat inside a `.md`
-# container. This is a documented scope cut, not an allowlist: the underlying
-# renderer gap (relative links in remote markdown should be rewritten to
-# their GitHub source or de-linkified) is recorded as a follow-up finding on
-# PR #321 — if it gets fixed, this exclusion can be deleted.
-RENDERED_REMOTE_MD_SELECTOR = ".md"
-
 # Same-site URLs with these extensions are real link targets (status-checked
 # in pass 3) but are never rendered as browser pages: a raw JSON/XML view has
 # no rendering layer to smoke-test, and Chromium's built-in viewer requests
 # /favicon.ico on such pages — a console-error artifact of the viewer, not of
-# the site's pages. (That /favicon.ico itself 404s fleet-wide is a real,
-# minor gap — recorded as a follow-up finding on PR #321, not gated here.)
+# the site's pages. (/favicon.ico is served fleet-wide since the PR that
+# closed the PR #321 follow-up findings, so that request now answers 200.)
 NON_PAGE_EXTENSIONS = (
     ".json", ".xml", ".md", ".sh", ".txt", ".svg", ".ico", ".png", ".jpg",
     ".css", ".js", ".zip", ".pdf",
@@ -205,9 +191,7 @@ def crawl_site(
 
             hrefs = page.eval_on_selector_all(
                 "a[href]",
-                "(els, mdSel) => els.filter(e => !e.closest(mdSel))"
-                ".map(e => e.getAttribute('href'))",
-                RENDERED_REMOTE_MD_SELECTOR,
+                "els => els.map(e => e.getAttribute('href'))",
             )
             for href in hrefs:
                 if not href or href.lower().startswith(_SKIPPED_SCHEMES):
