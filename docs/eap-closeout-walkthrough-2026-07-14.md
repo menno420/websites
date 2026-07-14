@@ -116,8 +116,9 @@ PR clicks and cross-references:
 - **ORDERs 020 / 021** — owner-gated, NOT duplicated here: ORDER 020 is
   checklist **row 7** (+ row 8's dual-scope framing); ORDER 021 is
   **rows 1–2** (Q-0004 + Discord OAuth).
-- **PR #334** — being resolved this session — see the close-out report.
-- **PR #330** — being resolved this session — see the close-out report.
+- **PR #334** — **merged** at `ecfe435` (ORDER 028 complete — capability-seed
+  fence restored); no action.
+- **PR #330** — **merged** at `7d5fa47` (bake data landed on main); no action.
 
 ## D. 5-minute verify-it-yourself tour
 
@@ -141,10 +142,10 @@ PR clicks and cross-references:
   standing rung-3 source is `docs/ideas/backlog.md` (~33 captured bullets
   open at the close-out audit); `docs/current-state.md` is the living ledger
   to keep true.
-- **Batons in flight at close-out:** PRs #334 (ORDER 028) and #330 (bake
-  data) being resolved this session; heartbeat `control/status.md` truing +
-  the smoke-crawl first-fire re-verify are sibling ORDER 030 (a) items;
-  coordinator #281 flips at its own ender.
+- **Batons in flight at close-out:** PRs #334 (ORDER 028, merged `ecfe435`)
+  and #330 (bake data, merged `7d5fa47`) are resolved; heartbeat
+  `control/status.md` truing + the smoke-crawl first-fire re-verify are
+  sibling ORDER 030 (a) items; coordinator #281 flips at its own ender.
 - **What the next phase needs from the owner:** section C — rows 6/4/7+8 are
   the highest-leverage pastes (tester queue reachable, durable storage,
   writeback + hands-off bake); rows 1–3 are the one product decision
