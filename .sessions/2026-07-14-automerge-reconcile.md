@@ -1,7 +1,10 @@
 # 2026-07-14 — reconcile the automerge race on workflow-touching PRs (audit finding 4)
 
-> **Status:** `in-progress` — branch `claude/automerge-reconcile-0714`; flips to `complete`
-> + PR number as the deliberate LAST code step.
+> **Status:** `complete` — PR #324, branch `claude/automerge-reconcile-0714`;
+> workflow-touching PRs now park deterministically under the kit enabler's own
+> `do-not-automerge` carve-out (label first, disarm, one settle re-check). This
+> PR touches `.github/workflows/**`, so it parks itself by design —
+> owner-merge-only is the fix working, not a failure.
 
 - **📊 Model:** Claude Fable 5 · worker · CI reconciliation
 
@@ -60,4 +63,7 @@ The smoke-crawl session (PR #321) did well — a real browser-level standing
 gate with honest scope cuts and a live 100-page proof; what it missed: its
 own PR was the workflow-touching PR that demonstrated this race (armed by the
 kit enabler 16 s after the host rail disarmed it), which this session now
-closes.
+closes. Also checked the venture-vetting-catalog card (2026-07-13): it
+delivered what it claimed — 22 entries in `botsite/data/catalog.json`, the
+`/products/catalog` route, loader and template all present with the honest
+1/12/2/7 status breakdown pinned by its own test.

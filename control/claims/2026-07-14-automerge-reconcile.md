@@ -1,1 +1,0 @@
-- `claude/automerge-reconcile-0714` · **automerge race reconciliation (audit finding 4)** — park workflow-touching PRs deterministically via the kit's `do-not-automerge` carve-out label in the host rail · .github/workflows/host-automerge-extras.yml · 2026-07-14
