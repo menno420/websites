@@ -1633,3 +1633,19 @@
   cover order-claim pickup latency, stalled-claim aging on /orders, and
   sweep-hold claim files — nothing touches claim grammar or branch
   terminality. Source: `.sessions/2026-07-14-claims-drift-gate.md` 💡.
+
+- **Index-drift advisory in `check` — existence-check `project.index.json`
+  paths on every run** · `captured` (2026-07-14, project-index session 💡) —
+  the contextpack generator existence-checks `source_roots` only when
+  someone runs `python3 bootstrap.py contextpack`, which nothing schedules;
+  a renamed folio or moved source root rots the newly populated index
+  silently until the next manual generation. A `check`-time advisory
+  (never exit-affecting) walking every area's `folio`, `binding_docs` and
+  `source_roots` entries and warning on missing paths would surface drift
+  in every CI run for near-zero cost. Kit-side (`bootstrap.py` is
+  generated) — also a substrate-kit worthiness relay per the working
+  agreement. Worth having because a populated-but-stale index is worse
+  than the empty placeholder it replaced — it misleads with confidence
+  instead of signalling neglect. Deduped against this backlog + the
+  queue-state NEXT list: no bullet mentions contextpacks or
+  project.index.json. Source: `.sessions/2026-07-14-project-index.md` 💡.

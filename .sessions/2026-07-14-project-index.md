@@ -1,7 +1,10 @@
 # 2026-07-14 — populate project.index.json (fleet cleanup audit suggestion 3)
 
-> **Status:** `in-progress` — branch `claude/project-index-0714`; flips to
-> `complete` + PR number as the deliberate LAST code step.
+> **Status:** `complete` — PR #319, branch `claude/project-index-0714`;
+> the AgentContextPack index now maps the four real service areas
+> (control-plane / botsite / dashboard / review) to their folios, source
+> roots and verification commands; lands via the auto-merge enabler on
+> green.
 
 - **📊 Model:** Claude Fable 5 · worker · backlog-promotion
 
@@ -43,8 +46,26 @@ design-spec 2.10) reads.
 
 ## 💡 Session idea
 
-[[fill: close-out]]
+**Index-drift advisory in `check` — existence-check `project.index.json`
+paths on every run** — the contextpack generator existence-checks
+`source_roots` only when someone runs `python3 bootstrap.py contextpack`,
+which nothing schedules; a renamed folio or moved source root rots the
+index silently until the next manual generation. A `check`-time advisory
+(never exit-affecting) that walks every area's `folio`, `binding_docs`
+and `source_roots` entries and warns on missing paths would surface drift
+in every CI run for near-zero cost. Worth having because a
+populated-but-stale index is worse than the empty placeholder this
+session replaced — it misleads with confidence instead of signalling
+neglect. Deduped against `docs/ideas/backlog.md` + the queue-state NEXT
+list: no bullet mentions contextpacks or project.index.json at all.
+Captured in `docs/ideas/backlog.md`.
 
 ## ⟲ Previous-session review
 
-[[fill: close-out]]
+The venture-vetting-catalog session (PR #248) did well — 22 entries
+curated with per-title honesty and pinned by a registry test so the page
+cannot silently claim a different breakdown; what it missed: the pin
+freezes the 1/12/2/7 snapshot against upstream movement it cannot see —
+its own sha-drift idea (a fine one) landed only as a backlog bullet, so
+the decay watch it identified still depends on a future session picking
+it up.
