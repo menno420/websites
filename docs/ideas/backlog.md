@@ -1768,3 +1768,21 @@
   against this backlog + the queue-state NEXT list: no
   import-spec/schema-drift/foreign_key_list bullet exists anywhere.
   Source: `.sessions/2026-07-14-import-referential.md` 💡.
+
+- **Export→import→export deep-equality round-trip pin** · `captured`
+  (2026-07-14, import-schema-pin session 💡) — populate every table, run
+  `export_all()`, import the result into a fresh DB via `import_all()`,
+  re-export, and assert the two exports are DEEPLY equal (ids, values,
+  base64 blobs — everything), instead of the current round-trip test's
+  spot-checks of fields someone remembered to assert
+  (`botsite/tests/test_testing_import.py`
+  `test_round_trip_export_then_import_after_wipe`). Worth having because
+  this pin plus the schema-drift pin (branch
+  `claude/import-schema-pin-0714`) makes every current AND future column
+  value-fidelity-checked for free: the drift pin proves the spec covers
+  the schema, deep equality proves the covered values survive the trip —
+  an import that quietly coerces or defaults a value today passes the
+  spot-checks. Deduped against this backlog + the queue-state NEXT list:
+  the import bullets are the valve (#320), the referential pass (#323),
+  and the spec pin; nothing asserts export/import round-trip equality.
+  Source: `.sessions/2026-07-14-import-schema-pin.md` 💡.
