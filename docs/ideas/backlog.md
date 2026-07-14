@@ -1596,21 +1596,30 @@
   Source: `.sessions/2026-07-13-env-leads-close.md` 💡.
 
 - **Cross-table reference check on the testing-DB import valve — reject
-  backups with orphan rows** · `captured` (2026-07-14, testing-import-valve
-  session 💡) — SQLite foreign keys are OFF by default (`PRAGMA
-  foreign_keys` is never enabled in `botsite/testing_store.py`'s
-  `_connect()`), so a truncated or hand-edited backup whose submissions
-  reference missing claims imports "successfully" through `POST
-  /testing/owner/import.json` (PR #320), and the owner queue's INNER JOINs
-  (`list_submissions`) then silently drop the orphan rows — a restore that
-  reports ok but shows less than it inserted. A referential pass in
-  `_validated_import_rows` (submission.claim_id ∈ claim ids,
-  ai_review/screenshot.submission_id ∈ submission ids, guide_exchange +
-  ledger claim_ids ∈ claim ids) would 400 loudly instead. Worth having
-  because the valve's entire promise is a faithful restore, and orphan rows
-  are the one corruption class its validation still admits silently.
-  Deduped against this backlog + the queue-state NEXT list: no
-  foreign-key/referential/orphan-row bullet exists anywhere. Source:
+  backups with orphan rows** · `built` (2026-07-14, branch
+  `claude/import-referential-0714` — a referential pass in
+  `_validated_import_rows` (`botsite/testing_store.py`): every cross-table
+  reference edge (`submissions.claim_id` / `guide_exchanges.claim_id` /
+  `payout_ledger.claim_id` → claims, `ai_reviews.submission_id` /
+  `screenshots.submission_id` → submissions, the `_IMPORT_REFS` constant)
+  must resolve among the UPLOADED rows of the target table, or the import
+  400s loudly naming the referencing table, row id, FK column, and the
+  missing target — before anything is written. PR #320's legacy tolerance
+  preserved: absent newer tables mean no referencing rows to check, and
+  every FK column is NOT NULL + required so there is no nullable case;
+  non-scalar FK values from untrusted JSON are the 400 path, never a 500.
+  One orphan test per edge plus valid-full/legacy/non-scalar coverage in
+  `botsite/tests/test_testing_import.py`) — original capture: SQLite
+  foreign keys are OFF by default (`PRAGMA foreign_keys` is never enabled
+  in `botsite/testing_store.py`'s `_connect()`), so a truncated or
+  hand-edited backup whose submissions reference missing claims imports
+  "successfully" through `POST /testing/owner/import.json` (PR #320), and
+  the owner queue's INNER JOINs (`list_submissions`) then silently drop the
+  orphan rows — a restore that reports ok but shows less than it inserted.
+  A referential pass in `_validated_import_rows` would 400 loudly instead.
+  Worth having because the valve's entire promise is a faithful restore,
+  and orphan rows are the one corruption class its validation still
+  admitted silently. Source:
   `.sessions/2026-07-14-testing-import-valve.md` 💡.
 
 - **Import valve for the testing-DB export — restore `export.json` after a

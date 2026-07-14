@@ -813,6 +813,24 @@ _IMPORT_ENUMS: dict[str, tuple[str, tuple[str, ...]]] = {
     "payout_ledger": ("state", LEDGER_STATES),
 }
 
+# Cross-table reference edges re-checked on import: (referencing table, FK
+# column, target table). SQLite foreign keys are OFF by default (``_connect``
+# never enables the pragma), so an orphan row — a truncated or hand-edited
+# backup whose submissions reference missing claims, say — would insert
+# cleanly and the owner queue's INNER JOINs (``list_submissions`` et al.)
+# would then silently drop it: a restore that reports ok yet shows less than
+# it inserted. Targets are the UPLOADED rows of the target table (the import
+# lands into an empty DB, so the backup must be self-contained). Every FK
+# column below is ``_REQUIRED`` NOT NULL in the schema — there is no
+# legitimately-null reference to wave through.
+_IMPORT_REFS: tuple[tuple[str, str, str], ...] = (
+    ("submissions", "claim_id", "claims"),
+    ("ai_reviews", "submission_id", "submissions"),
+    ("screenshots", "submission_id", "submissions"),
+    ("guide_exchanges", "claim_id", "claims"),
+    ("payout_ledger", "claim_id", "claims"),
+)
+
 
 def _validated_import_rows(payload: Any) -> dict[str, list[dict[str, Any]]]:
     """export.json payload → per-table row dicts, or ImportValidationError."""
@@ -853,6 +871,26 @@ def _validated_import_rows(payload: Any) -> dict[str, list[dict[str, Any]]]:
             if row[field] not in allowed:
                 raise ImportValidationError(
                     f"{table}[{i}] has unknown {field} {row[field]!r}"
+                )
+    # Referential pass — every cross-table reference must resolve WITHIN the
+    # backup, or the orphan would import silently (FKs off) and then vanish
+    # from every INNER JOIN view. Ids are untrusted JSON: only hashable
+    # scalar ids can ever match (that is all ``export_all`` writes), so a
+    # structured/exotic value on either side is simply never a valid target.
+    for table, fk, target in _IMPORT_REFS:
+        target_ids = {
+            row["id"]
+            for row in tables[target]
+            if isinstance(row["id"], (int, float, str))
+        }
+        for row in tables[table]:
+            ref = row[fk]
+            if not isinstance(ref, (int, float, str)) or ref not in target_ids:
+                raise ImportValidationError(
+                    f"{table} row id {row['id']!r} references {target} id"
+                    f" {ref!r} via '{fk}', but no {target} row with that id"
+                    f" is in the backup — orphan rows are refused (they would"
+                    f" import silently and vanish from the owner queue)"
                 )
     for i, row in enumerate(tables["screenshots"]):
         raw_b64 = row.pop("data_base64")

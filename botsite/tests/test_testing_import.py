@@ -2,7 +2,8 @@
 downloaded export.json backup after a redeploy wiped the ephemeral SQLite
 disk. Covers the auth gate (503 fail-closed / 401), the state-change guard
 (same-origin), untrusted-input handling (shape 400s, size 413), the
-replace-into-empty refusal semantics, and legacy backups missing columns
+referential pass (orphan cross-table references → 400, one test per FK edge),
+the replace-into-empty refusal semantics, and legacy backups missing columns
 added after they were taken (``guide_exchanges.step_title`` et al.).
 Network-free, same fixture pattern as test_testing.py."""
 
@@ -69,6 +70,77 @@ def minimal_backup() -> dict:
         "screenshots": [],
         "guide_exchanges": [],
         "payout_ledger": [],
+    }
+
+
+def full_backup() -> dict:
+    """A current-schema export with one row in EVERY table, all cross-table
+    references resolving within the backup (the referential-pass fixture)."""
+    return {
+        "claims": [
+            {
+                "id": 7,
+                "task_id": OPEN_TASK,
+                "name": "Tess Tester",
+                "email": "full@example.com",
+                "paypal_email": "",
+                "token": "full-token",
+                "status": "submitted",
+                "created_at": "2026-07-01T00:00:00Z",
+            }
+        ],
+        "submissions": [
+            {
+                "id": 3,
+                "claim_id": 7,
+                "answers_json": "{}",
+                "findings": "Found a bug.",
+                "created_at": "2026-07-01T01:00:00Z",
+            }
+        ],
+        "ai_reviews": [
+            {
+                "id": 1,
+                "submission_id": 3,
+                "status": "degraded",
+                "degraded_reason": "no key",
+                "created_at": "2026-07-01T01:05:00Z",
+                "updated_at": "2026-07-01T01:05:00Z",
+            }
+        ],
+        "screenshots": [
+            {
+                "id": 1,
+                "submission_id": 3,
+                "filename": "shot.png",
+                "content_type": "image/png",
+                "data_base64": "iVBORw0KGgo=",
+                "created_at": "2026-07-01T01:10:00Z",
+            }
+        ],
+        "guide_exchanges": [
+            {
+                "id": 1,
+                "claim_id": 7,
+                "step_index": 2,
+                "step_title": "Open the palette",
+                "message": "how?",
+                "reply": "Press slash.",
+                "created_at": "2026-07-01T00:30:00Z",
+            }
+        ],
+        "payout_ledger": [
+            {
+                "id": 1,
+                "claim_id": 7,
+                "task_id": OPEN_TASK,
+                "email": "full@example.com",
+                "amount_usd": 10.0,
+                "state": "owed",
+                "note": "",
+                "created_at": "2026-07-01T02:00:00Z",
+            }
+        ],
     }
 
 
@@ -265,6 +337,96 @@ def test_oversize_body_is_413(client, monkeypatch):
     monkeypatch.setattr(testing, "IMPORT_MAX_BYTES", 1024)
     r = post_import(client, "x" * 2048)
     assert r.status_code == 413
+
+
+# --- referential integrity (orphan rows refused) ----------------------------------
+# SQLite FKs are off in _connect(), so an orphan row would INSERT cleanly and
+# the owner queue's INNER JOINs would then silently drop it — the referential
+# pass in _validated_import_rows must 400 loudly instead, naming the edge.
+
+
+@pytest.mark.parametrize(
+    "table, fk, target",
+    [
+        ("submissions", "claim_id", "claims"),
+        ("ai_reviews", "submission_id", "submissions"),
+        ("screenshots", "submission_id", "submissions"),
+        ("guide_exchanges", "claim_id", "claims"),
+        ("payout_ledger", "claim_id", "claims"),
+    ],
+)
+def test_orphan_reference_is_400_naming_the_edge(client, monkeypatch, table, fk, target):
+    """One orphan per FK edge: the referencing row points at an id absent from
+    the backup's target table → 400 whose detail names the referencing table,
+    the row id, the FK column, and the missing target (table + id)."""
+    monkeypatch.setenv("SITE_PASSWORD", PW)
+    bad = full_backup()
+    bad[table][0][fk] = 999  # no such id anywhere in the backup
+    r = post_import(client, bad)
+    assert r.status_code == 400, r.text
+    detail = r.json()["detail"]
+    row_id = bad[table][0]["id"]
+    for needle in (table, f"row id {row_id!r}", f"'{fk}'", target, "999"):
+        assert needle in detail, (needle, detail)
+    # the orphan 400 wrote nothing
+    assert testing_store.list_claims() == []
+
+
+def test_full_backup_with_resolving_references_imports(client, monkeypatch):
+    """The referential pass never false-positives: the full fixture (every
+    table populated, every reference resolving in-backup) imports whole."""
+    monkeypatch.setenv("SITE_PASSWORD", PW)
+    r = post_import(client, full_backup())
+    assert r.status_code == 200, r.text
+    assert r.json()["imported"] == {
+        "claims": 1,
+        "submissions": 1,
+        "ai_reviews": 1,
+        "screenshots": 1,
+        "guide_exchanges": 1,
+        "payout_ledger": 1,
+    }
+    assert testing_store.submission_for_claim(7)["id"] == 3
+
+
+def test_referential_pass_tolerates_legacy_shape(client, monkeypatch):
+    """PR #320's legacy tolerance survives the referential pass: absent
+    newer tables (ai_reviews / screenshots / payout_ledger keys missing
+    entirely) mean no referencing rows to check — the legacy backup still
+    imports as long as the rows it DOES carry resolve in-backup."""
+    monkeypatch.setenv("SITE_PASSWORD", PW)
+    legacy = {
+        "claims": [
+            {
+                "id": 1,
+                "task_id": OPEN_TASK,
+                "name": "Old Tester",
+                "email": "old@example.com",
+                "token": "legacy-ref-token",
+                "created_at": "2026-06-01T00:00:00Z",
+            }
+        ],
+        "submissions": [
+            {"id": 1, "claim_id": 1, "created_at": "2026-06-01T01:00:00Z"}
+        ],
+    }
+    r = post_import(client, legacy)
+    assert r.status_code == 200, r.text
+    assert testing_store.claim_by_token("legacy-ref-token") is not None
+    # note: every FK column in the schema is NOT NULL + required on import —
+    # there is no nullable-reference case for the pass to wave through.
+
+
+def test_non_scalar_fk_value_is_a_400_not_a_500(client, monkeypatch):
+    """Untrusted JSON can put a structure where an id belongs — that must be
+    the loud 400 path, never an unhandled TypeError from set membership."""
+    monkeypatch.setenv("SITE_PASSWORD", PW)
+    bad = full_backup()
+    bad["submissions"][0]["claim_id"] = {"evil": True}
+    r = post_import(client, bad)
+    assert r.status_code == 400, r.text
+    assert "submissions" in r.json()["detail"]
+    assert testing_store.list_claims() == []
 
 
 # --- replace-into-empty semantics ------------------------------------------------
