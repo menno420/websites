@@ -107,7 +107,9 @@ async def _fetch_one(path: str, refresh: bool = False) -> dict[str, Any]:
     }
     if res["ok"] and isinstance(res["data"], str):
         if out["kind"] == "markdown":
-            out["body_html"] = journal.render_markdown(res["data"])
+            out["body_html"] = journal.render_markdown(
+                res["data"], source={"repo": REPO, "path": path}
+            )
         else:
             out["text"] = res["data"]
     else:

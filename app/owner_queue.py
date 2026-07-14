@@ -336,7 +336,10 @@ async def _fleet_manager_half(refresh: bool = False) -> dict[str, Any]:
         # whole markdown document into one giant "ask" would be noise, not an
         # item). The full rendered document below stays the honest surface;
         # the template labels the absence.
-        out["body_html"] = journal.render_markdown(fetch["data"])
+        out["body_html"] = journal.render_markdown(
+            fetch["data"],
+            source={"repo": FLEET_MANAGER_REPO, "path": OWNER_QUEUE_PATH},
+        )
         return out
     reason = fetch.get("error") or f"HTTP {fetch.get('status')}"
     if not token_set:

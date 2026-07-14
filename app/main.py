@@ -15,7 +15,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    Response,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -90,6 +95,18 @@ async def version():
     no network dependency — read straight from the environment. Powers the
     readiness board's deploy-state drift cell."""
     return config.version_info("control-plane")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Serve the site icon at the path browsers probe on their own — raw
+    JSON/XML views (e.g. /fleet.json) carry no <link rel="icon">, so the
+    viewer requests /favicon.ico directly (the PR #321 fleet-wide 404
+    finding). Same SVG the HTML pages declare in base.html."""
+    return FileResponse(
+        Path(__file__).parent / "static" / "favicon.svg",
+        media_type="image/svg+xml",
+    )
 
 
 def _attention(rows: list, heartbeat_chips: dict) -> list[dict]:
@@ -731,7 +748,9 @@ async def journal_file(request: Request, repo: str, path: str, ref: str = "main"
     body_html = ""
     if res["ok"] and isinstance(res["data"], str):
         if path.endswith((".md", ".markdown")):
-            body_html = journal.render_markdown(res["data"])
+            body_html = journal.render_markdown(
+                res["data"], source={"repo": repo, "path": path, "ref": ref}
+            )
         else:
             import html as _html
 

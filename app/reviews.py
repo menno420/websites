@@ -203,5 +203,7 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
     out["open_count"] = sum(1 for r in rows if not r["reviewed"])
     out["reviewed_count"] = sum(1 for r in rows if r["reviewed"])
     out["findings_links"] = extract_findings_links(text)
-    out["body_html"] = journal.render_markdown(text)
+    out["body_html"] = journal.render_markdown(
+        text, source={"repo": REPO, "path": PATH}
+    )
     return out

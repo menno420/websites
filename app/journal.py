@@ -6,7 +6,10 @@ from __future__ import annotations
 
 import asyncio
 import html as _html
-from typing import Any
+import posixpath
+import re
+from typing import Any, Optional
+from urllib.parse import quote as _urlquote, urlsplit as _urlsplit
 
 from . import config, github
 
@@ -45,7 +48,118 @@ def _gh(repo: str, tail: str = "") -> str:
     return f"https://github.com/{OWNER}/{repo}{tail}"
 
 
-def render_markdown(text: str) -> str:
+# --------------------------------------------------------------------------- #
+# Relative-link rewriting inside remotely-fetched markdown
+#
+# The pages here render OTHER repos' markdown documents verbatim (heartbeats on
+# /fleet, the fleet-manager ledger on /reviews, environment docs on
+# /environments, the /journal file view). Relative links inside that content
+# ("README.md", "../docs/x.md", "/control/inbox.md") are the DOCUMENT's links:
+# they resolve against this site's origin and 404 for a real visitor — the
+# first scheduled smoke-crawl (PR #321) flagged 20 of them live. When the
+# document's source (repo + path + ref) is known, rewrite them to absolute
+# URLs at the source: github.com blob URLs for links, raw.githubusercontent
+# for images. When it is not known (or a ../ path escapes the repo root),
+# DE-LINKIFY: keep the link text, drop the anchor — plain text beats a
+# guaranteed 404.
+#
+# The rewrite runs on the FINAL sanitized HTML (after bleach), because
+# bleach's serializer normalizes everything — including raw inline HTML the
+# markdown passed through — to double-quoted, entity-escaped attributes the
+# patterns below can rely on. Only two untrusted inputs reach the rewritten
+# attribute: the resolved relative path (percent-quoted) and the fragment
+# (HTML-escaped on injection); autoescape/sanitization is otherwise untouched.
+# --------------------------------------------------------------------------- #
+
+_A_TAG_RE = re.compile(
+    r'<a(?P<pre>[^>]*?)\shref="(?P<href>[^"]*)"(?P<post>[^>]*)>'
+    r"(?P<inner>.*?)</a>",
+    re.DOTALL | re.IGNORECASE,
+)
+_IMG_TAG_RE = re.compile(
+    r'<img(?P<pre>[^>]*?)\ssrc="(?P<src>[^"]*)"(?P<post>[^>]*?)>',
+    re.DOTALL | re.IGNORECASE,
+)
+_ALT_ATTR_RE = re.compile(r'\balt="([^"]*)"')
+
+
+def _is_rewritable_relative(url: str) -> bool:
+    """True for the relative URLs that need rewriting. Absolute http(s)/mailto
+    links, protocol-relative ``//host`` links, and pure ``#fragment`` anchors
+    are left untouched (a first path segment containing ``:`` parses as a
+    scheme — browsers treat it the same way, so it is not "relative" here)."""
+    u = url.strip()
+    if not u or u.startswith("#"):
+        return False
+    try:
+        parts = _urlsplit(u)
+    except ValueError:  # unparseable — leave it to bleach's verdict
+        return False
+    return not parts.scheme and not parts.netloc
+
+
+def _resolve_source_url(
+    url: str, source: dict, *, image: bool
+) -> Optional[str]:
+    """Resolve a relative ``url`` against the fetched document's directory and
+    return the absolute URL at the source repo — ``github.com/.../blob/...``
+    for links, ``raw.githubusercontent.com/...`` for images — or ``None`` when
+    the path escapes the repo root (unresolvable → caller de-linkifies)."""
+    path_part, sep, frag = url.partition("#")
+    path_part = path_part.strip()
+    if path_part.startswith("/"):  # root-relative: against the repo root
+        resolved = posixpath.normpath(path_part.lstrip("/"))
+    else:  # ./ and ../ and bare: against the fetched file's directory
+        base_dir = posixpath.dirname(source["path"])
+        resolved = posixpath.normpath(posixpath.join(base_dir, path_part))
+    if not resolved or resolved in (".", "..") or resolved.startswith("../"):
+        return None
+    quoted = _urlquote(resolved, safe="/")
+    repo = source["repo"]
+    ref = source.get("ref") or "main"
+    if image:
+        return f"{config.GITHUB_RAW_BASE}/{OWNER}/{repo}/{ref}/{quoted}"
+    out = f"https://github.com/{OWNER}/{repo}/blob/{ref}/{quoted}"
+    if sep:
+        out += "#" + frag
+    return out
+
+
+def _rewrite_relative_urls(html_out: str, source: Optional[dict]) -> str:
+    """Rewrite (known source) or de-linkify (unknown source / unresolvable)
+    every relative link and image in sanitized rendered-markdown HTML."""
+
+    def sub_a(m: re.Match[str]) -> str:
+        href = _html.unescape(m.group("href"))
+        if not _is_rewritable_relative(href):
+            return m.group(0)
+        if source:
+            new = _resolve_source_url(href, source, image=False)
+            if new:
+                return (
+                    f'<a{m.group("pre")} href="{_html.escape(new, quote=True)}"'
+                    f'{m.group("post")}>{m.group("inner")}</a>'
+                )
+        return m.group("inner")  # de-linkify: the text survives, the 404 dies
+
+    def sub_img(m: re.Match[str]) -> str:
+        src = _html.unescape(m.group("src"))
+        if not _is_rewritable_relative(src):
+            return m.group(0)
+        if source:
+            new = _resolve_source_url(src, source, image=True)
+            if new:
+                return (
+                    f'<img{m.group("pre")} src="{_html.escape(new, quote=True)}"'
+                    f'{m.group("post")}>'
+                )
+        alt = _ALT_ATTR_RE.search(m.group(0))
+        return alt.group(1) if alt else ""  # alt text (already escaped) or gone
+
+    return _IMG_TAG_RE.sub(sub_img, _A_TAG_RE.sub(sub_a, html_out))
+
+
+def render_markdown(text: str, source: Optional[dict] = None) -> str:
     """Render trusted repo markdown to sanitized HTML.
 
     Lazy-imports ``markdown`` (pinned in requirements) so a missing/broken lib
@@ -53,6 +167,12 @@ def render_markdown(text: str) -> str:
     When ``bleach`` is present the rendered HTML is sanitized to an allow-list
     (defense-in-depth); when it is absent we return the rendered HTML as-is,
     since the source is trusted repo content.
+
+    ``source`` is the fetched document's location —
+    ``{"repo": <repo>, "path": <path>, "ref": <ref, default main>}`` (owner is
+    always ``config.OWNER``) — used to rewrite relative links/images to their
+    absolute GitHub source URLs. When ``source`` is ``None``, relative links
+    are de-linkified instead (they cannot resolve on this origin).
     """
     try:
         import markdown as _md
@@ -66,9 +186,12 @@ def render_markdown(text: str) -> str:
     try:
         import bleach
     except Exception:  # pragma: no cover - bleach is pinned in requirements
-        return rendered
-    return bleach.clean(
-        rendered, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS, strip=True
+        return _rewrite_relative_urls(rendered, source)
+    return _rewrite_relative_urls(
+        bleach.clean(
+            rendered, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS, strip=True
+        ),
+        source,
     )
 
 
