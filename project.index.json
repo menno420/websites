@@ -3,13 +3,86 @@
   "project": "websites",
   "areas": [
     {
-      "name": "example-area",
-      "folio": "",
-      "binding_docs": [],
-      "source_roots": [],
-      "do_not_create": [],
+      "name": "control-plane",
+      "folio": "docs/site.md",
+      "binding_docs": [
+        "docs/architecture.md",
+        "docs/current-state.md"
+      ],
+      "source_roots": [
+        "app",
+        "tests"
+      ],
+      "do_not_create": [
+        "a second GitHub client — app/github.py is the one TTL-cached REST + raw-content client; all live reads go through it"
+      ],
       "gates": [],
-      "verification": []
+      "verification": [
+        "python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q",
+        "python3 bootstrap.py check --strict"
+      ]
+    },
+    {
+      "name": "botsite",
+      "folio": "docs/botsite.md",
+      "binding_docs": [
+        "docs/architecture.md",
+        "docs/planning/dashboard-botsite-rework-plan-2026-07-09.md"
+      ],
+      "source_roots": [
+        "botsite",
+        "botsite/tests"
+      ],
+      "do_not_create": [
+        "a new design system — botsite/static/ds/ (tokens.css + components.css + ds.js) is the shared ds/ program; style new pages with it",
+        "any secret-holding or bot-importing code — botsite is public and secret-free by design"
+      ],
+      "gates": [],
+      "verification": [
+        "python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q",
+        "python3 bootstrap.py check --strict"
+      ]
+    },
+    {
+      "name": "dashboard",
+      "folio": "docs/dashboard.md",
+      "binding_docs": [
+        "docs/architecture.md",
+        "docs/planning/dashboard-botsite-rework-plan-2026-07-09.md"
+      ],
+      "source_roots": [
+        "dashboard",
+        "dashboard/tests"
+      ],
+      "do_not_create": [
+        "any auth gate — the dashboard is public by owner decision (2026-07-09, \"Yes drop the auth\")",
+        "any bot-control write path — the surface is read-only oversight of superbot's committed JSON feeds"
+      ],
+      "gates": [],
+      "verification": [
+        "python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q",
+        "python3 bootstrap.py check --strict"
+      ]
+    },
+    {
+      "name": "review",
+      "folio": "review/README.md",
+      "binding_docs": [
+        "docs/architecture.md"
+      ],
+      "source_roots": [
+        "review",
+        "review/tests",
+        "review/data"
+      ],
+      "do_not_create": [
+        "runtime network or git reads — the site is network-free at runtime; data is baked by the gen_*.py generators into committed review/data/*.json"
+      ],
+      "gates": [],
+      "verification": [
+        "python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q",
+        "python3 bootstrap.py check --strict"
+      ]
     }
   ]
 }
