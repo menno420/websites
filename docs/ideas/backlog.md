@@ -1920,3 +1920,17 @@
   label. Worth having because the reconciled workflow-touching rail (this
   session) made the label load-bearing for automerge parking. Source:
   `.sessions/2026-07-14-automerge-reconcile.md` 💡.
+
+- **Truth-check `docs/reading-path.md` § sibling map against the
+  fleet-manager roster** · `captured` (2026-07-14, kit-upgrade-v1.16.0
+  session 💡) — the new v1.16.0 plant renders its fleet facts (sibling
+  roster, dark repos, one-command orient) from hand-answered interview
+  slots, so the sibling map is frozen at answer time and will silently
+  drift as lanes are added/retired/archived; a small advisory checker (or
+  a `gen_*.py`-style refresh) comparing the map's repo list against the
+  generated `fleet-manager docs/roster.md` lane rows would flag drift the
+  same way this repo already pins other cross-repo mirrors. Worth having
+  because a stale "who is who" map misroutes every future cross-repo
+  session, and this repo already owns the pattern (review/fleetdata
+  roster-parse cron). Source:
+  `.sessions/2026-07-14-kit-upgrade-v1.16.0.md` 💡.
