@@ -1865,3 +1865,18 @@
   bullet carries its PR number) covers the pruned-ref indeterminate lane,
   not the zero-commit lane-1 false positive; no other bullet touches the
   gate. Source: `.sessions/2026-07-14-eap-audit.md` 💡.
+
+- **Kit-gate advisory for the capability-seed fence itself** · `captured`
+  (2026-07-14, order-028-fence session 💡) — extend the `bootstrap.py
+  check` docs scan with an advisory that flags `docs/CAPABILITIES.md` when
+  the `capability-seed` BEGIN/END pair is missing, unpaired, or
+  out-of-order, so the fence can't be silently dropped again by a future
+  rewrite of the file. Worth having because that is exactly what ORDER 028
+  exists to repair — the fence vanished in a content rewrite and only a
+  manual audit caught it, an order and a full PR later; the seat-digest
+  render degrades silently meanwhile. Kit-owned surface, so the build
+  routes via the kit lane, not this repo. Deduped against this backlog +
+  the queue-state NEXT list: the only marker-scan bullet ("Kit-gate
+  advisory for exact-ID model lines") covers session-card model lines;
+  nothing covers the CAPABILITIES fence.
+  Source: `.sessions/2026-07-14-order-028-fence.md` 💡.
