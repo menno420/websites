@@ -1366,3 +1366,60 @@ async def owner_screenshot(
 async def owner_export(request: Request, _: None = Depends(require_owner)):
     """Full-DB JSON export — the backup valve for the ephemeral SQLite disk."""
     return JSONResponse(store.export_all())
+
+
+# Import size bound: exports carry screenshots as base64 blobs (≤2 MB each,
+# ≤3 per submission), so the valve allows more than a "few KB" of JSON but
+# still refuses unbounded bodies loudly.
+IMPORT_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+@router.post("/owner/import.json")
+async def owner_import(
+    request: Request,
+    _guard: None = Depends(guard_state_change),
+    _auth: None = Depends(require_owner),
+):
+    """Import valve — restore a previously downloaded ``export.json`` backup
+    after a redeploy wiped the ephemeral SQLite disk (the other half of the
+    export valve above). Owner-auth like every owner route (503 fail-closed
+    when SITE_PASSWORD is unset, 401 on bad credentials) plus the standard
+    state-change guard (same-origin + rate limit).
+
+    Body: the raw export.json document. Untrusted input: bounded at
+    ``IMPORT_MAX_BYTES`` (413 beyond), shape- and enum-validated per record
+    (400 with the exact reason), and legacy backups missing columns added
+    after they were taken (e.g. ``guide_exchanges.step_title``) restore with
+    the schema defaults.
+
+    Semantics: REPLACE-into-empty — refuses with 409 when the testing DB
+    already holds any rows, unless ``?replace=1`` is passed, in which case
+    every table is wiped and the backup inserted in one atomic transaction.
+
+        curl -X POST -u owner:$SITE_PASSWORD -H 'Origin: https://<host>' \\
+             --data-binary @export.json https://<host>/testing/owner/import.json
+    """
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > IMPORT_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"backup too large — the import valve accepts at most {IMPORT_MAX_BYTES} bytes",
+        )
+    body = await request.body()
+    if len(body) > IMPORT_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"backup too large — the import valve accepts at most {IMPORT_MAX_BYTES} bytes",
+        )
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="request body is not valid JSON")
+    replace = str(request.query_params.get("replace") or "") == "1"
+    try:
+        imported = store.import_all(payload, replace=replace)
+    except store.ImportValidationError as exc:
+        raise HTTPException(status_code=400, detail=f"invalid backup: {exc}")
+    except store.ImportNotEmptyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return JSONResponse({"ok": True, "replaced": replace, "imported": imported})
