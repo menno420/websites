@@ -1845,3 +1845,23 @@
   the check itself; the private-lane bullets are botsite/review-side;
   nothing addresses 404-vs-privacy ambiguity in the crawl.
   Source: `.sessions/2026-07-14-md-link-sample.md` 💡.
+
+- **Synthetic zero-commit-branch pin for the claims-drift gate — settle the
+  relayed #319 false-positive LEAD** · `captured` (2026-07-14, eap-audit
+  session 💡) — the gate's Lane 1 (`git merge-base --is-ancestor branch
+  main`, `tests/test_claims_drift_gate.py:99`) is trivially TRUE for a
+  claim whose branch was pushed with zero unique commits (tip = a main
+  commit), so the gate would call a brand-new claim "merged" and red the
+  build on honest in-flight work. A coordinator-relayed false positive
+  "reported by PR #319" was NOT found in the repo record (body, comments,
+  commits, check runs all clean — EAP close-out audit §11), so the lead is
+  unconfirmed; one synthetic-repo test arming a claim on a zero-commit
+  branch would either pin the bug (and motivate a not-yet-merged guard,
+  e.g. require the branch tip to predate the claim or have unique commits)
+  or retire the lead for good. Worth having because the gate is one day
+  old, already load-bearing in the control fast lane, and this is its one
+  alleged failure the synthetic suite doesn't cover. Deduped against this
+  backlog + the queue-state NEXT list: the only claims-gate bullet (claim
+  bullet carries its PR number) covers the pruned-ref indeterminate lane,
+  not the zero-commit lane-1 false positive; no other bullet touches the
+  gate. Source: `.sessions/2026-07-14-eap-audit.md` 💡.
