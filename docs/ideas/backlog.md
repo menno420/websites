@@ -1740,7 +1740,18 @@
   `.sessions/2026-07-14-md-relative-links.md` 💡.
 
 - **Pin `_IMPORT_SPEC`/`_IMPORT_REFS` against the live schema with a drift
-  test** · `captured` (2026-07-14, import-referential session 💡) — the
+  test** · `built` (2026-07-14, branch `claude/import-schema-pin-0714` —
+  `botsite/tests/test_import_schema_drift.py` builds an in-memory DB from
+  the real `_SCHEMA` and derives tables via `sqlite_master`, columns via
+  `PRAGMA table_info`, FK edges via `PRAGMA foreign_key_list`, then asserts
+  exact two-way coverage against `_IMPORT_SPEC`/`_IMPORT_REFS`/
+  `_IMPORT_ENUMS`, failing with the drifted table/column/edge named; the
+  two deliberate spec↔schema gaps are pinned explicitly, never skipped —
+  `screenshots.data_base64`→`data` as a rename pin, and the
+  `payout_ledger.claim_id`→claims edge (checked on import, undeclared in
+  the schema) as an extra-refs pin that must shrink if the schema gains
+  the REFERENCES clause) — original capture (import-referential session
+  💡): the
   import valve's field spec and its new reference-edge list
   (`botsite/testing_store.py`) are hand-kept constants that mirror
   `_SCHEMA` by convention only: the next table or FK column added to
