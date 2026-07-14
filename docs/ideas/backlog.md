@@ -1554,7 +1554,18 @@
 
 - **Scheduled browser-level smoke-crawl in CI — a Playwright job that
   cold-crawls the three live sites the way the manual cold passes do** ·
-  `captured` (2026-07-13, cold-browser-review session 💡) — the existing
+  `built` (2026-07-14, PR #321 — `scripts/smoke_crawl.py` +
+  `.github/workflows/smoke-crawl.yml`: headless Chromium crawls the three
+  public sites + the control-plane root every 6h (cron `47 2-23/6 * * *`,
+  offset from healthcheck's `17 */6 * * *` on both fields), same-site link
+  discovery, desktop 1280×900 + mobile 375×812, failing on console errors /
+  non-200 pages / 4xx-5xx same-site links; per-site page cap + global
+  deadline keep a run well under 5 minutes and blowing the deadline is
+  itself a FAILURE; console-error allowlist seeded EMPTY (the #311 pass
+  left zero known noise); gated `/owner` corner skipped by documented
+  design; env/CLI overrides carry the agent-container proxy workaround so
+  CI runs plain; proven by a local live crawl of all four sites —
+  original capture, 2026-07-13 cold-browser-review session 💡) — the existing
   `healthcheck.yml` smoke is curl-level (`/healthz` + `/` status codes);
   both 2026-07-13 cold passes found real regressions it can never see
   (dead chrome wiring, a blank hamburger, a lost footer gutter, a favicon
