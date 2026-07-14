@@ -723,6 +723,184 @@ def paid_total_since(since_iso: str) -> float:
     return float(total)
 
 
+# --- import (the other half of the backup valve — restore after a wipe) ------
+
+class ImportValidationError(ValueError):
+    """The uploaded payload is not a valid export.json backup (route → 400)."""
+
+
+class ImportNotEmptyError(RuntimeError):
+    """Refusal to import over live rows without the explicit replace flag
+    (route → 409). Losing current data to a stale backup must be opt-in."""
+
+
+_REQUIRED = object()  # sentinel: the field must be present in every backup
+
+# Per-table import spec: (export field, default). ``_REQUIRED`` marks fields
+# every export version carried; everything else takes its schema default via
+# ``.get`` so LEGACY backups restore cleanly — e.g. ``step_title`` on
+# guide_exchanges (the provenance pin added after early exports) falls back
+# to ``''``, the same honest "no snapshot was taken" state the column
+# retrofit uses. A whole missing table key also imports as empty (tables
+# were added over time). ``screenshots.data_base64`` is decoded to the
+# ``data`` blob column at insert time.
+_IMPORT_SPEC: dict[str, tuple[tuple[str, Any], ...]] = {
+    "claims": (
+        ("id", _REQUIRED),
+        ("task_id", _REQUIRED),
+        ("name", _REQUIRED),
+        ("email", _REQUIRED),
+        ("paypal_email", ""),
+        ("token", _REQUIRED),
+        ("status", "claimed"),
+        ("created_at", _REQUIRED),
+    ),
+    "submissions": (
+        ("id", _REQUIRED),
+        ("claim_id", _REQUIRED),
+        ("answers_json", "{}"),
+        ("findings", ""),
+        ("created_at", _REQUIRED),
+    ),
+    "ai_reviews": (
+        ("id", _REQUIRED),
+        ("submission_id", _REQUIRED),
+        ("status", _REQUIRED),
+        ("score", None),
+        ("low_effort", 0),
+        ("summary", ""),
+        ("findings_json", "[]"),
+        ("followups_json", "[]"),
+        ("degraded_reason", ""),
+        ("calls_used", 0),
+        ("created_at", _REQUIRED),
+        ("updated_at", _REQUIRED),
+    ),
+    "screenshots": (
+        ("id", _REQUIRED),
+        ("submission_id", _REQUIRED),
+        ("filename", _REQUIRED),
+        ("content_type", _REQUIRED),
+        ("data_base64", _REQUIRED),
+        ("created_at", _REQUIRED),
+    ),
+    "guide_exchanges": (
+        ("id", _REQUIRED),
+        ("claim_id", _REQUIRED),
+        ("step_index", 0),
+        ("step_title", ""),  # pre-provenance-pin backups lack this column
+        ("message", _REQUIRED),
+        ("reply", _REQUIRED),
+        ("created_at", _REQUIRED),
+    ),
+    "payout_ledger": (
+        ("id", _REQUIRED),
+        ("claim_id", _REQUIRED),
+        ("task_id", _REQUIRED),
+        ("email", _REQUIRED),
+        ("amount_usd", _REQUIRED),
+        ("state", _REQUIRED),
+        ("note", ""),
+        ("created_at", _REQUIRED),
+    ),
+}
+
+# Enum columns re-checked on import — a backup edited by hand (or the wrong
+# file entirely) fails loudly instead of planting impossible states.
+_IMPORT_ENUMS: dict[str, tuple[str, tuple[str, ...]]] = {
+    "claims": ("status", CLAIM_STATUSES),
+    "ai_reviews": ("status", AI_REVIEW_STATUSES),
+    "payout_ledger": ("state", LEDGER_STATES),
+}
+
+
+def _validated_import_rows(payload: Any) -> dict[str, list[dict[str, Any]]]:
+    """export.json payload → per-table row dicts, or ImportValidationError."""
+    if not isinstance(payload, dict):
+        raise ImportValidationError(
+            "backup must be a JSON object (the export.json shape)"
+        )
+    if not isinstance(payload.get("claims"), list):
+        raise ImportValidationError(
+            "backup has no 'claims' list — this is not an export.json backup"
+        )
+    tables: dict[str, list[dict[str, Any]]] = {}
+    for table, spec in _IMPORT_SPEC.items():
+        raw = payload.get(table, [])
+        if not isinstance(raw, list):
+            raise ImportValidationError(f"'{table}' must be a list of records")
+        rows: list[dict[str, Any]] = []
+        for i, rec in enumerate(raw):
+            if not isinstance(rec, dict):
+                raise ImportValidationError(f"{table}[{i}] is not an object")
+            row: dict[str, Any] = {}
+            for field, default in spec:
+                if default is _REQUIRED:
+                    if rec.get(field) is None:
+                        raise ImportValidationError(
+                            f"{table}[{i}] is missing required field '{field}'"
+                        )
+                    row[field] = rec[field]
+                else:
+                    # Legacy backups lack columns added after they were taken
+                    # — the schema default is their honest value.
+                    value = rec.get(field, default)
+                    row[field] = default if value is None else value
+            rows.append(row)
+        tables[table] = rows
+    for table, (field, allowed) in _IMPORT_ENUMS.items():
+        for i, row in enumerate(tables[table]):
+            if row[field] not in allowed:
+                raise ImportValidationError(
+                    f"{table}[{i}] has unknown {field} {row[field]!r}"
+                )
+    for i, row in enumerate(tables["screenshots"]):
+        raw_b64 = row.pop("data_base64")
+        try:
+            row["data"] = base64.b64decode(str(raw_b64), validate=True)
+        except (ValueError, TypeError):
+            raise ImportValidationError(
+                f"screenshots[{i}] has undecodable base64 in 'data_base64'"
+            )
+    return tables
+
+
+def import_all(payload: Any, *, replace: bool = False) -> dict[str, int]:
+    """Restore an ``export_all()`` backup into the store — the import valve.
+
+    REPLACE-into-empty semantics: without ``replace`` the import REFUSES
+    (``ImportNotEmptyError``) when any table already holds rows; with
+    ``replace=True`` every table is wiped and the backup inserted, all in
+    ONE transaction (a failed import rolls back to the pre-call state, never
+    a half-restored DB). Row ids are preserved so cross-table references
+    (claim_id, submission_id) survive the round trip. Returns the per-table
+    inserted-row counts.
+    """
+    tables = _validated_import_rows(payload)
+    with closing(_connect()) as conn, conn:
+        existing = sum(
+            conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+            for t in _IMPORT_SPEC
+        )
+        if existing and not replace:
+            raise ImportNotEmptyError(
+                f"testing DB already holds {existing} rows — import only "
+                "restores into an empty DB unless replace is explicitly set"
+            )
+        if replace:
+            for table in _IMPORT_SPEC:
+                conn.execute(f"DELETE FROM {table}")
+        for table, rows in tables.items():
+            for row in rows:
+                cols = list(row)
+                conn.execute(
+                    f"INSERT INTO {table} ({', '.join(cols)})"
+                    f" VALUES ({', '.join('?' for _ in cols)})",
+                    [row[c] for c in cols],
+                )
+    return {table: len(rows) for table, rows in tables.items()}
+
+
 # --- export (the ephemeral-disk backup valve) --------------------------------
 
 def export_all() -> dict[str, Any]:

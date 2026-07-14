@@ -1584,24 +1584,49 @@
   queue-state NEXT list: no orientation-budget/headroom bullet exists.
   Source: `.sessions/2026-07-13-env-leads-close.md` 💡.
 
+- **Cross-table reference check on the testing-DB import valve — reject
+  backups with orphan rows** · `captured` (2026-07-14, testing-import-valve
+  session 💡) — SQLite foreign keys are OFF by default (`PRAGMA
+  foreign_keys` is never enabled in `botsite/testing_store.py`'s
+  `_connect()`), so a truncated or hand-edited backup whose submissions
+  reference missing claims imports "successfully" through `POST
+  /testing/owner/import.json` (PR #320), and the owner queue's INNER JOINs
+  (`list_submissions`) then silently drop the orphan rows — a restore that
+  reports ok but shows less than it inserted. A referential pass in
+  `_validated_import_rows` (submission.claim_id ∈ claim ids,
+  ai_review/screenshot.submission_id ∈ submission ids, guide_exchange +
+  ledger claim_ids ∈ claim ids) would 400 loudly instead. Worth having
+  because the valve's entire promise is a faithful restore, and orphan rows
+  are the one corruption class its validation still admits silently.
+  Deduped against this backlog + the queue-state NEXT list: no
+  foreign-key/referential/orphan-row bullet exists anywhere. Source:
+  `.sessions/2026-07-14-testing-import-valve.md` 💡.
+
 - **Import valve for the testing-DB export — restore `export.json` after a
-  redeploy wipe** · `captured` (2026-07-13, step-provenance session 💡) —
-  the ephemeral-disk mitigation is half a lifeboat: `GET
-  /testing/owner/export.json` (owner-auth) dumps the full tester-program
-  DB before a redeploy, but nothing can put the backup BACK — after the
-  wipe the owner holds a JSON file and the queue starts empty (claims,
-  transcripts, ledger, provenance pins all gone until Postgres lands). An
-  owner-auth import valve (upload the export, rows re-inserted with the
-  same honest `.get`-default handling this session used for pre-pin rows,
-  so old backups without newer columns restore cleanly) would close the
-  loop the export half-opened. Worth having because every backup valve
-  that can't restore is a promise the disaster will break — and the
-  Postgres ask it bridges to is still an OPEN owner action. Deduped
-  against this backlog + the queue-state NEXT list: the export valve
-  itself shipped with the store module and appears only as prose in its
-  docstring; no import/restore bullet exists anywhere; the
-  submissions-Postgres OWNER-ACTIONS ask is infrastructure, not this
-  repo-side bridge. Source: `.sessions/2026-07-13-step-provenance.md` 💡.
+  redeploy wipe** · `built` (2026-07-14, PR #320 — `POST
+  /testing/owner/import.json` (`botsite/testing.py`) restores the raw
+  export.json body via `testing_store.import_all()`: same owner auth as
+  every owner route (503 fail-closed / 401) plus the standard
+  `guard_state_change` same-origin + rate-limit dependency; body bounded
+  at 10 MB (413), shape/enum-validated per record (400 with the exact
+  reason); REPLACE-into-empty semantics — 409 on a non-empty DB unless
+  `?replace=1` wipes-then-inserts in one atomic transaction; legacy
+  backups missing newer columns (`guide_exchanges.step_title`,
+  `claims.paypal_email`, whole postdating tables) restore with the
+  schema defaults via `.get`, never invented values; row ids preserved so
+  cross-table references survive) — original capture: the ephemeral-disk
+  mitigation is half a lifeboat: `GET /testing/owner/export.json`
+  (owner-auth) dumps the full tester-program DB before a redeploy, but
+  nothing can put the backup BACK — after the wipe the owner holds a JSON
+  file and the queue starts empty (claims, transcripts, ledger,
+  provenance pins all gone until Postgres lands). An owner-auth import
+  valve (upload the export, rows re-inserted with the same honest
+  `.get`-default handling this session used for pre-pin rows, so old
+  backups without newer columns restore cleanly) would close the loop the
+  export half-opened. Worth having because every backup valve that can't
+  restore is a promise the disaster will break — and the Postgres ask it
+  bridges to is still an OPEN owner action. Source:
+  `.sessions/2026-07-13-step-provenance.md` 💡.
 
 - **Wire `scripts/review_row_check.py` into `quality.yml` as the advisory
   owed-row step** · `captured` (2026-07-13, build-direct session 💡) — the
