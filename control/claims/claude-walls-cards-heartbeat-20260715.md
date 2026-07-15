@@ -1,0 +1,1 @@
+- `claude/walls-cards-heartbeat-20260715` · **docs/CAPABILITIES.md + 2026-07-14 card model-lines + control/status.md refresh** · docs, .sessions, control/status.md · 2026-07-15
