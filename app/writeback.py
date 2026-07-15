@@ -218,7 +218,11 @@ def validate(action: str, target: str, text: str) -> str:
 # --------------------------------------------------------------------------
 # entry rendering — what actually lands in git
 # --------------------------------------------------------------------------
-def _next_order_number(inbox_text: str) -> int:
+def next_order_number(inbox_text: str) -> int:
+    """The ORDER number the NEXT appended block gets, per the file's own
+    append-only convention (current maximum + 1). Public so the queue
+    preview can show a PROVISIONAL number — the real number is always
+    re-read from the file at commit time (race-safe by design)."""
     numbers = [int(m) for m in _ORDER_NUM_RE.findall(inbox_text)]
     return (max(numbers) + 1) if numbers else 1
 
@@ -227,7 +231,7 @@ def render_assist_block(entry: dict, inbox_text: str) -> str:
     """A new inbox ORDER, numbered per the file's own current maximum and
     following the existing block grammar (## ORDER header, provenance,
     verbatim owner text between markers)."""
-    nnn = f"{_next_order_number(inbox_text):03d}"
+    nnn = f"{next_order_number(inbox_text):03d}"
     target = entry["target"] or "general (no specific queue item)"
     return (
         f"## ORDER {nnn} · {_stamp()} · status: new\n"

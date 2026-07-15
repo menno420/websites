@@ -7,8 +7,11 @@
     "see the exact target, then confirm" flow. The route builds a `p` dict:
     title, lede, optional banner (outcome of a rejected/fired confirm),
     optional post-fire verification chip (the owner_queue.html askverify chip
-    idiom), optional facts table, optional empty-state line, optional confirm
-    form (action + hidden fields incl. the PINNED id + button label + note).
+    idiom), optional facts table, optional verbatim block (a pre of the
+    exact text a writeback would land, with an optional note), optional
+    empty-state line, optional confirm form (action + hidden fields incl.
+    the PINNED id + button label + note), optional cancel link override
+    (defaults to the owner board).
     Nothing on this page mutates anything — only the confirm POST does. -#}
 <div class="card" style="border-color:var(--purple);">
   <h2>🔒 {{ p.title }}</h2>
@@ -38,6 +41,12 @@
   </table>
   {% endif %}
 
+  {% if p.block %}
+  <h3>{{ p.block_label or "the exact block that will land" }}</h3>
+  <pre class="small" style="white-space:pre-wrap;overflow-x:auto;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.6rem .8rem;">{{ p.block }}</pre>
+  {% if p.block_note %}<p class="dim small">{{ p.block_note }}</p>{% endif %}
+  {% endif %}
+
   {% if p.empty %}
   <p><span class="b unknown">{{ p.empty }}</span></p>
   {% endif %}
@@ -52,6 +61,6 @@
   </form>
   {% endif %}
 
-  <p class="small" style="margin-top:.8rem;"><a href="/owner">← cancel — back to the owner board</a></p>
+  <p class="small" style="margin-top:.8rem;"><a href="{{ p.cancel.href if p.cancel else '/owner' }}">{{ p.cancel.label if p.cancel else '← cancel — back to the owner board' }}</a></p>
 </div>
 {% endblock %}
