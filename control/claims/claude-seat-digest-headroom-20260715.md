@@ -1,0 +1,1 @@
+- `claude/seat-digest-headroom-20260715` · **docs/seat-digest.md regen + orientation-headroom trim** · docs · 2026-07-15
