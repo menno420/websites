@@ -274,43 +274,81 @@ async def api_request(
         return _result(url, 0, None, f"{type(exc).__name__}: {exc}")
 
 
-async def rerun_latest_failed(repo: str, branch: str = "main") -> dict:
-    """Re-run the latest FAILED Actions run on ``branch`` for ``repo``.
+async def latest_failed_run(
+    repo: str, branch: str = "main", refresh: bool = True
+) -> dict:
+    """Resolve the newest FAILED Actions run on ``branch`` — the READ half.
 
-    Owner action (gated). Looks up the newest failed workflow run on the branch,
-    then POSTs rerun-failed-jobs. Returns a small status dict the owner UI
-    renders as a banner — honest about the no-failed-run and 403 cases rather
-    than 500ing.
+    Backs the owner rerun-ci PREFLIGHT (preview + confirm-time re-check):
+    strictly read-only, ``refresh=True`` by default so a decision is never
+    made from a cached list. Returns
+    ``{ok, repo, branch, run, message}`` — ``run`` is the raw workflow-run
+    dict from GitHub (id, name, display_title, head_sha, created_at,
+    html_url, …), ``None`` when there is no failed run (still ``ok`` — an
+    honest absence, not a fetch failure) or when the listing itself failed
+    (``ok=False`` with the reason in ``message``).
     """
     base = f"/repos/{config.OWNER}/{repo}/actions/runs"
     listed = await _get(
         f"{config.GITHUB_API_BASE}{base}"
         f"?branch={branch}&status=failure&per_page=1",
-        refresh=True,  # never act on a cached list
+        refresh=refresh,
     )
     if not listed["ok"] or not isinstance(listed["data"], dict):
         reason = listed["error"] or f"HTTP {listed['status']}"
-        return {"ok": False, "repo": repo, "message": f"could not list runs: {reason}"}
-    runs = listed["data"].get("workflow_runs") or []
-    if not runs:
         return {
             "ok": False,
             "repo": repo,
+            "branch": branch,
+            "run": None,
+            "message": f"could not list runs: {reason}",
+        }
+    runs = listed["data"].get("workflow_runs") or []
+    if not runs:
+        return {
+            "ok": True,
+            "repo": repo,
+            "branch": branch,
+            "run": None,
             "message": f"no failed run on {branch} to re-run (nothing to do)",
         }
-    run = runs[0]
-    run_id = run.get("id")
-    posted = await api_post(f"{base}/{run_id}/rerun-failed-jobs")
+    return {"ok": True, "repo": repo, "branch": branch, "run": runs[0], "message": ""}
+
+
+async def run_info(repo: str, run_id: int, refresh: bool = True) -> dict:
+    """GET one Actions run (read-only) — the stale-pin diagnosis and the
+    post-fire verification chip both re-check the PINNED run through this.
+    Plain result envelope; ``refresh=True`` by default (verification must
+    never trust the TTL cache)."""
+    return await api(
+        f"/repos/{config.OWNER}/{repo}/actions/runs/{run_id}", refresh=refresh
+    )
+
+
+async def rerun_run(
+    repo: str, run_id: int, run: Optional[dict] = None, branch: str = "main"
+) -> dict:
+    """POST rerun-failed-jobs at a PINNED run id — the FIRE half.
+
+    Never resolves anything: the caller supplies the exact run id (and
+    optionally the already-resolved run dict, used only for banner copy).
+    Returns the same small status dict the owner UI renders — honest about
+    the 401/403 scope case rather than 500ing.
+    """
+    posted = await api_post(
+        f"/repos/{config.OWNER}/{repo}/actions/runs/{run_id}/rerun-failed-jobs"
+    )
+    name = (run or {}).get("name") or (run or {}).get("display_title") or "workflow"
+    url = (run or {}).get("html_url", "")
     if posted["ok"]:
         return {
             "ok": True,
             "repo": repo,
             "run_id": run_id,
-            "name": run.get("name") or run.get("display_title") or "",
-            "url": run.get("html_url", ""),
+            "name": name,
+            "url": url,
             "message": (
-                f"re-ran failed jobs of run #{run_id} "
-                f"({run.get('name') or 'workflow'}) on {repo}@{branch}"
+                f"re-ran failed jobs of run #{run_id} ({name}) on {repo}@{branch}"
             ),
         }
     reason = (
@@ -322,9 +360,25 @@ async def rerun_latest_failed(repo: str, branch: str = "main") -> dict:
         "ok": False,
         "repo": repo,
         "run_id": run_id,
-        "url": run.get("html_url", ""),
+        "url": url,
         "message": f"re-run rejected for run #{run_id} on {repo}: {reason}",
     }
+
+
+async def rerun_latest_failed(repo: str, branch: str = "main") -> dict:
+    """Re-run the latest FAILED Actions run on ``branch`` for ``repo``.
+
+    Composition of the two halves above (resolve → fire) so the original
+    contract keeps working; the owner console itself now goes through the
+    preflight (preview pins the id, the confirm fires `rerun_run` only
+    after re-verifying the pin), never through this resolve-at-fire-time
+    path.
+    """
+    resolved = await latest_failed_run(repo, branch=branch)
+    run = resolved["run"]
+    if not resolved["ok"] or run is None:
+        return {"ok": False, "repo": repo, "message": resolved["message"]}
+    return await rerun_run(repo, run.get("id"), run=run, branch=branch)
 
 
 async def repo_api(repo: str, subpath: str = "", refresh: bool = False) -> dict:

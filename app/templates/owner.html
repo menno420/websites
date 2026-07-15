@@ -84,16 +84,17 @@
   <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-end;">
     <form method="post" action="/owner/actions/refresh">
       <button type="submit">force cache refresh</button>
-      <div class="dim small">clears the in-memory TTL cache; next load re-fetches live</div>
+      <div class="dim small">clears the in-memory TTL cache; next load re-fetches live
+        · <a href="/owner/actions/refresh/preview">preview first</a></div>
     </form>
-    <form method="post" action="/owner/actions/rerun-ci">
+    <form method="get" action="/owner/actions/rerun-ci/preview">
       <label class="small dim">re-run latest failed CI on
         <select name="repo">
           {% for repo in repos %}<option value="{{ repo }}">{{ repo }}</option>{% endfor %}
         </select>
       </label>
-      <button type="submit">re-run failed jobs</button>
-      <div class="dim small">POSTs rerun-failed-jobs for the newest failed run on main</div>
+      <button type="submit">preview re-run…</button>
+      <div class="dim small">opens a preflight naming the EXACT run before anything fires</div>
     </form>
   </div>
 </div>
