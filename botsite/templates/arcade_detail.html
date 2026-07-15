@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ game.name }} — Arcade — SuperBot{% endblock %}
+{% block description %}{{ game.tagline }}{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="sb-crumb" style="margin-top:20px">
+    <a href="/arcade">{{ icon("back", 13) }} Arcade</a>
+    <span class="sep">/</span>
+    <span>{{ game.name }}</span>
+  </div>
+
+  <div class="sb-detail-head" style="border:1px solid var(--sb-line)">
+    <div class="row">
+      <span class="sb-tile sb-tile-lg sb-tile-emoji">{{ icon("gamepad", 30) }}</span>
+      <div>
+        <div class="sb-feat-cat">Fleet Arcade</div>
+        <h1>{{ game.name }}</h1>
+      </div>
+      <span class="sb-badge sb-right {{ {'playable': 'sb-badge-ok', 'beta': 'sb-badge-info', 'prototype': 'sb-badge-neutral'}[game.maturity] }}">{{ game.maturity }}</span>
+      <span class="sb-badge {{ 'sb-badge-ok' if game.has_link else 'sb-badge-neutral' }}">{{ game.availability }}</span>
+    </div>
+    <p class="tagline">{{ game.tagline }}</p>
+    <p class="tagline" style="margin-top:6px">{{ game.description }}</p>
+    {% if game.has_link %}
+    <p style="margin:14px 0 0">
+      <a class="sb-btn sb-btn-primary" href="{{ game.link_url }}" target="_blank" rel="noopener">
+        {% if game.availability == "live" %}Play now{% else %}Download{% endif %} {{ icon("external", 14) }}
+      </a>
+    </p>
+    {% endif %}
+  </div>
+
+  {% if not game.has_link %}
+  <section class="section-sm">
+    <div class="sb-panel">
+      <h3>What's blocking launch</h3>
+      {% if game.blocker %}
+      <p style="margin:10px 0 0"><strong>The owner click:</strong> {{ game.blocker.owner_action }}</p>
+      <p class="sb-muted" style="margin:8px 0 0"><strong>How it unblocks:</strong> {{ game.blocker.unblocks }}</p>
+      {% elif game.status_note %}
+      <p style="margin:10px 0 0">{{ game.status_note }}</p>
+      {% else %}
+      <p class="sb-muted" style="margin:10px 0 0">No blocker is recorded for this game yet — the registry only says it isn't reachable. Nothing is faked here.</p>
+      {% endif %}
+      <p class="sb-muted" style="margin:12px 0 0"><em>No dead links: this page gains a real play or download button only when the game is really reachable.</em></p>
+    </div>
+  </section>
+  {% elif game.status_note %}
+  <section class="section-sm">
+    <div class="sb-panel">
+      <h3>Status</h3>
+      <p style="margin:10px 0 0">{{ game.status_note }}</p>
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="cta" style="margin:0 0 40px">
+    <a class="sb-btn sb-btn-ghost" href="https://github.com/{{ game.source_repo }}" target="_blank" rel="noopener">{{ game.source_repo }} {{ icon("external", 14) }}</a>
+    <a class="sb-btn sb-btn-ghost" href="/arcade">All games {{ icon("arrow", 16) }}</a>
+  </div>
+</div>
+{% endblock %}

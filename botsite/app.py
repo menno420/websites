@@ -238,6 +238,29 @@ async def arcade(request: Request):
     return templates.TemplateResponse(request, "arcade.html", ctx)
 
 
+@app.get("/arcade/{slug}", response_class=HTMLResponse)
+async def arcade_detail(request: Request, slug: str):
+    """Per-game detail page — the arcade front door gets depth. Driven
+    entirely by the committed ``botsite/data/arcade.json`` read from disk at
+    request time (same loader as /arcade — the detail page and the catalog can
+    never disagree); no network, no live probes. Honest rendering: an
+    available game carries the same play/download affordance the catalog
+    offers (link only when really reachable, ``ref=fleet-arcade`` attribution);
+    an unavailable game renders a structured "What's blocking launch" panel —
+    the blocker recorded in the registry (the named owner click), plus its
+    "how it unblocks" line. Unknown slug → the site's standard 404. GET-only,
+    no forms."""
+    res = await ds.fetch_site(refresh=_refresh(request))
+    game = arcade_registry.game_by_slug(slug)
+    if game is None:
+        ctx = _base_ctx(request, "arcade", res)
+        ctx.update({"key": slug, "what": "game"})
+        return templates.TemplateResponse(request, "not_found.html", ctx, status_code=404)
+    ctx = _base_ctx(request, "arcade", res)
+    ctx.update({"game": game})
+    return templates.TemplateResponse(request, "arcade_detail.html", ctx)
+
+
 @app.get("/products", response_class=HTMLResponse)
 async def products(request: Request):
     """Fleet store — the storefront face for venture-lab's products (ORDER 022

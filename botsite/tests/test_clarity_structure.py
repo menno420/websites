@@ -50,6 +50,7 @@ from fastapi.testclient import TestClient
 from starlette.routing import Mount
 
 from botsite import app as app_module
+from botsite import arcade
 from botsite import data_source as ds
 from botsite import testing, testing_catalog
 
@@ -140,6 +141,12 @@ def _command_urls() -> list[str]:
     return [f"/commands/{quote(n, safe='')}" for n in names]
 
 
+def _arcade_urls() -> list[str]:
+    slugs = [g["slug"] for g in arcade.load_games()]
+    assert slugs, "committed arcade.json lists no games — /arcade/{slug} expander is dead"
+    return [f"/arcade/{quote(s, safe='')}" for s in slugs]
+
+
 def _token_urls(client: TestClient) -> list[str]:
     """The runtime-token pages, reached the honest way: claim a guided task
     offline (the walkthrough task carries a ``steps`` script, so BOTH the
@@ -164,6 +171,7 @@ def _token_urls(client: TestClient) -> list[str]:
 # the live client because the token routes must create their claim first.
 PARAM_EXPANDERS: dict[str, Callable[[TestClient], list[str]]] = {
     "/testing/tasks/{task_id}": lambda client: _task_urls(),
+    "/arcade/{slug}": lambda client: _arcade_urls(),
     "/features/{key}": lambda client: _feature_urls(),
     "/commands/{name}": lambda client: _command_urls(),
     "/testing/s/{token}": lambda client: _token_urls(client),
