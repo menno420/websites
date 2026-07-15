@@ -8,7 +8,11 @@
     "availability": "unavailable",
     "url": null,
     "source_repo": "menno420/gba-homebrew",
-    "status_note": "Download release pending: the GitHub Release (lumen-drift-v1.3) needs one owner click before the ROM can be offered here."
+    "status_note": "Download release pending: the GitHub Release (lumen-drift-v1.3) needs one owner click before the ROM can be offered here.",
+    "blocker": {
+      "owner_action": "Publish the GitHub Release lumen-drift-v1.3 in menno420/gba-homebrew — one owner click on the release page.",
+      "unblocks": "The published release gives the ROM a public download URL; once that URL is recorded in this registry, the card gains a real Download button."
+    }
   },
   {
     "slug": "mineverse",
@@ -30,6 +34,10 @@
     "availability": "unavailable",
     "url": null,
     "source_repo": "menno420/product-forge",
-    "status_note": "GitHub Pages deployment pending an owner settings click (Settings → Pages → Source: GitHub Actions); no reachable URL until then."
+    "status_note": "GitHub Pages deployment pending an owner settings click (Settings → Pages → Source: GitHub Actions); no reachable URL until then.",
+    "blocker": {
+      "owner_action": "In menno420/product-forge, set Settings → Pages → Source to GitHub Actions — one owner settings click.",
+      "unblocks": "The existing deploy workflow can then publish the site; once its URL is reachable, this registry records it and the card links out."
+    }
   }
 ]
