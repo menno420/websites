@@ -49,6 +49,7 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from . import (
+    askverify,
     clock,
     config,
     envhub,
@@ -295,7 +296,14 @@ async def asks(refresh: bool = False) -> dict[str, Any]:
     """Open ⚑ rows parsed from the committed owner-actions ledger with the
     same block parser /queue uses (``owner_queue.parse_owner_actions``).
     Newest first = reverse document order (the ledger appends new asks at
-    the end of its Open section)."""
+    the end of its Open section).
+
+    Launch preflight verdicts (2026-07-15): every open ask additionally
+    carries a read-only ``verify`` chip from ``askverify.annotate`` —
+    done-detected / still-open / not machine-checkable / unknown, plus the
+    ``verify`` rollup for the "N of M machine-verified" line. All probes
+    are side-effect-free reads over the same TTL caches; a failed or
+    unmatched probe is an honest non-verdict, never a guess."""
     res = await github.fetch_file(
         OWNER_ACTIONS_REPO, OWNER_ACTIONS_PATH, refresh=refresh
     )
@@ -310,6 +318,7 @@ async def asks(refresh: bool = False) -> dict[str, Any]:
             "top": [],
             "note": "",
             "url": OWNER_ACTIONS_URL,
+            "verify": None,
         }
     section, note = open_section(res["data"])
     _preamble, blocks = owner_queue.parse_owner_actions(section)
@@ -323,6 +332,7 @@ async def asks(refresh: bool = False) -> dict[str, Any]:
         for b in blocks
     ]
     items.reverse()  # ledger appends newest last → newest first here
+    verify = await askverify.annotate(items, refresh=refresh)
     return {
         "state": "ok",
         "reason": "",
@@ -330,6 +340,7 @@ async def asks(refresh: bool = False) -> dict[str, Any]:
         "top": items[:ASKS_TOP_LIMIT],
         "note": note,
         "url": OWNER_ACTIONS_URL,
+        "verify": verify,
     }
 
 

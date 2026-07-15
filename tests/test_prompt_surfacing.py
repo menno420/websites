@@ -27,7 +27,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, envhub, github, prompt_history, prompts, readiness  # noqa: E402
+from app import (  # noqa: E402
+    briefing,
+    config,
+    envhub,
+    github,
+    prompt_history,
+    prompts,
+    readiness,
+)
 from app.main import app  # noqa: E402
 from app.roster import seat_for  # noqa: E402
 
@@ -325,8 +333,15 @@ def _patch_owner_siblings(monkeypatch):
     async def fake_rollup(refresh=False):
         return dict(_ENVCOV_UNKNOWN)
 
+    async def fake_asks(refresh=False):
+        # The preflight-verdicts sibling (askverify): honest-unknown canned
+        # state, so the prompt-state card stays exercised in isolation.
+        return {"state": "unknown", "reason": "canned offline", "count": 0,
+                "top": [], "note": "", "url": "", "verify": None}
+
     monkeypatch.setattr(readiness, "board", fake_board)
     monkeypatch.setattr(envhub, "board_rollup", fake_rollup)
+    monkeypatch.setattr(briefing, "asks", fake_asks)
     monkeypatch.setattr(config, "SITE_PASSWORD", OWNER_PW)
 
 
