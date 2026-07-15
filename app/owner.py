@@ -461,6 +461,234 @@ async def _handle_writeback(request: Request, action: str, target: str, text: st
     return await _render_owner_queue(request, banner=_entry_banner(entry))
 
 
+# ---------------------------------------------------------------------------
+# Queue writeback PREFLIGHT (2026-07-15, PR B of the launch-console pair).
+#
+# The three writeback actions used to fire a repo write from a one-step
+# form. Now the /owner/queue forms POST to a STATELESS preview first
+# (payloads run up to writeback.TEXT_MAX_CHARS=4000 chars, so this is a
+# POST, not a GET with the text in the URL): the exact composed block
+# (writeback's own render_* functions — one renderer, two surfaces), the
+# target file + branch, the write-token state, for assist the PROVISIONAL
+# ORDER number (never pinned — commit-time numbering is the module's own
+# race-safe convention), and for complete the ask's askverify verdict chip.
+# The preview stores NOTHING (no SQLite row, no commit); its confirm
+# re-POSTs the same action/target/text verbatim to the UNCHANGED firing
+# routes. One minimal confirm-side change: complete re-finds the targeted
+# ask by headline and fails closed when every source read fine and the ask
+# is gone (unreadable sources stay honest-unknown and never fake a "gone").
+#
+# Deliberate preview exemptions (documented on the queue page too): retry
+# re-fires an entry ALREADY stored and shown in the audit log (pinned by
+# entry_id), and draft stores nothing at all (it only pre-fills a form).
+# ---------------------------------------------------------------------------
+
+_QUEUE_ACTION_LABELS = {
+    "complete": "mark complete",
+    "assist": "file assistance ORDER",
+    "note": "add note",
+}
+
+
+def _sources_fully_readable(data: dict) -> bool:
+    """True only when EVERY ask source read successfully this pass — the
+    precondition for concluding a targeted ask is GONE. An unreadable
+    source keeps absence honest-unknown (never a fabricated 'gone')."""
+    return (
+        not data.get("unreadable_lanes")
+        and data.get("fleet_manager", {}).get("state") == "ok"
+    )
+
+
+async def _find_ask(target: str, refresh: bool = False) -> tuple[dict, dict | None]:
+    """The queue overview + the ask whose headline matches ``target``
+    exactly (the same identity the forms carry), or None."""
+    data = await owner_queue.overview(refresh=refresh)
+    item = next(
+        (it for it in data["items"] if owner_queue.headline(it) == target),
+        None,
+    )
+    return data, item
+
+
+def _token_state_fact() -> dict:
+    wb = writeback.state_summary()
+    if wb["token_set"]:
+        value = (
+            f"{wb['token_env']} present — the confirm commits straight to "
+            "git (claimed only with the verified SHA)"
+        )
+    else:
+        value = (
+            f"{wb['token_env']} not set — the confirm stores the entry "
+            "locally (queued, retryable); nothing lands in git until the "
+            "token is pasted"
+        )
+    return {"label": "write token", "value": value}
+
+
+async def _render_queue_preview(
+    request: Request,
+    action: str,
+    target: str,
+    text: str,
+    banner: dict | None = None,
+) -> HTMLResponse:
+    """The stateless writeback preflight page — pure composition + reads.
+
+    Stores NOTHING: no SQLite row, no commit, no github.api_post /
+    api_request. The only network here is read-only (the inbox raw read
+    for assist's provisional ORDER number; askverify's read-only probe for
+    complete) — all TTL-cache-honest like every other preview."""
+    wb = writeback.state_summary()
+    entry = {"id": "pending", "action": action, "target": target, "text": text}
+    p: dict = {
+        "title": f"{_QUEUE_ACTION_LABELS[action]} — preflight",
+        "lede": (
+            "Preview of exactly what this writeback would land — nothing is "
+            "stored or committed until you confirm below. The console audit "
+            "entry # and the timestamp in the block are assigned when you "
+            "confirm."
+        ),
+        "banner": banner,
+        "chip": None,
+        "facts": None,
+        "block": None,
+        "block_label": "the exact block that will land",
+        "block_note": None,
+        "empty": None,
+        "confirm": None,
+        "cancel": {
+            "href": "/owner/queue",
+            "label": "← cancel — back to the owner queue",
+        },
+    }
+    problem = writeback.validate(action, target, text)
+    if problem:
+        p["empty"] = (
+            f"this submission would be rejected: {problem} — nothing to "
+            "confirm"
+        )
+        return templates.TemplateResponse(request, "owner_preflight.html", {"p": p})
+
+    facts = [
+        {"label": "action", "value": _QUEUE_ACTION_LABELS[action]},
+        {
+            "label": "target",
+            "value": target or "— (general, not tied to a queue item)",
+        },
+        {
+            "label": "lands in",
+            "value": f"{wb['repo']}@{wb['branch']} · {writeback.target_path(action)}",
+            "code": True,
+        },
+        _token_state_fact(),
+    ]
+
+    if action == "assist":
+        # Read-only raw read of the CURRENT inbox, only to show a
+        # provisional number — the commit path re-reads and re-numbers at
+        # commit time (the module's own race-safe convention), so the
+        # number is deliberately NOT pinned into the confirm.
+        inbox = await github.fetch_file(
+            writeback.WRITEBACK_REPO,
+            writeback.INBOX_PATH,
+            ref=wb["branch"],
+            refresh=True,
+        )
+        if inbox["ok"] and isinstance(inbox["data"], str):
+            inbox_text = inbox["data"]
+            nnn = writeback.next_order_number(inbox_text)
+            facts.append(
+                {
+                    "label": "provisional ORDER number",
+                    "value": (
+                        f"ORDER {nnn:03d} — provisional: the number is "
+                        "re-read from the file's then-current maximum at "
+                        "commit time, so a concurrent ORDER renumbers this"
+                    ),
+                }
+            )
+        else:
+            inbox_text = ""
+            reason = inbox.get("error") or f"HTTP {inbox.get('status')}"
+            facts.append(
+                {
+                    "label": "provisional ORDER number",
+                    "value": (
+                        f"unknown — {writeback.INBOX_PATH} could not be read "
+                        f"({reason}); the real number is read at commit time. "
+                        "The ORDER number in the block below is a placeholder"
+                    ),
+                }
+            )
+        p["block"] = writeback.render_assist_block(entry, inbox_text)
+    else:
+        p["block"] = writeback.render_note_block(entry)
+
+    if action == "complete":
+        data, item = await _find_ask(target)
+        if item is not None:
+            # The ask's live verdict — the SAME askverify probe the gated
+            # queue page runs (read-only, TTL-cached, honest-unknown).
+            await askverify.annotate([item])
+            p["chip"] = item["verify"]
+        elif _sources_fully_readable(data):
+            p["empty"] = (
+                f"nothing to confirm — the ask {target!r} is not in the "
+                "readable sources right now (every source read "
+                "successfully); it may already be resolved upstream"
+            )
+            p["facts"] = facts
+            return templates.TemplateResponse(
+                request, "owner_preflight.html", {"p": p}
+            )
+        else:
+            p["chip"] = {
+                "css": "unknown",
+                "label": "ask not found — sources partially unreadable",
+                "probe": "queue overview re-read (read-only)",
+                "detail": (
+                    "the ask was not found, but not every source could be "
+                    "read — absence is not proven; the confirm proceeds and "
+                    "stays honest the same way"
+                ),
+                "url": "",
+            }
+
+    p["facts"] = facts
+    p["confirm"] = {
+        "action": f"/owner/queue/actions/{action}",
+        "fields": {"action": action, "target": target, "text": text},
+        "label": f"confirm — {_QUEUE_ACTION_LABELS[action]}",
+        "note": (
+            "re-POSTs exactly this action/target/text to the unchanged "
+            "firing route (auth → same-origin → rate limit, same floor)"
+        ),
+    }
+    return templates.TemplateResponse(request, "owner_preflight.html", {"p": p})
+
+
+@router.post("/queue/actions/preview", response_class=HTMLResponse)
+async def action_queue_preview(
+    request: Request,
+    action: str = Form(...),
+    target: str = Form(""),
+    text: str = Form(""),
+    _: None = Depends(require_owner_action),
+):
+    """Stateless POST-to-preview for the three writeback actions. Stores
+    NOTHING — the audit row and the commit both happen only on the
+    confirm's re-POST to the unchanged firing route."""
+    target = target.strip()
+    text = text.strip()
+    if action not in writeback.ACTIONS:
+        return await _render_owner_queue(
+            request, banner={"ok": False, "text": f"unknown action {action!r}"}
+        )
+    return await _render_queue_preview(request, action, target, text)
+
+
 @router.post("/queue/actions/complete", response_class=HTMLResponse)
 async def action_queue_complete(
     request: Request,
@@ -468,6 +696,27 @@ async def action_queue_complete(
     text: str = Form(""),
     _: None = Depends(require_owner_action),
 ):
+    # The one confirm-side preflight change (PR B): re-find the targeted
+    # ask by headline; POSITIVELY observed gone (every source readable,
+    # ask absent) → fail closed with nothing stored, nothing committed.
+    # Unreadable sources never fake a "gone" — the owner's assertion
+    # proceeds exactly as before (the 17 ORDER-020 tests pin that path).
+    stripped = target.strip()
+    if not writeback.validate("complete", stripped, text.strip()):
+        data, item = await _find_ask(stripped)
+        if item is None and _sources_fully_readable(data):
+            banner = {
+                "ok": False,
+                "text": (
+                    f"nothing stored, nothing committed — the ask "
+                    f"{stripped!r} is no longer in the readable sources "
+                    "(every source read successfully); it may already be "
+                    "resolved upstream"
+                ),
+            }
+            return await _render_queue_preview(
+                request, "complete", stripped, text.strip(), banner=banner
+            )
     return await _handle_writeback(request, "complete", target, text)
 
 
