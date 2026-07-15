@@ -53,6 +53,26 @@
     {% endif %}
   </p>
 
+  {# Launch preflight verdicts rollup (2026-07-15): briefing.asks + the
+     askverify read-only probes reduced to one chip. done-detected needs a
+     POSITIVE probe signal; everything else stays honestly still-open /
+     not-checkable / unknown — never a fabricated green. #}
+  <p class="small">
+    {% if askcov.state != 'ok' or not askcov.verify %}
+    <span class="b unknown" title="{{ askcov.reason }}">asks: preflight verdicts unknown</span>
+    <span class="dim">— {{ askcov.reason or 'the owner-actions ledger was not readable' }};
+      nothing is assumed done · <a href="/owner/queue">owner queue</a></span>
+    {% else %}
+    <span class="b {{ 'ok' if askcov.verify.machine_verified else 'unknown' }}"
+      title="done-detected {{ askcov.verify.done }} · still-open {{ askcov.verify.still_open }} · not machine-checkable {{ askcov.verify.not_checkable }} · unknown {{ askcov.verify.unknown }}">asks:
+      {{ askcov.verify.machine_verified }} of {{ askcov.verify.total }} machine-verified</span>
+    <span class="dim">— {{ askcov.verify.done }} done-detected (ledger update pending) ·
+      {{ askcov.verify.still_open }} still-open · {{ askcov.verify.not_checkable }} not machine-checkable ·
+      {{ askcov.verify.unknown }} unknown — read-only probes, chips per ask on the
+      <a href="/owner/queue">owner queue</a> and the <a href="/owner/briefing">briefing</a></span>
+    {% endif %}
+  </p>
+
   {% if banner %}
   <p class="b {{ 'ok' if banner.ok else 'bad' }}" style="display:block;padding:.5rem .8rem;">
     {{ '✓' if banner.ok else '✗' }} {{ banner.text }}

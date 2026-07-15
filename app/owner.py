@@ -30,6 +30,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import (
+    askverify,
     briefing,
     config,
     envdrift,
@@ -202,10 +203,15 @@ async def owner_board(request: Request, _: None = Depends(require_owner)):
     # canonical + stale count, reduced from the SAME drift rows /prompts
     # renders (prompts.console_rollup — identical TTL-cached fetches, no
     # second source, no stored copies).
-    rows, envcov, promptstate = await asyncio.gather(
+    # Ask preflight rollup (launch preflight verdicts, 2026-07-15): the
+    # SAME briefing.asks composition — ledger fetch + askverify's
+    # read-only probes, all TTL-cached — reduced to one "N of M asks
+    # machine-verified" chip. Honest-unknown passes through untouched.
+    rows, envcov, promptstate, askcov = await asyncio.gather(
         readiness.board(refresh=_refresh(request), reveal_secrets=True),
         envhub.board_rollup(refresh=_refresh(request)),
         prompts.console_rollup(refresh=_refresh(request)),
+        briefing.asks(refresh=_refresh(request)),
     )
     return templates.TemplateResponse(
         request,
@@ -214,6 +220,7 @@ async def owner_board(request: Request, _: None = Depends(require_owner)):
             "rows": rows,
             "envcov": envcov,
             "promptstate": promptstate,
+            "askcov": askcov,
             "ttl": config.CACHE_TTL_SECONDS,
             "cache_entries": github.cache_size(),
             "banner": None,
@@ -354,10 +361,11 @@ async def owner_envhub_manifest(
 
 
 async def _render_with_banner(request: Request, banner: dict) -> HTMLResponse:
-    rows, envcov, promptstate = await asyncio.gather(
+    rows, envcov, promptstate, askcov = await asyncio.gather(
         readiness.board(reveal_secrets=True),
         envhub.board_rollup(),
         prompts.console_rollup(),
+        briefing.asks(),
     )
     return templates.TemplateResponse(
         request,
@@ -366,6 +374,7 @@ async def _render_with_banner(request: Request, banner: dict) -> HTMLResponse:
             "rows": rows,
             "envcov": envcov,
             "promptstate": promptstate,
+            "askcov": askcov,
             "ttl": config.CACHE_TTL_SECONDS,
             "cache_entries": github.cache_size(),
             "banner": banner,
@@ -393,6 +402,12 @@ async def _render_owner_queue(
     draft: dict | None = None,
 ) -> HTMLResponse:
     data = await owner_queue.overview(refresh=_refresh(request))
+    # Launch preflight verdicts (2026-07-15): annotate the GATED view only —
+    # the public /queue renders the exact same overview() untouched (pinned
+    # byte-identical by test). Read-only probes, TTL-cached, honest-unknown.
+    data["verify"] = await askverify.annotate(
+        data["items"], refresh=_refresh(request)
+    )
     return templates.TemplateResponse(
         request,
         "owner_queue.html",

@@ -96,15 +96,23 @@
   {% if b.asks.note %}<p class="banner">⚠ {{ b.asks.note }}</p>{% endif %}
   <p class="small">{% if b.asks.count %}{{ badge('warn', b.asks.count ~ ' open ask' ~ ('s' if b.asks.count != 1 else '')) }}
     {% if b.asks.count > b.asks.top | length %}<span class="dim">— top {{ b.asks.top | length }} below; the rest in the ledger</span>{% endif %}
-    {% else %}{{ badge('ok', 'no open ⚑ asks') }}{% endif %}</p>
+    {% else %}{{ badge('ok', 'no open ⚑ asks') }}{% endif %}
+    {% if b.asks.verify and b.asks.count %}
+    {{ badge('unknown', b.asks.verify.machine_verified ~ ' of ' ~ b.asks.verify.total ~ ' machine-verified') }}
+    <span class="dim">— read-only preflight probes; a chip says <em>done-detected</em> only on a positive
+      signal (ledger update pending), never from a guess</span>
+    {% endif %}</p>
   {% if b.asks.top %}
   <table class="small">
-    <tr><th>WHAT</th><th>WHERE</th><th>UNBLOCKS</th></tr>
+    <tr><th>WHAT</th><th>WHERE</th><th>UNBLOCKS</th><th>preflight verdict</th></tr>
     {% for a in b.asks.top %}
     <tr>
       <td>{{ a.what }}</td>
       <td class="dim">{{ a.where }}</td>
       <td class="dim">{{ a.unblocks }}</td>
+      <td>{% if a.verify %}<span class="b {{ a.verify.css }}" title="{{ a.verify.probe }}">{{ a.verify.label }}</span>
+        {% if a.verify.detail %}<div class="dim small">{{ a.verify.detail }}</div>{% endif %}
+        {% if a.verify.url %}<a class="small" href="{{ a.verify.url }}">evidence ↗</a>{% endif %}{% endif %}</td>
     </tr>
     {% endfor %}
   </table>

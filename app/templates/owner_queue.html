@@ -106,7 +106,7 @@
   {% endif %}
 </div>
 
-<h2 class="dim" style="font-size:14px;margin:.8rem 0 .4rem;">owner-action queue — {{ q.summary.total }} ask{{ 's' if q.summary.total != 1 }}</h2>
+<h2 class="dim" style="font-size:14px;margin:.8rem 0 .4rem;">owner-action queue — {{ q.summary.total }} ask{{ 's' if q.summary.total != 1 }}{% if q.verify %} · {{ q.verify.machine_verified }} of {{ q.verify.total }} machine-verified <span class="small">(read-only preflight probes — honest unknown beats a guess)</span>{% endif %}</h2>
 
 {% if not q['items'] %}
 <div class="card"><p class="dim">No owner asks found in the readable sources right now.</p></div>
@@ -123,6 +123,11 @@
       · <a href="{{ s.url }}">source ↗</a></span>
     {% endfor %}
   </p>
+  {% if it.verify %}
+  <p class="small"><span class="b {{ it.verify.css }}" title="{{ it.verify.probe }}">preflight: {{ it.verify.label }}</span>
+    {% if it.verify.detail %}<span class="dim">— {{ it.verify.detail }}</span>{% endif %}
+    {% if it.verify.url %}· <a href="{{ it.verify.url }}">evidence ↗</a>{% endif %}</p>
+  {% endif %}
   {% if it.fields %}
   <table>
     {% for key, label in q.field_order %}
