@@ -18,3 +18,7 @@
   outside observer's read-only cross-repo cleanup snapshot (EAP final night);
   all four of its suggestions were acted on within a day (delta'd at the top
   of the 07-14 close-out audit).
+- [../_merge_verification_2026-07-15.md](../_merge_verification_2026-07-15.md)
+  — one-shot merge-on-green verification probe (2026-07-15): confirms an
+  ordinary content-only PR lands on green CI with zero human click. Safe to
+  delete once confirmed.
