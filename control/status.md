@@ -1,11 +1,12 @@
 # websites · status
 
-updated: 2026-07-14T21:12:44Z
-phase: SEAT DORMANT (owner shutdown order 2026-07-14) — EAP ended; revival instructions in notes
-health: green at shutdown (suite 1414 · four services live · main green)
-last-shipped: EAP close-out — audit docs/audits/eap-project-audit-2026-07-14.md · walkthrough docs/eap-closeout-walkthrough-2026-07-14.md · session ender #281
-blockers: none — dormant by owner order
-orders: acked=001-030 done=001-019,023-030 (020/021 owner-gated — walkthrough §C rows 7+8 and 1–2; 022 standing, item 5 done via #311). No unconsumed ORDERs at shutdown.
-routine: SHUTDOWN — the failsafe cron trig_01GV8kBK92CSZWEWwNZo1rhk ("Websites failsafe wake" · 45 */2 * * * · Q-0265 prompt) is deleted as the shutdown's true final call immediately after this heartbeat lands (owner retire order 2026-07-14); zero pending one-shots (verified 13:05Z, 18 registry pages). NOTHING will wake this seat (wake sources: none).
-notes: REVIVAL RECIPE — (1) read docs/eap-closeout-walkthrough-2026-07-14.md (§E handoff, §C owner checklist) → docs/audits/eap-project-audit-2026-07-14.md → this file; boot route per .claude/CLAUDE.md → docs/current-state.md → docs/CAPABILITIES.md. (2) Re-arm: create_trigger name "Websites failsafe wake", cron 45 */2 * * *, bound to the NEW coordinator session, prompt per Q-0265 (verbatim copy in fm docs/prompts/v3/ registry / the coordinator brief); pacemaker = send_later ~15 min chain, one pending. (3) IN-REPO SCHEDULES THAT KEEP RUNNING during dormancy (GitHub Actions, wake nothing): review-bake.yml (nightly bake PRs will QUEUE — owner-click or revival sweeps them), smoke-crawl.yml + healthcheck.yml (probe-only, fail → email), quality/auto-merge-enabler/host-automerge-extras (PR-event only). (4) PARKED AT SHUTDOWN: ORDER 020 (owner PAT paste), ORDER 021 (Q-0004 decision), walkthrough §C rows not yet cleared, any unswept draft lifeboats (check open PRs at revival). (5) KNOWN DOC DUPLICATIONS left in place (point-at-central preferred, not migrated now): .claude/CLAUDE.md architecture blurb lags current-state (kit-generated, refreshes at next render); docs/collaboration-model.md VERDICT-016 section already cites fm as canonical; heartbeat/vocab doctrine lives in the fm v3 registry — repo copies are pointers, not truth. Batons live HERE (control/status.md) + walkthrough §E.
-kit: v1.15.0
+updated: 2026-07-15T11:24:24Z
+phase: ACTIVE — EAP extended through 2026-07-21 per ORDER 031 (control/inbox.md @ 3cac461), acknowledged this wake (first rebooted wake); the 2026-07-14 dormancy record is superseded; coordinator session live.
+health: green — main 3cac461 · suite 1414 passed · bootstrap check --strict pass · healthcheck schedule run 29386751681 success 2026-07-15T03:31:51Z · last quality push run 29338520398 (head 214ed0f) success. Note: the 4 main commits after 214ed0f (ee47f8d, 6fafc1a, 68ad331, 3cac461) have no push-event quality runs — under investigation (baton item 1).
+last-shipped: reboot truing (this heartbeat) — control/status.md + docs/current-state.md trued to main 3cac461; prior shipped work: EAP close-out set (docs/audits/eap-project-audit-2026-07-14.md · docs/eap-closeout-walkthrough-2026-07-14.md).
+blockers: none.
+orders: acked=001-031 done=001-019,023-031 (020/021 owner-gated; 022 standing).
+routine: armed — failsafe cron trig_01VRT9F6jYNXym3nn18vVQQK ("Websites failsafe wake" · 45 */2 * * * · Q-0265 prompt), bound to the coordinator session, verified via list_triggers 2026-07-15T03:48Z; pacemaker = send_later ~15-min chain, one pending at a time.
+needs-owner: 9 open ⚑ rows in docs/owner/OWNER-ACTIONS.md (re-verified 2026-07-15) — that file is the single skimmable list.
+notes: PARKED/OPEN at this wake — PR #343 (bake fleet-data refresh, github-actions[bot]) + PR #342 (draft rescue lifeboat, discardable); rescue branches claude/rescue-20260715 @ 38df2fc, claude/rescue-20260715-b @ cb3f71d, claude/rescue-20260715-c @ bce5b09 hold only session-boot churn (discardable). NEXT-2-TASKS BATON — (1) investigate the missing push-event quality runs on main since 214ed0f (2026-07-14 13:54Z); (2) re-verify the 9 open ⚑ asks and resume ladder work. Provenance for the phase flip: ORDER 031 (control/inbox.md @ 3cac461, 2026-07-15T03:36:57Z; done-when = seat acknowledges on its first rebooted wake).
+kit: v1.17.0
