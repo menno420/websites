@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ p.title }}{% endblock %}
+{% block headright %}🔒 owner · <a href="/owner">back to board</a>{% endblock %}
+
+{% block content %}
+{#- GENERIC owner-action preflight page (2026-07-15): one template for every
+    "see the exact target, then confirm" flow. The route builds a `p` dict:
+    title, lede, optional banner (outcome of a rejected/fired confirm),
+    optional post-fire verification chip (the owner_queue.html askverify chip
+    idiom), optional facts table, optional empty-state line, optional confirm
+    form (action + hidden fields incl. the PINNED id + button label + note).
+    Nothing on this page mutates anything — only the confirm POST does. -#}
+<div class="card" style="border-color:var(--purple);">
+  <h2>🔒 {{ p.title }}</h2>
+  <p class="dim small">{{ p.lede }}</p>
+
+  {% if p.banner %}
+  <p class="b {{ 'ok' if p.banner.ok else 'bad' }}" style="display:block;padding:.5rem .8rem;white-space:normal;">
+    {{ '✓' if p.banner.ok else '✗' }} {{ p.banner.text }}
+    {% if p.banner.url %}· <a href="{{ p.banner.url }}">view run</a>{% endif %}
+  </p>
+  {% endif %}
+
+  {% if p.chip %}
+  <p class="small"><span class="b {{ p.chip.css }}" title="{{ p.chip.probe }}">verify: {{ p.chip.label }}</span>
+    {% if p.chip.detail %}<span class="dim">— {{ p.chip.detail }}</span>{% endif %}
+    {% if p.chip.url %}· <a href="{{ p.chip.url }}">evidence ↗</a>{% endif %}</p>
+  {% endif %}
+
+  {% if p.facts %}
+  <h3>what will happen</h3>
+  <table class="small">
+    {% for f in p.facts %}
+    <tr><th>{{ f.label }}</th>
+      <td>{% if f.code %}<code>{{ f.value }}</code>{% else %}{{ f.value }}{% endif %}
+        {% if f.url %} · <a href="{{ f.url }}">open ↗</a>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  {% if p.empty %}
+  <p><span class="b unknown">{{ p.empty }}</span></p>
+  {% endif %}
+
+  {% if p.confirm %}
+  <form method="post" action="{{ p.confirm.action }}" style="margin-top:.8rem;">
+    {% for name, value in p.confirm.fields.items() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+    <button type="submit">{{ p.confirm.label }}</button>
+    {% if p.confirm.note %}<div class="dim small">{{ p.confirm.note }}</div>{% endif %}
+  </form>
+  {% endif %}
+
+  <p class="small" style="margin-top:.8rem;"><a href="/owner">← cancel — back to the owner board</a></p>
+</div>
+{% endblock %}

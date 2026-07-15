@@ -540,32 +540,56 @@ def test_owner_refresh_action(secrets_client, monkeypatch):
 
 
 def test_owner_rerun_ci_action(secrets_client, monkeypatch):
-    """POST /owner/actions/rerun-ci (authed, same-origin) is reachable; external call mocked."""
+    """POST /owner/actions/rerun-ci (authed, same-origin) fires at the PINNED
+    run id (the 2026-07-15 preflight contract); external calls mocked."""
     owner.reset_rate_limits()
     monkeypatch.setattr(config, "SITE_PASSWORD", OWNER_PW)
 
-    async def fake_rerun(repo, branch="main"):
-        return {"ok": True, "repo": repo, "run_id": 42,
-                "url": "https://example/run/42",
-                "message": f"re-ran failed jobs of run #42 on {repo}@{branch}"}
+    run = {"id": 42, "name": "quality", "display_title": "fix",
+           "head_branch": "main", "head_sha": "abc1234def",
+           "created_at": "2026-07-15T10:00:00Z",
+           "html_url": "https://example/run/42",
+           "status": "completed", "conclusion": "failure"}
 
-    monkeypatch.setattr(github, "rerun_latest_failed", fake_rerun)
+    async def fake_resolve(repo, branch="main", refresh=True):
+        return {"ok": True, "repo": repo, "branch": branch,
+                "run": run, "message": ""}
+
+    fired = []
+
+    async def fake_fire(repo, run_id, run=None, branch="main"):
+        fired.append(run_id)
+        return {"ok": True, "repo": repo, "run_id": run_id, "name": "quality",
+                "url": "https://example/run/42",
+                "message": (f"re-ran failed jobs of run #{run_id} (quality) "
+                            f"on {repo}@{branch}")}
+
+    async def fake_info(repo, run_id, refresh=True):
+        return {"ok": True, "status": 200,
+                "data": {"status": "queued",
+                         "html_url": "https://example/run/42"},
+                "error": "", "fetched_at": "", "cached": False, "url": ""}
+
+    monkeypatch.setattr(github, "latest_failed_run", fake_resolve)
+    monkeypatch.setattr(github, "rerun_run", fake_fire)
+    monkeypatch.setattr(github, "run_info", fake_info)
     c, _ = secrets_client
     # unauthed rejected
     assert c.post(
-        "/owner/actions/rerun-ci", data={"repo": "superbot"}
+        "/owner/actions/rerun-ci", data={"repo": "superbot", "run_id": "42"}
     ).status_code == 401
     r = c.post(
         "/owner/actions/rerun-ci",
-        data={"repo": "superbot"},
+        data={"repo": "superbot", "run_id": "42"},
         headers=_owner_action_headers(),
     )
     assert r.status_code == 200
     assert "re-ran failed jobs of run #42" in r.text
+    assert fired == [42]
     # unknown repo handled honestly, still 200
     r2 = c.post(
         "/owner/actions/rerun-ci",
-        data={"repo": "not-a-repo"},
+        data={"repo": "not-a-repo", "run_id": "42"},
         headers=_owner_action_headers(),
     )
     assert r2.status_code == 200 and "unknown repo" in r2.text

@@ -35,6 +35,7 @@ from . import (
     config,
     envdrift,
     envhub,
+    fleet,
     github,
     listfilter,
     nav,
@@ -563,17 +564,319 @@ async def action_refresh(request: Request, _: None = Depends(require_owner_actio
     return await _render_with_banner(request, banner)
 
 
+# ---------------------------------------------------------------------------
+# Owner-action PREFLIGHT (2026-07-15) — the "see the target before firing"
+# half of the launch console. The rerun-ci action used to resolve "the newest
+# failed run on main" AT FIRE TIME, so the owner fired blind. Now:
+#
+#   GET  /owner/actions/rerun-ci/preview   read-only (plain require_owner,
+#        like every other /owner GET): resolves the newest failed run with
+#        refresh=True and renders its facts + a confirm form carrying the
+#        PINNED run id. Never writes anything.
+#   POST /owner/actions/rerun-ci           REQUIRES the pinned run_id,
+#        re-resolves with refresh=True and fires ONLY when the pin is still
+#        the newest failed run — anything moved (no pin, run vanished, no
+#        longer failed, newer failed appeared) FAILS CLOSED: zero fires, an
+#        honest banner naming exactly what moved, the preview re-rendered.
+#        After a real fire, a verification chip re-GETs the run so the owner
+#        sees it actually started (honest-unknown when the re-GET fails).
+#
+# The refresh action gets the same cheap preview on the same generic
+# template; its POST contract is deliberately untouched (ORDER 013 security
+# tests POST it directly). The require_owner_action floor (auth → strict
+# Origin/Referer → per-route rate limit) stays exactly as-is.
+# ---------------------------------------------------------------------------
+
+RERUN_BRANCH = "main"
+
+# GitHub run `status` values that mean "the rerun really started".
+_RUN_STARTED_STATUSES = ("queued", "in_progress", "waiting", "requested", "pending")
+
+
+def _run_facts(run: dict) -> list[dict]:
+    """The preview facts table for one workflow run — id, workflow, branch,
+    head sha, created + age (fleet's freshness math, honest 'age unknown'
+    on an unparseable timestamp), and the run's own page as evidence."""
+    created = run.get("created_at") or ""
+    age = fleet.freshness(created)
+    return [
+        {"label": "run id", "value": f"#{run.get('id')}", "code": True},
+        {"label": "workflow", "value": run.get("name") or "unknown"},
+        {"label": "title", "value": run.get("display_title") or "—"},
+        {"label": "branch", "value": run.get("head_branch") or "unknown", "code": True},
+        {"label": "head sha", "value": (run.get("head_sha") or "unknown")[:8], "code": True},
+        {
+            "label": "created",
+            "value": f"{created or 'unknown'} ({age['age_human']})",
+        },
+        {
+            "label": "run page",
+            "value": "open on GitHub",
+            "url": run.get("html_url", ""),
+        },
+    ]
+
+
+def _render_rerun_preview(
+    request: Request,
+    repo: str,
+    resolved: dict,
+    banner: dict | None = None,
+    chip: dict | None = None,
+    fired: bool = False,
+) -> HTMLResponse:
+    """Render the rerun-ci preflight page from an already-resolved read.
+
+    Pure view — performs NO fetch and NO write itself; the caller supplies
+    the (refresh=True) resolution. After a real fire (``fired=True``) the
+    confirm form is deliberately omitted so the result page cannot invite a
+    double-fire."""
+    p: dict = {
+        "title": f"re-run failed CI on {repo} — preflight",
+        "lede": (
+            "Preview of exactly which failed run the re-run would fire at — "
+            "nothing fires until you confirm below, and the confirm fails "
+            "closed if the picture moves in between."
+        ),
+        "banner": banner,
+        "chip": chip,
+        "facts": None,
+        "empty": None,
+        "confirm": None,
+    }
+    run = resolved.get("run")
+    if not resolved.get("ok"):
+        p["empty"] = (
+            f"could not resolve the latest failed run on {repo}@{RERUN_BRANCH} — "
+            f"{resolved.get('message') or 'unknown error'} — nothing to confirm"
+        )
+    elif run is None:
+        p["empty"] = (
+            f"nothing to re-run — no failed run on {RERUN_BRANCH} for {repo} "
+            "right now"
+        )
+    else:
+        p["facts"] = _run_facts(run)
+        if not fired:
+            p["confirm"] = {
+                "action": "/owner/actions/rerun-ci",
+                "fields": {"repo": repo, "run_id": run.get("id")},
+                "label": f"re-run failed jobs of run #{run.get('id')}",
+                "note": (
+                    "fires at exactly this pinned run — if a newer failed run "
+                    "appears first, the confirm refuses and re-previews"
+                ),
+            }
+    return templates.TemplateResponse(request, "owner_preflight.html", {"p": p})
+
+
+@router.get("/actions/rerun-ci/preview", response_class=HTMLResponse)
+async def rerun_ci_preview(
+    request: Request, repo: str = "", _: None = Depends(require_owner)
+):
+    """Read-only preflight for the rerun-ci action (plain require_owner —
+    this GET changes nothing). Resolves the newest failed run with
+    refresh=True so the pin is minted from live truth, never the TTL cache."""
+    if repo not in config.REPOS:
+        p = {
+            "title": "re-run failed CI — preflight",
+            "lede": (
+                "Preview of exactly which failed run a re-run would fire at — "
+                "nothing fires from this page."
+            ),
+            "banner": (
+                {"ok": False, "text": f"unknown repo: {repo!r} — pick one on the owner board"}
+                if repo
+                else None
+            ),
+            "empty": (
+                "no repo selected — use the re-run form on the owner board "
+                "to choose one"
+            ),
+            "facts": None,
+            "chip": None,
+            "confirm": None,
+        }
+        return templates.TemplateResponse(request, "owner_preflight.html", {"p": p})
+    resolved = await github.latest_failed_run(repo, branch=RERUN_BRANCH, refresh=True)
+    return _render_rerun_preview(request, repo, resolved)
+
+
+async def _stale_pin_banner(repo: str, pinned_id: int, newest: dict | None) -> dict:
+    """Name exactly what moved between preview and confirm — re-GETs the
+    pinned run itself so the owner learns WHICH invariant broke, never a
+    generic 'something changed'. Always fail-closed copy: nothing fired."""
+    info = await github.run_info(repo, pinned_id, refresh=True)
+    if info["status"] == 404:
+        what = f"the pinned run #{pinned_id} no longer exists on GitHub"
+    elif info["ok"] and isinstance(info["data"], dict):
+        conclusion = info["data"].get("conclusion")
+        status = info["data"].get("status")
+        if conclusion == "failure":
+            if newest is not None:
+                what = (
+                    f"a newer failed run (#{newest.get('id')}) appeared on "
+                    f"{RERUN_BRANCH} after run #{pinned_id} was pinned"
+                )
+            else:
+                what = (
+                    f"run #{pinned_id} is still failed but is no longer listed "
+                    f"as the newest failed run on {RERUN_BRANCH}"
+                )
+        else:
+            what = (
+                f"run #{pinned_id} is no longer failed "
+                f"(now {conclusion or status or 'unknown'})"
+            )
+    else:
+        reason = info["error"] or f"HTTP {info['status']}"
+        what = f"could not re-check the pinned run #{pinned_id} ({reason})"
+    return {
+        "ok": False,
+        "text": (
+            f"nothing fired — {what}; the preview below shows what is "
+            "newest-failed now"
+        ),
+    }
+
+
+async def _post_fire_chip(repo: str, run_id: int) -> dict:
+    """Post-action verification: re-GET the fired run and report whether the
+    rerun really started (the askverify chip idiom — honest-unknown when the
+    re-GET fails, never an assumed success)."""
+    info = await github.run_info(repo, run_id, refresh=True)
+    probe = f"re-GET of run #{run_id} immediately after the fire (read-only)"
+    if info["ok"] and isinstance(info["data"], dict):
+        status = info["data"].get("status") or "unknown"
+        url = info["data"].get("html_url", "")
+        if status in _RUN_STARTED_STATUSES:
+            return {
+                "css": "ok",
+                "label": f"rerun started — {status}",
+                "probe": probe,
+                "detail": f"run #{run_id} re-checked live after the fire",
+                "url": url,
+            }
+        return {
+            "css": "warn",
+            "label": f"run status: {status}",
+            "probe": probe,
+            "detail": (
+                f"run #{run_id} did not report queued/in_progress yet — "
+                "check the run page"
+            ),
+            "url": url,
+        }
+    reason = info["error"] or f"HTTP {info['status']}"
+    return {
+        "css": "unknown",
+        "label": "rerun not verified",
+        "probe": probe,
+        "detail": (
+            f"the fire was accepted but re-checking run #{run_id} failed "
+            f"({reason}) — outcome unknown, check the run page"
+        ),
+        "url": "",
+    }
+
+
+@router.get("/actions/refresh/preview", response_class=HTMLResponse)
+async def refresh_preview(request: Request, _: None = Depends(require_owner)):
+    """Read-only preflight for the cache-refresh action, riding the same
+    generic template: how many cache entries the POST would drop, and the
+    confirm form POSTing the UNCHANGED /owner/actions/refresh contract."""
+    n = github.cache_size()
+    p = {
+        "title": "force cache refresh — preflight",
+        "lede": (
+            "Preview of what the cache-refresh action would do — nothing is "
+            "cleared until you confirm below. Reversible and cheap: the cache "
+            "re-fills on demand from live fetches."
+        ),
+        "banner": None,
+        "chip": None,
+        "facts": [
+            {
+                "label": "cache entries that will drop",
+                "value": str(n),
+                "code": True,
+            },
+            {"label": "cache TTL", "value": f"{config.CACHE_TTL_SECONDS}s"},
+            {
+                "label": "reversibility",
+                "value": "full — the next page load re-fetches live",
+            },
+        ],
+        "empty": None,
+        "confirm": {
+            "action": "/owner/actions/refresh",
+            "fields": {},
+            "label": f"clear the cache now ({n} entr{'y' if n == 1 else 'ies'})",
+            "note": (
+                "POSTs the existing refresh action — same gate "
+                "(auth → same-origin → rate limit), unchanged contract"
+            ),
+        },
+    }
+    return templates.TemplateResponse(request, "owner_preflight.html", {"p": p})
+
+
 @router.post("/actions/rerun-ci", response_class=HTMLResponse)
 async def action_rerun_ci(
-    request: Request, repo: str = Form(...), _: None = Depends(require_owner_action)
+    request: Request,
+    repo: str = Form(...),
+    run_id: str = Form(""),
+    _: None = Depends(require_owner_action),
 ):
+    """The PINNED confirm. Requires the run_id the preview minted; re-resolves
+    the newest failed run with refresh=True and fires ONLY on an exact match —
+    every mismatch fails closed with an honest banner and a fresh preview.
+    NEVER falls back to firing at 'whatever is newest failed now'."""
     if repo not in config.REPOS:
         banner = {"ok": False, "text": f"unknown repo: {repo!r}"}
         return await _render_with_banner(request, banner)
-    result = await github.rerun_latest_failed(repo)
+    resolved = await github.latest_failed_run(repo, branch=RERUN_BRANCH, refresh=True)
+    pinned = run_id.strip()
+    if not pinned.isdigit():
+        banner = {
+            "ok": False,
+            "text": (
+                "nothing fired — the confirm carried no pinned run id; this "
+                "action never falls back to \"whatever is newest failed\". "
+                "Confirm from the preview below"
+            ),
+        }
+        return _render_rerun_preview(request, repo, resolved, banner=banner)
+    pinned_id = int(pinned)
+    if not resolved["ok"]:
+        banner = {
+            "ok": False,
+            "text": (
+                f"nothing fired — could not re-verify the pinned run "
+                f"#{pinned_id}: {resolved['message']}"
+            ),
+        }
+        return _render_rerun_preview(request, repo, resolved, banner=banner)
+    newest = resolved["run"]
+    if newest is None or newest.get("id") != pinned_id:
+        banner = await _stale_pin_banner(repo, pinned_id, newest)
+        return _render_rerun_preview(request, repo, resolved, banner=banner)
+    fired = await github.rerun_run(
+        repo, pinned_id, run=newest, branch=RERUN_BRANCH
+    )
+    if not fired["ok"]:
+        banner = {
+            "ok": False,
+            "text": fired["message"],
+            "url": fired.get("url") or newest.get("html_url", ""),
+        }
+        return _render_rerun_preview(request, repo, resolved, banner=banner)
+    chip = await _post_fire_chip(repo, pinned_id)
     banner = {
-        "ok": bool(result.get("ok")),
-        "text": result.get("message", "re-run attempted"),
-        "url": result.get("url"),
+        "ok": True,
+        "text": fired["message"],
+        "url": fired.get("url") or newest.get("html_url", ""),
     }
-    return await _render_with_banner(request, banner)
+    return _render_rerun_preview(
+        request, repo, resolved, banner=banner, chip=chip, fired=True
+    )
