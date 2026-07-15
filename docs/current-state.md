@@ -103,15 +103,13 @@ Deployment: `docs/deployment.md` + each service's doc.
 trued 2026-07-15, reboot truing.)
 
 - **EAP EXTENDED through 2026-07-21** (ORDER 031, `control/inbox.md` @
-  `3cac461`, 2026-07-15T03:36:57Z) — the 2026-07-14 dormancy record in the
-  prior `control/status.md` is **superseded**; the seat is ACTIVE again,
-  acknowledged on its first rebooted wake (done-when met). Current head:
-  `main` @ `3cac461`, suite **1414 passed**, `bootstrap.py check --strict`
-  pass. Open PRs at this wake: **#343** (bake fleet-data refresh,
-  github-actions[bot]) and **#342** (draft rescue lifeboat, discardable);
-  rescue branches `claude/rescue-20260715` @ `38df2fc`,
-  `claude/rescue-20260715-b` @ `cb3f71d`, `claude/rescue-20260715-c` @
-  `bce5b09` hold only session-boot churn (discardable).
+  `3cac461`, 2026-07-15T03:36:57Z) — the 2026-07-14 dormancy record is
+  **superseded**; the seat is ACTIVE again, acknowledged on its first
+  rebooted wake. `main` @ `3cac461`, suite **1414 passed**, strict check
+  pass. Open PRs at this wake: **#343** (bake fleet-data refresh, bot) and
+  **#342** (draft rescue lifeboat); the three `claude/rescue-20260715*`
+  branches hold only session-boot churn (discardable — shas in
+  `control/status.md`).
 - **The remainder is owner-gated**, tracked as 9 open ⚑ six-field asks in
   `docs/owner/OWNER-ACTIONS.md`: ORDER 020 contents:write PAT · **BAKE_PAT**
   (the bake-PR durable fix, #274) · ORDER 021 Discord OAuth + Q-0004 ·
