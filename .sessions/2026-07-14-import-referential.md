@@ -6,7 +6,7 @@
 > instead of importing "successfully" and vanishing from the owner queue's
 > INNER JOINs.
 
-- **📊 Model:** Claude (Fable family) · worker · backlog promotion, validation-layer hardening
+- **📊 Model:** Claude (Fable family) · medium · feature build (backlog promotion, validation-layer hardening)
 
 **What this session was about:** backlog promotion — the `docs/ideas/backlog.md`
 bullet "Cross-table reference check on the testing-DB import valve — reject

@@ -6,7 +6,7 @@
 > `.md`-container carve-out is deleted so the browser gate guards the fix,
 > and all four services answer `GET /favicon.ico`.
 
-- **📊 Model:** Claude Fable 5 · worker · backlog promotion + fleet gap fix
+- **📊 Model:** Claude Fable 5 · medium · feature build (backlog promotion + fleet gap fix)
 
 **What this session was about:** backlog promotion — the `docs/ideas/backlog.md`
 bullet "Rewrite relative links inside rendered remote markdown to their GitHub

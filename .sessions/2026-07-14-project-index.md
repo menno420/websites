@@ -6,7 +6,7 @@
 > roots and verification commands; lands via the auto-merge enabler on
 > green.
 
-- **📊 Model:** Claude Fable 5 · worker · backlog-promotion
+- **📊 Model:** Claude Fable 5 · medium · docs-only (populate project.index.json, backlog-promotion)
 
 **What this session was about:** the merged fleet cleanup audit
 (`docs/audits/2026-07-13-fleet-cleanup-audit.md`, suggestion 3) flagged
