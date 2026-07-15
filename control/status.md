@@ -1,12 +1,10 @@
 # websites · status
 
-updated: 2026-07-15T15:45:58Z
-phase: ACTIVE — EAP extended through 2026-07-21 per ORDER 031 (control/inbox.md @ 3cac461), acknowledged 2026-07-15 (first rebooted wake); session-ender heartbeat.
-health: green — main 5052d3a · suite 1495 passed · bootstrap check --strict pass · quality green: latest run 29428446837 success.
-last-shipped: eight PRs landed this wake — #344 (reboot truing / ORDER 031 ack) · #346 (walls ledger + card grammar + heartbeat) · #347 (seat digest + orientation headroom 6567/7000) · #348 (launch preflight verdicts — owner asks machine-verified on the gated console, live-verified /version 4b7c20c) · #349 (arcade /arcade/{slug} detail pages with launch-blocker panels, live-verified /version 873cb4a) · #350 (mid-wake ender heartbeat) · #352 (rerun-ci preflight — preview pins the run, confirm fails closed, live 145f5ee) · #353 (queue writeback previews + #351 probe cleanup, live 5052d3a).
-blockers: none.
+updated: 2026-07-15T23:00:21Z
+phase: SESSION ENDED (owner ender 2026-07-15) — coordinator chain closed; seat idles on the failsafe bridge; EAP extended through 2026-07-21 (ORDER 031, acked via #344).
+health: green — main 99b8fea · suite 1495 passed · bootstrap check --strict pass · healthcheck run 29445076869 success 19:35Z.
 orders: acked=001-031 done=001-019,023-031 (020/021 owner-gated; 022 standing).
-routine: armed — failsafe cron trig_01VRT9F6jYNXym3nn18vVQQK ("Websites failsafe wake" · 45 */2 * * * · Q-0265 prompt), bound to the coordinator session, verified via list_triggers 2026-07-15T03:48Z; pacemaker = send_later ~15-min chain, one pending at a time.
-needs-owner: 9 open ⚑ rows in docs/owner/OWNER-ACTIONS.md (re-verified 2026-07-15) plus the three parked PRs in notes below.
-notes: PARKED/NEEDS-OWNER — PR #342 (draft rescue lifeboat, discardable) · PR #343 (bake fleet-data refresh; owner: approve workflow run 29397321395 or hand-merge; durable fix = BAKE_PAT secret) · PR #345 (quality-main-sweep; owner: remove do-not-automerge label + merge). Launch-console "preflighted, auto-verified owner-actions" now implemented end-to-end (#348 + #352/#353). NEXT-2-TASKS BATON — (1) owner clicks land #345/#343 (console verdict chips will confirm BAKE_PAT/SITE_PASSWORD automatically); (2) next mission increments — botsite release-drift banner (doctrine decision needed: new botsite outbound surface) · stable ask IDs in OWNER-ACTIONS grammar · failed-JOBS preflight detail (idea from #352's card).
+routine: failsafe cron trig_01VRT9F6jYNXym3nn18vVQQK ("Websites failsafe wake" · 45 */2 * * · next 2026-07-16T00:45Z) LEFT ARMED as the successor's dead-man bridge; pacemaker one-shots trig_01XoDWd6ExmjE61d3y84PsBJ + trig_0159vfoECDvz6xMJ16oBUi6B both run_once_fired (04:08Z/05:02Z), zero pending one-shots bound to this session (verified 2026-07-15T22:5xZ, 20 registry pages / 1946 triggers); no business crons bound to any seat session (review-bake etc. are repo-side Actions, untouched).
+needs-owner: two clicks — PR #345 (remove do-not-automerge label + merge; landing path owner-click) · PR #343 (approve workflow run 29397321395 or hand-merge; durable fix = BAKE_PAT secret; landing path owner-click) — plus the 9 ⚑ rows in docs/owner/OWNER-ACTIONS.md (now machine-verified as chips on /owner/queue).
+notes: PR #342 closed-with-reason (discardable churn; rescue branches retain it, all discardable). Outbox SIM-REQUEST (release-drift banner doctrine) awaits the manager (#355 @ 99b8fea). NEXT-2-TASKS BATON — (1) owner clicks #345/#343; (2) manager verdict on the SIM-REQUEST, then resume console/arcade increments (ideas on file: stable ask IDs, failed-JOBS preflight detail).
 kit: v1.17.0
