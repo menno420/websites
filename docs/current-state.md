@@ -361,39 +361,19 @@ trued 2026-07-15, reboot truing.)
     TWICE (at #109 and again at #139) — every buildable captured bullet
     shipped; remaining items are manager-side asks + dormant patterns.
 - **20:00Z continuous-mode wake: card template (#64) + heartbeat enrichment
-  (#67; decision stamped in `docs/site.md` § 3a + the decision
-  ledger)** (2026-07-10; manager switched the lane to continuous mode
-  mid-session — loop the work ladder, one full-ceremony slice at a time).
-  Slice 1 (queue-state NEXT item 3): the `.sessions/` **card template + ender
-  checklist** now lives embedded in `.sessions/README.md` — embedded on
-  purpose, because the session gate treats any other `.sessions/*.md` as a
-  card, so a standalone TEMPLATE.md would itself go born-red; the 💡 section
-  carries a REQUIRED one-line "worth having because". Slice 2 (NEXT item 4,
-  retro G3): `/fleet` **machine-reads heartbeats** — `orders:` parsed
-  (outstanding = acked minus done, ranges expanded, `claimed-by:` verbatim)
-  plus new OPTIONAL `routine:` / `landing:` / `deployed:` lines (format in
-  `control/README.md`); armed-but-silently-dead routines and stranded
-  (LOCAL-ONLY / pushed-unmerged) landings badge + sort attention-first;
-  `/fleet.json` carries the parsed structures. Tests 143 → 157. Sibling
-  session the same hour: PR #63 (docs/project/routine-prompt.md). Heartbeat
-  overwrites landed as control-fast-lane PRs (#65, …).
-  (claim PR #56; docs PR #57; final status-overwrite heartbeat PR follows).
-  ORDER 008 (inbox, PR #55) executed: the lane's 4-hourly wake routine is
-  **self-armed** from a worker session via the scheduler primitive
+  (#67)** (2026-07-10; decision stamped in `docs/site.md` § 3a + the
+  decision ledger). The `.sessions/` **card template + ender checklist**
+  lives embedded in `.sessions/README.md` — embedded on purpose, because
+  the session gate treats any other `.sessions/*.md` as a card, so a
+  standalone TEMPLATE.md would itself go born-red. `/fleet`
+  **machine-reads heartbeats** — `orders:` parsed plus optional
+  `routine:` / `landing:` / `deployed:` lines (format in
+  `control/README.md`); dead routines and stranded landings badge + sort
+  attention-first. Tests 143 → 157. ORDER 008 (PR #55): the lane's
+  4-hourly wake routine **self-armed** via
   `mcp__claude-code-remote__create_trigger` — trigger
   `trig_017H9Qb9oxtLgUy6sw2gnSHg`, cron `0 */4 * * *`, fresh session per
-  fire; first fire (2026-07-10T16:00Z) pending at close-out, so a
-  conditional fallback ⚑ stays in `docs/owner/OWNER-ACTIONS.md` until a
-  routine-woken heartbeat lands. Docs sweep: `docs/CAPABILITIES.md` gains
-  the fleet-manager anonymous-readability correction (verified via the
-  app's own runtime fetch path in the ORDER 005 build) + the
-  routine-creation capability (boundary differs by session kind — the
-  coordinator's toolset had no scheduler at all); wake-trigger owner ask
-  moved to resolved; next-session brief added to the queue-state ledger
-  (resume point = NEXT item 2, non-derivable facts, the coordinator's
-  independent live verification of all three services at `330f9b4`);
-  Jinja-`q.items` + container-`GITHUB_TOKEN` gotchas moved into
-  `.session-journal.md`. Docs-only; no `app/` change.
+  fire. Per-slice narrative + docs-sweep detail: the `.sessions/` cards.
 - **ORDER 005: `/queue` + `/environments`** (PR #53; claim PR #52; decision
   stamped in `docs/site.md` + the decision ledger).
   Two new public control-plane pages. **`/queue`** — the owner's single to-do
@@ -484,14 +464,10 @@ trued 2026-07-15, reboot truing.)
   change needed.
 - **`/fleet` lane set from the live fleet-manifest** (PR #36, self-directed;
   decision stamped in `docs/site.md` § Routes and the decision ledger).
-  **[Mechanism superseded 2026-07-11:** the manifest went `historical`
-  upstream; the canonical lane registry is now the `LANES` literal in
-  `fleet-manager scripts/gen_roster.py`, parsed by `fleet.parse_registry`
-  (PR #102 — see the chain entry above).**]** `/fleet` derived its lane set
-  live from `superbot/docs/eap/fleet-manifest.md` instead of the hand-kept
-  `config.FLEET_LANES` copy (resolving that drift ⚑), with honest fallback
-  + `lane_source` in `/fleet.json`; verified live yielding exactly the 10
-  registry lanes. Tests +6 (111 → 117).
+  **[Mechanism superseded 2026-07-11:** the canonical lane registry is now
+  the `LANES` literal in `fleet-manager scripts/gen_roster.py`, parsed by
+  `fleet.parse_registry` (PR #102 — see the chain entry above).**]**
+  Tests +6 (111 → 117).
 - **Fleet heartbeat page `/fleet`** (PR #35, **ORDER 002**; decision + full detail
   in `docs/site.md` § Routes and the decision ledger). A new public control-plane route that
   renders **every fleet lane's `control/status*.md`** as one glanceable screen —
@@ -503,12 +479,8 @@ trued 2026-07-15, reboot truing.)
   / broken / unknown, badges heartbeat freshness **stale** past 12h, attaches
   last-commit age + open-PR count per repo, and renders the full status body as
   markdown (reusing `journal.render_markdown`). Lanes sort attention-first;
-  no-status-file lane = honest absence, fetch failure = honest banner. **Lane set**
-  = the 10 lanes of the manager's registry `superbot/docs/eap/fleet-manifest.md`
-  (superbot, superbot-next, substrate-kit, websites, trading-strategy,
-  codetool-lab-fable5/opus4.8/sonnet5, superbot-games ×2 lanes), held as a
-  hand-kept `config.FLEET_LANES` (⚑ owner: keep synced with the manifest, or
-  parse it live — flagged in the decision ledger). Nav link added; mobile-safe. Tests +8
+  no-status-file lane = honest absence, fetch failure = honest banner.
+  Nav link added; mobile-safe. Tests +8
   (103 → 111). No new dependency, secret, or Railway op; the websites row
   dogfoods its own status.
 - **Cross-repo activity timeline + idea-backlog views** (decision + full detail
@@ -592,12 +564,9 @@ trued 2026-07-15, reboot truing.)
   mobile polish; `websites` board row `expected_required_checks` → `["quality"]`
   (decision stamped in `docs/site.md`).
 - **PR #15** — docs: live `/owner`-area deploy evidence + method recorded
-  (`docs/deployment.md` + the owner-area session log). control-plane
-  auto-deployed the PR #14 merge (`71a8ca1`) to SUCCESS; verified live: public
-  `/` 200 no-auth with **zero** secret names (masking not regressed), `/owner`
-  401 then 200 with real secret names, `refresh` works, `rerun-ci` wired + gated,
-  `/healthz` 200. `SITE_PASSWORD` now gates `/owner` only; no new prod
-  credential; Railway account actions + live-bot control still unwired.
+  (`docs/deployment.md` + the owner-area session log): masking not
+  regressed, `/owner` gate + actions verified live. `SITE_PASSWORD` gates
+  `/owner` only; no new prod credential.
 - **PR #14** — gated `/owner` area on control-plane ([D-0012]). Owner-directed:
   keep the site public/browsable, add a password-gated overlay for full detail +
   real power. New `app/owner.py` router (HTTP Basic on `SITE_PASSWORD`, gate on
@@ -619,10 +588,8 @@ trued 2026-07-15, reboot truing.)
   assertion that a secret name is absent from the served HTML. Docs:
   `docs/site.md`, `docs/dashboard.md`, `docs/deployment.md`.
 - **PR #13** — docs: live auth-drop deploy evidence + method recorded
-  (`docs/deployment.md` + the drop-auth session log). Follow-up to PR #12: both
-  `superbot-websites` services confirmed live-public post-merge — control-plane
-  auto-deployed the merge; `dashboard` lagged and was redeployed pinned to the
-  merged SHA (`serviceInstanceDeployV2`). No code change.
+  (`docs/deployment.md` + the drop-auth session log); both services
+  confirmed live-public post-merge. No code change.
 - **PR #11** — console.json consumed under a pinned, versioned cross-repo shape
   contract ([D-0010]). Superbot PR #1884 commits the canonical
   `console_data_contract.json` + stamps `meta.schema_version`; this repo pins the
@@ -658,14 +625,10 @@ trued 2026-07-15, reboot truing.)
   ([D-0006]). Closes the deploy session's owner TODO: the board now runs on
   the authenticated GitHub rate limit and the auth-gated cells (secrets,
   auto-merge, CODEOWNERS) render live — verified on the deployed site.
-- **PR #4** (`f7d3def`) — plan-only doc for sequence step 3: rework superbot's
+- **PR #4** (`f7d3def`) — plan-only doc for reworking superbot's
   `dashboard/` + `botsite/` into this repo
-  (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`; decision stamped
-  in `docs/decisions.md`). Covers what each
-  site does today (cited to superbot source), carry-vs-rebuild tables, a
-  one-repo/multi-Railway-service fit-alongside recommendation, botsite-first
-  migration order + rollback, and seven open questions for the owner (now routed
-  into `docs/question-router.md`). No code ported; live sites untouched.
+  (`docs/planning/dashboard-botsite-rework-plan-2026-07-09.md`; decision
+  stamped in `docs/decisions.md`). No code ported; live sites untouched.
 - **PLANNED (not built yet)** — gated live env-variable visibility: a
   `/owner/environments` page that loads each project's Railway variables live
   (project-scoped token) and links to where each is managed. Spec:
@@ -673,11 +636,8 @@ trued 2026-07-15, reboot truing.)
   2026-07-11; revives the deferred live-Railway-read half of the ORDER 005 env
   surface).
 - **PR #3** (`2f93b32`) — Railway deployment recorded (`docs/deployment.md`,
-  this ledger filled from kit template, [D-0005]). Deploy itself is
-  operational, not code: fresh Railway project `superbot-websites` created
-  2026-07-09, repo-connected to `main`, first Dockerfile build green, live
-  verification passed (healthz 200 / unauth 401 / authed 200 with real board
-  data / journal rendering real session filenames).
+  [D-0005]): fresh Railway project `superbot-websites` created 2026-07-09,
+  repo-connected to `main`, first build green, live verification passed.
 - **PR #2** (`73cc501`) — the control-plane site itself: readiness board,
   journal browser, HTTP Basic auth, in-memory TTL cache, Dockerfile, tests,
   `docs/site.md` (stack + data-model decisions stamped there).
@@ -693,12 +653,8 @@ trued 2026-07-15, reboot truing.)
 > (83 bullets at 2026-07-13, mostly guard/pin patterns); new work arrives
 > via `control/inbox.md` orders or manager routing.
 >
-> **Next-session baton (2026-07-13 ender):** (1) the owner-gated decisions
-> queue (8 ⚑ asks in `docs/owner/OWNER-ACTIONS.md`, BAKE_PAT newest) —
-> #275 env leads CLOSED (PR #282); (2) close/dispose the
-> seven parked draft lifeboats
-> #245/#249/#257/#278/#279/#280/#300 (owner-click; the intake sweep ran
-> as #277) — superseded as work source by the ORDER 027 night list.
+> The 2026-07-13 ender baton is superseded — the current baton lives in
+> `control/status.md` + the "In flight" section above.
 
 1. **Owner call on the control panel (plan Q4).** Both sites are now built and
    dark-launched (botsite + dashboard). The one remaining product decision is
