@@ -1,0 +1,1 @@
+- `claude/arcade-detail-20260715` · **botsite /arcade/{slug} detail pages** · botsite · 2026-07-15
