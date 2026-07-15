@@ -1,1 +1,0 @@
-- `claude/rerun-preflight-20260715` · **rerun-ci preflight preview + pinned confirm** · app · 2026-07-15
