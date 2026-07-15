@@ -5,7 +5,7 @@
 > restores a previously downloaded export.json backup after Railway's
 > ephemeral disk wiped the tester-program SQLite DB.
 
-- **📊 Model:** Claude Fable 5 · worker · owner-route build + restore semantics
+- **📊 Model:** Claude Fable 5 · medium · feature build (owner-route build + restore semantics)
 
 **What this session was about:** backlog promotion — the `docs/ideas/backlog.md`
 bullet "Import valve for the testing-DB export — restore `export.json` after a

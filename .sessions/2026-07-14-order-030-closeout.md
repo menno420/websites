@@ -4,7 +4,7 @@
 > the ORDER 030 (b) close-out walkthrough landed, trued at the finalize pass
 > (#334 merged `ecfe435`, #330 merged `7d5fa47`, `origin/main` merged in).
 
-- **📊 Model:** Claude Fable 5 · worker · order close-out (walkthrough doc + finish-list items)
+- **📊 Model:** Claude Fable 5 · medium · docs-only (order close-out: walkthrough doc + finish-list items)
 
 **What this session was about:** order rung — `control/inbox.md` **ORDER 030**
 (2026-07-14T09:34:13Z, P1, fleet-manager dispatch; inbox @ `a17de3b`): EAP

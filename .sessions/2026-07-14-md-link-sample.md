@@ -6,7 +6,7 @@
 > mints on control-plane pages and fails loudly on a 404, naming the URL and
 > its source page.
 
-- **📊 Model:** Claude Fable 5 · worker · backlog promotion
+- **📊 Model:** Claude Fable 5 · medium · test writing (smoke-crawl link sampling, backlog promotion)
 
 **What this session was about:** backlog promotion — the `docs/ideas/backlog.md`
 bullet "Sample-verify rewritten source-link targets — a bounded existence check

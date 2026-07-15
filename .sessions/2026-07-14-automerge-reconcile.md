@@ -6,7 +6,7 @@
 > PR touches `.github/workflows/**`, so it parks itself by design —
 > owner-merge-only is the fix working, not a failure.
 
-- **📊 Model:** Claude Fable 5 · worker · CI reconciliation
+- **📊 Model:** Claude Fable 5 · medium · runtime bugfix (CI automerge-race reconciliation)
 
 **What this session was about:** order — the fleet cleanup audit
 (`docs/audits/2026-07-13-fleet-cleanup-audit.md`, finding/suggestion 4, landed
