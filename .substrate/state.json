@@ -33,10 +33,10 @@
   },
   "review_log": [],
   "session_anchor": {
-    "branch": null,
-    "epoch": 1784087567.585942,
+    "branch": "claude/reboot-truing-20260715",
+    "epoch": 1784114497.039563,
     "head": "3cac461b6eb25eb30d600786a2b611436648b9e7",
-    "ts": "2026-07-15T03:52:47+00:00"
+    "ts": "2026-07-15T11:21:37+00:00"
   },
   "session_count": 12,
   "slot_values": {
