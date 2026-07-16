@@ -15,6 +15,12 @@ Contract under test:
 - After a real fire, a verification chip re-GETs the run (started /
   unexpected-status / honest-unknown on re-GET failure) and the result page
   omits the confirm form (no double-fire invite).
+- The preview facts table names the JOBS the fire would re-run ("jobs that
+  will re-run: quality (1 of 3 jobs)") from a read-only jobs listing —
+  degrading honestly (never blocking the preview) when the listing fails.
+- When the confirm pinned the failed jobs before firing, the chip verifies
+  at the JOB level (each previously-failed job re-queued), falling back to
+  the run-level check when the jobs listing is unavailable.
 - GET /owner/actions/refresh/preview rides the same template ("N cache
   entries will drop"); the refresh POST contract itself is unchanged.
 - The require_owner_action floor stays intact on the confirm; rate-limit
@@ -65,6 +71,25 @@ RUN_77 = {
 }
 
 
+JOB_FAILED = {"id": 901, "name": "quality", "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.example/job/901"}
+JOB_OK = {"id": 902, "name": "lint", "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.example/job/902"}
+JOB_SKIPPED = {"id": 903, "name": "deploy", "status": "completed",
+               "conclusion": "skipped",
+               "html_url": "https://github.example/job/903"}
+JOB_REQUEUED = {"id": 999, "name": "quality", "status": "queued",
+                "conclusion": None,
+                "html_url": "https://github.example/job/999"}
+
+
+def _jobs_env(*jobs, total=None):
+    return _env(data={"total_count": total if total is not None else len(jobs),
+                      "jobs": list(jobs)})
+
+
 def _basic(pw: str = OWNER_PW, user: str = "owner") -> dict:
     token = base64.b64encode(f"{user}:{pw}".encode()).decode()
     return {"Authorization": f"Basic {token}"}
@@ -83,6 +108,10 @@ class FakeGitHub:
     """Fake at github's own choke points, recording every call.
 
     - the failure LISTING (?status=failure) answers ``self.listing``
+    - a run's JOBS listing (/actions/runs/{id}/jobs) answers
+      ``self.jobs[id]`` — a single env, or a LIST of envs consumed in
+      order (before-fire, after-fire; the last one sticks); 404 when
+      absent (jobs unavailable — the degrade lane)
     - a single-run GET (/actions/runs/{id}) answers ``self.runs[id]``
       (404 when absent — a vanished run)
     - api_post records the path and answers ``self.post_result``
@@ -92,6 +121,7 @@ class FakeGitHub:
     def __init__(self):
         self.listing = _env(data={"workflow_runs": []})
         self.runs: dict = {}
+        self.jobs: dict = {}
         self.post_result = _env(status=201, data={})
         self.posts: list = []
         self.get_urls: list = []
@@ -100,11 +130,24 @@ class FakeGitHub:
     def set_newest(self, run):
         self.listing = _env(data={"workflow_runs": [run] if run else []})
 
+    def set_jobs(self, run_id, *envs):
+        """One env = every jobs GET answers it; several = consumed in order
+        (the last sticks)."""
+        self.jobs[str(run_id)] = list(envs) if len(envs) > 1 else envs[0]
+
     async def _get(self, url, refresh=False, raw=False):
         self.get_urls.append(url)
         if "status=failure" in url:
             self.listing_refresh.append(refresh)
             return dict(self.listing)
+        if "/jobs" in url:
+            run_id = url.split("/actions/runs/")[1].split("/", 1)[0]
+            hit = self.jobs.get(run_id)
+            if isinstance(hit, list):
+                hit = hit.pop(0) if len(hit) > 1 else hit[0]
+            if hit is None:
+                return _env(ok=False, status=404, error="Not Found", url=url)
+            return dict(hit)
         run_id = url.rstrip("/").rsplit("/", 1)[-1]
         hit = self.runs.get(run_id)
         if hit is None:
@@ -215,6 +258,44 @@ def test_preview_unknown_repo_honest_200(client, fake):
 def test_preview_requires_auth(client, fake):
     assert client.get("/owner/actions/rerun-ci/preview?repo=websites").status_code == 401
     assert client.get("/owner/actions/refresh/preview").status_code == 401
+
+
+# --------------------------------------------------------------------------- #
+# Preview — the "jobs that will re-run" facts row
+# --------------------------------------------------------------------------- #
+def test_preview_jobs_row_names_the_failed_subset(client, fake):
+    fake.set_newest(RUN_42)
+    fake.set_jobs(42, _jobs_env(JOB_FAILED, JOB_OK, JOB_SKIPPED))
+    r = client.get(
+        "/owner/actions/rerun-ci/preview?repo=websites", headers=_basic()
+    )
+    assert r.status_code == 200
+    assert "jobs that will re-run" in r.text
+    assert "quality (1 of 3 jobs)" in r.text
+    assert fake.posts == []  # the jobs listing is read-only
+
+
+def test_preview_jobs_row_degrades_honestly_never_blocks(client, fake):
+    """A failed jobs listing degrades to an honest unknown row — the
+    preview and its confirm form are unaffected."""
+    fake.set_newest(RUN_42)  # no fake.jobs entry → the jobs GET answers 404
+    r = client.get(
+        "/owner/actions/rerun-ci/preview?repo=websites", headers=_basic()
+    )
+    assert r.status_code == 200
+    assert "jobs that will re-run" in r.text
+    assert "unknown — could not list jobs" in r.text
+    assert 'name="run_id" value="42"' in r.text  # confirm still offered
+
+
+def test_preview_jobs_row_zero_failed_is_honest(client, fake):
+    fake.set_newest(RUN_42)
+    fake.set_jobs(42, _jobs_env(JOB_OK, JOB_SKIPPED))
+    r = client.get(
+        "/owner/actions/rerun-ci/preview?repo=websites", headers=_basic()
+    )
+    assert r.status_code == 200
+    assert "none listed as failed right now (0 of 2 jobs)" in r.text
 
 
 # --------------------------------------------------------------------------- #
@@ -345,6 +426,67 @@ def test_post_fire_chip_honest_unknown_when_reget_fails(client, fake):
     ]
     assert "rerun not verified" in r.text
     assert "outcome unknown" in r.text
+
+
+def test_post_fire_chip_verifies_jobs_requeued(client, fake):
+    """Job-level verification: the previously-failed job reports queued on
+    the post-fire jobs re-GET — the chip names it precisely."""
+    fake.set_newest(RUN_42)
+    fake.set_jobs(
+        42,
+        _jobs_env(JOB_FAILED, JOB_OK, JOB_SKIPPED),   # before the fire
+        _jobs_env(JOB_REQUEUED, JOB_OK, JOB_SKIPPED),  # after the fire
+    )
+    r = client.post(
+        "/owner/actions/rerun-ci",
+        data={"repo": "websites", "run_id": "42"},
+        headers=_action_headers(),
+    )
+    assert r.status_code == 200
+    assert fake.posts == [
+        "/repos/menno420/websites/actions/runs/42/rerun-failed-jobs"
+    ]
+    assert "failed jobs re-queued" in r.text
+    assert "quality: queued" in r.text
+    assert 'name="run_id"' not in r.text  # still no double-fire invite
+
+
+def test_post_fire_chip_warns_when_jobs_not_requeued_yet(client, fake):
+    """The after-listing still shows the job failed (a fresh attempt can lag)
+    — honest warn naming the job's current status, never an assumed
+    success."""
+    fake.set_newest(RUN_42)
+    fake.set_jobs(42, _jobs_env(JOB_FAILED, JOB_OK, JOB_SKIPPED))
+    r = client.post(
+        "/owner/actions/rerun-ci",
+        data={"repo": "websites", "run_id": "42"},
+        headers=_action_headers(),
+    )
+    assert r.status_code == 200
+    assert "failed jobs not all re-queued yet" in r.text
+    assert "quality: completed" in r.text
+
+
+def test_post_fire_chip_falls_back_to_run_level_when_jobs_reget_fails(
+    client, fake
+):
+    """Jobs pinned before the fire but the after re-GET fails — the chip
+    falls back to the original run-level check."""
+    fake.set_newest(RUN_42)
+    fake.set_jobs(
+        42,
+        _jobs_env(JOB_FAILED, JOB_OK, JOB_SKIPPED),
+        _env(ok=False, status=0, error="offline test"),
+    )
+    fake.runs["42"] = _env(data={"status": "queued",
+                                 "html_url": RUN_42["html_url"]})
+    r = client.post(
+        "/owner/actions/rerun-ci",
+        data={"repo": "websites", "run_id": "42"},
+        headers=_action_headers(),
+    )
+    assert r.status_code == 200
+    assert "rerun started — queued" in r.text
 
 
 def test_post_fire_chip_warns_on_unexpected_status(client, fake):

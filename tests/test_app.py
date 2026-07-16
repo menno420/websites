@@ -570,9 +570,17 @@ def test_owner_rerun_ci_action(secrets_client, monkeypatch):
                          "html_url": "https://example/run/42"},
                 "error": "", "fetched_at": "", "cached": False, "url": ""}
 
+    async def fake_jobs(repo, run_id, refresh=True):
+        # jobs listing unavailable → the preflight degrades to the original
+        # run-level chip (the jobs-level lanes are pinned in
+        # tests/test_owner_preflight.py)
+        return {"ok": False, "repo": repo, "run_id": run_id, "jobs": [],
+                "total": 0, "message": "could not list jobs: offline test"}
+
     monkeypatch.setattr(github, "latest_failed_run", fake_resolve)
     monkeypatch.setattr(github, "rerun_run", fake_fire)
     monkeypatch.setattr(github, "run_info", fake_info)
+    monkeypatch.setattr(github, "run_jobs", fake_jobs)
     c, _ = secrets_client
     # unauthed rejected
     assert c.post(

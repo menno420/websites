@@ -866,6 +866,51 @@ def _run_facts(run: dict) -> list[dict]:
     ]
 
 
+def _jobs_fact(jobs_res: dict) -> dict:
+    """The "jobs that will re-run" facts row — names the exact subset
+    ``rerun-failed-jobs`` fires at, from an already-fetched jobs listing.
+    Honest on every degraded shape; never blocks the preview."""
+    label = "jobs that will re-run"
+    if not jobs_res.get("ok"):
+        return {
+            "label": label,
+            "value": (
+                f"unknown — {jobs_res.get('message') or 'could not list jobs'}"
+                " (the re-run itself is unaffected)"
+            ),
+        }
+    failed = github.failed_jobs(jobs_res.get("jobs") or [])
+    total = jobs_res.get("total") or 0
+    if not failed:
+        return {
+            "label": label,
+            "value": (
+                f"none listed as failed right now (0 of {total} "
+                f"job{'s' if total != 1 else ''}) — the run may have moved; "
+                "the confirm re-checks"
+            ),
+        }
+    names = ", ".join(j.get("name") or "unnamed job" for j in failed)
+    return {
+        "label": label,
+        "value": (
+            f"{names} ({len(failed)} of {total} "
+            f"job{'s' if total != 1 else ''})"
+        ),
+        "code": True,
+    }
+
+
+async def _preview_jobs(repo: str, resolved: dict) -> dict | None:
+    """Fetch the resolved run's jobs for the preview row (read-only,
+    refresh=True — same live-truth rule as the pin itself). ``None`` when
+    there is no resolved run to list jobs for."""
+    run = resolved.get("run")
+    if not resolved.get("ok") or run is None:
+        return None
+    return await github.run_jobs(repo, run.get("id"), refresh=True)
+
+
 def _render_rerun_preview(
     request: Request,
     repo: str,
@@ -873,6 +918,7 @@ def _render_rerun_preview(
     banner: dict | None = None,
     chip: dict | None = None,
     fired: bool = False,
+    jobs: dict | None = None,
 ) -> HTMLResponse:
     """Render the rerun-ci preflight page from an already-resolved read.
 
@@ -906,6 +952,10 @@ def _render_rerun_preview(
         )
     else:
         p["facts"] = _run_facts(run)
+        if jobs is not None:
+            # right after the workflow row — the run's identity first, then
+            # exactly which of its jobs the fire would re-run
+            p["facts"].insert(2, _jobs_fact(jobs))
         if not fired:
             p["confirm"] = {
                 "action": "/owner/actions/rerun-ci",
@@ -948,7 +998,8 @@ async def rerun_ci_preview(
         }
         return templates.TemplateResponse(request, "owner_preflight.html", {"p": p})
     resolved = await github.latest_failed_run(repo, branch=RERUN_BRANCH, refresh=True)
-    return _render_rerun_preview(request, repo, resolved)
+    jobs = await _preview_jobs(repo, resolved)
+    return _render_rerun_preview(request, repo, resolved, jobs=jobs)
 
 
 async def _stale_pin_banner(repo: str, pinned_id: int, newest: dict | None) -> dict:
@@ -989,10 +1040,70 @@ async def _stale_pin_banner(repo: str, pinned_id: int, newest: dict | None) -> d
     }
 
 
-async def _post_fire_chip(repo: str, run_id: int) -> dict:
-    """Post-action verification: re-GET the fired run and report whether the
-    rerun really started (the askverify chip idiom — honest-unknown when the
-    re-GET fails, never an assumed success)."""
+async def _post_fire_chip(
+    repo: str, run_id: int, failed_before: list | None = None
+) -> dict:
+    """Post-action verification: report whether the rerun really started
+    (the askverify chip idiom — honest-unknown when the re-GET fails, never
+    an assumed success).
+
+    When the confirm handler pinned the FAILED JOBS before firing
+    (``failed_before``), verify at the job level: re-GET the run's jobs and
+    check that each previously-failed job now reports a started status —
+    the precise claim, since ``rerun-failed-jobs`` re-runs exactly that
+    subset. Falls back to the original run-level check when the jobs
+    listing is unavailable on either side of the fire."""
+    if failed_before:
+        after = await github.run_jobs(repo, run_id, refresh=True)
+        if after.get("ok"):
+            probe = (
+                f"re-GET of run #{run_id}'s jobs immediately after the fire "
+                "(read-only)"
+            )
+            by_name = {
+                j.get("name"): j
+                for j in after.get("jobs") or []
+                if isinstance(j, dict)
+            }
+            states = []
+            all_started = True
+            url = ""
+            for j in failed_before:
+                name = j.get("name") or "unnamed job"
+                cur = by_name.get(name)
+                if cur is None:
+                    states.append(f"{name}: not listed")
+                    all_started = False
+                    continue
+                status = cur.get("status") or "unknown"
+                started = (
+                    status in _RUN_STARTED_STATUSES
+                    and not cur.get("conclusion")
+                )
+                all_started = all_started and started
+                states.append(f"{name}: {status}")
+                url = url or cur.get("html_url", "")
+            detail = "; ".join(states)
+            if all_started:
+                return {
+                    "css": "ok",
+                    "label": "failed jobs re-queued",
+                    "probe": probe,
+                    "detail": detail,
+                    "url": url,
+                }
+            return {
+                "css": "warn",
+                "label": "failed jobs not all re-queued yet",
+                "probe": probe,
+                "detail": (
+                    f"{detail} — a fresh attempt can take a moment to "
+                    "register; check the run page"
+                ),
+                "url": url,
+            }
+        # jobs re-GET failed → the run-level check below is the honest
+        # fallback (never an assumed success)
     info = await github.run_info(repo, run_id, refresh=True)
     probe = f"re-GET of run #{run_id} immediately after the fire (read-only)"
     if info["ok"] and isinstance(info["data"], dict):
@@ -1095,7 +1206,10 @@ async def action_rerun_ci(
                 "Confirm from the preview below"
             ),
         }
-        return _render_rerun_preview(request, repo, resolved, banner=banner)
+        jobs = await _preview_jobs(repo, resolved)
+        return _render_rerun_preview(
+            request, repo, resolved, banner=banner, jobs=jobs
+        )
     pinned_id = int(pinned)
     if not resolved["ok"]:
         banner = {
@@ -1109,7 +1223,18 @@ async def action_rerun_ci(
     newest = resolved["run"]
     if newest is None or newest.get("id") != pinned_id:
         banner = await _stale_pin_banner(repo, pinned_id, newest)
-        return _render_rerun_preview(request, repo, resolved, banner=banner)
+        jobs = await _preview_jobs(repo, resolved)
+        return _render_rerun_preview(
+            request, repo, resolved, banner=banner, jobs=jobs
+        )
+    # one extra read pins the JOB NAMES the fire will re-run — the chip then
+    # verifies exactly those; a failed listing degrades to run-level verify
+    jobs_before = await github.run_jobs(repo, pinned_id, refresh=True)
+    failed_before = (
+        github.failed_jobs(jobs_before.get("jobs") or [])
+        if jobs_before.get("ok")
+        else None
+    )
     fired = await github.rerun_run(
         repo, pinned_id, run=newest, branch=RERUN_BRANCH
     )
@@ -1119,13 +1244,21 @@ async def action_rerun_ci(
             "text": fired["message"],
             "url": fired.get("url") or newest.get("html_url", ""),
         }
-        return _render_rerun_preview(request, repo, resolved, banner=banner)
-    chip = await _post_fire_chip(repo, pinned_id)
+        return _render_rerun_preview(
+            request, repo, resolved, banner=banner, jobs=jobs_before
+        )
+    chip = await _post_fire_chip(repo, pinned_id, failed_before=failed_before)
     banner = {
         "ok": True,
         "text": fired["message"],
         "url": fired.get("url") or newest.get("html_url", ""),
     }
     return _render_rerun_preview(
-        request, repo, resolved, banner=banner, chip=chip, fired=True
+        request,
+        repo,
+        resolved,
+        banner=banner,
+        chip=chip,
+        fired=True,
+        jobs=jobs_before,
     )
