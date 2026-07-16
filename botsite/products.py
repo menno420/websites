@@ -21,11 +21,19 @@ Honesty rules (the "never fake data" doctrine, applied to products):
   ``botsite/blockers.py``) records the named owner click standing between a
   coming-soon product and its launch. Fail-soft everywhere: a missing or
   malformed blocker normalizes to ``None`` and never invalidates the entry.
+
+``stale_products`` (below) is a SEPARATE freshness check, not part of the
+load/validate path: each entry's ``as_of`` records when it was last
+re-verified against venture-lab, and a hand-curated registry drifts
+silently the moment a product goes live or changes price. It never
+disqualifies an entry from ``load_products`` — staleness is a nag for a
+human to re-verify, not an honesty violation to hide.
 """
 
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -92,3 +100,46 @@ def load_products(path: Path | None = None) -> list[dict[str, Any]]:
         product["blocker"] = blockers.normalized_blocker(product.get("blocker"))
         products.append(product)
     return products
+
+
+# Staleness horizon (days): how long a product's ``as_of`` re-verification
+# is trusted before it nags. Two weeks — venture-lab entries move on a
+# roughly weekly cadence at the busiest (see ``app.freshness``'s analogous
+# ``COMMIT_STALE_DAYS`` docstring for the same reasoning shape); one week
+# would false-alarm a quiet-but-current product, a month would let a real
+# price/availability change go unverified for too long.
+STALE_HORIZON_DAYS = 14
+
+
+def stale_products(
+    products: list[dict[str, Any]],
+    now: datetime,
+    horizon_days: int = STALE_HORIZON_DAYS,
+) -> list[dict[str, Any]]:
+    """Products whose ``as_of`` is strictly past ``horizon_days`` old.
+
+    ``now`` is injectable (the module time-discipline convention — see
+    ``app/clock.py``'s docstring for the fleet-wide rule this follows);
+    callers pass the real wall clock in production/CI and a frozen instant
+    in tests. Exactly at the horizon is not stale, only strictly past it
+    (matches ``app.freshness``'s boundary rule). An entry with a missing or
+    unparseable ``as_of`` is skipped, never invented as stale or crashed
+    on — ``load_products`` already guarantees the field is a non-empty
+    string, but this function makes no assumption about its shape.
+
+    Returns the stale entries verbatim plus a computed ``age_days`` float,
+    oldest first.
+    """
+    stale: list[dict[str, Any]] = []
+    for product in products:
+        try:
+            as_of_dt = datetime.strptime(
+                str(product.get("as_of", "")), "%Y-%m-%d"
+            ).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        age_days = (now - as_of_dt).total_seconds() / 86400
+        if age_days > horizon_days:
+            stale.append({**product, "age_days": age_days})
+    stale.sort(key=lambda p: p["age_days"], reverse=True)
+    return stale
