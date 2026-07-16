@@ -30,16 +30,19 @@ Honesty rules (the "never fake data" doctrine, applied to games):
   Fail-soft like the rest of the schema: a missing or malformed id
   normalizes to ``None`` — the panel still renders, just without the
   ledger ref, and the console falls back to its signature scan.
+
+The blocker schema itself lives in ``botsite/blockers.py`` (shared with the
+catalog / products / puddle-museum registries since 2026-07-16 — one
+normalizer, identical fail-soft semantics everywhere).
 """
 
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 from typing import Any
 
-from . import listfilter
+from . import blockers, listfilter
 
 BASE_DIR = Path(__file__).resolve().parent
 ARCADE_JSON_PATH = BASE_DIR / "data" / "arcade.json"
@@ -55,12 +58,6 @@ LINKED_AVAILABILITIES = ("live", "download")
 REF_QUERY = "ref=fleet-arcade"
 
 _REQUIRED = ("slug", "name", "tagline", "description", "maturity", "availability", "source_repo")
-
-# The owner-actions ledger's stable ask-id shape (``ID: ASK-NNNN`` lines in
-# docs/owner/OWNER-ACTIONS.md) — the exact join key the owner console's
-# verification chips use. Anything else on ``blocker.ask_id`` is malformed
-# and normalizes to ``None`` (fail-soft, never fatal).
-_ASK_ID_RE = re.compile(r"ASK-\d{4}\Z")
 
 
 def _valid(entry: Any) -> bool:
@@ -79,39 +76,6 @@ def _valid(entry: Any) -> bool:
     if url is not None and not isinstance(url, str):
         return False
     return True
-
-
-def _normalized_ask_id(blocker: dict[str, Any]) -> str | None:
-    """The blocker's ``ask_id`` when it is a well-formed stable ledger id
-    (``ASK-NNNN``) — ``None`` for a missing or malformed one (fail-soft: a
-    bad id costs only the ledger ref, never the blocker itself; the owner
-    console then falls back to its keyword-signature join)."""
-    ask_id = blocker.get("ask_id")
-    if not isinstance(ask_id, str):
-        return None
-    ask_id = ask_id.strip()
-    return ask_id if _ASK_ID_RE.fullmatch(ask_id) else None
-
-
-def _normalized_blocker(entry: dict[str, Any]) -> dict[str, str | None] | None:
-    """The entry's ``blocker`` as ``{"owner_action", "unblocks", "ask_id"}``
-    with the first two values non-empty strings and ``ask_id`` a validated
-    stable ledger id or ``None`` — or ``None`` for a missing/malformed
-    blocker (fail-soft: a bad blocker never invalidates the game entry)."""
-    blocker = entry.get("blocker")
-    if not isinstance(blocker, dict):
-        return None
-    owner_action = blocker.get("owner_action")
-    unblocks = blocker.get("unblocks")
-    if not isinstance(owner_action, str) or not owner_action.strip():
-        return None
-    if not isinstance(unblocks, str) or not unblocks.strip():
-        return None
-    return {
-        "owner_action": owner_action.strip(),
-        "unblocks": unblocks.strip(),
-        "ask_id": _normalized_ask_id(blocker),
-    }
 
 
 def _with_ref(url: str) -> str:
@@ -146,7 +110,7 @@ def load_games(path: Path | None = None) -> list[dict[str, Any]]:
         game["is_live"] = game["availability"] == "live" and url is not None
         game["has_link"] = game["availability"] in LINKED_AVAILABILITIES and url is not None
         game["link_url"] = _with_ref(url) if game["has_link"] and url else None
-        game["blocker"] = _normalized_blocker(game)
+        game["blocker"] = blockers.normalized_blocker(game.get("blocker"))
         game["detail_url"] = f"/arcade/{game['slug']}"
         games.append(game)
     return games
