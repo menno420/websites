@@ -1,0 +1,1 @@
+- branch `claude/arcade-registry-integrity-guard` · scope: data-integrity guard test over the committed botsite blocker registries (arcade/catalog/products/puddle_museum) — read-only assertions on ask_id shape, blocker completeness, dup slugs, ledger orphan-ref; new test file only, no source/data changes · date 2026-07-16
