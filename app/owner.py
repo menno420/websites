@@ -32,6 +32,7 @@ from fastapi.templating import Jinja2Templates
 from . import (
     askverify,
     briefing,
+    card_gating,
     config,
     envdrift,
     envhub,
@@ -417,6 +418,12 @@ async def _render_owner_queue(
     # the SAME probe verdicts annotate already attached, no new fetch.
     for item in data["items"]:
         item["drift"] = release_drift.chip(item.get("verify"))
+    # Reverse-join enrichment (read-only, disk-only): for each open ask,
+    # count and list the public product cards its ask_id gates across the
+    # four botsite registries — rendered as the "unblocks N cards" chip
+    # beside the verify chip. Gated view only; the public /queue never runs
+    # this (its overview() stays byte-identical). No network, no state.
+    card_gating.annotate_unblocks(data["items"])
     return templates.TemplateResponse(
         request,
         "owner_queue.html",
