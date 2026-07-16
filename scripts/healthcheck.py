@@ -90,7 +90,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import askverify, config, fleet, github  # noqa: E402  (path setup must run first)
+from app import askverify, config, fleet, github, release_drift  # noqa: E402  (path setup must run first)
 from botsite import (  # noqa: E402  (path setup must run first)
     arcade,
     arcade_probe,
@@ -283,32 +283,25 @@ def check_release_drift() -> tuple[bool, list[str]]:
     except Exception as exc:  # defensive: a machinery bug shouldn't crash the check
         return False, [f"askverify annotate raised {type(exc).__name__}: {exc}"]
 
+    # Per-row verdict via the shared classifier (app/release_drift.py) — the
+    # SAME logic the owner console's drift chip renders from, so CI and the
+    # console can never disagree about what "drift" means. This script owns
+    # the impure half (collecting blockers from botsite, running the probes);
+    # the helper owns the pure verdict.
     lines: list[str] = []
     flagged = 0
     for registry, ident, blocker in blocker_rows:
         ref = f"{registry}/{ident}"
         aid = blocker.get("ask_id")
-        if not aid:
-            # An id-less blocker has no ledger row to join — honest info
-            # only, never a flag (the blocker itself is still rendered).
-            lines.append(f"{ref:40}  {'info':7}  <no ask_id>  (blocker carries no ledger id — nothing to join)")
-            continue
-        entry = entries[aid]
-        if entry is None:
+        v = release_drift.classify(
+            aid,
+            entry_exists=bool(aid) and entries.get(aid) is not None,
+            verdict=(verdicts.get(aid, {}).get("verdict") if aid else None),
+            detail=(verdicts.get(aid, {}).get("detail") or "" if aid else ""),
+        )
+        if v["flagged"]:
             flagged += 1
-            lines.append(f"{ref:40}  {'FLAGGED':7}  {aid}  (ledger drift: ask_id matches no askverify entry)")
-            continue
-        verdict = verdicts.get(aid, {}).get("verdict")
-        detail = verdicts.get(aid, {}).get("detail") or ""
-        if verdict == askverify.DONE:
-            flagged += 1
-            lines.append(f"{ref:40}  {'FLAGGED':7}  {aid}  (drift: ask done-detected but registry still gated)")
-        elif verdict == askverify.STILL_OPEN:
-            lines.append(f"{ref:40}  {'PASS':7}  {aid}  (still-open — registry gate matches reality)")
-        elif verdict == askverify.NOT_CHECKABLE:
-            lines.append(f"{ref:40}  {'info':7}  {aid}  (not machine-checkable — {detail or 'no probe registered'})")
-        else:  # UNKNOWN (probe error / unreadable) — never invent state
-            lines.append(f"{ref:40}  {'info':7}  {aid}  (unknown — {detail or 'probe could not tell'})")
+        lines.append(f"{ref:40}  {v['mark']:7}  {v['token']}  ({v['reason']})")
     lines.append(
         f"{len(blocker_rows)} blocker(s) across the 4 registries, "
         f"{len(items)} distinct ask(s) joined, {flagged} flagged"
