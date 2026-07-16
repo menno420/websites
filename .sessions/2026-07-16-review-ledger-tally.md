@@ -1,13 +1,15 @@
 # 2026-07-16 — Review Problems/Successes: at-a-glance documented-count tally
 
-> **Status:** `in-progress` — branch `claude/review-ledger-tally`; the review
+> **Status:** `complete` — branch `claude/review-ledger-tally`; the review
 > service's Problems and Successes pages lead a long card stack with no sense of
 > scale. This slice adds a small hero tally ("N documented problems · K full
 > incident writeups", "N documented wins") backed by a pure
 > `story.ledger_summary(items)` helper, so the count equals the number of cards
 > rendered below and can never drift. Read-only; no new route, no state change.
+> Verify: `1636 passed` (all four suites); kit `--strict` passes once the card
+> flips complete. +6 review tests.
 
-- **📊 Model:** Claude Opus · high · review-feature build
+- **📊 Model:** Claude Opus · high · feature build
 
 **What this session is about:** a reviewer landing on `/problems` (the site's
 lead page) or `/successes` scrolls a long `rv-story-card` stack with no
