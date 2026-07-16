@@ -325,6 +325,56 @@ async def run_info(repo: str, run_id: int, refresh: bool = True) -> dict:
     )
 
 
+async def run_jobs(repo: str, run_id: int, refresh: bool = True) -> dict:
+    """List one Actions run's jobs (read-only) — backs the rerun-ci
+    preflight's "jobs that will re-run" facts row and the job-level
+    post-fire verification.
+
+    Returns ``{ok, repo, run_id, jobs, total, message}`` — ``jobs`` is the
+    raw job list from GitHub (latest attempt: name, status, conclusion,
+    html_url, …), ``total`` the run's total job count. ``per_page=100`` —
+    this fleet's runs carry a handful of jobs; a >100-job run would need
+    pagination this deliberately does not add. Honest degradation on any
+    fetch failure (``ok=False`` + reason), never raises."""
+    res = await api(
+        f"/repos/{config.OWNER}/{repo}/actions/runs/{run_id}/jobs"
+        "?per_page=100",
+        refresh=refresh,
+    )
+    if not res["ok"] or not isinstance(res["data"], dict):
+        reason = res["error"] or f"HTTP {res['status']}"
+        return {
+            "ok": False,
+            "repo": repo,
+            "run_id": run_id,
+            "jobs": [],
+            "total": 0,
+            "message": f"could not list jobs: {reason}",
+        }
+    jobs = res["data"].get("jobs") or []
+    total = res["data"].get("total_count")
+    if not isinstance(total, int):
+        total = len(jobs)
+    return {
+        "ok": True,
+        "repo": repo,
+        "run_id": run_id,
+        "jobs": jobs,
+        "total": total,
+        "message": "",
+    }
+
+
+def failed_jobs(jobs: list) -> list:
+    """The subset ``rerun-failed-jobs`` will actually re-run — pure filter,
+    tolerant of malformed entries (skipped, never raised on)."""
+    return [
+        j
+        for j in jobs
+        if isinstance(j, dict) and j.get("conclusion") == "failure"
+    ]
+
+
 async def rerun_run(
     repo: str, run_id: int, run: Optional[dict] = None, branch: str = "main"
 ) -> dict:

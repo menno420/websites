@@ -116,6 +116,58 @@ def load_games(path: Path | None = None) -> list[dict[str, Any]]:
     return games
 
 
+def availability_summary(games: Any) -> dict[str, int]:
+    """Pure, fail-soft availability counts for the /arcade catalog summary strip.
+
+    Given any iterable of enriched game dicts (as :func:`load_games` returns),
+    returns ``{"total", "live", "blocked", "owner_clicks"}``:
+
+    - ``live`` — games really reachable (``has_link`` is truthy: a play or
+      download link renders).
+    - ``blocked`` — games with no reachable link (the honest inverse of
+      ``live``); these are the cards that carry a blocker / status note.
+    - ``owner_clicks`` — the number of DISTINCT owner actions standing between
+      the blocked games and launch, deduplicated by ``ask_id`` (the stable
+      owner-actions ledger id) when present, else by the ``owner_action``
+      text. Blocked games with no recorded blocker contribute nothing — we
+      only count clicks the registry actually names (never invent).
+    - ``total`` — the number of games counted.
+
+    Never raises: a non-iterable input, a non-dict entry, or a missing field
+    is simply skipped (degrade, don't invent) — same honesty doctrine as the
+    loader. Pure: takes already-loaded games, touches no disk and no network.
+    """
+    total = live = blocked = 0
+    clicks: set[str] = set()
+    try:
+        iterator = iter(games)
+    except TypeError:
+        return {"total": 0, "live": 0, "blocked": 0, "owner_clicks": 0}
+    for game in iterator:
+        if not isinstance(game, dict):
+            continue
+        total += 1
+        if game.get("has_link"):
+            live += 1
+            continue
+        blocked += 1
+        blocker = game.get("blocker")
+        if not isinstance(blocker, dict):
+            continue
+        ask_id = blocker.get("ask_id")
+        owner_action = blocker.get("owner_action")
+        if isinstance(ask_id, str) and ask_id.strip():
+            clicks.add("ask:" + ask_id.strip())
+        elif isinstance(owner_action, str) and owner_action.strip():
+            clicks.add("act:" + owner_action.strip())
+    return {
+        "total": total,
+        "live": live,
+        "blocked": blocked,
+        "owner_clicks": len(clicks),
+    }
+
+
 def game_by_slug(slug: str, path: Path | None = None) -> dict[str, Any] | None:
     """The enriched game entry for ``slug``, or ``None`` when the registry has
     no such (valid) game — the /arcade/{slug} route turns that into the site's

@@ -133,6 +133,14 @@
     {% if it.verify.detail %}<span class="dim">— {{ it.verify.detail }}</span>{% endif %}
     {% if it.verify.url %}· <a href="{{ it.verify.url }}">evidence ↗</a>{% endif %}</p>
   {% endif %}
+  {% if it.drift %}
+  <p class="small"><span class="b {{ it.drift.css }}" title="{{ it.drift.title }}">{{ it.drift.label }}</span></p>
+  {% endif %}
+  {% if it.unblocks_count %}
+  <p class="small"><span class="b repo"
+      title="{% for c in it.unblocks_cards %}{{ c.registry }}: {{ c.title }}{% if not loop.last %} · {% endif %}{% endfor %}">unblocks {{ it.unblocks_count }} card{{ 's' if it.unblocks_count != 1 }}</span>
+    <span class="dim">— public product card{{ 's' if it.unblocks_count != 1 }} this owner-action gates across the botsite registries</span></p>
+  {% endif %}
   {% if it.fields %}
   <table>
     {% for key, label in q.field_order %}
