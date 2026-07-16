@@ -1,0 +1,1 @@
+- branch `claude/console-dispatch-readiness` · scope: surface the seat dispatch-readiness chip row on the `/projects/{package}` dispatch screen (project_detail.html) — reuse of already-computed `pkg.coverage`/`pkg.dispatch_ready`, read-only, + test · date 2026-07-16
