@@ -325,9 +325,17 @@ async def asks(refresh: bool = False) -> dict[str, Any]:
     items = [
         {
             "what": b.get("what")
-            or next(iter(b.values()), "(unlabeled ask)"),
+            or next(
+                iter(
+                    [v for k, v in b.items() if k != "ask_id"]
+                ),
+                "(unlabeled ask)",
+            ),
             "where": b.get("where", ""),
             "unblocks": b.get("unblocks", ""),
+            # Stable ledger id (``ID: ASK-NNNN``) — askverify's exact join
+            # key; None-safe for legacy blocks without one.
+            "ask_id": b.get("ask_id"),
         }
         for b in blocks
     ]
