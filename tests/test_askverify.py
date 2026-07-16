@@ -93,16 +93,17 @@ def _open_ledger_headlines() -> list[str]:
     return [b.get("what", "") for b in _open_ledger_blocks()]
 
 
-def test_real_ledger_has_the_eleven_open_asks_each_with_a_unique_id():
+def test_real_ledger_has_the_sixteen_open_asks_each_with_a_unique_id():
     # 9 from the 2026-07-16 id backfill + the 2 arcade launch blockers
-    # (ASK-0010/0011) that became ledger rows the same day.
+    # (ASK-0010/0011) + the 5 registry blocker rows (ASK-0012..0016 — the
+    # catalog / products / puddle-museum owner gates, same day).
     blocks = _open_ledger_blocks()
-    assert len(blocks) == 11
+    assert len(blocks) == 16
     ids = [b.get("ask_id") for b in blocks]
     assert all(
         i and re.fullmatch(r"ASK-\d{4}", i) for i in ids
     ), f"open ask without a well-formed ID: {ids}"
-    assert len(set(ids)) == 11, f"duplicated ask id in the ledger: {ids}"
+    assert len(set(ids)) == 16, f"duplicated ask id in the ledger: {ids}"
 
 
 def test_every_real_open_ask_matches_a_distinct_registry_entry():
@@ -130,7 +131,9 @@ def test_real_ledger_matches_land_on_the_intended_probes():
         "q-0004", "discord-oauth", "armed-service", "botsite-database-url",
         "paypal-credentials", "botsite-gate", "order-020-pat", "bake-pat",
         "dashboard-site-password", "lumen-drift-release",
-        "product-forge-pages",
+        "product-forge-pages", "gumroad-publish-pass",
+        "photo-packs-originals", "ultramarine-rename", "illustration-gate",
+        "sinaasappel-proofread",
     }
     # Spot-check the two textually-overlapping PAT asks disambiguate.
     assert "BAKE_PAT" in by_id["bake-pat"]
@@ -156,6 +159,19 @@ def test_registry_ask_ids_are_unique_and_well_formed():
     assert not [
         e["id"] for e in askverify.REGISTRY if e.get("ask_id") is None
     ]
+
+
+def test_registry_signatures_unique_and_probeless_entries_carry_reasons():
+    """Registry well-formedness: no two entries share a signature tuple
+    (a duplicate would make the fallback scan order-dependent), and every
+    explicit not-machine-checkable registration (``probe=None``) carries a
+    non-empty honest reason."""
+    sigs = [tuple(e["signature"]) for e in askverify.REGISTRY]
+    assert len(set(sigs)) == len(sigs), f"duplicated signature: {sigs}"
+    for e in askverify.REGISTRY:
+        assert e["signature"], f"{e['id']}: empty signature"
+        if e["probe"] is None:
+            assert e.get("reason", "").strip(), f"{e['id']}: no reason"
 
 
 def test_match_unmatched_and_empty_are_none():
@@ -308,6 +324,125 @@ def test_committed_arcade_registry_ledger_and_probe_registry_agree():
         assert ask_id in ledger_ids, (
             f"{slug}: {ask_id} is not an open ledger row"
         )
+
+
+# --------------------------------------------------------------------------- #
+# Cross-surface pin over ALL FOUR botsite registries (the 2026-07-16 registry
+# blocker join: catalog.json / products.json / puddle_museum.json gained the
+# arcade's optional blocker+ask_id object). Every committed blocker ask_id
+# must be a real Open ledger row AND resolve by exact id to a registry entry
+# — one ledger edit flips the public panel and the owner-console chip.
+# --------------------------------------------------------------------------- #
+DATA_DIR = Path(__file__).resolve().parents[1] / "botsite/data"
+
+# The write-slice parked catalog titles: agent work (a missing manuscript),
+# not owner actions — they must never carry a blocker or a ledger row.
+WRITE_SLICE_SLUGS = {
+    "the-marginalia-society", "the-night-kiln", "the-paper-orange",
+    "the-pepper-ledger", "the-windmill-mouse",
+}
+
+
+def _all_registry_blocker_ask_ids() -> dict[tuple[str, str], str]:
+    """(file, entry-key) → blocker ask_id across all four committed botsite
+    registries, read as plain JSON (no cross-service import — services never
+    import each other's packages; the committed files ARE the contract)."""
+    import json
+
+    found: dict[tuple[str, str], str] = {}
+
+    def _collect(fname: str, entries, key: str):
+        for e in entries:
+            blocker = e.get("blocker")
+            if isinstance(blocker, dict) and blocker.get("ask_id"):
+                found[(fname, e[key])] = blocker["ask_id"]
+
+    for fname, key in (
+        ("arcade.json", "slug"),
+        ("catalog.json", "slug"),
+        ("products.json", "slug"),
+    ):
+        _collect(fname, json.loads(
+            (DATA_DIR / fname).read_text(encoding="utf-8")
+        ), key)
+    museum = json.loads(
+        (DATA_DIR / "puddle_museum.json").read_text(encoding="utf-8")
+    )
+    _collect("puddle_museum.json", museum.get("editions") or [], "lang")
+    return found
+
+
+def test_every_committed_registry_blocker_ask_id_is_an_open_ledger_row():
+    found = _all_registry_blocker_ask_ids()
+    assert found, "no blocker ask_ids found in any committed registry"
+    ledger_ids = {b.get("ask_id") for b in _open_ledger_blocks()}
+    for (fname, entry), ask_id in found.items():
+        assert re.fullmatch(r"ASK-\d{4}", ask_id), (fname, entry, ask_id)
+        assert ask_id in ledger_ids, (
+            f"{fname}:{entry}: {ask_id} is not an open ledger row"
+        )
+        registry_entry = askverify.match("", ask_id)
+        assert registry_entry is not None, (
+            f"{fname}:{entry}: {ask_id} hits no askverify REGISTRY entry"
+        )
+        assert registry_entry["ask_id"] == ask_id
+
+
+def test_committed_registries_join_the_expected_asks():
+    """The exact committed mapping — the honest-blocker plan of record:
+    the Gumroad publish pass (ASK-0012) covers the ten publish-ready
+    catalog titles, their three fleet-store mirrors, and the component-
+    gated bundle; the four remaining owner gates each carry their own row;
+    the write-slice parked titles carry NO blocker at all."""
+    import json
+
+    found = _all_registry_blocker_ask_ids()
+    gumroad_catalog = {
+        "membership-kit", "template-packs", "agent-fleet-field-manual",
+        "kill-rule-intake-kit", "false-green-test-trap",
+        "merge-wall-cookbook", "the-slow-word", "the-weigh-house",
+        "de-waag", "het-trage-woord", "bundle-starter",
+    }
+    for slug in gumroad_catalog:
+        assert found[("catalog.json", slug)] == "ASK-0012", slug
+    for slug in (
+        "membership-site-boilerplate-kit", "agent-workflow-template-pack",
+        "agent-fleet-field-manual",
+    ):
+        assert found[("products.json", slug)] == "ASK-0012", slug
+    assert found[("catalog.json", "photo-packs")] == "ASK-0013"
+    assert found[("catalog.json", "ultramarine")] == "ASK-0014"
+    assert found[("catalog.json", "the-painted-stones")] == "ASK-0015"
+    assert found[("catalog.json", "the-puddle-museum")] == "ASK-0015"
+    for lang in ("en", "nl", "de"):
+        assert found[("puddle_museum.json", lang)] == "ASK-0015", lang
+    assert found[("catalog.json", "de-papieren-sinaasappel")] == "ASK-0016"
+    # The write-slice parked titles carry no blocker (and the one live
+    # catalog entry + live product don't either).
+    catalog = json.loads(
+        (DATA_DIR / "catalog.json").read_text(encoding="utf-8")
+    )
+    by_slug = {e["slug"]: e for e in catalog}
+    for slug in WRITE_SLICE_SLUGS:
+        assert "blocker" not in by_slug[slug], slug
+    assert "blocker" not in by_slug["stripe-webhook-test-kit"]
+    products = json.loads(
+        (DATA_DIR / "products.json").read_text(encoding="utf-8")
+    )
+    (live_product,) = [p for p in products if p["availability"] == "live"]
+    assert "blocker" not in live_product
+
+
+def test_the_five_new_asks_are_honestly_probe_less():
+    """ASK-0012..0016 are NOT machine-checkable (Gumroad state, off-repo
+    files, product/money decisions): each registers with ``probe=None`` and
+    a reason — never a fake probe, never a guessed verdict."""
+    for ask_id in ("ASK-0012", "ASK-0013", "ASK-0014", "ASK-0015",
+                   "ASK-0016"):
+        entry = askverify.match("", ask_id)
+        assert entry is not None, ask_id
+        assert entry["probe"] is None, ask_id
+        assert entry["reason"].strip(), ask_id
 
 
 def test_parser_extracts_the_id_line():

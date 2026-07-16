@@ -182,3 +182,113 @@ def test_committed_registry_is_honest():
             assert p["url"] is None
             assert p["has_link"] is False
             assert p["status_note"]  # every coming-soon product explains itself
+
+
+# --------------------------------------------------------------------------- #
+# blocker + ask_id — the shared schema (botsite/blockers.py, the arcade's
+# PR #360 object extended to the store 2026-07-16). Optional and fail-soft:
+# a malformed blocker costs only the panel, a malformed ask_id only the
+# ledger ref — never the entry.
+# --------------------------------------------------------------------------- #
+
+def _product(**overrides):
+    base = {
+        "slug": "ok", "name": "OK Kit", "tagline": "t", "description": "d",
+        "price": "$1", "availability": "coming-soon", "url": None,
+        "source": "venture-lab x @ e01fa01", "as_of": "2026-07-13",
+        "status_note": "n",
+    }
+    base.update(overrides)
+    return base
+
+
+def test_loader_normalizes_valid_blocker(tmp_path):
+    reg = tmp_path / "products.json"
+    reg.write_text(json.dumps([
+        _product(blocker={"owner_action": "  click the thing  ",
+                          "unblocks": " then it ships ",
+                          "ask_id": "  ASK-0042  "}),
+    ]), encoding="utf-8")
+    (product,) = products.load_products(reg)
+    assert product["blocker"] == {
+        "owner_action": "click the thing", "unblocks": "then it ships",
+        "ask_id": "ASK-0042",
+    }
+
+
+@pytest.mark.parametrize("blocker", [
+    None, "just prose", {"owner_action": "click"}, {"unblocks": "ships"},
+    {"owner_action": "", "unblocks": "ships"},
+    {"owner_action": 42, "unblocks": "ships"},
+])
+def test_loader_malformed_blocker_degrades_to_none(tmp_path, blocker):
+    """A missing/malformed blocker is fail-soft: it normalizes to None and
+    never invalidates the product entry (degrade, don't invent)."""
+    reg = tmp_path / "products.json"
+    reg.write_text(json.dumps([_product(blocker=blocker)]), encoding="utf-8")
+    (product,) = products.load_products(reg)
+    assert product["slug"] == "ok"  # the entry survives
+    assert product["blocker"] is None
+
+
+@pytest.mark.parametrize("ask_id", [
+    42, "", "   ", "ASK-42", "ASK-00100", "ask-0010",
+    "see ASK-0010", "ASK-0010 maybe",
+])
+def test_loader_malformed_ask_id_degrades_to_none_but_keeps_blocker(tmp_path, ask_id):
+    reg = tmp_path / "products.json"
+    reg.write_text(json.dumps([
+        _product(blocker={"owner_action": "click", "unblocks": "ships",
+                          "ask_id": ask_id}),
+    ]), encoding="utf-8")
+    (product,) = products.load_products(reg)
+    assert product["blocker"] is not None
+    assert product["blocker"]["owner_action"] == "click"
+    assert product["blocker"]["ask_id"] is None
+
+
+def test_committed_registry_blockers_join_the_ledger():
+    """The three coming-soon products all wait on the same one owner session
+    (the ASK-0012 Gumroad publish pass); the live product carries none."""
+    by_slug = {p["slug"]: p for p in products.load_products()}
+    assert by_slug["stripe-webhook-test-kit"]["blocker"] is None
+    for slug in (
+        "membership-site-boilerplate-kit", "agent-workflow-template-pack",
+        "agent-fleet-field-manual",
+    ):
+        blocker = by_slug[slug]["blocker"]
+        assert blocker is not None, slug
+        assert blocker["owner_action"].strip(), slug
+        assert blocker["unblocks"].strip(), slug
+        assert blocker["ask_id"] == "ASK-0012", slug
+
+
+def test_products_page_renders_blocker_panels_with_ledger_refs(client):
+    """The three coming-soon cards render the blocker panel: the owner click,
+    how it unblocks, and the guarded ledger ref; the live card gets none."""
+    r = client.get("/products")
+    assert r.status_code == 200
+    assert r.text.count("The owner click:") == 3
+    assert r.text.count("How it unblocks:") == 3
+    assert r.text.count("Ledger ref:") == 3
+    assert r.text.count("<code>ASK-0012</code>") == 3
+    assert "owner-actions ledger" in r.text
+    # honesty intact: still exactly one Gumroad buy link on the page
+    assert r.text.count("gumroad.com") == 1
+    assert r.text.count("Buy on Gumroad") == 1
+
+
+def test_products_page_idless_blocker_renders_panel_without_ledger_ref(
+    client, monkeypatch, tmp_path
+):
+    reg = tmp_path / "products.json"
+    reg.write_text(json.dumps([
+        _product(blocker={"owner_action": "click the thing",
+                          "unblocks": "then it ships"}),
+    ]), encoding="utf-8")
+    monkeypatch.setattr(products, "PRODUCTS_JSON_PATH", reg)
+    r = client.get("/products")
+    assert r.status_code == 200
+    assert "The owner click:" in r.text
+    assert "click the thing" in r.text
+    assert "Ledger ref:" not in r.text

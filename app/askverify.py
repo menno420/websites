@@ -482,6 +482,68 @@ REGISTRY: list[dict[str, Any]] = [
             "observable — and must never be probed"
         ),
     },
+    # The 2026-07-16 registry blocker join: catalog.json / products.json /
+    # puddle_museum.json gained the same optional blocker+ask_id object the
+    # arcade carries (schema shared via botsite/blockers.py), and their
+    # owner gates became ledger rows ASK-0012..0016. Unlike the arcade pair
+    # above, NONE of these five is machine-checkable — Gumroad listing
+    # state, owner-held off-repo files, and product/money decisions have no
+    # read-only external probe — so each is registered probe-less with the
+    # honest reason (the ASK-0001..0005 pattern).
+    {
+        "id": "gumroad-publish-pass",
+        "ask_id": "ASK-0012",
+        "signature": ("gumroad", "publish"),
+        "probe": None,
+        "reason": (
+            "Gumroad listing state is not observable by any read-only "
+            "probe this repo holds (no Gumroad credential exists) — "
+            "verification is a session recording the live listing URLs in "
+            "the committed registries"
+        ),
+    },
+    {
+        "id": "photo-packs-originals",
+        "ask_id": "ASK-0013",
+        "signature": ("photo", "originals"),
+        "probe": None,
+        "reason": (
+            "the full-res originals are owner-held off-repo — whether they "
+            "have been handed off is not externally observable"
+        ),
+    },
+    {
+        "id": "ultramarine-rename",
+        "ask_id": "ASK-0014",
+        "signature": ("ultramarine",),
+        "probe": None,
+        "reason": (
+            "a naming decision only the owner can make — no external state "
+            "exists to probe"
+        ),
+    },
+    {
+        "id": "illustration-gate",
+        "ask_id": "ASK-0015",
+        "signature": ("illustration",),
+        "probe": None,
+        "reason": (
+            "a product/money decision only the owner can make (the vetting "
+            "packets' §5 illustration gate) — no external state exists to "
+            "probe"
+        ),
+    },
+    {
+        "id": "sinaasappel-proofread",
+        "ask_id": "ASK-0016",
+        "signature": ("sinaasappel",),
+        "probe": None,
+        "reason": (
+            "whether a native-speaker proofread happened is human work "
+            "with no externally observable state — no read-only probe "
+            "exists"
+        ),
+    },
 ]
 
 UNMATCHED_REASON = (

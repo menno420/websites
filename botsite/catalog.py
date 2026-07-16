@@ -24,6 +24,12 @@ Honesty rules (the "never fake data" doctrine, applied to the catalog):
   its ``url`` is non-null; every other entry carries its status note and
   never renders a buy link. No dead links.
 - Outbound buy links carry ``?ref=fleet-store`` for attribution.
+- The optional ``blocker`` object (``owner_action`` + ``unblocks``, plus an
+  optional stable ``ask_id`` ledger ref — schema shared with the arcade via
+  ``botsite/blockers.py``) records the named owner click/decision standing
+  between a not-live entry and its launch; the page renders it as the
+  entry's blocker panel. Fail-soft everywhere: a missing or malformed
+  blocker normalizes to ``None`` and never invalidates the entry.
 """
 
 from __future__ import annotations
@@ -31,6 +37,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+
+from . import blockers
 
 BASE_DIR = Path(__file__).resolve().parent
 CATALOG_JSON_PATH = BASE_DIR / "data" / "catalog.json"
@@ -99,6 +107,7 @@ def load_catalog(path: Path | None = None) -> list[dict[str, Any]]:
         item["is_live"] = item["status"] == "live" and url is not None
         item["has_link"] = item["is_live"]
         item["link_url"] = _with_ref(url) if item["has_link"] and url else None
+        item["blocker"] = blockers.normalized_blocker(item.get("blocker"))
         entries.append(item)
     return entries
 

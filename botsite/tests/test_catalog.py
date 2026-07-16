@@ -228,3 +228,144 @@ def test_committed_registry_is_honest():
         if e["status"] != "live":
             assert e["url"] is None
             assert e["has_link"] is False
+
+
+# --------------------------------------------------------------------------- #
+# blocker + ask_id — the shared schema (botsite/blockers.py, the arcade's
+# PR #360 object extended to the catalog 2026-07-16). Optional and fail-soft
+# everywhere: a malformed blocker costs only the panel, a malformed ask_id
+# costs only the ledger ref — never the entry.
+# --------------------------------------------------------------------------- #
+
+# The write-slice parked titles: agent work (a missing manuscript), not owner
+# actions — they must never carry a blocker.
+WRITE_SLICE_SLUGS = (
+    "the-marginalia-society", "the-night-kiln", "the-paper-orange",
+    "the-pepper-ledger", "the-windmill-mouse",
+)
+
+# slug → the ledger ask id its committed blocker joins (docs/owner/
+# OWNER-ACTIONS.md Open rows; cross-pinned repo-wide by tests/test_askverify.py).
+EXPECTED_ASK_IDS = {
+    "membership-kit": "ASK-0012",
+    "template-packs": "ASK-0012",
+    "agent-fleet-field-manual": "ASK-0012",
+    "kill-rule-intake-kit": "ASK-0012",
+    "false-green-test-trap": "ASK-0012",
+    "merge-wall-cookbook": "ASK-0012",
+    "the-slow-word": "ASK-0012",
+    "the-weigh-house": "ASK-0012",
+    "de-waag": "ASK-0012",
+    "het-trage-woord": "ASK-0012",
+    "bundle-starter": "ASK-0012",
+    "photo-packs": "ASK-0013",
+    "ultramarine": "ASK-0014",
+    "the-painted-stones": "ASK-0015",
+    "the-puddle-museum": "ASK-0015",
+    "de-papieren-sinaasappel": "ASK-0016",
+}
+
+
+def test_loader_normalizes_valid_blocker(tmp_path):
+    reg = tmp_path / "catalog.json"
+    reg.write_text(json.dumps([
+        _entry(blocker={"owner_action": "  click the thing  ",
+                        "unblocks": " then it ships ",
+                        "ask_id": "  ASK-0042  "}),
+    ]), encoding="utf-8")
+    (entry,) = catalog.load_catalog(reg)
+    assert entry["blocker"] == {
+        "owner_action": "click the thing", "unblocks": "then it ships",
+        "ask_id": "ASK-0042",
+    }
+
+
+@pytest.mark.parametrize("blocker", [
+    None,                                        # explicit null
+    "just prose",                                # wrong type
+    {"owner_action": "click"},                   # missing unblocks
+    {"unblocks": "ships"},                       # missing owner_action
+    {"owner_action": "", "unblocks": "ships"},   # empty owner_action
+    {"owner_action": 42, "unblocks": "ships"},   # wrong value type
+])
+def test_loader_malformed_blocker_degrades_to_none(tmp_path, blocker):
+    """A missing/malformed blocker is fail-soft: it normalizes to None and
+    never invalidates the catalog entry (degrade, don't invent)."""
+    reg = tmp_path / "catalog.json"
+    reg.write_text(json.dumps([_entry(blocker=blocker)]), encoding="utf-8")
+    (entry,) = catalog.load_catalog(reg)
+    assert entry["slug"] == "ok"  # the entry survives
+    assert entry["blocker"] is None
+
+
+def test_loader_missing_blocker_is_none(tmp_path):
+    reg = tmp_path / "catalog.json"
+    reg.write_text(json.dumps([_entry()]), encoding="utf-8")
+    (entry,) = catalog.load_catalog(reg)
+    assert entry["blocker"] is None
+
+
+@pytest.mark.parametrize("ask_id", [
+    42, "", "   ", "ASK-42", "ASK-00100", "ask-0010",
+    "see ASK-0010", "ASK-0010 maybe",
+])
+def test_loader_malformed_ask_id_degrades_to_none_but_keeps_blocker(tmp_path, ask_id):
+    """A bad ``ask_id`` costs only the ledger ref — the blocker itself (the
+    honest owner click + unblocks story) always survives (fail-soft)."""
+    reg = tmp_path / "catalog.json"
+    reg.write_text(json.dumps([
+        _entry(blocker={"owner_action": "click", "unblocks": "ships",
+                        "ask_id": ask_id}),
+    ]), encoding="utf-8")
+    (entry,) = catalog.load_catalog(reg)
+    assert entry["blocker"] is not None
+    assert entry["blocker"]["owner_action"] == "click"
+    assert entry["blocker"]["ask_id"] is None
+
+
+def test_committed_registry_blockers_join_the_ledger():
+    """Every genuinely owner-gated committed entry carries a blocker with its
+    ledger ask id; the live entry and the write-slice parked titles carry
+    none (agent work, not owner actions)."""
+    by_slug = {e["slug"]: e for e in catalog.load_catalog()}
+    for slug, ask_id in EXPECTED_ASK_IDS.items():
+        blocker = by_slug[slug]["blocker"]
+        assert blocker is not None, slug
+        assert blocker["owner_action"].strip(), slug
+        assert blocker["unblocks"].strip(), slug
+        assert blocker["ask_id"] == ask_id, slug
+    assert by_slug["stripe-webhook-test-kit"]["blocker"] is None
+    for slug in WRITE_SLICE_SLUGS:
+        assert by_slug[slug]["blocker"] is None, slug
+
+
+def test_catalog_page_renders_blocker_panels_with_ledger_refs(client):
+    """Non-live entries with committed blockers render the panel: the owner
+    click, how it unblocks, and the guarded ledger ref (one panel per
+    blocker-carrying entry; the live entry and write-slice titles get none)."""
+    r = client.get("/products/catalog")
+    assert r.status_code == 200
+    assert r.text.count("The owner click:") == len(EXPECTED_ASK_IDS)
+    assert r.text.count("How it unblocks:") == len(EXPECTED_ASK_IDS)
+    assert r.text.count("Ledger ref:") == len(EXPECTED_ASK_IDS)
+    for ask_id in sorted(set(EXPECTED_ASK_IDS.values())):
+        assert f"<code>{ask_id}</code>" in r.text, ask_id
+    assert "owner-actions ledger" in r.text
+
+
+def test_catalog_page_idless_blocker_renders_panel_without_ledger_ref(
+    client, monkeypatch, tmp_path
+):
+    """An id-less blocker still renders its full panel — just no ledger ref
+    line (the fallback path: the owner console then joins by signature)."""
+    reg = tmp_path / "catalog.json"
+    reg.write_text(json.dumps([
+        _entry(blocker={"owner_action": "click the thing",
+                        "unblocks": "then it ships"}),
+    ]), encoding="utf-8")
+    monkeypatch.setattr(catalog, "CATALOG_JSON_PATH", reg)
+    r = client.get("/products/catalog")
+    assert r.status_code == 200
+    assert "The owner click:" in r.text
+    assert "click the thing" in r.text
+    assert "Ledger ref:" not in r.text

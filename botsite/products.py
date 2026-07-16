@@ -16,6 +16,11 @@ Honesty rules (the "never fake data" doctrine, applied to products):
   AND its ``url`` is non-null; coming-soon entries carry their status note
   and never render a buy link. No dead links.
 - Outbound buy links carry ``?ref=fleet-store`` for attribution.
+- The optional ``blocker`` object (``owner_action`` + ``unblocks``, plus an
+  optional stable ``ask_id`` ledger ref — schema shared with the arcade via
+  ``botsite/blockers.py``) records the named owner click standing between a
+  coming-soon product and its launch. Fail-soft everywhere: a missing or
+  malformed blocker normalizes to ``None`` and never invalidates the entry.
 """
 
 from __future__ import annotations
@@ -23,6 +28,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+
+from . import blockers
 
 BASE_DIR = Path(__file__).resolve().parent
 PRODUCTS_JSON_PATH = BASE_DIR / "data" / "products.json"
@@ -82,5 +89,6 @@ def load_products(path: Path | None = None) -> list[dict[str, Any]]:
         product["is_live"] = product["availability"] == "live" and url is not None
         product["has_link"] = product["is_live"]
         product["link_url"] = _with_ref(url) if product["has_link"] and url else None
+        product["blocker"] = blockers.normalized_blocker(product.get("blocker"))
         products.append(product)
     return products
