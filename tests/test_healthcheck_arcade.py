@@ -88,13 +88,18 @@ def test_probe_bug_degrades_to_fail_line_not_traceback(monkeypatch):
 
 def test_flagged_arcade_url_turns_main_exit_nonzero(monkeypatch, capsys):
     """The pass folds into the script's existing idiom: any failure = exit 1.
-    Services + registry + tester-task pass are stubbed healthy so the arcade
-    flag is the only red (and nothing touches the network)."""
+    Services + registry + tester-task + release-drift passes are stubbed
+    healthy so the arcade flag is the only red (and nothing touches the
+    network)."""
     monkeypatch.setattr(healthcheck, "_probe", lambda url: (200, ""))
     monkeypatch.setattr(healthcheck, "check_fleet_registry", lambda: (True, "2 lanes parsed"))
     monkeypatch.setattr(
         healthcheck.testing_probe, "probe_task_urls",
         lambda: _summary(note="0 open-task URL(s) probed, 0 flagged"),
+    )
+    monkeypatch.setattr(
+        healthcheck, "check_release_drift",
+        lambda: (True, ["0 blocker(s) across the 4 registries, 0 distinct ask(s) joined, 0 flagged"]),
     )
     rows = [{"slug": "mineverse", "availability": "live",
              "url": "https://example.com", "ok": False, "note": "HTTP 503"}]
@@ -116,6 +121,10 @@ def test_healthy_arcade_keeps_main_exit_zero(monkeypatch, capsys):
     monkeypatch.setattr(
         healthcheck.testing_probe, "probe_task_urls",
         lambda: _summary(note="0 open-task URL(s) probed, 0 flagged"),
+    )
+    monkeypatch.setattr(
+        healthcheck, "check_release_drift",
+        lambda: (True, ["0 blocker(s) across the 4 registries, 0 distinct ask(s) joined, 0 flagged"]),
     )
     rows = [{"slug": "mineverse", "availability": "live",
              "url": "https://example.com", "ok": True, "note": "200"}]
