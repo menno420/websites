@@ -1,0 +1,1 @@
+- `claude/release-drift-flag` · **release-drift flag: healthcheck joins registry blocker ask_ids to askverify probes** · scripts/healthcheck.py + tests/ + control/ + .sessions/ · 2026-07-16
