@@ -1,68 +1,112 @@
 # 2026-07-16 — Arcade: launch-blocker panels join asks by ask_id
 
-> **Status:** in-progress
+> **Status:** `complete` — PR #360, branch `claude/arcade-askid-join`; the
+> two arcade owner clicks became ledger rows ASK-0010/0011, the committed
+> arcade blockers and the askverify probe registry now join on those ids
+> exactly, and the keyword-signature scan remains the honest fallback for
+> id-less rows.
+
+- **📊 Model:** Fable (Claude 5 family) · medium · feature build
 
 **Goal:** the arcade per-game launch-blocker panels (PR #349) and the owner
 console's verification chips (PR #358) tell the same story from the same
-facts — but they share NO join key. The only machine join between a blocker
-and its ask today is `app/askverify.py`'s two arcade probe entries
-(`lumen-drift-release`, `product-forge-pages`), which sit `ask_id=None` and
-bind purely by brittle keyword signatures over ask headline text. This slice
-switches that join to the ledger's stable `ASK-NNNN` id as the PRIMARY key,
+facts — but they shared NO join key. The only machine join between a blocker
+and its ask was `app/askverify.py`'s two arcade probe entries
+(`lumen-drift-release`, `product-forge-pages`), which sat `ask_id=None` and
+bound purely by brittle keyword signatures over ask headline text. This slice
+switched that join to the ledger's stable `ASK-NNNN` id as the PRIMARY key,
 keeping the signature scan as the fallback for id-less rows.
-
-**Scope (matches `control/claims/2026-07-16-arcade-askid-join.md`):**
-
-- `docs/owner/OWNER-ACTIONS.md` — the two arcade owner clicks become real
-  ledger rows with stable ids (append-only scheme: next free numbers
-  ASK-0010 / ASK-0011); they were previously promises on the public arcade
-  page with no ledger row at all.
-- `app/askverify.py` — the two arcade REGISTRY entries flip from
-  `ask_id=None` (signature-only) to their new exact ids; `match()` already
-  prefers exact-ID with signature fallback (PR #358), so the join flips key.
-- `botsite/data/arcade.json` + `botsite/arcade.py` — each `blocker` object
-  gains an optional, fail-soft `ask_id` referencing its ledger row; the
-  detail page renders the ledger ref. Both surfaces now flip from one
-  ledger edit.
-- Tests: botsite suite (schema + panel), tests/ suite (ID-primary join even
-  when the old brittle key would mismatch; ID-less signature fallback;
-  committed arcade.json ↔ ledger ↔ registry consistency pin).
-
-**Plan:** ledger rows first (ids minted), registry ids second, arcade
-schema + template third, tests alongside each; full four-suite verify +
-`bootstrap.py check --strict` before every push; heartbeat overwrite
-(coordinator-delegated) on this branch; card flips complete last.
 
 ⚑ Self-initiated: no — coordinator-dispatched slice promoted from the
 NEXT-2-TASKS baton (`.sessions/2026-07-15-arcade-detail.md` idea, promoted
 by `control/status.md` at a0a6e66).
 
-## Close-out (auto-drafted 2026-07-16 — edit, don't author)
+## Close-out
 
-<!-- substrate:auto-draft -->
+**Evidence:**
 
-**Evidence (auto-collected — verify, then keep or correct):**
+- files touched this branch: `.sessions/2026-07-16-arcade-askid-join.md` +
+  `control/claims/2026-07-16-arcade-askid-join.md` (first commit; claim
+  deleted at this flip), `docs/owner/OWNER-ACTIONS.md` (two appended
+  six-field ⚑ rows, ids ASK-0010 lumen-drift-v1.3 release + ASK-0011
+  product-forge Pages source — append-only scheme, next free numbers),
+  `app/askverify.py` (the two arcade REGISTRY entries flip from
+  `ask_id=None` to the new exact ids; `match()` already prefers exact-ID
+  with signature fallback since PR #358, so only the key flips),
+  `botsite/arcade.py` (`_normalized_ask_id` — optional validated
+  `ASK-\d{4}`, fail-soft to None; blocker dicts now always carry the
+  `ask_id` key), `botsite/data/arcade.json` (both committed blockers carry
+  their ledger id), `botsite/templates/arcade_detail.html` (muted "Ledger
+  ref" line when an id is present; id-less blockers render exactly as
+  before), `botsite/tests/test_arcade.py` (+11 test items: valid-id
+  normalization, 8 malformed-id degrade cases keeping the blocker alive,
+  committed-registry id pin, detail-page ledger-ref render, id-less
+  fallback render), `tests/test_askverify.py` (+5: ID-primary join binds
+  where the old brittle key mismatches, id-less signature fallback,
+  annotate() end-to-end by id, cross-surface consistency pin arcade.json ↔
+  ledger Open rows ↔ probe registry; ledger pins updated 9 → 11 open
+  asks), `control/status.md` (coordinator-delegated heartbeat overwrite:
+  11-ask mirror + next-2 baton).
+- git: branch `claude/arcade-askid-join` from `main` @ `a0a6e66`; PR #360
+  (draft, born-red until this flip). Commits: d8ac525 (card + claim),
+  0f2b558 (implementation), a2a1342 (heartbeat), this flip.
+- verify (before the implementation push): `python3 -m pytest tests/
+  botsite/tests dashboard/tests review/tests -q` — **1519 passed, 1
+  warning in 91.94s (0:01:31)** (+16 vs main's 1503); `python3
+  bootstrap.py check --strict` — green except the DESIGNED born-red hold
+  on this card ("HOLD (by design): session card
+  .sessions/2026-07-16-arcade-askid-join.md declares an in-progress
+  Status"), released by this flip and re-verified after it.
 
-- code touched (69): `app/activity.py`, `app/askverify.py`, `app/briefing.py`, `app/config.py`, `app/envdrift.py`, `app/envhub.py`, `app/environments.py`, `app/fleet.py`, `app/freshness.py`, `app/github.py`, `app/ideas.py`, `app/journal.py`, `app/listfilter.py`, `app/main.py`, `app/nav.py` (+54 more)
-- docs touched (26): `docs/AGENT_ORIENTATION.md`, `docs/CAPABILITIES.md`, `docs/RAILWAY-SAFETY.md`, `docs/ROUTINES.md`, `docs/SKILLS.md`, `docs/ai-project-workflow.md`, `docs/architecture.md`, `docs/audits/2026-07-13-fleet-cleanup-audit.md`, `docs/audits/README.md`, `docs/audits/eap-project-audit-2026-07-14.md`, `docs/botsite.md`, `docs/collaboration-model.md`, `docs/current-state.md`, `docs/dashboard.md`, `docs/eap-closeout-walkthrough-2026-07-14.md` (+11 more)
-- other touched (105): `.claude/CLAUDE.md`, `.github/workflows/auto-merge-enabler.yml`, `.github/workflows/host-automerge-extras.yml`, `.github/workflows/quality.yml`, `.github/workflows/review-bake.yml`, `.github/workflows/smoke-crawl.yml`, `.gitignore`, `.session-journal.md`, `HANDOFF.md`, `app/data/environments.json`, `app/data/web_presence.json`, `app/static/favicon.svg`, `app/templates/_listfilter.html`, `app/templates/_prompt_artifact.html`, `app/templates/activity.html` (+90 more)
-- sessions touched (204): `.sessions/2026-07-09-activity-atom-feed.md`, `.sessions/2026-07-09-activity-ideas-views.md`, `.sessions/2026-07-09-adopt-substrate-kit.md`, `.sessions/2026-07-09-botsite-content-depth.md`, `.sessions/2026-07-09-console-feed-contract.md`, `.sessions/2026-07-09-control-plane-site.md`, `.sessions/2026-07-09-dashboard-autodeploy-fix.md`, `.sessions/2026-07-09-dashboard-botsite-rework-plan.md`, `.sessions/2026-07-09-dashboard-stub-denylist.md`, `.sessions/2026-07-09-drop-auth.md`, `.sessions/2026-07-09-engage-kit.md`, `.sessions/2026-07-09-fix-born-red-gate.md`, `.sessions/2026-07-09-fleet-retro-order.md`, `.sessions/2026-07-09-harden-verify.md`, `.sessions/2026-07-09-journal-search-mobile.md` (+189 more)
-- tests touched (92): `botsite/tests/test_agent_pr_check.py`, `botsite/tests/test_arcade.py`, `botsite/tests/test_arcade_probe.py`, `botsite/tests/test_botsite.py`, `botsite/tests/test_botsite_filters.py`, `botsite/tests/test_catalog.py`, `botsite/tests/test_clarity_structure.py`, `botsite/tests/test_env_parse_hardening.py`, `botsite/tests/test_field_manual.py`, `botsite/tests/test_graveyard.py`, `botsite/tests/test_import_roundtrip.py`, `botsite/tests/test_import_schema_drift.py`, `botsite/tests/test_products.py`, `botsite/tests/test_puddle_museum.py`, `botsite/tests/test_rubric.py` (+77 more)
-- git: branch `claude/arcade-askid-join`, HEAD 5381fdba1 → d8ac52514 (commits made this session).
-- commits this session (2): "rescue: uncommitted .substrate/state.json from prior session" · "session: open born-red card + claim for arcade-askid-join"
-- verify: run `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q (all four service suites); python3 bootstrap.py check --strict (kit gate)` and record the result → [[fill: verify result — the engine cannot execute commands]]
+**Judgment:**
 
-**Judgment (the half only the session knows — resolve every slot):**
-
-- Decisions made: [[fill: decisions taken this session, or none]]
-- Next session should know: [[fill: the handoff pointer — where to pick up]]
+- Decisions made: (1) the arcade owner clicks became REAL ledger rows
+  (ASK-0010/0011) instead of leaving `blocker.ask_id` dangling — an id
+  join is only honest when both sides exist; the rows transcribe the
+  registry's existing blocker prose, no new claims. (2) `ask_id` on the
+  blocker is optional and fail-soft exactly like the blocker itself: a
+  malformed id costs only the ledger ref, never the panel (degrade, don't
+  invent). (3) no new join code path — askverify's PR-#358 exact-ID
+  matcher IS the join; this slice only flips the arcade entries onto the
+  primary key, so there is one matcher to maintain, not two.
+- Next session should know: the baton's two follow-ups are now cheap —
+  the same optional blocker+ask_id object fits catalog.json /
+  products.json / puddle_museum.json unchanged, and a release-drift check
+  can join blocker.ask_id to its probe inside scripts/healthcheck.py
+  (which already imports both app and botsite) with zero new botsite
+  network surface. When an owner click lands, ONE ledger edit (move the
+  row to Decided) plus the registry availability flip retires both the
+  panel and the chip.
 
 ## 💡 Session idea
 
-[[fill: one idea you genuinely believe in — never filler]]
+**Pin the ASK-NNNN grammar across services the way listfilter is pinned.**
+The stable-id shape now lives in three places that can never import each
+other: `app/owner_queue.py` `_ID_RE` (parser), `app/askverify.py`'s
+well-formedness checks, and `botsite/arcade.py` `_ASK_ID_RE` (blocker
+join key). The repo already solves exactly this class of drift for
+`listfilter` with a byte-identity test on the vendored copy — a small
+`tests/` contract test asserting the id regexes agree on one canonical
+positive/negative example table (ASK-0042 yes; ask-0042 / ASK-42 /
+embedded-in-prose no) would make it impossible for the public join key
+and the gated parser to drift apart silently. Deduped: no such
+cross-service grammar pin exists today (the new consistency test pins the
+committed VALUES, not the SHAPE rules).
 
 ## ⟲ Previous-session review
 
-[[fill: one genuine remark on the previous session + one workflow improvement]]
-
-- **📊 Model:** [[fill: model · effort · task-class (Q-0248 taxonomy)]]
+`.sessions/2026-07-15-arcade-detail.md` earned its keep twice here: its
+close-out review is what promoted this slice (it named the missing join
+key explicitly — "the stable ask-ID idea that card filed would give the
+arcade `blocker` objects an `ask_id` to reference, and both surfaces would
+flip from one ledger edit" — which this session implemented almost
+verbatim), and its discipline of transcribing blocker copy from existing
+status_note prose made minting the ledger rows honest and mechanical: the
+six-field asks are restatements of already-committed facts, not new
+claims. Its sequencing judgment also held up — it deliberately did NOT
+invent an id scheme inside arcade.json a day before #358 existed, so no
+throwaway key ever shipped. The improvement it points at: a card whose
+review names a concrete promotable slice could also name the files the
+slice will touch (this one had to be re-derived here from three PRs);
+one line of expected-surface would have saved most of this session's
+orientation reads.
