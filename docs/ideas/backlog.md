@@ -9,6 +9,25 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Owner console "stuck landing" chip — surface pushed-unmerged branches
+  the way unblocks-N-cards and release-drift already surface asks** ·
+  `captured` (2026-07-16, pr-tooling-ask session 💡) — the PR-creation
+  wall (ASK-0017) means routine-fired sessions can push a branch but not
+  open its PR, so work piles up pushed-unmerged with only each session's
+  status.md prose noting it (three branches stuck this way as of
+  2026-07-16: the failsafe heartbeat, arcade-catalog-blockers,
+  games-availability-summary). A small helper — list local-tracking
+  branches whose tip isn't an ancestor of main, cross-reference against
+  open PRs via the control-plane's existing `app/github.py` client — could
+  render a glanceable "N branches waiting on a PR" chip on `/owner/queue`,
+  the same pattern as the unblocks-N-cards and release-drift chips (#368,
+  #370). Worth having because the wall is structural (org-level GitHub App
+  gate) and will keep recurring until ASK-0017 is decided; a chip turns
+  "read every session's status.md notes" into one glance. Deduped against
+  this backlog and the two existing console chips: nothing here reads git
+  branch-vs-main-ancestry state, only ask_id joins. Source:
+  `.sessions/2026-07-16-pr-tooling-ask.md` 💡.
+
 - **Shared `drift_report()` renderer — one structured join, three
   surfaces** · `captured` (2026-07-16, release-drift session 💡) — the
   healthcheck's release-drift pass (PR #365 `check_release_drift()`) and
