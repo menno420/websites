@@ -1,8 +1,8 @@
 # websites · status
 
-updated: 2026-07-16T21:13:07Z
-phase: failsafe-wake work-loop cycle 2 — no new inbox order, NEXT-2-TASKS baton empty, so this cycle's self-initiated slice files the recurring PR-creation wall as ASK-0017 (branch claude/pr-tooling-ask-20260716) instead of another feature; re-armed the chain.
-health: green — main da63857, unchanged this cycle · four branches now pushed-unmerged awaiting a PR (this session cannot open one — see ASK-0017): claude/failsafe-heartbeat-20260716-2049 (prior heartbeat), claude/arcade-catalog-blockers (730e540), claude/games-availability-summary (d0ead52), claude/pr-tooling-ask-20260716 (this cycle's ASK-0017 filing) · `bootstrap check --strict` green on this cycle's branch.
+updated: 2026-07-16T21:32:26Z
+phase: failsafe-wake work-loop cycle 3 — synced, no new inbox order, nothing landed since cycle 2, ASK-0017 not yet decided. Deliberately NOT opening another feature branch this cycle: five branches from this lane are already pushed-unmerged behind the ASK-0017 wall in under an hour, and more unlandable diffs just compound the backlog without being verifiable live. Holding at heartbeat-only until either a new inbox order arrives or a branch lands. Re-armed the chain.
+health: green — main da63857, unchanged this cycle · dependencies now installed (`pip install -r requirements.txt` × 4 services) and full suite run: **1631 passed** (baseline; this cycle's diff is status.md-only, no code touched) · five branches now pushed-unmerged awaiting a PR (this session cannot open one — see ASK-0017): claude/failsafe-heartbeat-20260716-2049, claude/arcade-catalog-blockers (730e540), claude/games-availability-summary (d0ead52), claude/pr-tooling-ask-20260716, claude/heartbeat-20260716-2145 (this branch, cycles 2+3) · `bootstrap check --strict` green.
 orders: acked=001-031 done=001-019,023-031 (020/021 owner-gated; 022 standing).
 routine: armed · cron 45 */2 (trig_01Cn7F2UvE62uDykSYQCDhtF "Websites failsafe wake") · re-armed another 15-min continue-the-work-loop send_later chain this heartbeat.
 landing: pushed-unmerged claude/heartbeat-20260716-2145 (this overwrite) — same wall as last cycle, see needs-owner.
@@ -32,11 +32,11 @@ needs-owner: the 17 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below) — A
 - #361 — rescue PR carrying a straggler drafted session card; draft, born-red by design (unresolved [[fill:]] slots); a follow-up close-out session must complete it before it can land.
 - #363 — rescue lifeboat: second straggler card from a detached-HEAD session (same filename as #361's card, DIFFERENT content); draft on purpose, owner/coordinator decides land-or-close.
 - #359 — automated fleet-data bake (data-only, bot-authored); waits on its dispatched quality run / auto-merge; base a0a6e66 predates #362's land.
-- claude/arcade-catalog-blockers, claude/games-availability-summary, claude/failsafe-heartbeat-20260716-2049, claude/pr-tooling-ask-20260716 — pushed-unmerged, see health line.
+- claude/arcade-catalog-blockers, claude/games-availability-summary, claude/failsafe-heartbeat-20260716-2049, claude/pr-tooling-ask-20260716, claude/heartbeat-20260716-2145 — pushed-unmerged, see health line.
 
 ## NEXT-2-TASKS baton
-Empty — no new inbox order since #031, both prior baton items shipped (#368, #370). Next session: if ASK-0017 is Decided, prioritize opening/merging the four pending branches above in one pass; otherwise pick fresh self-initiated work (the "stuck landing" console chip captured this cycle in docs/ideas/backlog.md is one candidate).
+Empty — no new inbox order since #031, both prior baton items shipped (#368, #370). Deliberately held this cycle: with five branches from this lane already stuck behind ASK-0017, another speculative feature branch (e.g. the "stuck landing" console chip idea) would add to an unlandable pile rather than deliver verifiable value — building it once landing unblocks, or once there's a way to verify it live, is the better sequencing. Next session: if ASK-0017 is Decided, prioritize opening/merging the five pending branches above in one pass before starting new work.
 
-note: the #355 SIM-REQUEST (botsite banner doctrine A/B) remains UNANSWERED, unchanged this cycle. This heartbeat did not run the four-service pytest suite — fresh clone, dependencies not installed (`ModuleNotFoundError: fastapi`); irrelevant since this cycle's diff (docs/status only) touches no Python.
+note: the #355 SIM-REQUEST (botsite banner doctrine A/B) remains UNANSWERED, unchanged this cycle. Full four-service pytest baseline now available (deps installed this cycle) — see health line.
 
 kit: v1.17.0
