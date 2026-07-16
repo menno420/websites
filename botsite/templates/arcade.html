@@ -14,6 +14,15 @@
   </section>
 
   {% if arcade_games %}
+  {# Availability summary strip — live vs blocked games and the distinct owner
+     clicks among the blocked ones (arcade.availability_summary; static
+     registry data only, no live verdicts). #}
+  {% set s = arcade_summary %}
+  <p class="sb-muted section-sm" style="margin:14px 0 0">
+    <strong>{{ s.live }} live</strong>
+    <span class="sep">·</span>
+    {{ s.blocked }} blocked{% if s.owner_clicks %} on {{ s.owner_clicks }} owner click{{ '' if s.owner_clicks == 1 else 's' }}{% endif %}
+  </p>
   {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
   {% set lf = arcade_filter %}
   {% include "_listfilter.html" %}
@@ -33,8 +42,20 @@
           {% if g.availability == "live" %}Play now{% else %}Download{% endif %} {{ icon("external", 13) }}
         </a>
       </p>
-      {% elif g.status_note %}
+      {% else %}
+      {% if g.status_note %}
       <p class="sb-muted" style="margin:10px 0 0"><em>{{ g.status_note }}</em></p>
+      {% endif %}
+      {% if g.blocker %}
+      {# The blocking owner click, mirroring the /arcade/{slug} detail panel —
+         honest ledger text only (owner_action + ask_id), never a live verdict. #}
+      <div class="sb-panel" style="margin:10px 0 0">
+        <p style="margin:0"><strong>The owner click:</strong> {{ g.blocker.owner_action }}</p>
+        {% if g.blocker.ask_id %}
+        <p class="sb-muted" style="margin:6px 0 0"><strong>Ledger ref:</strong> <code>{{ g.blocker.ask_id }}</code></p>
+        {% endif %}
+      </div>
+      {% endif %}
       {% endif %}
       <div class="sb-feat meta">
         <a href="{{ g.detail_url }}">Details {{ icon("chevron", 12) }}</a>

@@ -222,7 +222,12 @@ async def arcade(request: Request):
     status note. Read-only in this slice: no state-changing routes.
     ORDER 019 PR2: filter/sort/search over the vendored listfilter core
     (maturity / availability dimensions, defined in arcade.py); no params
-    renders exactly the pre-filter page."""
+    renders exactly the pre-filter page. Each unavailable card also surfaces
+    its blocking ``owner_action`` / ``ask_id`` (the same honest ledger text the
+    /arcade/{slug} detail panel renders — static registry data only, never a
+    live askverify verdict), and a top-of-page availability summary strip
+    counts live vs blocked games and the distinct owner clicks among the
+    blocked ones (``arcade.availability_summary``, a pure fail-soft helper)."""
     res = await ds.fetch_site(refresh=_refresh(request))
     ctx = _base_ctx(request, "arcade", res)
     games = arcade_registry.load_games()
@@ -230,6 +235,7 @@ async def arcade(request: Request):
     ctx.update(
         {
             "arcade_games": games,
+            "arcade_summary": arcade_registry.availability_summary(games),
             "arcade_filter": listfilter.apply(
                 arcade_registry.FILTER_SPEC, games, state
             ),
