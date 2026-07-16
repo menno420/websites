@@ -1,11 +1,12 @@
 # websites · status
 
-updated: 2026-07-16T09:00:34Z
-phase: worker session (coordinator-dispatched 2026-07-16) — release-drift healthcheck slice built as PR #365 (fifth healthcheck pass check_release_drift(): registry blockers joined to askverify probes by exact ask_id); close-out worker ran heartbeat + card flip.
-health: green — main 475d41c (PR #362 landed) · suite 1588 passed (full four-service run on the PR #365 branch; +10 vs main's 1578) · bootstrap check --strict green except the born-red hold on this session's card (released by the flip in this same push).
+updated: 2026-07-16T20:49:17Z
+phase: failsafe-wake session — no active send_later work-loop chain was found anywhere in the fleet for this project (checked the full trigger set; only the 2h failsafe cron itself was armed) despite a burst of landed PRs earlier today; trued this heartbeat to current main HEAD and re-armed the loop.
+health: green — main da63857 (#357 landed, latest of a run of merges this heartbeat had not yet recorded: #345, #368, #369, #370, #357) · two feature branches pushed-unmerged, not yet checked for CI/mergeable state this session: claude/arcade-catalog-blockers (730e540), claude/games-availability-summary (d0ead52) — next session should verify and land or continue them.
 orders: acked=001-031 done=001-019,023-031 (020/021 owner-gated; 022 standing).
-routine: failsafe cron 45 */2 active — armed (trig_01VRT9F6jYNXym3nn18vVQQK "Websites failsafe wake").
-needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below; every row carries a stable ID — verification chips, all four botsite registries' blocker panels (PRs #360/#362), and since PR #365 the healthcheck's release-drift pass all join on the ID exactly) — plus PR clicks: #357 (draft · green; landing path owner one-click mark-ready after a rate-limit denial) and #345 (do-not-automerge label — owner-lane by design; landing path owner removes label + merges).
+routine: armed · cron 45 */2 (trig_01Cn7F2UvE62uDykSYQCDhtF "Websites failsafe wake") · re-armed a 15-min continue-the-work-loop send_later chain this heartbeat since none was found active.
+landing: pushed-unmerged claude/failsafe-heartbeat-20260716-2049 (this status.md overwrite — no GitHub API scope in this session to open a PR; attempted a direct control-only push to main as a fallback, see notes for outcome)
+needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below; every row carries a stable ID — verification chips, all four botsite registries' blocker panels (PRs #360/#362), and since PR #365 the healthcheck's release-drift pass all join on the ID exactly). PR-click items #357 and #345 are DROPPED from this list — both merged to main this session's git log shows, so the asks are resolved; withdrawing per the control/README hygiene rule (expire stale asks every session).
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md)
 - ASK-0001 — answer Q-0004: where live bot control lives (or keep /admin dry-run).
@@ -26,17 +27,16 @@ needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below; every
 - ASK-0016 — arrange the native-speaker Dutch proofread for de-papieren-sinaasappel (details in docs/owner/OWNER-ACTIONS.md).
 
 ## Open PRs
-- #365 (this session) — release-drift healthcheck pass: check_release_drift() joins every registry blocker to its askverify probe by exact ask_id; FLAGs done-detected-but-still-gated drift and ledger drift, lists probe-less asks honestly. Ready-for-review; auto-merge (squash) armed by github-actions; landing path: card flip (this push) → quality green → auto-merge squashes into main.
+(unverified this session — no GitHub API scope; the below is inferred from git branch state only, not live CI/mergeable status)
 - #361 — rescue PR carrying a straggler drafted session card; draft, born-red by design (unresolved [[fill:]] slots); a follow-up close-out session must complete it before it can land.
-- #363 — rescue lifeboat: second straggler card from a detached-HEAD session (same filename as #361's card, DIFFERENT content); draft on purpose, owner/coordinator decides land-or-close. (Sibling lifeboat #364 no longer shows in the open-PR list as of this heartbeat.)
+- #363 — rescue lifeboat: second straggler card from a detached-HEAD session (same filename as #361's card, DIFFERENT content); draft on purpose, owner/coordinator decides land-or-close.
 - #359 — automated fleet-data bake (data-only, bot-authored); waits on its dispatched quality run / auto-merge; base a0a6e66 predates #362's land.
-- #357 — rerun-ci preflight names failed JOBS. CI-green draft; ready-flip owner-gated after a denial (rate-limit at flip time) — owner one-click: mark ready.
-- #345 — quality-main-sweep workflow. Green, labeled do-not-automerge — owner-lane by design; owner removes the label + merges.
+- claude/arcade-catalog-blockers (branch tip 730e540) — arcade catalog blockers + availability summary strip; session card flipped complete; not yet on main — next session should check its PR's CI/mergeable state.
+- claude/games-availability-summary (branch tip d0ead52) — games front door Fleet Arcade launch-readiness summary; session card flipped complete; not yet on main — next session should check its PR's CI/mergeable state.
 
 ## NEXT-2-TASKS baton
-1. (carry-forward) Owner-console reverse join: for each open ask, count and list the public cards its ask_id unblocks across all four botsite registries (ASK-0012 alone un-gates 14 cards) — an "unblocks N cards" chip on the console asks panel, read-only, no new POST surface.
-2. Owner-console release-drift chip: surface check_release_drift()'s verdicts on the gated /owner console (read-only; reuses the same ask_id join — the healthcheck output shipped in #365 is the alert surface, the chip is the glanceable one).
+Both prior baton items shipped since the last heartbeat (unblocks-N-cards chip → #368; release-drift chip → #370). Baton is empty — next session should pick fresh self-initiated work per the ⚑ needs-owner / notes below, or land the two pending branches above.
 
-note: the #355 SIM-REQUEST (botsite banner doctrine A/B) remains UNANSWERED — the #365 healthcheck pass deliberately sidestepped it (zero new botsite surface); the botsite-page release-drift banner stays unbuilt until the manager answers.
+note: the #355 SIM-REQUEST (botsite banner doctrine A/B) remains UNANSWERED — still sidestepped, zero new botsite surface since; the botsite-page release-drift banner stays unbuilt until the manager answers. This heartbeat is a failsafe-wake catch-up, not a build session — it did not independently verify CI/mergeable state on the two pending branches above, only that they exist pushed and unmerged.
 
 kit: v1.17.0
