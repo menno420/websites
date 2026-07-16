@@ -412,15 +412,21 @@ REGISTRY: list[dict[str, Any]] = [
         "signature": ("site_password", "dashboard"),
         "probe": probe_dashboard_site_password_gone,
     },
+    # The two arcade launch blockers (botsite/data/arcade.json — the
+    # /arcade/{slug} "What's blocking launch" panels) gained real ledger
+    # rows 2026-07-16: the join key is now the exact id, and the committed
+    # arcade.json blockers carry the SAME id (``blocker.ask_id``) — one
+    # ledger edit flips both surfaces. Signatures stay as the fallback for
+    # id-less lane copies, like every other entry.
     {
         "id": "lumen-drift-release",
-        "ask_id": None,  # no current ledger row — signature-only
+        "ask_id": "ASK-0010",
         "signature": ("lumen-drift",),
         "probe": probe_lumen_drift_release,
     },
     {
         "id": "product-forge-pages",
-        "ask_id": None,  # no current ledger row — signature-only
+        "ask_id": "ASK-0011",
         "signature": ("product-forge", "pages"),
         "probe": probe_product_forge_pages,
     },

@@ -10,7 +10,7 @@ default and token-armed tests opt in explicitly.
 Coverage:
 
 * matcher stability against the REAL committed docs/owner/OWNER-ACTIONS.md
-  Open section (all 9 asks match, each a distinct registry entry);
+  Open section (all 11 asks match, each a distinct registry entry);
 * every live probe's full verdict ladder (done-detected / still-open /
   unknown), including the no-token rungs and the never-writes guarantee of
   the ORDER-020 PAT check;
@@ -93,14 +93,16 @@ def _open_ledger_headlines() -> list[str]:
     return [b.get("what", "") for b in _open_ledger_blocks()]
 
 
-def test_real_ledger_has_the_nine_open_asks_each_with_a_unique_id():
+def test_real_ledger_has_the_eleven_open_asks_each_with_a_unique_id():
+    # 9 from the 2026-07-16 id backfill + the 2 arcade launch blockers
+    # (ASK-0010/0011) that became ledger rows the same day.
     blocks = _open_ledger_blocks()
-    assert len(blocks) == 9
+    assert len(blocks) == 11
     ids = [b.get("ask_id") for b in blocks]
     assert all(
         i and re.fullmatch(r"ASK-\d{4}", i) for i in ids
     ), f"open ask without a well-formed ID: {ids}"
-    assert len(set(ids)) == 9, f"duplicated ask id in the ledger: {ids}"
+    assert len(set(ids)) == 11, f"duplicated ask id in the ledger: {ids}"
 
 
 def test_every_real_open_ask_matches_a_distinct_registry_entry():
@@ -127,7 +129,8 @@ def test_real_ledger_matches_land_on_the_intended_probes():
     assert set(by_id) == {
         "q-0004", "discord-oauth", "armed-service", "botsite-database-url",
         "paypal-credentials", "botsite-gate", "order-020-pat", "bake-pat",
-        "dashboard-site-password",
+        "dashboard-site-password", "lumen-drift-release",
+        "product-forge-pages",
     }
     # Spot-check the two textually-overlapping PAT asks disambiguate.
     assert "BAKE_PAT" in by_id["bake-pat"]
@@ -148,10 +151,11 @@ def test_registry_ask_ids_are_unique_and_well_formed():
     ids = [e["ask_id"] for e in askverify.REGISTRY if e.get("ask_id")]
     assert len(set(ids)) == len(ids), f"registry reuses an ask id: {ids}"
     assert all(re.fullmatch(r"ASK-\d{4}", i) for i in ids)
-    # Entries with no current ledger row stay signature-only, explicitly.
-    assert {
+    # Every registry entry now has a ledger row (the two arcade blockers
+    # gained theirs 2026-07-16 — ASK-0010/0011): none stay signature-only.
+    assert not [
         e["id"] for e in askverify.REGISTRY if e.get("ask_id") is None
-    } == {"lumen-drift-release", "product-forge-pages"}
+    ]
 
 
 def test_match_unmatched_and_empty_are_none():
@@ -213,6 +217,97 @@ def test_annotate_matches_on_the_item_ask_id(monkeypatch):
     assert items[1]["verify"]["verdict"] == askverify.NOT_CHECKABLE
     assert "Q-0004" in items[1]["verify"]["detail"]
     assert rollup["machine_verified"] == 1 and rollup["unmatched"] == 0
+
+
+# --------------------------------------------------------------------------- #
+# Arcade launch-blocker join — ask_id primary, signature fallback
+# (the 2026-07-16 slice: botsite/data/arcade.json blockers ↔ ledger rows
+# ASK-0010/0011 ↔ the two arcade probe entries, one id end to end).
+# --------------------------------------------------------------------------- #
+ARCADE_JSON = (
+    Path(__file__).resolve().parents[1] / "botsite/data/arcade.json"
+)
+
+
+def _arcade_blocker_ask_ids() -> dict[str, str]:
+    """slug → blocker ask_id from the committed arcade registry, read as
+    plain JSON (no cross-service import — services never import each other's
+    packages; the committed file IS the contract)."""
+    import json
+
+    games = json.loads(ARCADE_JSON.read_text(encoding="utf-8"))
+    return {
+        g["slug"]: g["blocker"]["ask_id"]
+        for g in games
+        if isinstance(g.get("blocker"), dict) and g["blocker"].get("ask_id")
+    }
+
+
+def test_arcade_blocker_joins_by_ask_id_even_when_the_signature_would_miss():
+    """The primary join key is the id: an ask carrying ASK-0010 binds to the
+    lumen-drift probe even when its headline has been reworded past every
+    keyword the old brittle signature match needed."""
+    reworded = "Publish the finished Game Boy Advance ROM's download release."
+    assert askverify.match(reworded) is None  # the old key would mismatch
+    entry = askverify.match(reworded, "ASK-0010")
+    assert entry is not None and entry["id"] == "lumen-drift-release"
+    entry = askverify.match("Flip the settings toggle.", "ASK-0011")
+    assert entry is not None and entry["id"] == "product-forge-pages"
+
+
+def test_arcade_blocker_idless_row_still_joins_via_signature_fallback():
+    """A row with no ID (legacy block, lane copy) keeps the old matching
+    logic: the keyword signature scan still lands it on the arcade probes."""
+    entry = askverify.match("Publish the lumen-drift v1.3 release, please.")
+    assert entry is not None and entry["id"] == "lumen-drift-release"
+    entry = askverify.match(
+        "In product-forge, configure GitHub Pages for games-web."
+    )
+    assert entry is not None and entry["id"] == "product-forge-pages"
+
+
+def test_annotate_joins_the_arcade_asks_by_id_and_probes_them(monkeypatch):
+    def responder(url):
+        if "releases/tags/lumen-drift-v1.3" in url:
+            return _envelope(url, status=404)  # release not published yet
+        if url.endswith("/repos/menno420/product-forge/pages"):
+            return _envelope(url, ok=True, status=200, error="",
+                             data={"status": "built"})
+        return _envelope(url)
+
+    _install_get(monkeypatch, responder)
+    items = [
+        {"what": "Reworded ROM release errand.", "ask_id": "ASK-0010"},
+        {"what": "Reworded Pages errand.", "ask_id": "ASK-0011"},
+    ]
+    rollup = _run(askverify.annotate(items))
+    assert items[0]["verify"]["verdict"] == askverify.STILL_OPEN
+    assert items[0]["verify"]["probe"] == "lumen-drift-release"
+    assert items[1]["verify"]["verdict"] == askverify.DONE
+    assert items[1]["verify"]["probe"] == "product-forge-pages"
+    assert rollup["machine_verified"] == 2 and rollup["unmatched"] == 0
+
+
+def test_committed_arcade_registry_ledger_and_probe_registry_agree():
+    """The one-ledger-edit-flips-both-surfaces pin: each committed arcade
+    blocker's ask_id (a) resolves by exact-ID to the registry entry whose
+    probe machine-checks that very blocker, and (b) is a real row in the
+    committed ledger's Open section."""
+    ids = _arcade_blocker_ask_ids()
+    assert ids == {"lumen-drift": "ASK-0010", "games-web": "ASK-0011"}
+    expected_probe = {
+        "lumen-drift": "lumen-drift-release",
+        "games-web": "product-forge-pages",
+    }
+    for slug, ask_id in ids.items():
+        entry = askverify.match("", ask_id)
+        assert entry is not None, f"{slug}: {ask_id} hits no registry entry"
+        assert entry["id"] == expected_probe[slug]
+    ledger_ids = {b.get("ask_id") for b in _open_ledger_blocks()}
+    for slug, ask_id in ids.items():
+        assert ask_id in ledger_ids, (
+            f"{slug}: {ask_id} is not an open ledger row"
+        )
 
 
 def test_parser_extracts_the_id_line():

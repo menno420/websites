@@ -267,7 +267,10 @@ def test_loader_normalizes_valid_blocker(tmp_path):
          "blocker": {"owner_action": "  click the thing  ", "unblocks": " then it ships "}},
     ]), encoding="utf-8")
     (game,) = arcade.load_games(reg)
-    assert game["blocker"] == {"owner_action": "click the thing", "unblocks": "then it ships"}
+    assert game["blocker"] == {
+        "owner_action": "click the thing", "unblocks": "then it ships",
+        "ask_id": None,  # id-less blocker: valid, just without a ledger ref
+    }
 
 
 @pytest.mark.parametrize("blocker", [
@@ -324,3 +327,89 @@ def test_committed_registry_blockers_are_recorded_for_unavailable_games():
     assert by_slug["mineverse"]["blocker"] is None
     for slug, g in by_slug.items():
         assert g["detail_url"] == f"/arcade/{slug}"
+
+
+# --------------------------------------------------------------------------- #
+# blocker.ask_id — the stable ledger join key (owner-actions ledger ASK-NNNN).
+# Primary join between the public blocker panel and the owner console's
+# verification chips; fail-soft everywhere, never fatal.
+# --------------------------------------------------------------------------- #
+
+def test_loader_normalizes_valid_blocker_ask_id(tmp_path):
+    reg = tmp_path / "arcade.json"
+    reg.write_text(json.dumps([
+        {"slug": "g", "name": "G", "tagline": "t", "description": "d",
+         "maturity": "beta", "availability": "unavailable", "url": None,
+         "source_repo": "menno420/x", "status_note": "n",
+         "blocker": {"owner_action": "click", "unblocks": "ships",
+                     "ask_id": "  ASK-0042  "}},
+    ]), encoding="utf-8")
+    (game,) = arcade.load_games(reg)
+    assert game["blocker"]["ask_id"] == "ASK-0042"
+
+
+@pytest.mark.parametrize("ask_id", [
+    42,                # wrong type
+    "",                # empty
+    "   ",             # whitespace only
+    "ASK-42",          # too few digits
+    "ASK-00100",       # too many digits
+    "ask-0010",        # wrong case (the ledger scheme is uppercase)
+    "see ASK-0010",    # id embedded in prose, not an id
+    "ASK-0010 maybe",  # trailing prose
+])
+def test_loader_malformed_ask_id_degrades_to_none_but_keeps_blocker(tmp_path, ask_id):
+    """A bad ``ask_id`` costs only the ledger ref — the blocker itself (the
+    honest owner click + unblocks story) always survives (fail-soft)."""
+    reg = tmp_path / "arcade.json"
+    reg.write_text(json.dumps([
+        {"slug": "g", "name": "G", "tagline": "t", "description": "d",
+         "maturity": "beta", "availability": "unavailable", "url": None,
+         "source_repo": "menno420/x", "status_note": "n",
+         "blocker": {"owner_action": "click", "unblocks": "ships",
+                     "ask_id": ask_id}},
+    ]), encoding="utf-8")
+    (game,) = arcade.load_games(reg)
+    assert game["blocker"] is not None
+    assert game["blocker"]["owner_action"] == "click"
+    assert game["blocker"]["ask_id"] is None
+
+
+def test_committed_registry_blockers_carry_their_ledger_ask_ids():
+    """The committed registry joins both launch blockers to their owner-actions
+    ledger rows by stable id (docs/owner/OWNER-ACTIONS.md; the same ids
+    app/askverify.py's arcade probes are registered under — pinned repo-wide
+    by tests/test_askverify.py's consistency test)."""
+    by_slug = {g["slug"]: g for g in arcade.load_games()}
+    assert by_slug["lumen-drift"]["blocker"]["ask_id"] == "ASK-0010"
+    assert by_slug["games-web"]["blocker"]["ask_id"] == "ASK-0011"
+
+
+def test_arcade_detail_renders_the_ledger_ref(client):
+    """Both blocked games' detail panels show the stable ledger ref — the
+    visible half of the ask_id join."""
+    for slug, ask_id in (("lumen-drift", "ASK-0010"), ("games-web", "ASK-0011")):
+        r = client.get(f"/arcade/{slug}")
+        assert r.status_code == 200
+        assert "Ledger ref:" in r.text
+        assert f"<code>{ask_id}</code>" in r.text
+
+
+def test_arcade_detail_idless_blocker_renders_panel_without_ledger_ref(
+    client, monkeypatch, tmp_path
+):
+    """An id-less blocker still renders its full panel — just no ledger ref
+    line (the fallback path: the owner console then joins by signature)."""
+    reg = tmp_path / "arcade.json"
+    reg.write_text(json.dumps([
+        {"slug": "g", "name": "G", "tagline": "t", "description": "d",
+         "maturity": "beta", "availability": "unavailable", "url": None,
+         "source_repo": "menno420/x", "status_note": "n",
+         "blocker": {"owner_action": "click the thing", "unblocks": "then it ships"}},
+    ]), encoding="utf-8")
+    monkeypatch.setattr(arcade, "ARCADE_JSON_PATH", reg)
+    r = client.get("/arcade/g")
+    assert r.status_code == 200
+    assert "The owner click:" in r.text
+    assert "click the thing" in r.text
+    assert "Ledger ref:" not in r.text

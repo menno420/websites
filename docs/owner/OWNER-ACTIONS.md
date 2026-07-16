@@ -254,6 +254,37 @@ UNBLOCKS: a clean dashboard env surface — future names-only reads and envhub a
 VERIFIED-NEEDED: Railway variable mutations are policy-walled/harness-denied for agents (docs/RAILWAY-SAFETY.md; docs/CAPABILITIES.md 2026-07-13 verbatim denial — deliberately not attempted). Verify after deletion: the next names-only read / the /owner/environments dashboard group no longer lists SITE_PASSWORD.
 ```
 
+### ⚑ Asks added 2026-07-16 (arcade launch-blocker join — the two public arcade promises become ledger rows)
+
+> Both clicks have been rendered as "What's blocking launch" panels on the
+> public arcade detail pages since PR #349 and machine-probed by the owner
+> console since the 2026-07-15 preflight slice — but neither had a ledger
+> row, so their verification chips could only bind by keyword signature.
+> These rows give them stable ids; `botsite/data/arcade.json` blockers and
+> `app/askverify.py` now join on the id exactly.
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0010
+WHAT: Publish the GitHub Release lumen-drift-v1.3 in menno420/gba-homebrew — the one owner click between the finished GBA ROM and a public download.
+WHERE: github.com/menno420/gba-homebrew → Releases → draft/publish the lumen-drift-v1.3 release (attach the built ROM).
+HOW: one click on the release page. Afterwards say the word (or any session's healthcheck will notice): a session then records the release's download URL in botsite/data/arcade.json (availability → download, url set, blocker dropped) and the arcade card gains its real Download button.
+WHY-IT-MATTERS: the public arcade has promised this game since PR #349 — /arcade/lumen-drift renders this exact click as its "What's blocking launch" panel. A finished, publish-safe game the public page names but nobody can download is the longest-standing visible gap on the arcade.
+UNBLOCKS: the Lumen Drift card and detail page flip from blocker panel to a real Download button; the owner-console verification chip for this row flips to done-detected on its own.
+VERIFIED-NEEDED: machine-checked already — app/askverify.py probe lumen-drift-release GETs /repos/menno420/gba-homebrew/releases/tags/lumen-drift-v1.3 (200 = done, 404 = still open; still 404 at filing). Publishing a release on gba-homebrew is owner-held: no agent credential for that repo exists (write access unverified, deliberately not attempted — same wall class as the PAT asks above).
+```
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0011
+WHAT: In menno420/product-forge, set Settings → Pages → Source to GitHub Actions, so the existing games-web deploy workflow can publish the site.
+WHERE: github.com/menno420/product-forge → Settings → Pages → Build and deployment → Source: GitHub Actions.
+HOW: one settings click, Save. The already-committed deploy workflow then publishes on its next run; once the site's URL answers 200, a session records it in botsite/data/arcade.json (availability → live, url set, blocker dropped).
+WHY-IT-MATTERS: /arcade/games-web has rendered this exact click as its "What's blocking launch" panel since PR #349 — the deploy workflow exists but its documented URL returns 404 until Pages has a source, so the public card honestly says unavailable.
+UNBLOCKS: the games-web card and detail page flip from blocker panel to a real Play link; the owner-console verification chip for this row flips to done-detected on its own.
+VERIFIED-NEEDED: machine-checked already — app/askverify.py probe product-forge-pages GETs /repos/menno420/product-forge/pages (200 = configured, 404 = still open; unreadable-with-this-token = honest unknown, never inferred). Repository settings are owner-held — no agent credential can flip Pages source (deliberately not attempted).
+```
+
 ## 🟢 Decided / resolved
 
 | # | Item | Decision | Provenance |
