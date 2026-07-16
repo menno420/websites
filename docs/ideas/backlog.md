@@ -9,6 +9,25 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Shared `drift_report()` renderer — one structured join, three
+  surfaces** · `captured` (2026-07-16, release-drift session 💡) — the
+  healthcheck's release-drift pass (PR #365 `check_release_drift()`) and
+  the owner console's verification chips share verdict logic (askverify
+  probes on ask_id) but not presentation, and the baton's console
+  release-drift chip plus a future botsite banner (gated on the #355
+  SIM-REQUEST answer) would each re-implement the same blocker→probe
+  join. A small helper returning structured rows (registry, slug, ask_id,
+  verdict, reason) would let the healthcheck text block, the console
+  chip, and the banner all render from ONE join. Worth having because the
+  join is subtle to get right (claim-once probes, one-probe-per-ask
+  dedupe, honest unknown/not-checkable semantics) and three hand-copies
+  of it is exactly the drift class this repo keeps closing. Deduped
+  against this backlog: the arcade live-URL drift probe, the prompts
+  registry-drift chip, and the env-drift bullets each cover a different
+  drift surface; nothing covers a shared structured renderer for the
+  ask_id release-drift join. Source:
+  `.sessions/2026-07-16-release-drift.md` 💡.
+
 - **Fast-lane pin-map drift pin — assert quality.yml's grammar-pin
   selection stays aligned with the machine-read control files and real
   test paths** · `captured` (2026-07-13, fastlane-outbox-gate session 💡)
