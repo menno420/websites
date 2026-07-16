@@ -413,3 +413,113 @@ def test_arcade_detail_idless_blocker_renders_panel_without_ledger_ref(
     assert "The owner click:" in r.text
     assert "click the thing" in r.text
     assert "Ledger ref:" not in r.text
+
+
+# --------------------------------------------------------------------------- #
+# Catalog card blocker surfacing + availability summary strip.
+# The /arcade catalog cards now carry each unavailable game's blocking
+# owner_action / ask_id (the same honest ledger text the detail panel shows,
+# never a live verdict), and a top-of-page availability summary counts live vs
+# blocked games and the distinct owner clicks among the blocked ones.
+# --------------------------------------------------------------------------- #
+
+def test_arcade_catalog_card_surfaces_blocker_owner_action_and_ask_id(client):
+    """Each unavailable card on the catalog carries its blocking owner click and
+    stable ledger ref — the same ledger text the /arcade/{slug} panel renders,
+    now on the card itself so a visitor never has to click through to see it."""
+    r = client.get("/arcade")
+    assert r.status_code == 200
+    assert "The owner click:" in r.text
+    # lumen-drift's blocker (owner_action + ask_id) is now on the catalog card
+    assert "Publish the GitHub Release lumen-drift-v1.3" in r.text
+    assert "<code>ASK-0010</code>" in r.text
+    # games-web's blocker too
+    assert "Source to GitHub Actions" in r.text
+    assert "<code>ASK-0011</code>" in r.text
+    assert "Ledger ref:" in r.text
+
+
+def test_arcade_catalog_no_live_verdict_leaks_to_public_page(client):
+    """Hard rail: the public catalog surfaces static registry ledger text only —
+    never a live askverify verdict / verification chip (those are gated-surface
+    only)."""
+    r = client.get("/arcade")
+    assert r.status_code == 200
+    lowered = r.text.lower()
+    for gated in ("askverify", "verified done", "verify chip", "verification chip"):
+        assert gated not in lowered
+
+
+def test_arcade_catalog_summary_strip(client):
+    """The top-of-page availability strip counts the committed registry: one
+    live game (mineverse), two blocked (lumen-drift, games-web) on two distinct
+    owner clicks (ASK-0010, ASK-0011)."""
+    r = client.get("/arcade")
+    assert r.status_code == 200
+    assert "1 live" in r.text
+    assert "2 blocked" in r.text
+    assert "on 2 owner clicks" in r.text
+
+
+def test_arcade_summary_counts_live_blocked_and_distinct_owner_clicks():
+    """The pure helper counts live vs blocked games and the DISTINCT owner
+    clicks among the blocked ones (deduplicated by ask_id / owner_action)."""
+    games = [
+        {"has_link": True},   # live 1
+        {"has_link": True},   # live 2
+        {"has_link": False, "blocker": {"owner_action": "click A", "ask_id": "ASK-0001"}},
+        {"has_link": False, "blocker": {"owner_action": "click B", "ask_id": "ASK-0002"}},
+        # same ask_id as an earlier blocked game -> one distinct owner click
+        {"has_link": False, "blocker": {"owner_action": "click A again", "ask_id": "ASK-0001"}},
+        # blocked with no recorded blocker -> contributes no owner click
+        {"has_link": False, "blocker": None, "status_note": "pending"},
+    ]
+    summary = arcade.availability_summary(games)
+    assert summary == {"total": 6, "live": 2, "blocked": 4, "owner_clicks": 2}
+
+
+def test_arcade_summary_dedupes_idless_clicks_by_owner_action():
+    """Blockers without an ask_id dedupe by owner_action text instead — two
+    blocked games naming the same click count as one owner click."""
+    games = [
+        {"has_link": False, "blocker": {"owner_action": "flip the switch"}},
+        {"has_link": False, "blocker": {"owner_action": "flip the switch"}},
+        {"has_link": False, "blocker": {"owner_action": "press the button"}},
+    ]
+    summary = arcade.availability_summary(games)
+    assert summary["blocked"] == 3
+    assert summary["owner_clicks"] == 2
+
+
+def test_arcade_summary_over_committed_registry():
+    """The helper agrees with the committed registry read through the loader:
+    1 live, 2 blocked, 2 distinct owner clicks."""
+    summary = arcade.availability_summary(arcade.load_games())
+    assert summary["total"] == 3
+    assert summary["live"] == 1
+    assert summary["blocked"] == 2
+    assert summary["owner_clicks"] == 2
+
+
+@pytest.mark.parametrize("bad", [
+    None,                      # non-iterable
+    42,                        # non-iterable
+    ["not a dict", 7, None],   # non-dict entries are skipped, never fatal
+])
+def test_arcade_summary_fail_soft_on_malformed_input(bad):
+    """Fail-soft: a non-iterable input or non-dict entries never raise — they
+    degrade to honest zero / skip (the 'degrade, don't invent' doctrine)."""
+    summary = arcade.availability_summary(bad)
+    assert set(summary) == {"total", "live", "blocked", "owner_clicks"}
+    assert all(isinstance(v, int) and v >= 0 for v in summary.values())
+
+
+def test_arcade_summary_malformed_blocker_contributes_no_owner_click():
+    """A blocked game with a malformed (non-dict) blocker counts as blocked but
+    adds no owner click — never invents a click it cannot name."""
+    games = [
+        {"has_link": False, "blocker": "just prose"},
+        {"has_link": False, "blocker": {"owner_action": "  "}},  # blank -> no click
+    ]
+    summary = arcade.availability_summary(games)
+    assert summary == {"total": 2, "live": 0, "blocked": 2, "owner_clicks": 0}
