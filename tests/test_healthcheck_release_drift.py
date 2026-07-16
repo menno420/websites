@@ -174,6 +174,10 @@ def _stub_everything_else_healthy(monkeypatch):
         healthcheck.testing_probe, "probe_task_urls",
         lambda: _summary(note="0 open-task URL(s) probed, 0 flagged"),
     )
+    monkeypatch.setattr(
+        healthcheck, "check_catalog_sha_drift",
+        lambda: (True, ["0 pinned entries checked, 0 flagged, 0 not pinned-provenance-shaped (not probed)"]),
+    )
 
 
 def test_release_drift_turns_main_exit_nonzero(monkeypatch, capsys):

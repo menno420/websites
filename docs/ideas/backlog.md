@@ -1096,7 +1096,10 @@
   `.sessions/2026-07-13-readiness-env-rollup.md` 💡.
 
 - **Catalog sha-drift pin — nag when the vetting catalog's pinned source
-  sha falls behind venture-lab HEAD** · `captured` (2026-07-13,
+  sha falls behind venture-lab HEAD** · `built` (2026-07-16,
+  catalog-sha-drift-pin session — `botsite/catalog_sha_drift.py` +
+  `scripts/healthcheck.py`'s `check_catalog_sha_drift()`, branch
+  `claude/catalog-sha-drift-pin-20260716`; captured 2026-07-13,
   venture-vetting-catalog session 💡) — every entry in
   `botsite/data/catalog.json` (PR #248) pins its provenance to venture-lab
   @ `2c039e3`; a scheduled or CI-time check comparing that pinned sha
@@ -1111,7 +1114,23 @@
   storefront-freshness bullet above is TIME-based (`as_of` horizon,
   products.json only); nothing compares pinned source shas against the
   upstream repo, and nothing covers catalog.json. Source:
-  `.sessions/2026-07-13-venture-vetting-catalog.md` 💡.
+  `.sessions/2026-07-13-venture-vetting-catalog.md` 💡. Live-run against
+  the real committed catalog + real venture-lab at build time: **9 of 22**
+  entries are already drifted — see the follow-up idea below.
+
+- **Regenerate `catalog.json`'s stale pins after the sha-drift pin lands**
+  · `captured` (2026-07-16, catalog-sha-drift-pin session 💡) — the pin
+  above's first live run found 9 of 22 catalog entries already drifted
+  from their pinned venture-lab sha (`merge-wall-cookbook`, `ultramarine`,
+  `de-waag`, `het-trage-woord`, `de-papieren-sinaasappel`,
+  `bundle-starter`, `photo-packs`, `the-night-kiln`, `the-paper-orange`).
+  A follow-up session should re-verify each against its current packet and
+  either bump the pinned sha (benign wording/format change) or surface a
+  real content change (price/status/verdict shift) as an owner-facing
+  finding. Worth having because shipping a drift pin that never gets acted
+  on wastes the reason it was built. Deduped: no existing bullet covers
+  acting on a specific drift finding, only building the general pin (now
+  done). Source: `.sessions/2026-07-16-catalog-sha-drift-pin.md` 💡.
 
 - **Cited-fact drift pin for /agent-pr-check — nag when the tree's quoted
   sources move on main** · `captured` (2026-07-13, agent-pr-diagnostic

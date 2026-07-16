@@ -95,6 +95,7 @@ from botsite import (  # noqa: E402  (path setup must run first)
     arcade,
     arcade_probe,
     catalog,
+    catalog_sha_drift,
     products,
     puddle_museum,
     testing_probe,
@@ -208,6 +209,32 @@ def check_testing_urls() -> tuple[bool, list[str]]:
         )
     for entry in result["skipped"]:
         lines.append(f"{entry['id']:36}  not probed (status: {entry['status']})")
+    lines.append(result["note"])
+    return result["ok"], lines
+
+
+def check_catalog_sha_drift() -> tuple[bool, list[str]]:
+    """Cold-fetch every pinned-provenance vetting-catalog entry's packet at
+    its pinned sha AND at venture-lab's current main (botsite.catalog_sha_drift)
+    and flag any byte difference — a vetting packet must never quietly move
+    upstream while the committed catalog still cites its stale verdict.
+    Returns (ok, printable lines). Never raises: per-entry failures are
+    FLAGGED findings inside the probe, and a probe bug itself degrades to a
+    FAIL line (defensive, same stance as check_arcade_urls)."""
+    try:
+        result = catalog_sha_drift.probe_catalog_sha_drift()
+    except Exception as exc:  # defensive: a probe bug shouldn't crash the check
+        return False, [f"probe raised {type(exc).__name__}: {exc}"]
+
+    lines: list[str] = []
+    for row in result["rows"]:
+        mark = "PASS" if row["ok"] else "FLAGGED"
+        lines.append(
+            f"{row['slug']:28}  {mark:7}  {row['repo']}/{row['source_path']} @ "
+            f"{row['sha']}  ({row['note']})"
+        )
+    for entry in result["skipped"]:
+        lines.append(f"{entry['slug']:28}  not probed (source not pinned-provenance-shaped)")
     lines.append(result["note"])
     return result["ok"], lines
 
@@ -352,6 +379,13 @@ def main() -> int:
     print()
     print(f"release-drift flag (registry blockers vs askverify): {'PASS' if drift_ok else 'FAIL'}")
     for line in drift_lines:
+        print(f"  {line}")
+
+    catalog_ok, catalog_lines = check_catalog_sha_drift()
+    ok_all = ok_all and catalog_ok
+    print()
+    print(f"catalog sha-drift probe (pinned vetting packets vs venture-lab main): {'PASS' if catalog_ok else 'FAIL'}")
+    for line in catalog_lines:
         print(f"  {line}")
 
     print()

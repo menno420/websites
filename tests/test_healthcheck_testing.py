@@ -44,6 +44,10 @@ def _stub_everything_else_healthy(monkeypatch):
         healthcheck, "check_release_drift",
         lambda: (True, ["0 blocker(s) across the 4 registries, 0 distinct ask(s) joined, 0 flagged"]),
     )
+    monkeypatch.setattr(
+        healthcheck, "check_catalog_sha_drift",
+        lambda: (True, ["0 pinned entries checked, 0 flagged, 0 not pinned-provenance-shaped (not probed)"]),
+    )
 
 
 def test_all_probed_task_urls_ok_passes(monkeypatch):
