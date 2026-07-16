@@ -1,7 +1,7 @@
 {
- "as_of": "2026-07-15T07:25:43Z",
+ "as_of": "2026-07-16T07:33:18Z",
  "source": "https://github.com/menno420/trading-strategy/blob/main/experiments/index.jsonl",
- "source_sha": "458b43ce264178fc8dde884152476412aab10f11",
+ "source_sha": "fb741e1fca9875cfddddd082da4a78cfc2072653",
  "source_sha_reason": "",
  "verdict_rule": "derived at bake time from the ledger's own fields \u2014 KEEP (dev-candidate only) when a run's stitched-OOS Sharpe beats its same-window buy-and-hold benchmark, KILL otherwise; PROMOTED requires the lab's closed validation protocol (holdout spent) and is 0 by the program's own record",
  "aggregate": {
