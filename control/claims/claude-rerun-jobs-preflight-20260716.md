@@ -1,0 +1,1 @@
+- `claude/rerun-jobs-preflight-20260716` · **owner console rerun-ci preflight: jobs-that-will-re-run facts row + job-level post-fire verification** · app/github.py, app/owner.py, tests/test_owner_preflight.py, tests/test_app.py · 2026-07-16
