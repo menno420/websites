@@ -1,10 +1,10 @@
 # websites · status
 
-updated: 2026-07-15T23:00:21Z
-phase: SESSION ENDED (owner ender 2026-07-15) — coordinator chain closed; seat idles on the failsafe bridge; EAP extended through 2026-07-21 (ORDER 031, acked via #344).
-health: green — main 99b8fea · suite 1495 passed · bootstrap check --strict pass · healthcheck run 29445076869 success 19:35Z.
+updated: 2026-07-16T07:06:05Z
+phase: worker session (coordinator-dispatched 2026-07-16) — askverify stable-ids slice landed as PR #358; heartbeat delegated by the coordinator.
+health: green — main c2653b4 · suite 1503 passed (full four-service run on the PR #358 branch) · bootstrap check --strict pass (only the designed born-red hold on the branch's own in-progress card).
 orders: acked=001-031 done=001-019,023-031 (020/021 owner-gated; 022 standing).
-routine: failsafe cron trig_01VRT9F6jYNXym3nn18vVQQK ("Websites failsafe wake" · 45 */2 * * · next 2026-07-16T00:45Z) LEFT ARMED as the successor's dead-man bridge; pacemaker one-shots trig_01XoDWd6ExmjE61d3y84PsBJ + trig_0159vfoECDvz6xMJ16oBUi6B both run_once_fired (04:08Z/05:02Z), zero pending one-shots bound to this session (verified 2026-07-15T22:5xZ, 20 registry pages / 1946 triggers); no business crons bound to any seat session (review-bake etc. are repo-side Actions, untouched).
-needs-owner: two clicks — PR #345 (remove do-not-automerge label + merge; landing path owner-click) · PR #343 (approve workflow run 29397321395 or hand-merge; durable fix = BAKE_PAT secret; landing path owner-click) — plus the 9 ⚑ rows in docs/owner/OWNER-ACTIONS.md (now machine-verified as chips on /owner/queue).
-notes: PR #342 closed-with-reason (discardable churn; rescue branches retain it, all discardable). Outbox SIM-REQUEST (release-drift banner doctrine) awaits the manager (#355 @ 99b8fea). NEXT-2-TASKS BATON — (1) owner clicks #345/#343; (2) manager verdict on the SIM-REQUEST, then resume console/arcade increments (ideas on file: stable ask IDs, failed-JOBS preflight detail).
+routine: failsafe cron 45 */2 active — armed (trig_01VRT9F6jYNXym3nn18vVQQK "Websites failsafe wake").
+needs-owner: the 9 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror; each now carries a stable ID: ASK-0001..0009 — verification chips on /owner/queue join on the ID exactly) — plus PR clicks: #357 (draft · green; landing path owner one-click mark-ready) and #345 (do-not-automerge label — owner-lane by design; landing path owner removes label + merges).
+notes: open PRs — #358 (askverify stable ASK-NNNN ids) ready-for-review, quality pending at write time, landing path auto-merge on green, no blocker known; #357 and #345 per needs-owner above; #343 merged @ c2653b4, deploy-verified. NEXT-2-TASKS BATON — (1) owner one-clicks: #357 mark-ready + #345 merge (PR #358 was flipped ready this session, no click needed); (2) arcade blocker panels adopt ask_id as join key (promoted from .sessions/2026-07-15-arcade-detail.md). Manager verdict still pending on the botsite SIM-REQUEST (#355).
 kit: v1.17.0
