@@ -11,6 +11,14 @@
       Most of these failures were caught by the program's own gates and habits; a few needed a
       human, and those say so.
     </p>
+    {% if summary %}
+    <p class="rv-ledger-tally" style="margin-top:var(--sb-s-4)">
+      <span class="sb-badge sb-badge-neutral">{{ summary.total }} documented problem{{ '' if summary.total == 1 else 's' }}</span>
+      {% if summary.detailed %}
+      <span class="sb-badge sb-badge-neutral">{{ summary.detailed }} full incident writeup{{ '' if summary.detailed == 1 else 's' }}</span>
+      {% endif %}
+    </p>
+    {% endif %}
   </div>
 </section>
 

@@ -762,6 +762,20 @@ QUESTIONNAIRE: list[dict[str, Any]] = [
 ]
 
 
+def ledger_summary(items: list[dict[str, Any]]) -> dict[str, int]:
+    """One-glance tally for an evidence ledger (``PROBLEMS`` / ``SUCCESSES``).
+
+    ``total`` is the number of documented entries; ``detailed`` is how many
+    carry a structured ``details`` incident timeline (the deep writeups, as
+    opposed to the one-paragraph entries). Counted straight off the very list
+    the template iterates, so the hero tally always equals the cards rendered
+    below it — no second source to drift. Pure: the list is never mutated."""
+    return {
+        "total": len(items),
+        "detailed": sum(1 for it in items if it.get("details")),
+    }
+
+
 def overview_stats(snapshot_data: dict[str, Any]) -> list[dict[str, Any]]:
     totals = snapshot_data.get("totals") or {}
     tiles = []
