@@ -1,19 +1,15 @@
 # websites · status
 
-updated: 2026-07-16T21:57:55Z
-phase: records/hygiene session (coordinator-dispatched 2026-07-16 night) — landed the owner's live OVERNIGHT ORDER into control/inbox.md as ORDER 032 and refreshed this heartbeat; control/**-only fast-lane PR, no session card (control fast lane).
-health: green — origin/main @ da63857 (#357). Last full four-suite run: 1588 passed on the #365 branch (2026-07-16); no code touched this session (control/** only), so no re-run.
-orders: acked=001-032 done=001-019,023-031 (020/021 owner-gated; 022 standing; 031 ack'd — EAP extended to 2026-07-21, routines not re-armed pending owner per-seat go; 032 STANDING — owner live overnight-autonomy order, in force through morning).
-landed-tonight: 7 PRs merged to main — #345, #357, #362, #365, #368, #369, #370 (coordinator live-verified 5: #345/#357/#368/#369/#370). origin/main HEAD da63857.
-open-PRs:
-- #359 — automated fleet-data bake (data-only, bot-authored); blocker: hands-off nightly bake needs ASK-0008 (BAKE_PAT PR-write secret); base predates #362's land.
-- #361 — rescue: straggler session card; draft, born-red by design (unresolved [[fill:]] slots) — held; a close-out session completes it or owner/coordinator closes.
-- #363 — rescue: second straggler card (detached-HEAD session); draft, born-red — held, owner/coordinator disposes.
-- #367 — rescue: third straggler card (main-boot auto-draft); draft, born-red — held.
-staged (owner-gated): the auto-merge draft-gap patch is staged in a session awaiting the owner's first-hand go-ahead (workflow write needs owner provenance). Green PRs opened overnight wait as ready-to-land drafts pending the owner's morning auto-merge go-ahead.
-overnight: planning sessions writing a veto-ready menu of proposals + a build session on contained/reversible slices, per ORDER 032.
-routine: failsafe cron 45 */2 present — trig_01VRT9F6jYNXym3nn18vVQQK "Websites failsafe wake" (ORDER 031: routines not re-armed pending the owner's per-seat go).
-needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
+updated: 2026-07-16T23:10:41Z
+phase: failsafe-wake lane, overnight work-loop cycle 8 (ORDER 032) — third backlog slice this lane: claim-bullet PR-number fallback closing the claims-drift gate's pruned-ref blind spot (2026-07-14 idea). Re-probed the API wall before writing this heartbeat — still blocked, verbatim unchanged from earlier tonight.
+health: green — origin/main unchanged @ e0a3cc0 (#374) this cycle. Full four-suite run THIS session: **1636 passed** (1631 baseline + 5 new); `bootstrap check --strict` green.
+orders: acked=001-032 done=001-019,023-031 (020/021 owner-gated; 022 standing; 031 ack'd; 032 STANDING — overnight autonomy, superseding 031's re-arm caution for tonight).
+landed-tonight: 7 PRs on main — #345, #357, #362, #365, #368, #369, #370 (per #374's coordinator heartbeat) — unchanged this cycle.
+open-PRs (per #374's coordinator heartbeat, unchanged this cycle, not independently re-verified): #359 automated fleet-data bake, blocked on ASK-0008; #361/#363/#367 rescue straggler-card drafts, born-red by design, held.
+staged (owner-gated, per #374): the auto-merge draft-gap patch awaits the owner's first-hand go.
+blocked (this lane, all carrying ASK-0017 — org GitHub App not connected, re-verified this cycle via a direct API probe, verbatim unchanged: "An org admin must connect the Claude GitHub App for this organization"): claude/failsafe-heartbeat-20260716-2049, claude/arcade-catalog-blockers, claude/games-availability-summary, claude/pr-tooling-ask-20260716 (files ASK-0017), claude/heartbeat-20260716-2145, claude/fastlane-pin-map-20260716, claude/heartbeat-20260716-2215, claude/storefront-freshness-pin-20260716, claude/heartbeat-20260716-2245, claude/claim-pr-fallback-20260716 (this cycle's slice), claude/heartbeat-20260716-2310 (this overwrite) — 11 branches. Per ORDER 032 item 1, expected, not a stall.
+routine: this lane's 15-min work-loop chain re-armed every cycle tonight (8 cycles since ~20:53Z) · fixed 45-*/2 failsafe cron also present, trig_01Cn7F2UvE62uDykSYQCDhtF — that cron independently fired once this cycle (verify-in-one-line check, confirmed alive, no action taken).
+needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below) PLUS ASK-0017 (unlanded — connect the org's Claude GitHub App; the single blocker on all 11 branches above, now 4 cycles running with zero movement).
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md)
 - ASK-0001 — answer Q-0004: where live bot control lives (or keep /admin dry-run).
@@ -34,7 +30,7 @@ needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 - ASK-0016 — arrange the native-speaker Dutch proofread for de-papieren-sinaasappel (details in docs/owner/OWNER-ACTIONS.md).
 
 ## NEXT-2-TASKS baton
-1. Owner lands the staged auto-merge draft-gap patch — then it sweeps the green overnight PRs into main.
-2. Resume the build loop (contained/reversible slices, one PR each, landed on green) once landing is unblocked.
+1. Owner lands the staged auto-merge draft-gap patch, and separately connects the GitHub App (ASK-0017) — either one unblocks a large backlog of already-built, already-green work across lanes (11 branches from this lane alone, spanning 3 real feature/test slices plus heartbeats).
+2. This lane: docs/ideas/backlog.md still has many un-built `captured` entries needing no live GitHub API — next session should re-scan for one not already superseded (check `built`/`retired` status first; this lane found one already-shipped idea by mistake early tonight before verifying).
 
 kit: v1.17.0
