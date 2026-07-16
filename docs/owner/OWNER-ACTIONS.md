@@ -285,6 +285,81 @@ UNBLOCKS: the games-web card and detail page flip from blocker panel to a real P
 VERIFIED-NEEDED: machine-checked already — app/askverify.py probe product-forge-pages GETs /repos/menno420/product-forge/pages (200 = configured, 404 = still open; unreadable-with-this-token = honest unknown, never inferred). Repository settings are owner-held — no agent credential can flip Pages source (deliberately not attempted).
 ```
 
+### ⚑ Asks added 2026-07-16 (registry blocker join — catalog / products / puddle-museum owner gates become ledger rows)
+
+> The three remaining botsite registries (catalog.json, products.json,
+> puddle_museum.json) gained the same optional blocker+ask_id object the
+> arcade carries (PR #360's schema, shared via botsite/blockers.py): every
+> genuinely owner-gated entry now renders its owner click/decision on the
+> public page and joins these rows by stable id. The five write-slice
+> parked titles (the-marginalia-society, the-night-kiln, the-paper-orange,
+> the-pepper-ledger, the-windmill-mouse) get NO row and NO blocker — a
+> missing manuscript is agent work, not an owner action. Unlike
+> ASK-0010/0011, NONE of these five rows is machine-checkable (Gumroad
+> listing state, off-repo files, product/money decisions) — each
+> VERIFIED-NEEDED says so plainly, and app/askverify.py registers them
+> probe-less with the honest reason.
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0012
+WHAT: Run the Gumroad publish pass — one owner session that publishes the ten publish-ready catalog titles and products, which also un-gates the Ship-It Bundle and flips the three fleet-store coming-soon mirrors.
+WHERE: gumroad.com (the mennomagic01 store, where stripe-webhook-test-kit already lives) — the staged copy is in venture-lab (per-title vetting packets under docs/publishing/vetting/, launch copy under docs/launch/); the public faces are /products/catalog and /products on the botsite.
+HOW: for each of the ten (membership-kit, template-packs, agent-fleet-field-manual, kill-rule-intake-kit, false-green-test-trap, merge-wall-cookbook, the-slow-word, the-weigh-house, de-waag, het-trage-woord): create the listing from the staged copy, hit Publish, do your own test purchase, then say the word — a session records each live URL in botsite/data/catalog.json (+ the three products.json mirrors: membership-site-boilerplate-kit, agent-workflow-template-pack, agent-fleet-field-manual), flipping status/availability to live and dropping the blocker. The Ship-It Bundle (bundle-starter) becomes publish-ready the moment its two components (membership-kit + template-packs) are live — a Gumroad bundle references existing live products.
+RISK: ↩️ reversible — unpublish any listing on Gumroad at any time; nothing moves in this repo until a session records the live URLs.
+WHY-IT-MATTERS: eleven of the catalog's 22 entries plus three of the four store products sit honestly labeled "awaiting the owner's publish click" on the public pages — the entire publish-ready shelf is one owner session away from being real, and until then every card explains itself with a blocker panel instead of a Buy link.
+UNBLOCKS: the ten catalog entries and the three product mirrors flip from blocker panel to a real Buy link; bundle-starter's hard gate clears; the catalog's "publish-ready" group empties into "live".
+VERIFIED-NEEDED: NOT machine-checkable — Gumroad listing state is not observable by any read-only probe this repo holds (no Gumroad credential exists; deliberately not attempted). Verification is a session recording the live listing URLs in the registries, where the existing no-dead-links tests then pin them.
+```
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0013
+WHAT: Hand off the full-res photo originals for the two wallpaper packs (Dutch Skies + Golden Hours) — the sellable files are owner-held off-repo.
+WHERE: your own photo library → any private handoff channel you choose, or a direct upload to the Gumroad listing yourself; the one place they must NOT land is this public repo. The catalog entry is photo-packs on /products/catalog.
+HOW: deliver the full-resolution originals once (private share, or upload them straight to a Gumroad product you create); a session then packages/stages the sellable zips and the publish click follows the same Gumroad pass as ASK-0012.
+RISK: ↩️ reversible — a private handoff can be withdrawn before anything is published; nothing lands in the public tree by design.
+WHY-IT-MATTERS: the catalog says it honestly — "the sellable zips cannot exist in the public repo — full-res originals are owner-held off-repo, so nothing proceeds until the owner hands them off." No agent can produce this product without the files.
+UNBLOCKS: photo-packs moves from hard-gated to publish-ready (then live via the Gumroad pass); its blocker panel drops.
+VERIFIED-NEEDED: NOT machine-checkable — whether owner-held off-repo files have been handed off is not observable by any read-only probe; verification is the files arriving wherever you choose to put them, then a session updating the catalog entry.
+```
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0014
+WHAT: Pick the Ultramarine title — publish as "The Widow's Blue" (the vetting packet's recommended rename; the title-collision work is done) or keep Ultramarine.
+WHERE: reply in chat, or write it back from the site's owner console (/owner/queue); the packet is venture-lab docs/publishing/vetting/ultramarine.md; the catalog entry is ultramarine on /products/catalog.
+HOW: one sentence ("The Widow's Blue" / "keep Ultramarine"). A session then applies the chosen title across the manuscript and listing copy, and the book joins the ASK-0012 Gumroad publish pass.
+RISK: ↩️ reversible until publish — a title choice costs nothing to change while the book is unpublished.
+WHY-IT-MATTERS: the packet's status note records a title collision worked to a recommendation ("rename to 'The Widow's Blue' recommended … owner picks") — publishing under a colliding name buries the book in search results, and a naming call on a book is the owner's to make.
+UNBLOCKS: the last open decision on this title clears; ultramarine joins the ASK-0012 publish set.
+VERIFIED-NEEDED: NOT machine-checkable — a naming decision has no external state to probe; verification is your word (chat or console writeback), then the recorded title in the catalog entry.
+```
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0015
+WHAT: Decide the §5 illustration gate — the money-decision on commissioning illustrations for the picture books (The Painted Stones and The Puddle Museum), which also gates all three Puddle Museum editions (EN/NL/DE).
+WHERE: the vetting packets' §5 (venture-lab docs/publishing/vetting/the-painted-stones.md + the-puddle-museum.md); the public faces are /products/catalog (both parked entries) and /puddle-museum (all three coming-soon edition cards); reply in chat or via /owner/queue.
+HOW: one decision — fund/commission illustrations (name a budget or an illustrator and a session takes it from there), choose an alternative you accept, or explicitly keep them parked. The seat's recommendation on record is Park.
+RISK: 💰 a spend decision — the only ask in this set that can cost real money; parking costs nothing and is the recorded recommendation.
+WHY-IT-MATTERS: picture books do not ship without pictures, and buying illustration is a real-money commitment agents must never make on their own — five public cards (two catalog entries, three editions) honestly wait on this single fork.
+UNBLOCKS: on a go — the illustration work, then publication of both picture books and the three Puddle Museum editions; on an explicit park — the panels can say "parked by owner decision" instead of "pending".
+VERIFIED-NEEDED: NOT machine-checkable — a product/money decision with no external state to probe (the same class as ASK-0001); verification is your word, then this row moving to Decided.
+```
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0016
+WHAT: Arrange the native-speaker Dutch proofread for De papieren sinaasappel — its packet marks the proofread a blocking quality gate before that title's publish click.
+WHERE: a native Dutch reader you trust (you, or someone you pick); the packet is venture-lab docs/publishing/vetting/de-papieren-sinaasappel.md; the catalog entry is de-papieren-sinaasappel on /products/catalog.
+HOW: have the manuscript read by a native speaker and feed the corrections back in any form — notes in chat are enough, a session works them in. (De Waag and Het trage woord carry the same proofread as a pending explicit owner step, but their packets sequence them behind their EN editions rather than blocking on it — this row covers only the title whose packet says blocking.)
+RISK: ↩️ reversible — a proofread only ever improves the manuscript; nothing publishes until the separate publish click.
+WHY-IT-MATTERS: a Dutch literary-historical novel (WWII, Hongerwinter — a subject Dutch readers know intimately) shipping with non-native prose errors would damage the title and the store; the packet made this the one explicit blocking quality gate.
+UNBLOCKS: the last blocking step before de-papieren-sinaasappel joins the ASK-0012 Gumroad publish pass.
+VERIFIED-NEEDED: NOT machine-checkable — whether a human proofread happened is not observable by any probe; verification is the corrections arriving (chat or console writeback) and a session updating the packet's gate note.
+```
+
 ## 🟢 Decided / resolved
 
 | # | Item | Decision | Provenance |

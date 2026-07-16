@@ -68,7 +68,12 @@
       "url": null,
       "status_note": "Manuscript complete (13 spreads) — illustration and publication are owner-gated.",
       "source": "venture-lab candidates/childrens-books/the-puddle-museum/the-puddle-museum.en.md @ 467d619 (PR #121)",
-      "as_of": "2026-07-13"
+      "as_of": "2026-07-13",
+      "blocker": {
+        "owner_action": "Decide the §5 illustration gate — the manuscript is complete (13 spreads); commissioning illustrations is a money-decision only the owner can make.",
+        "unblocks": "Illustration, then publication of this edition — the same one decision unblocks all three languages.",
+        "ask_id": "ASK-0015"
+      }
     },
     {
       "lang": "nl",
@@ -78,7 +83,12 @@
       "url": null,
       "status_note": "Manuscript complete (13 spreads) — illustration and publication are owner-gated.",
       "source": "venture-lab candidates/childrens-books/the-puddle-museum/the-puddle-museum.nl.md @ 467d619 (PR #121)",
-      "as_of": "2026-07-13"
+      "as_of": "2026-07-13",
+      "blocker": {
+        "owner_action": "Decide the §5 illustration gate — the manuscript is complete (13 spreads); commissioning illustrations is a money-decision only the owner can make.",
+        "unblocks": "Illustration, then publication of this edition — the same one decision unblocks all three languages.",
+        "ask_id": "ASK-0015"
+      }
     },
     {
       "lang": "de",
@@ -88,7 +98,12 @@
       "url": null,
       "status_note": "Manuscript complete (13 spreads) — illustration and publication are owner-gated.",
       "source": "venture-lab candidates/childrens-books/the-puddle-museum/the-puddle-museum.de.md @ 467d619 (PR #121)",
-      "as_of": "2026-07-13"
+      "as_of": "2026-07-13",
+      "blocker": {
+        "owner_action": "Decide the §5 illustration gate — the manuscript is complete (13 spreads); commissioning illustrations is a money-decision only the owner can make.",
+        "unblocks": "Illustration, then publication of this edition — the same one decision unblocks all three languages.",
+        "ask_id": "ASK-0015"
+      }
     }
   ]
 }

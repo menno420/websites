@@ -21,7 +21,12 @@
     "url": null,
     "status_note": "Publish click queued to the owner — not yet purchasable.",
     "source": "venture-lab docs/launch/membership-kit/listing-copy.md @ e01fa01",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click: create the Membership-Site Boilerplate Kit listing from the staged venture-lab launch copy, hit Publish, then do your own test purchase.",
+      "unblocks": "This card flips from coming-soon to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "agent-workflow-template-pack",
@@ -33,7 +38,12 @@
     "url": null,
     "status_note": "Publish click queued to the owner — not yet purchasable.",
     "source": "venture-lab docs/launch/template-packs/listing-copy.md @ e01fa01",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click: create the Agent-Workflow Template Pack listing from the staged venture-lab launch copy, hit Publish, then do your own test purchase.",
+      "unblocks": "This card flips from coming-soon to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "agent-fleet-field-manual",
@@ -45,6 +55,11 @@
     "url": null,
     "status_note": "Publish click queued to the owner — not yet purchasable.",
     "source": "venture-lab docs/launch/agent-fleet-field-manual/LISTING.md @ e01fa01",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click: create the Agent Fleet Field Manual listing from the staged venture-lab launch copy, hit Publish, then do your own test purchase.",
+      "unblocks": "This card flips from coming-soon to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   }
 ]
