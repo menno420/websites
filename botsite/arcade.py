@@ -15,6 +15,12 @@ Honesty rules (the "never fake data" doctrine, applied to games):
   AND its ``url`` is non-null; a play/download link is only rendered when
   ``availability`` is live/download AND a URL is present. No dead links.
 - Outbound game links carry ``?ref=fleet-arcade`` for attribution.
+- The optional ``blocker`` object (``owner_action`` + ``unblocks``, both
+  non-empty strings) records the named owner click that stands between an
+  unavailable game and launch — the /arcade/{slug} detail page renders it
+  as the "What's blocking launch" panel. It is OPTIONAL and fail-soft: a
+  missing or malformed blocker normalizes to ``None`` (the panel simply
+  falls back to the status note), never invented and never fatal.
 """
 
 from __future__ import annotations
@@ -59,6 +65,22 @@ def _valid(entry: Any) -> bool:
     return True
 
 
+def _normalized_blocker(entry: dict[str, Any]) -> dict[str, str] | None:
+    """The entry's ``blocker`` as ``{"owner_action", "unblocks"}`` with both
+    values non-empty strings — or ``None`` for a missing/malformed blocker
+    (fail-soft: a bad blocker never invalidates the game entry)."""
+    blocker = entry.get("blocker")
+    if not isinstance(blocker, dict):
+        return None
+    owner_action = blocker.get("owner_action")
+    unblocks = blocker.get("unblocks")
+    if not isinstance(owner_action, str) or not owner_action.strip():
+        return None
+    if not isinstance(unblocks, str) or not unblocks.strip():
+        return None
+    return {"owner_action": owner_action.strip(), "unblocks": unblocks.strip()}
+
+
 def _with_ref(url: str) -> str:
     """Append the ``ref=fleet-arcade`` attribution parameter to an outbound URL."""
     return url + ("&" if "?" in url else "?") + REF_QUERY
@@ -91,8 +113,21 @@ def load_games(path: Path | None = None) -> list[dict[str, Any]]:
         game["is_live"] = game["availability"] == "live" and url is not None
         game["has_link"] = game["availability"] in LINKED_AVAILABILITIES and url is not None
         game["link_url"] = _with_ref(url) if game["has_link"] and url else None
+        game["blocker"] = _normalized_blocker(game)
+        game["detail_url"] = f"/arcade/{game['slug']}"
         games.append(game)
     return games
+
+
+def game_by_slug(slug: str, path: Path | None = None) -> dict[str, Any] | None:
+    """The enriched game entry for ``slug``, or ``None`` when the registry has
+    no such (valid) game — the /arcade/{slug} route turns that into the site's
+    standard 404. Reads through :func:`load_games`, so the detail page and the
+    catalog can never disagree about which games exist or what they claim."""
+    for game in load_games(path):
+        if game["slug"] == slug:
+            return game
+    return None
 
 
 # --------------------------------------------------------------------------- #

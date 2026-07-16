@@ -6,7 +6,7 @@
 > red, instead of only the fields the old round-trip test remembered to
 > spot-check.
 
-- **📊 Model:** Claude 5 family · worker · backlog-promotion slice
+- **📊 Model:** Claude 5 family · medium · test writing (round-trip pin, backlog-promotion slice)
 
 **What this session was about:** backlog promotion — the captured bullet
 "Export→import→export deep-equality round-trip pin"

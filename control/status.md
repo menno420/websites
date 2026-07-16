@@ -1,11 +1,10 @@
 # websites · status
 
-updated: 2026-07-14T21:12:44Z
-phase: SEAT DORMANT (owner shutdown order 2026-07-14) — EAP ended; revival instructions in notes
-health: green at shutdown (suite 1414 · four services live · main green)
-last-shipped: EAP close-out — audit docs/audits/eap-project-audit-2026-07-14.md · walkthrough docs/eap-closeout-walkthrough-2026-07-14.md · session ender #281
-blockers: none — dormant by owner order
-orders: acked=001-030 done=001-019,023-030 (020/021 owner-gated — walkthrough §C rows 7+8 and 1–2; 022 standing, item 5 done via #311). No unconsumed ORDERs at shutdown.
-routine: SHUTDOWN — the failsafe cron trig_01GV8kBK92CSZWEWwNZo1rhk ("Websites failsafe wake" · 45 */2 * * * · Q-0265 prompt) is deleted as the shutdown's true final call immediately after this heartbeat lands (owner retire order 2026-07-14); zero pending one-shots (verified 13:05Z, 18 registry pages). NOTHING will wake this seat (wake sources: none).
-notes: REVIVAL RECIPE — (1) read docs/eap-closeout-walkthrough-2026-07-14.md (§E handoff, §C owner checklist) → docs/audits/eap-project-audit-2026-07-14.md → this file; boot route per .claude/CLAUDE.md → docs/current-state.md → docs/CAPABILITIES.md. (2) Re-arm: create_trigger name "Websites failsafe wake", cron 45 */2 * * *, bound to the NEW coordinator session, prompt per Q-0265 (verbatim copy in fm docs/prompts/v3/ registry / the coordinator brief); pacemaker = send_later ~15 min chain, one pending. (3) IN-REPO SCHEDULES THAT KEEP RUNNING during dormancy (GitHub Actions, wake nothing): review-bake.yml (nightly bake PRs will QUEUE — owner-click or revival sweeps them), smoke-crawl.yml + healthcheck.yml (probe-only, fail → email), quality/auto-merge-enabler/host-automerge-extras (PR-event only). (4) PARKED AT SHUTDOWN: ORDER 020 (owner PAT paste), ORDER 021 (Q-0004 decision), walkthrough §C rows not yet cleared, any unswept draft lifeboats (check open PRs at revival). (5) KNOWN DOC DUPLICATIONS left in place (point-at-central preferred, not migrated now): .claude/CLAUDE.md architecture blurb lags current-state (kit-generated, refreshes at next render); docs/collaboration-model.md VERDICT-016 section already cites fm as canonical; heartbeat/vocab doctrine lives in the fm v3 registry — repo copies are pointers, not truth. Batons live HERE (control/status.md) + walkthrough §E.
-kit: v1.15.0
+updated: 2026-07-15T23:00:21Z
+phase: SESSION ENDED (owner ender 2026-07-15) — coordinator chain closed; seat idles on the failsafe bridge; EAP extended through 2026-07-21 (ORDER 031, acked via #344).
+health: green — main 99b8fea · suite 1495 passed · bootstrap check --strict pass · healthcheck run 29445076869 success 19:35Z.
+orders: acked=001-031 done=001-019,023-031 (020/021 owner-gated; 022 standing).
+routine: failsafe cron trig_01VRT9F6jYNXym3nn18vVQQK ("Websites failsafe wake" · 45 */2 * * · next 2026-07-16T00:45Z) LEFT ARMED as the successor's dead-man bridge; pacemaker one-shots trig_01XoDWd6ExmjE61d3y84PsBJ + trig_0159vfoECDvz6xMJ16oBUi6B both run_once_fired (04:08Z/05:02Z), zero pending one-shots bound to this session (verified 2026-07-15T22:5xZ, 20 registry pages / 1946 triggers); no business crons bound to any seat session (review-bake etc. are repo-side Actions, untouched).
+needs-owner: two clicks — PR #345 (remove do-not-automerge label + merge; landing path owner-click) · PR #343 (approve workflow run 29397321395 or hand-merge; durable fix = BAKE_PAT secret; landing path owner-click) — plus the 9 ⚑ rows in docs/owner/OWNER-ACTIONS.md (now machine-verified as chips on /owner/queue).
+notes: PR #342 closed-with-reason (discardable churn; rescue branches retain it, all discardable). Outbox SIM-REQUEST (release-drift banner doctrine) awaits the manager (#355 @ 99b8fea). NEXT-2-TASKS BATON — (1) owner clicks #345/#343; (2) manager verdict on the SIM-REQUEST, then resume console/arcade increments (ideas on file: stable ask IDs, failed-JOBS preflight detail).
+kit: v1.17.0

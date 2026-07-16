@@ -46,27 +46,32 @@
 <div class="card">
   <h2>general writeback <span class="dim small">— not tied to a queue item</span></h2>
   <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
-    <form method="post" action="/owner/queue/actions/note" style="flex:1 1 320px;">
+    <form method="post" action="/owner/queue/actions/preview" style="flex:1 1 320px;">
       <input type="hidden" name="action" value="note">
       <h3>note / correction / idea</h3>
       <input name="target" placeholder="about (optional)" maxlength="300" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;font:inherit;">
       <textarea name="text" rows="4" maxlength="4000" placeholder="your note, correction or idea…" style="width:100%;margin-top:.3rem;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.5rem;font:inherit;"></textarea>
       <p>
-        <button type="submit">add note</button>
+        <button type="submit">add note…</button>
         <button type="submit" formaction="/owner/queue/actions/draft">✨ draft with AI</button>
       </p>
     </form>
-    <form method="post" action="/owner/queue/actions/assist" style="flex:1 1 320px;">
+    <form method="post" action="/owner/queue/actions/preview" style="flex:1 1 320px;">
       <input type="hidden" name="action" value="assist">
       <h3>request assistance</h3>
       <input name="target" placeholder="about (optional)" maxlength="300" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;font:inherit;">
       <textarea name="text" rows="4" maxlength="4000" placeholder="what do you need from the fleet?" style="width:100%;margin-top:.3rem;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.5rem;font:inherit;"></textarea>
       <p>
-        <button type="submit">file assistance ORDER</button>
+        <button type="submit">file assistance ORDER…</button>
         <button type="submit" formaction="/owner/queue/actions/draft">✨ draft with AI</button>
       </p>
     </form>
   </div>
+  <p class="dim small">Every submit above (and per ask below) opens a <strong>preview</strong> first —
+    the exact block that will land, the target file and the write-token state — and only its
+    confirm fires. Two deliberate one-step exemptions: <em>retry</em> re-fires an entry already
+    stored and readable in the audit log (pinned by its entry id), and <em>✨ draft with AI</em>
+    stores nothing at all (it only pre-fills the form).</p>
 </div>
 
 <div class="card">
@@ -106,7 +111,7 @@
   {% endif %}
 </div>
 
-<h2 class="dim" style="font-size:14px;margin:.8rem 0 .4rem;">owner-action queue — {{ q.summary.total }} ask{{ 's' if q.summary.total != 1 }}</h2>
+<h2 class="dim" style="font-size:14px;margin:.8rem 0 .4rem;">owner-action queue — {{ q.summary.total }} ask{{ 's' if q.summary.total != 1 }}{% if q.verify %} · {{ q.verify.machine_verified }} of {{ q.verify.total }} machine-verified <span class="small">(read-only preflight probes — honest unknown beats a guess)</span>{% endif %}</h2>
 
 {% if not q['items'] %}
 <div class="card"><p class="dim">No owner asks found in the readable sources right now.</p></div>
@@ -123,6 +128,11 @@
       · <a href="{{ s.url }}">source ↗</a></span>
     {% endfor %}
   </p>
+  {% if it.verify %}
+  <p class="small"><span class="b {{ it.verify.css }}" title="{{ it.verify.probe }}">preflight: {{ it.verify.label }}</span>
+    {% if it.verify.detail %}<span class="dim">— {{ it.verify.detail }}</span>{% endif %}
+    {% if it.verify.url %}· <a href="{{ it.verify.url }}">evidence ↗</a>{% endif %}</p>
+  {% endif %}
   {% if it.fields %}
   <table>
     {% for key, label in q.field_order %}
@@ -131,27 +141,27 @@
   </table>
   {% endif %}
   <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:.6rem;">
-    <form method="post" action="/owner/queue/actions/complete" style="flex:1 1 260px;">
+    <form method="post" action="/owner/queue/actions/preview" style="flex:1 1 260px;">
       <input type="hidden" name="target" value="{{ headline }}">
       <input type="hidden" name="action" value="complete">
       <input name="text" placeholder="optional note (how/when you did it)" maxlength="4000" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;font:inherit;">
-      <p><button type="submit">✓ mark complete</button></p>
+      <p><button type="submit">✓ mark complete…</button></p>
     </form>
-    <form method="post" action="/owner/queue/actions/assist" style="flex:1 1 260px;">
+    <form method="post" action="/owner/queue/actions/preview" style="flex:1 1 260px;">
       <input type="hidden" name="target" value="{{ headline }}">
       <input type="hidden" name="action" value="assist">
       <textarea name="text" rows="2" maxlength="4000" placeholder="what help do you need with this?" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font:inherit;"></textarea>
       <p>
-        <button type="submit">🆘 request assistance</button>
+        <button type="submit">🆘 request assistance…</button>
         <button type="submit" formaction="/owner/queue/actions/draft">✨ draft with AI</button>
       </p>
     </form>
-    <form method="post" action="/owner/queue/actions/note" style="flex:1 1 260px;">
+    <form method="post" action="/owner/queue/actions/preview" style="flex:1 1 260px;">
       <input type="hidden" name="target" value="{{ headline }}">
       <input type="hidden" name="action" value="note">
       <textarea name="text" rows="2" maxlength="4000" placeholder="correction / idea / note on this item…" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font:inherit;"></textarea>
       <p>
-        <button type="submit">✎ add note</button>
+        <button type="submit">✎ add note…</button>
         <button type="submit" formaction="/owner/queue/actions/draft">✨ draft with AI</button>
       </p>
     </form>

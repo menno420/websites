@@ -188,3 +188,139 @@ def test_committed_registry_is_honest():
         assert g["url"] is None
         assert g["has_link"] is False
         assert g["status_note"]  # every unavailable game explains itself
+
+
+# --------------------------------------------------------------------------- #
+# /arcade/{slug} detail pages — per-game story + launch-blocker panels.
+# --------------------------------------------------------------------------- #
+
+def test_arcade_detail_200_per_known_slug(client):
+    """Every game in the committed registry gets a working detail page."""
+    for slug, name in (("lumen-drift", "Lumen Drift"), ("mineverse", "mineverse"), ("games-web", "games-web")):
+        r = client.get(f"/arcade/{slug}")
+        assert r.status_code == 200
+        assert name in r.text
+        assert "Fleet Arcade" in r.text  # crumb/category context
+
+
+def test_arcade_detail_unknown_slug_404(client):
+    r = client.get("/arcade/does-not-exist")
+    assert r.status_code == 404
+    assert "Page not found" in r.text
+    assert "does-not-exist" in r.text
+
+
+def test_arcade_detail_lumen_drift_blocker_panel(client):
+    """The unavailable GBA game explains itself: the structured blocker panel
+    renders the named owner click recorded in the registry, plus the honest
+    'how it unblocks' line."""
+    r = client.get("/arcade/lumen-drift")
+    assert r.status_code == 200
+    assert "What&#39;s blocking launch" in r.text or "What's blocking launch" in r.text
+    assert "The owner click:" in r.text
+    assert "lumen-drift-v1.3" in r.text
+    assert "one owner click on the release page" in r.text
+    assert "How it unblocks:" in r.text
+    assert "Download button" in r.text
+    # honest: no play/download affordance for an unreachable game
+    assert "Play now" not in r.text
+    assert "?ref=fleet-arcade" not in r.text and "&ref=fleet-arcade" not in r.text
+
+
+def test_arcade_detail_games_web_blocker_panel(client):
+    r = client.get("/arcade/games-web")
+    assert r.status_code == 200
+    assert "The owner click:" in r.text
+    assert "Source to GitHub Actions" in r.text
+    assert "one owner settings click" in r.text
+    assert "How it unblocks:" in r.text
+    # the documented-but-404 Pages URL must never appear on the detail page
+    assert DEAD_PAGES_URL not in r.text
+
+
+def test_arcade_detail_mineverse_play_affordance(client):
+    """The available game's detail page carries the same honest play link the
+    catalog offers (attribution ref included) — and no blocker panel."""
+    r = client.get("/arcade/mineverse")
+    assert r.status_code == 200
+    assert f'href="{MINEVERSE_URL}?ref=fleet-arcade"' in r.text
+    assert "Play now" in r.text
+    assert "blocking launch" not in r.text
+    # its honest status note still shows (read-only demo)
+    assert "Read-only demo" in r.text
+
+
+def test_arcade_cards_link_to_detail_pages(client):
+    """Every catalog card links to its detail page."""
+    r = client.get("/arcade")
+    assert r.status_code == 200
+    for slug in ("lumen-drift", "mineverse", "games-web"):
+        assert f'href="/arcade/{slug}"' in r.text
+
+
+def test_loader_normalizes_valid_blocker(tmp_path):
+    reg = tmp_path / "arcade.json"
+    reg.write_text(json.dumps([
+        {"slug": "g", "name": "G", "tagline": "t", "description": "d",
+         "maturity": "beta", "availability": "unavailable", "url": None,
+         "source_repo": "menno420/x", "status_note": "n",
+         "blocker": {"owner_action": "  click the thing  ", "unblocks": " then it ships "}},
+    ]), encoding="utf-8")
+    (game,) = arcade.load_games(reg)
+    assert game["blocker"] == {"owner_action": "click the thing", "unblocks": "then it ships"}
+
+
+@pytest.mark.parametrize("blocker", [
+    None,                                        # explicit null
+    "just prose",                                # wrong type
+    {"owner_action": "click"},                   # missing unblocks
+    {"unblocks": "ships"},                       # missing owner_action
+    {"owner_action": "", "unblocks": "ships"},   # empty owner_action
+    {"owner_action": 42, "unblocks": "ships"},   # wrong value type
+])
+def test_loader_malformed_blocker_degrades_to_none(tmp_path, blocker):
+    """A missing/malformed blocker is fail-soft: it normalizes to None and
+    never invalidates the game entry (honesty rule: degrade, don't invent)."""
+    reg = tmp_path / "arcade.json"
+    reg.write_text(json.dumps([
+        {"slug": "g", "name": "G", "tagline": "t", "description": "d",
+         "maturity": "beta", "availability": "unavailable", "url": None,
+         "source_repo": "menno420/x", "status_note": "n", "blocker": blocker},
+    ]), encoding="utf-8")
+    (game,) = arcade.load_games(reg)
+    assert game["blocker"] is None
+
+
+def test_loader_missing_blocker_is_none(tmp_path):
+    reg = tmp_path / "arcade.json"
+    reg.write_text(json.dumps([
+        {"slug": "g", "name": "G", "tagline": "t", "description": "d",
+         "maturity": "beta", "availability": "unavailable", "url": None,
+         "source_repo": "menno420/x", "status_note": "n"},
+    ]), encoding="utf-8")
+    (game,) = arcade.load_games(reg)
+    assert game["blocker"] is None
+
+
+def test_game_by_slug_returns_enriched_entry_or_none():
+    game = arcade.game_by_slug("mineverse")
+    assert game is not None
+    assert game["is_live"] is True
+    assert game["detail_url"] == "/arcade/mineverse"
+    assert arcade.game_by_slug("no-such-game") is None
+
+
+def test_committed_registry_blockers_are_recorded_for_unavailable_games():
+    """Schema guard on the committed registry: both unavailable games carry a
+    structured blocker (the named owner click + how it unblocks); the live
+    game carries none. Detail URLs derive from slugs."""
+    by_slug = {g["slug"]: g for g in arcade.load_games()}
+    for slug in ("lumen-drift", "games-web"):
+        blocker = by_slug[slug]["blocker"]
+        assert blocker is not None
+        assert blocker["owner_action"].strip()
+        assert blocker["unblocks"].strip()
+        assert "owner" in blocker["owner_action"].lower()  # a NAMED owner click
+    assert by_slug["mineverse"]["blocker"] is None
+    for slug, g in by_slug.items():
+        assert g["detail_url"] == f"/arcade/{slug}"

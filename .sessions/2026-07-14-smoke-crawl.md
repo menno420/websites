@@ -6,7 +6,7 @@
 > 375×812) and fails on console errors / non-200 pages / broken same-site
 > links — the rendering-layer complement to the curl-level healthcheck.yml.
 
-- **📊 Model:** Claude Fable 5 · worker · backlog promotion
+- **📊 Model:** Claude Fable 5 · medium · feature build (scheduled Playwright smoke-crawl, backlog promotion)
 
 **What this session was about:** backlog promotion — the `docs/ideas/backlog.md`
 bullet "Scheduled browser-level smoke-crawl in CI — a Playwright job that

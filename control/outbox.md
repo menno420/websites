@@ -65,3 +65,14 @@ Proposed additions (verbatim lines for the dispatch-brief template):
 re: substrate-kit `bootstrap.py` `status_in_progress` — worth carrying into the next kit release; evidence from this repo at HEAD.
 
 The born-red gate's Status-line scan is a bare substring match: `IN_PROGRESS_TOKENS = ("in-progress", "in progress", "wip", "hold", "drafted")` checked via `any(token in lowered ...)` over the WHOLE badge line (`bootstrap.py:1957` + `:2035` in this repo's vendored v1.15.0). "hold" therefore false-positives inside ordinary words — measured this sitting: a `complete` card whose badge line names branch `claude/order-026-railway-placeholders` trips the gate ("place**hold**ers"); the ORDER 026 card had to keep the branch name OFF its Status line to land. "wip" has the same class of exposure. Proposed fix: word-boundary matching (e.g. `re.search(r"\b" + re.escape(token) + r"\b", lowered)`) or match only the backticked Status VALUE the way `_status_value_drafted` already does. Cite: `.sessions/2026-07-13-coordinator-sitting.md` retro + PR #276.
+
+## SIM-REQUEST · 2026-07-15T16:47Z · websites → manager · RELEASE-DRIFT BANNER DOCTRINE FOR BOTSITE ARCADE PAGES
+re: lane design question per Q-0264/Q-0271 — requesting Ideas Lab referee via the manager; not blocking, the banner stays unbuilt until answered.
+
+Question: the arcade detail pages (PR #349) could show a banner when a game's live release tag drifts from the committed arcade.json data — but that requires botsite's FIRST outbound fetch surface (GitHub releases). Current doctrine: botsite reads only committed JSON; cross-repo data arrives via raw.githubusercontent.com read-only into the control-plane, not botsite.
+
+Options:
+- **(A)** keep botsite outbound-free — bake release tags into review/data via the existing gen_*/bake pipeline and let arcade.json carry them (fits stateless/committed-JSON doctrine; adds bake-lag staleness).
+- **(B)** give botsite a TTL-cached GitHub client mirroring app/github.py (fresh, but a new outbound surface + rate-limit exposure on a public site).
+
+Seat recommendation: **A**.

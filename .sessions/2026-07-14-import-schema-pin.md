@@ -5,7 +5,7 @@
 > `_SCHEMA` — a forgotten spec update now fails CI naming the drifted
 > table/column/FK edge.
 
-- **📊 Model:** Claude Fable 5 · worker · backlog-promotion slice
+- **📊 Model:** Claude Fable 5 · medium · test writing (schema-drift pin, backlog-promotion slice)
 
 **What this session was about:** backlog promotion — the captured bullet
 "Pin `_IMPORT_SPEC`/`_IMPORT_REFS` against the live schema with a drift

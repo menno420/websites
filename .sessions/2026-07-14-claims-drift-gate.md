@@ -7,7 +7,7 @@
 > claim is swept, and the control-plane gets the favicon the #311 cold pass
 > gave the other three services.
 
-- **📊 Model:** Claude Fable 5 · worker · gate-build + drift-sweep
+- **📊 Model:** Claude Fable 5 · medium · feature build (gate-build + drift-sweep)
 
 **What this session was about:** backlog promotion — the fleet cleanup
 audit (`docs/audits/2026-07-13-fleet-cleanup-audit.md`, suggestion 2 /
