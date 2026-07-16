@@ -1,0 +1,1 @@
+- **review-ledger-tally** · branch `claude/review-ledger-tally` · scope: review/ Problems + Successes page heroes gain an at-a-glance documented-count tally (pure `story.ledger_summary` helper; read-only) · 2026-07-16
