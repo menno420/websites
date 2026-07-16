@@ -357,3 +357,15 @@ do: EAP EXTENDED through 2026-07-21 (Anthropic mail, Diana Liu, 2026-07-14T23:07
 why: the seat's dormancy record predates the extension; without this note a rebooted session would treat dormancy as current
 done-when: seat acknowledges on its first rebooted wake
 provenance: relayed by the Fleet Manager coordinator on live owner directives, 2026-07-15
+
+## ORDER 032 · 2026-07-16T21:57:55Z · status: new
+priority: P1
+do: run autonomously overnight on the owner's live directive below — work the backlog slice-by-slice (one PR each, land on green via the landing workflow); if the backlog is genuinely dry, switch to PLANNING MODE and write a veto-ready menu of proposals into the repo; keep records honest. Verbatim owner order:
+  OVERNIGHT ORDER (owner, live — 2026-07-16 night): I'm going to sleep; run autonomously until morning. Silence = consent.
+  1. CONTINUE: work your planned backlog — open ORDERs in control/inbox.md, the heartbeat baton's next-tasks, roadmap/planning docs in your repo(s). Slice after slice, one PR each, landed on green via your repo's landing workflow. A blocked PR carries its named blocker; take the next slice, never stall.
+  2. IF THE BACKLOG IS GENUINELY DRY — switch to PLANNING MODE, and plan excessively. Generate as many concrete, distinct proposals as you honestly can for your repo(s), from small fixes to ambitious features. Write each into the repo (your ideas/ or planning/ convention) with: a 2-3 line pitch · effort (S/M/L) · risk/reversibility · what it unblocks. Quantity is deliberate — tomorrow morning I will skim the whole menu and VETO what I don't want; my veto is the filter, so don't pre-filter down to a few safe picks. Do NOT build the ambitious ones tonight — planning docs only. Small, contained, reversible improvements may be built and landed as usual.
+  3. HYGIENE: keep heartbeats honest (control/status.md), every PR at a terminal state or carrying a named blocker, everything in git before session end. I'm recreating some projects tomorrow, so leave records clean enough that a fresh seat picks up from the repo alone.
+  Morning deliverable: landed work, or a veto-ready menu of plans in your repo — ideally both.
+why: the owner is asleep and delegated overnight autonomy (silence = consent); the record must let a fresh seat resume from the repo alone in the morning.
+done-when: overnight work is landed and/or a veto-ready planning menu is in the repo, records honest (every PR terminal or carrying a named blocker); the owner reviews the menu in the morning.
+provenance: relayed by the Websites coordinator on a live owner directive, 2026-07-16 night (coordinator event 55f13541-dca6-49f3-ad40-d5eb92ced065).
