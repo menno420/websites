@@ -85,6 +85,15 @@
         {% else %}
         <p class="sb-muted" style="margin:10px 0 0"><em>{{ ed.status_note }}</em></p>
         <p class="sb-muted" style="margin:6px 0 0">In production — illustration decision pending.</p>
+        {% if ed.blocker %}
+        <div class="sb-panel" style="margin:10px 0 0">
+          <p style="margin:0"><strong>The owner click:</strong> {{ ed.blocker.owner_action }}</p>
+          <p class="sb-muted" style="margin:6px 0 0"><strong>How it unblocks:</strong> {{ ed.blocker.unblocks }}</p>
+          {% if ed.blocker.ask_id %}
+          <p class="sb-muted" style="margin:6px 0 0"><strong>Ledger ref:</strong> <code>{{ ed.blocker.ask_id }}</code> — this step is tracked under that stable id in the fleet's owner-actions ledger.</p>
+          {% endif %}
+        </div>
+        {% endif %}
         {% endif %}
         <div class="sb-feat meta">
           <span class="sb-muted" style="font-size:var(--sb-text-xs)">Curated from {{ ed.source }}, as of {{ ed.as_of }}</span>

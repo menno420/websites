@@ -40,6 +40,15 @@
         </p>
         {% endif %}
         <p class="sb-muted" style="margin:10px 0 0"><em>{{ e.status_note }}</em></p>
+        {% if not e.is_live and e.blocker %}
+        <div class="sb-panel" style="margin:10px 0 0">
+          <p style="margin:0"><strong>The owner click:</strong> {{ e.blocker.owner_action }}</p>
+          <p class="sb-muted" style="margin:6px 0 0"><strong>How it unblocks:</strong> {{ e.blocker.unblocks }}</p>
+          {% if e.blocker.ask_id %}
+          <p class="sb-muted" style="margin:6px 0 0"><strong>Ledger ref:</strong> <code>{{ e.blocker.ask_id }}</code> — this step is tracked under that stable id in the fleet's owner-actions ledger.</p>
+          {% endif %}
+        </div>
+        {% endif %}
         <div class="sb-feat meta">
           <span class="sb-muted" style="font-size:var(--sb-text-xs)">Curated from {{ e.source }}, as of {{ e.as_of }}</span>
         </div>
