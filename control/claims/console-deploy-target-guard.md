@@ -1,0 +1,1 @@
+- branch `claude/console-deploy-target-guard` · scope: add a console guard test tying the four Railway `/version` deploy-probe URLs to a single source (`app/config.SERVICE_DEPLOY_TARGETS`) and pinning host-consistency with `app/railway.py::SERVICES` (test-only, `tests/` + no app behavior change) · date 2026-07-16
