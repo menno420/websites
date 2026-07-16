@@ -360,6 +360,29 @@ UNBLOCKS: the last blocking step before de-papieren-sinaasappel joins the ASK-00
 VERIFIED-NEEDED: NOT machine-checkable — whether a human proofread happened is not observable by any probe; verification is the corrections arriving (chat or console writeback) and a session updating the packet's gate note.
 ```
 
+### ⚑ Ask added 2026-07-16 (catalog sha-drift pin's first live run — a data write this session correctly declined to make itself)
+
+> **ID note:** filed as ASK-0018, not ASK-0017 — this branch
+> (`claude/catalog-sha-drift-pin-20260716`) forked from main before this
+> lane's OTHER unmerged branch (`claude/pr-tooling-ask-20260716`) filed
+> ASK-0017 there; both are pending landing. Whichever lands first keeps
+> its number; land the other with the next free id if 0017 is taken by
+> then — do not let both claim 0017.
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0018
+WHAT: Review and apply the catalog.json content updates below (this session found real drift but its own write to public catalog data was correctly blocked by the permission classifier — a data-content judgment call, not a mechanical fix, belongs to an authorized session or you).
+WHERE: `botsite/data/catalog.json` in this repo; the source packets are `menno420/venture-lab` `docs/publishing/vetting/*.md` at current main (`2348575` as of 2026-07-16T23:xxZ).
+HOW: the catalog sha-drift pin's first live run (2026-07-16, `claude/catalog-sha-drift-pin-20260716`) found 9 of 22 entries drifted from their pinned sha. Diffed all 9 by hand:
+  - **7 are cosmetic-only** (price/status already match the updated packet; only wording/notes were added upstream) — just bump `source`'s `@ <sha>` to `2348575` and `as_of` to today: merge-wall-cookbook, ultramarine, de-waag, het-trage-woord, de-papieren-sinaasappel, bundle-starter, photo-packs.
+  - **the-paper-orange is a REAL status error**: the packet's own verdict says "GRADUATED — manuscript exists (15,811 words, PR #122); publish-ready up to the owner gate" — but the committed catalog still shows `"status": "parked"` with a "no manuscript" note that is now false. Recommended fix: `status` → `"publish-ready"`, `status_note` → something like "Publish-ready up to the owner gate — the manuscript is complete (15,811 words, PR #122) and the packet graduated 2026-07-13: collision re-scanned Low, price confirmed, keyword ownership claimed. Remaining steps are all owner clicks (KDP account, cover, price, publish)."
+  - **the-night-kiln has a real but PARTIAL manuscript-existence claim to fix**: the packet's "no manuscript" park is explicitly RELEASED (three complete manuscripts now on venture-lab main, real word counts) but it is NOT yet publish-ready — the packet's own words: "remaining blocking step is the packet's own graduation pass (listing copy + keyword-map ownership), a seat follow-up" rather than an owner click. Recommended: keep `status: "parked"` (still accurate — no owner click unlocks it yet) but correct `status_note` to stop claiming "no manuscript" (suggested text is in this session's card, `.sessions/2026-07-16-catalog-sha-drift-pin.md`, and the follow-up idea in `docs/ideas/backlog.md`).
+WHY-IT-MATTERS: /products/catalog is a public page; the-paper-orange currently tells visitors a finished, graduated, ready-to-publish manuscript "doesn't exist yet" — exactly the dishonesty class this catalog exists to avoid, and it's one owner click (or one authorized session) away from being correct.
+UNBLOCKS: an honest catalog page; the-paper-orange becomes visibly one step from real (money-adjacent, since it changes its displayed publish-readiness — hence routed to you rather than applied automatically).
+VERIFIED-NEEDED: live-fetched both the pinned-sha and current-main content of all 9 packets over raw.githubusercontent.com and hand-read the diffs (not just the sha-drift pin's byte-diff signal) before drawing these conclusions — see this session's card for the full diffs.
+```
+
 ## 🟢 Decided / resolved
 
 | # | Item | Decision | Provenance |
