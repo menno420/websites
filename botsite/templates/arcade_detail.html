@@ -39,6 +39,9 @@
       {% if game.blocker %}
       <p style="margin:10px 0 0"><strong>The owner click:</strong> {{ game.blocker.owner_action }}</p>
       <p class="sb-muted" style="margin:8px 0 0"><strong>How it unblocks:</strong> {{ game.blocker.unblocks }}</p>
+      {% if game.blocker.ask_id %}
+      <p class="sb-muted" style="margin:8px 0 0"><strong>Ledger ref:</strong> <code>{{ game.blocker.ask_id }}</code> — this click is tracked under that stable id in the fleet's owner-actions ledger, where it is machine-verified.</p>
+      {% endif %}
       {% elif game.status_note %}
       <p style="margin:10px 0 0">{{ game.status_note }}</p>
       {% else %}

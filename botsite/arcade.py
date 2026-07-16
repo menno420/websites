@@ -21,6 +21,19 @@ Honesty rules (the "never fake data" doctrine, applied to games):
   as the "What's blocking launch" panel. It is OPTIONAL and fail-soft: a
   missing or malformed blocker normalizes to ``None`` (the panel simply
   falls back to the status note), never invented and never fatal.
+- A blocker may additionally carry ``ask_id`` — the stable ``ASK-NNNN`` id
+  of its row in the owner-actions ledger (docs/owner/OWNER-ACTIONS.md;
+  append-only, never reused). It is the PRIMARY join key between this
+  public panel and the gated owner console's verification chips
+  (app/askverify.py joins on the id exactly; keyword signatures remain the
+  fallback for id-less rows), so both surfaces flip from one ledger edit.
+  Fail-soft like the rest of the schema: a missing or malformed id
+  normalizes to ``None`` — the panel still renders, just without the
+  ledger ref, and the console falls back to its signature scan.
+
+The blocker schema itself lives in ``botsite/blockers.py`` (shared with the
+catalog / products / puddle-museum registries since 2026-07-16 — one
+normalizer, identical fail-soft semantics everywhere).
 """
 
 from __future__ import annotations
@@ -29,7 +42,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from . import listfilter
+from . import blockers, listfilter
 
 BASE_DIR = Path(__file__).resolve().parent
 ARCADE_JSON_PATH = BASE_DIR / "data" / "arcade.json"
@@ -65,22 +78,6 @@ def _valid(entry: Any) -> bool:
     return True
 
 
-def _normalized_blocker(entry: dict[str, Any]) -> dict[str, str] | None:
-    """The entry's ``blocker`` as ``{"owner_action", "unblocks"}`` with both
-    values non-empty strings — or ``None`` for a missing/malformed blocker
-    (fail-soft: a bad blocker never invalidates the game entry)."""
-    blocker = entry.get("blocker")
-    if not isinstance(blocker, dict):
-        return None
-    owner_action = blocker.get("owner_action")
-    unblocks = blocker.get("unblocks")
-    if not isinstance(owner_action, str) or not owner_action.strip():
-        return None
-    if not isinstance(unblocks, str) or not unblocks.strip():
-        return None
-    return {"owner_action": owner_action.strip(), "unblocks": unblocks.strip()}
-
-
 def _with_ref(url: str) -> str:
     """Append the ``ref=fleet-arcade`` attribution parameter to an outbound URL."""
     return url + ("&" if "?" in url else "?") + REF_QUERY
@@ -113,10 +110,62 @@ def load_games(path: Path | None = None) -> list[dict[str, Any]]:
         game["is_live"] = game["availability"] == "live" and url is not None
         game["has_link"] = game["availability"] in LINKED_AVAILABILITIES and url is not None
         game["link_url"] = _with_ref(url) if game["has_link"] and url else None
-        game["blocker"] = _normalized_blocker(game)
+        game["blocker"] = blockers.normalized_blocker(game.get("blocker"))
         game["detail_url"] = f"/arcade/{game['slug']}"
         games.append(game)
     return games
+
+
+def availability_summary(games: Any) -> dict[str, int]:
+    """Pure, fail-soft availability counts for the /arcade catalog summary strip.
+
+    Given any iterable of enriched game dicts (as :func:`load_games` returns),
+    returns ``{"total", "live", "blocked", "owner_clicks"}``:
+
+    - ``live`` — games really reachable (``has_link`` is truthy: a play or
+      download link renders).
+    - ``blocked`` — games with no reachable link (the honest inverse of
+      ``live``); these are the cards that carry a blocker / status note.
+    - ``owner_clicks`` — the number of DISTINCT owner actions standing between
+      the blocked games and launch, deduplicated by ``ask_id`` (the stable
+      owner-actions ledger id) when present, else by the ``owner_action``
+      text. Blocked games with no recorded blocker contribute nothing — we
+      only count clicks the registry actually names (never invent).
+    - ``total`` — the number of games counted.
+
+    Never raises: a non-iterable input, a non-dict entry, or a missing field
+    is simply skipped (degrade, don't invent) — same honesty doctrine as the
+    loader. Pure: takes already-loaded games, touches no disk and no network.
+    """
+    total = live = blocked = 0
+    clicks: set[str] = set()
+    try:
+        iterator = iter(games)
+    except TypeError:
+        return {"total": 0, "live": 0, "blocked": 0, "owner_clicks": 0}
+    for game in iterator:
+        if not isinstance(game, dict):
+            continue
+        total += 1
+        if game.get("has_link"):
+            live += 1
+            continue
+        blocked += 1
+        blocker = game.get("blocker")
+        if not isinstance(blocker, dict):
+            continue
+        ask_id = blocker.get("ask_id")
+        owner_action = blocker.get("owner_action")
+        if isinstance(ask_id, str) and ask_id.strip():
+            clicks.add("ask:" + ask_id.strip())
+        elif isinstance(owner_action, str) and owner_action.strip():
+            clicks.add("act:" + owner_action.strip())
+    return {
+        "total": total,
+        "live": live,
+        "blocked": blocked,
+        "owner_clicks": len(clicks),
+    }
 
 
 def game_by_slug(slug: str, path: Path | None = None) -> dict[str, Any] | None:

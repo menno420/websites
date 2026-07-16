@@ -21,7 +21,12 @@
     "status_note": "Publish-ready up to the owner gate; a live purchase remains unverified until the owner's own test purchase.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/membership-kit.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click: create the Membership-Site Boilerplate Kit listing from the staged venture-lab launch copy, hit Publish, then do your own test purchase.",
+      "unblocks": "This entry flips to live with a real Buy link once a session records the listing URL — and it is one of the two components the Ship-It Bundle waits on.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "template-packs",
@@ -33,7 +38,12 @@
     "status_note": "Publish-ready up to the owner gate; zero-runtime pack, live purchase unverified until the owner's own test purchase.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/template-packs.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click: create the Agent-Workflow Template Pack listing from the staged venture-lab launch copy, hit Publish, then do your own test purchase.",
+      "unblocks": "This entry flips to live with a real Buy link once a session records the listing URL — and it is one of the two components the Ship-It Bundle waits on.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "agent-fleet-field-manual",
@@ -45,7 +55,12 @@
     "status_note": "Publish-ready up to the owner gate — parks at the §7 owner clicks by design.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/agent-fleet-field-manual.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click for the Agent Fleet Field Manual — the §7 owner clicks its packet parks at, then your own test purchase.",
+      "unblocks": "This entry (and its fleet-store mirror on /products) flips to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "kill-rule-intake-kit",
@@ -57,7 +72,12 @@
     "status_note": "Publish-ready up to the owner gate; crowded free-heavy category — the packet expects ~$0 absent distribution.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/kill-rule-intake-kit.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click: create the Kill-Rule Intake Kit listing from the staged venture-lab launch copy, hit Publish, then do your own test purchase.",
+      "unblocks": "This entry flips to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "false-green-test-trap",
@@ -69,7 +89,12 @@
     "status_note": "Publish-ready up to the owner gate; the guide is honestly ~8 pages, not the intake's estimated ~15.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/false-green-test-trap.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click: create The False-Green Test Trap listing from the staged venture-lab launch copy, hit Publish, then do your own test purchase.",
+      "unblocks": "This entry flips to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "merge-wall-cookbook",
@@ -81,7 +106,12 @@
     "status_note": "Publish-ready up to the owner gate; prose verified by citation, recipes by parse-check, the enabler pattern by production merge events.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/merge-wall-cookbook.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click: create The Agent Merge-Wall Cookbook listing from the staged venture-lab launch copy, hit Publish, then do your own test purchase.",
+      "unblocks": "This entry flips to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "the-slow-word",
@@ -93,7 +123,12 @@
     "status_note": "Publish-ready up to the owner gate — parks at the §7 owner clicks by design, not at a blocking gap.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/the-slow-word.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click for The Slow Word — the §7 owner clicks its packet parks at, then your own test purchase.",
+      "unblocks": "This entry flips to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "the-weigh-house",
@@ -105,7 +140,12 @@
     "status_note": "Publish-ready up to the owner gate — the plan's Tier-1b title-fix (keep title, add the subtitle) is worked.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/the-weigh-house.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click for The Weigh House (the Tier-1b subtitle fix is already worked), then your own test purchase.",
+      "unblocks": "This entry flips to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "ultramarine",
@@ -117,7 +157,12 @@
     "status_note": "Publish-ready up to the owner gate — rename to \"The Widow's Blue\" recommended (the Strong title collision is worked, owner picks).",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/ultramarine.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "Pick the title: publish as \"The Widow's Blue\" (the recommended rename) or keep Ultramarine — one sentence decides.",
+      "unblocks": "The last open decision on this title clears and it joins the Gumroad publish pass.",
+      "ask_id": "ASK-0014"
+    }
   },
   {
     "slug": "de-waag",
@@ -129,7 +174,12 @@
     "status_note": "Publish-ready up to the owner gate, sequenced behind the EN edition (The Weigh House); native-speaker proofread pending as an explicit owner step.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/de-waag.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click for De Waag, sequenced behind the EN edition (The Weigh House) in the same publish pass.",
+      "unblocks": "This entry flips to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "het-trage-woord",
@@ -141,7 +191,12 @@
     "status_note": "Publish-ready up to the owner gate, sequenced behind the EN edition (The Slow Word); native-speaker proofread pending as an explicit owner step.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/het-trage-woord.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "One Gumroad publish click for Het trage woord, sequenced behind the EN edition (The Slow Word) in the same publish pass.",
+      "unblocks": "This entry flips to live with a real Buy link once a session records the listing URL.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "de-papieren-sinaasappel",
@@ -153,7 +208,12 @@
     "status_note": "Publish-ready up to the owner gate; the native-speaker proofread is a blocking quality gate before this title's publish click.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/de-papieren-sinaasappel.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "Arrange the native-speaker Dutch proofread — the packet's blocking quality gate before this title's publish click.",
+      "unblocks": "The proofread clears the last blocking step; the title then joins the Gumroad publish pass.",
+      "ask_id": "ASK-0016"
+    }
   },
   {
     "slug": "bundle-starter",
@@ -165,7 +225,12 @@
     "status_note": "Hard-gated on the ⚑B/⚑D component publish clicks — a Gumroad bundle references existing live products; publish-ready the moment both components are live.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/bundle-starter.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "Publish the two component listings (Membership Kit + Template Pack) on Gumroad — a Gumroad bundle references existing live products, so the same publish pass un-gates this bundle.",
+      "unblocks": "The bundle becomes publish-ready the moment both components are live; one more publish click then makes it purchasable.",
+      "ask_id": "ASK-0012"
+    }
   },
   {
     "slug": "photo-packs",
@@ -177,7 +242,12 @@
     "status_note": "Hard-gated: the sellable zips cannot exist in the public repo — full-res originals are owner-held off-repo, so nothing proceeds until the owner hands them off.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/photo-packs.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "Hand off the full-res originals (Dutch Skies + Golden Hours) — they are owner-held off-repo and must never land in this public repo.",
+      "unblocks": "A session can package the sellable zips and stage the listing; the pack moves from hard-gated to publish-ready.",
+      "ask_id": "ASK-0013"
+    }
   },
   {
     "slug": "the-painted-stones",
@@ -189,7 +259,12 @@
     "status_note": "Vetted; parks at the §5 illustration gate (a blocking owner money-decision, seat recommends Park) — not publish-ready.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/the-painted-stones.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "Decide the §5 illustration gate — commissioning illustrations is a money-decision only the owner can make (the seat's recommendation on record is Park).",
+      "unblocks": "On a go: the illustration work, then publication; on an explicit park this entry stays honestly parked by decision.",
+      "ask_id": "ASK-0015"
+    }
   },
   {
     "slug": "the-marginalia-society",
@@ -249,7 +324,12 @@
     "status_note": "Concept vetted — parks twice: at \"no manuscript\" AND at the §5 illustration gate.",
     "url": null,
     "source": "venture-lab docs/publishing/vetting/the-puddle-museum.md @ 2c039e3",
-    "as_of": "2026-07-13"
+    "as_of": "2026-07-13",
+    "blocker": {
+      "owner_action": "Decide the §5 illustration gate — commissioning illustrations is a money-decision only the owner can make; the same one decision gates the three Puddle Museum editions on /puddle-museum.",
+      "unblocks": "On a go: the illustration work, then publication of the book and its three editions; on an explicit park this entry stays honestly parked by decision.",
+      "ask_id": "ASK-0015"
+    }
   },
   {
     "slug": "the-windmill-mouse",

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Post-deploy healthcheck: GET /healthz and / on the four live services, plus
 the `/fleet` registry live-parse smoke check, the arcade URL drift probe
-(live+download) and the tester-task URL liveness guard (open tasks).
+(live+download), the tester-task URL liveness guard (open tasks) and the
+release-drift flag (registry blockers vs askverify probes).
 
 ──────────────────────────────────────────────────────────────────────────────
 PROVENANCE / KILL-SWITCH HEADER
@@ -55,14 +56,33 @@ non-open tasks reported explicitly as not probed, live fetches ONLY here
 (and the healthcheck.yml schedule) — the required `quality` gate tests the
 probe against `httpx.MockTransport`, network-free.
 
+The release-drift pass (PR #349 follow-up parked as "release-drift banner",
+promoted by PR #362's baton once every registry blocker carried a stable
+`ask_id`) joins the four botsite registries' normalized blockers
+(botsite/blockers.py via the SAME public loaders the pages read through) to
+`app.askverify`'s probe REGISTRY by exact ASK-NNNN id and FLAGS the two
+drifts a cleared owner ask can leave behind: a probe that positively detects
+the ask DONE while the registry still gates the card (e.g. the lumen-drift
+release tag going live while arcade.json still says unavailable), and an
+`ask_id` that matches no askverify entry (ledger drift — the join key
+dangles). Probes are askverify's own (read-only, fail-soft, deduped one
+probe per ask_id per run even when one ask gates many cards — ASK-0012
+gates 14); probe-less asks (product decisions, off-repo state) are listed
+honestly as not machine-checkable and a probe error is an honest unknown —
+neither fails the pass (live network is flaky; never invent state). No new
+botsite outbound surface: the probes run from the control-plane's askverify
+inside this script, which already does live fetches by design.
+
 Usage:  python3 scripts/healthcheck.py
 Exit 0 = every checked endpoint returned its expected status AND the registry
 parsed to a non-empty lane set AND no probed arcade URL was flagged AND no
-probed open tester-task URL was flagged; exit 1 = any of those fail.
+probed open tester-task URL was flagged AND no release drift was flagged;
+exit 1 = any of those fail.
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import urllib.error
@@ -70,8 +90,15 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import config, fleet  # noqa: E402  (path setup must run first)
-from botsite import arcade_probe, testing_probe  # noqa: E402  (path setup must run first)
+from app import askverify, config, fleet, github, release_drift  # noqa: E402  (path setup must run first)
+from botsite import (  # noqa: E402  (path setup must run first)
+    arcade,
+    arcade_probe,
+    catalog,
+    products,
+    puddle_museum,
+    testing_probe,
+)
 
 # (label, base URL). Endpoints checked per service: /healthz and / (both expect
 # 200 now that all four are public). The review URL is the canonical f027
@@ -185,6 +212,103 @@ def check_testing_urls() -> tuple[bool, list[str]]:
     return result["ok"], lines
 
 
+def _collect_registry_blockers() -> list[tuple[str, str, dict]]:
+    """Every normalized blocker across the four botsite registries as
+    (registry, entry id, blocker) rows — read through the SAME public
+    loaders the pages render from (each already runs
+    ``botsite.blockers.normalized_blocker``), so this pass and the public
+    site can never disagree about what is gated. Disk reads only — the
+    committed JSON, no botsite network surface."""
+    rows: list[tuple[str, str, dict]] = []
+    for game in arcade.load_games():
+        if game.get("blocker"):
+            rows.append(("arcade", game["slug"], game["blocker"]))
+    for item in catalog.load_catalog():
+        if item.get("blocker"):
+            rows.append(("catalog", item["slug"], item["blocker"]))
+    for product in products.load_products():
+        if product.get("blocker"):
+            rows.append(("products", product["slug"], product["blocker"]))
+    for edition in puddle_museum.load_museum()["editions"]:
+        if edition.get("blocker"):
+            rows.append(("puddle-museum", edition["lang"], edition["blocker"]))
+    return rows
+
+
+def check_release_drift() -> tuple[bool, list[str]]:
+    """Join every registry blocker's ``ask_id`` to its askverify REGISTRY
+    entry (exact ASK-NNNN id — ``askverify.match`` with no headline, so the
+    signature fallback never fires) and flag RELEASE DRIFT: a probe that
+    positively detects the ask done while the registry still gates the
+    card, or an ask_id no askverify entry knows (ledger drift). Probes are
+    askverify's own machinery (``annotate`` — claim-once, concurrent,
+    fail-soft: a probe exception is an honest unknown), deduped to one
+    probe per ask_id per run however many cards share the ask. still-open
+    is a PASS row; not-machine-checkable / unknown / id-less blockers are
+    honest info rows that never fail the pass (never invent state).
+    Returns (ok, printable lines). Never raises: a pass bug itself degrades
+    to a FAIL line (defensive, same stance as check_arcade_urls)."""
+    try:
+        blocker_rows = _collect_registry_blockers()
+    except Exception as exc:  # defensive: a loader bug shouldn't crash the check
+        return False, [f"registry collection raised {type(exc).__name__}: {exc}"]
+
+    # One join + one probe per DISTINCT ask_id per run (ASK-0012 alone gates
+    # many catalog cards); annotate's claim-once machinery then runs each
+    # matched entry's probe exactly once, concurrently.
+    ask_ids: list[str] = []
+    for _registry, _ident, blocker in blocker_rows:
+        aid = blocker.get("ask_id")
+        if aid and aid not in ask_ids:
+            ask_ids.append(aid)
+    entries = {aid: askverify.match("", aid) for aid in ask_ids}
+    items = [{"ask_id": aid} for aid in ask_ids if entries[aid] is not None]
+
+    async def _annotate() -> None:
+        # askverify's probes ride the app's lifespan-managed httpx clients;
+        # this script has no lifespan, so wire the SAME client pair up around
+        # the one annotate call (the app/main.py lifespan idiom, scoped).
+        client = github.make_client()
+        raw_client = github.make_raw_client()
+        github.set_clients(client, raw_client)
+        try:
+            await askverify.annotate(items)
+        finally:
+            await client.aclose()
+            await raw_client.aclose()
+
+    try:
+        asyncio.run(_annotate())
+        verdicts = {item["ask_id"]: item.get("verify") or {} for item in items}
+    except Exception as exc:  # defensive: a machinery bug shouldn't crash the check
+        return False, [f"askverify annotate raised {type(exc).__name__}: {exc}"]
+
+    # Per-row verdict via the shared classifier (app/release_drift.py) — the
+    # SAME logic the owner console's drift chip renders from, so CI and the
+    # console can never disagree about what "drift" means. This script owns
+    # the impure half (collecting blockers from botsite, running the probes);
+    # the helper owns the pure verdict.
+    lines: list[str] = []
+    flagged = 0
+    for registry, ident, blocker in blocker_rows:
+        ref = f"{registry}/{ident}"
+        aid = blocker.get("ask_id")
+        v = release_drift.classify(
+            aid,
+            entry_exists=bool(aid) and entries.get(aid) is not None,
+            verdict=(verdicts.get(aid, {}).get("verdict") if aid else None),
+            detail=(verdicts.get(aid, {}).get("detail") or "" if aid else ""),
+        )
+        if v["flagged"]:
+            flagged += 1
+        lines.append(f"{ref:40}  {v['mark']:7}  {v['token']}  ({v['reason']})")
+    lines.append(
+        f"{len(blocker_rows)} blocker(s) across the 4 registries, "
+        f"{len(items)} distinct ask(s) joined, {flagged} flagged"
+    )
+    return flagged == 0, lines
+
+
 def main() -> int:
     rows: list[tuple[str, str, int, bool, str]] = []
     ok_all = True
@@ -221,6 +345,13 @@ def main() -> int:
     print()
     print(f"tester-task URL liveness guard (open tasks): {'PASS' if testing_ok else 'FAIL'}")
     for line in testing_lines:
+        print(f"  {line}")
+
+    drift_ok, drift_lines = check_release_drift()
+    ok_all = ok_all and drift_ok
+    print()
+    print(f"release-drift flag (registry blockers vs askverify): {'PASS' if drift_ok else 'FAIL'}")
+    for line in drift_lines:
         print(f"  {line}")
 
     print()

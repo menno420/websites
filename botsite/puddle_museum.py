@@ -20,6 +20,12 @@ not exist yet as a printed thing):
   renders status notes and **zero buy links**. No dead links, no fake store.
 - No exhibit references an image: the book is not illustrated yet, so the
   collection is text and emoji, and the page says so.
+- An edition may carry the optional ``blocker`` object (``owner_action`` +
+  ``unblocks``, plus an optional stable ``ask_id`` ledger ref — schema
+  shared with the arcade via ``botsite/blockers.py``): the named owner
+  decision standing between the edition and publication. Fail-soft
+  everywhere: a missing or malformed blocker normalizes to ``None`` and
+  never invalidates the edition.
 """
 
 from __future__ import annotations
@@ -27,6 +33,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+
+from . import blockers
 
 BASE_DIR = Path(__file__).resolve().parent
 MUSEUM_JSON_PATH = BASE_DIR / "data" / "puddle_museum.json"
@@ -108,6 +116,7 @@ def load_museum(path: Path | None = None) -> dict[str, list[dict[str, Any]]]:
         url = (edition.get("url") or "").strip() or None
         edition["url"] = url
         edition["is_buyable"] = edition["availability"] == "live" and url is not None
+        edition["blocker"] = blockers.normalized_blocker(edition.get("blocker"))
         editions.append(edition)
 
     return {"exhibits": exhibits, "editions": editions}

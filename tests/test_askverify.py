@@ -10,7 +10,7 @@ default and token-armed tests opt in explicitly.
 Coverage:
 
 * matcher stability against the REAL committed docs/owner/OWNER-ACTIONS.md
-  Open section (all 9 asks match, each a distinct registry entry);
+  Open section (all 11 asks match, each a distinct registry entry);
 * every live probe's full verdict ladder (done-detected / still-open /
   unknown), including the no-token rungs and the never-writes guarantee of
   the ORDER-020 PAT check;
@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import re
 import sys
 from pathlib import Path
 
@@ -80,16 +81,29 @@ def _run(coro):
 # --------------------------------------------------------------------------- #
 # Matcher stability — the REAL committed ledger is the fixture
 # --------------------------------------------------------------------------- #
-def _open_ledger_headlines() -> list[str]:
+def _open_ledger_blocks() -> list[dict]:
     text = LEDGER_PATH.read_text(encoding="utf-8")
     section, note = briefing.open_section(text)
     assert note == ""  # the ledger has its Open heading
     _pre, blocks = owner_queue.parse_owner_actions(section)
-    return [b.get("what", "") for b in blocks]
+    return blocks
 
 
-def test_real_ledger_has_the_nine_open_asks():
-    assert len(_open_ledger_headlines()) == 9
+def _open_ledger_headlines() -> list[str]:
+    return [b.get("what", "") for b in _open_ledger_blocks()]
+
+
+def test_real_ledger_has_the_sixteen_open_asks_each_with_a_unique_id():
+    # 9 from the 2026-07-16 id backfill + the 2 arcade launch blockers
+    # (ASK-0010/0011) + the 5 registry blocker rows (ASK-0012..0016 — the
+    # catalog / products / puddle-museum owner gates, same day).
+    blocks = _open_ledger_blocks()
+    assert len(blocks) == 16
+    ids = [b.get("ask_id") for b in blocks]
+    assert all(
+        i and re.fullmatch(r"ASK-\d{4}", i) for i in ids
+    ), f"open ask without a well-formed ID: {ids}"
+    assert len(set(ids)) == 16, f"duplicated ask id in the ledger: {ids}"
 
 
 def test_every_real_open_ask_matches_a_distinct_registry_entry():
@@ -100,6 +114,15 @@ def test_every_real_open_ask_matches_a_distinct_registry_entry():
         assert entry is not None, f"unmatched real ask: {h[:80]!r}"
         ids.append(entry["id"])
     assert len(set(ids)) == len(ids), f"registry entry matched twice: {ids}"
+    # ID-matching lands every ask on the SAME entry its signature chose —
+    # the ids were assigned off the signature matcher's own mapping.
+    for b in _open_ledger_blocks():
+        by_sig = askverify.match(b["what"])
+        by_id = askverify.match("", b["ask_id"])
+        assert by_id is by_sig, (
+            f"{b['ask_id']} lands on {by_id and by_id['id']!r}, signature "
+            f"chose {by_sig and by_sig['id']!r}"
+        )
 
 
 def test_real_ledger_matches_land_on_the_intended_probes():
@@ -107,11 +130,48 @@ def test_real_ledger_matches_land_on_the_intended_probes():
     assert set(by_id) == {
         "q-0004", "discord-oauth", "armed-service", "botsite-database-url",
         "paypal-credentials", "botsite-gate", "order-020-pat", "bake-pat",
-        "dashboard-site-password",
+        "dashboard-site-password", "lumen-drift-release",
+        "product-forge-pages", "gumroad-publish-pass",
+        "photo-packs-originals", "ultramarine-rename", "illustration-gate",
+        "sinaasappel-proofread",
     }
     # Spot-check the two textually-overlapping PAT asks disambiguate.
     assert "BAKE_PAT" in by_id["bake-pat"]
     assert "BAKE_PAT" not in by_id["order-020-pat"]
+
+
+def test_ledger_ids_are_never_reused_anywhere_in_the_file():
+    """Uniqueness scan of the WHOLE committed ledger (Decided rows included):
+    an ASK-NNNN id, once written, may appear on at most one ``ID:`` line."""
+    text = LEDGER_PATH.read_text(encoding="utf-8")
+    id_lines = re.findall(r"^ID:\s*(ASK-\d{4})\s*$", text, re.M)
+    assert id_lines, "the ledger carries no ID: lines at all"
+    dupes = {i for i in id_lines if id_lines.count(i) > 1}
+    assert not dupes, f"ask id reused in the ledger: {sorted(dupes)}"
+
+
+def test_registry_ask_ids_are_unique_and_well_formed():
+    ids = [e["ask_id"] for e in askverify.REGISTRY if e.get("ask_id")]
+    assert len(set(ids)) == len(ids), f"registry reuses an ask id: {ids}"
+    assert all(re.fullmatch(r"ASK-\d{4}", i) for i in ids)
+    # Every registry entry now has a ledger row (the two arcade blockers
+    # gained theirs 2026-07-16 — ASK-0010/0011): none stay signature-only.
+    assert not [
+        e["id"] for e in askverify.REGISTRY if e.get("ask_id") is None
+    ]
+
+
+def test_registry_signatures_unique_and_probeless_entries_carry_reasons():
+    """Registry well-formedness: no two entries share a signature tuple
+    (a duplicate would make the fallback scan order-dependent), and every
+    explicit not-machine-checkable registration (``probe=None``) carries a
+    non-empty honest reason."""
+    sigs = [tuple(e["signature"]) for e in askverify.REGISTRY]
+    assert len(set(sigs)) == len(sigs), f"duplicated signature: {sigs}"
+    for e in askverify.REGISTRY:
+        assert e["signature"], f"{e['id']}: empty signature"
+        if e["probe"] is None:
+            assert e.get("reason", "").strip(), f"{e['id']}: no reason"
 
 
 def test_match_unmatched_and_empty_are_none():
@@ -123,6 +183,298 @@ def test_match_unmatched_and_empty_are_none():
 def test_match_is_case_and_whitespace_insensitive():
     entry = askverify.match("set  SITE_PASSWORD   on the BOTSITE service")
     assert entry is not None and entry["id"] == "botsite-gate"
+
+
+# --------------------------------------------------------------------------- #
+# Stable ask IDs — exact-ID matching with honest signature fallback
+# --------------------------------------------------------------------------- #
+def test_id_exact_match_beats_signature():
+    # The headline signature-matches botsite-gate, but the stable id says
+    # dashboard-site-password — the id wins (rewording-proof by design).
+    headline = "Set SITE_PASSWORD on the botsite service"
+    assert askverify.match(headline)["id"] == "botsite-gate"
+    entry = askverify.match(headline, "ASK-0009")
+    assert entry is not None and entry["id"] == "dashboard-site-password"
+
+
+def test_unknown_id_falls_back_to_signature():
+    # A not-yet-registered new ask carrying a fresh id still matches
+    # honestly on its keywords instead of vanishing.
+    entry = askverify.match("store it as BAKE_PAT please", "ASK-9999")
+    assert entry is not None and entry["id"] == "bake-pat"
+    # ...and an unknown id over an unmatchable headline stays None.
+    assert askverify.match("A brand new unmatched ask.", "ASK-9999") is None
+
+
+def test_item_without_ask_id_keeps_the_signature_path_unchanged():
+    headline = "Set SITE_PASSWORD on the botsite service"
+    assert askverify.match(headline, None)["id"] == "botsite-gate"
+    assert askverify.match(headline, "")["id"] == "botsite-gate"
+    assert askverify.match(headline) is askverify.match(headline, None)
+
+
+def test_annotate_matches_on_the_item_ask_id(monkeypatch):
+    def responder(url):
+        if url == BOTSITE_OWNER_URL:
+            return _envelope(url, status=503)
+        return _envelope(url)
+
+    _install_get(monkeypatch, responder)
+    items = [
+        # Reworded beyond signature recognition, but carrying its id.
+        {"what": "Completely reworded botsite password errand.",
+         "ask_id": "ASK-0006"},
+        # id-less item on the signature path, same pass.
+        {"what": "Answer Q-0004 please."},
+    ]
+    rollup = _run(askverify.annotate(items))
+    assert items[0]["verify"]["verdict"] == askverify.STILL_OPEN
+    assert items[0]["verify"]["probe"] == "botsite-gate"
+    assert items[1]["verify"]["verdict"] == askverify.NOT_CHECKABLE
+    assert "Q-0004" in items[1]["verify"]["detail"]
+    assert rollup["machine_verified"] == 1 and rollup["unmatched"] == 0
+
+
+# --------------------------------------------------------------------------- #
+# Arcade launch-blocker join — ask_id primary, signature fallback
+# (the 2026-07-16 slice: botsite/data/arcade.json blockers ↔ ledger rows
+# ASK-0010/0011 ↔ the two arcade probe entries, one id end to end).
+# --------------------------------------------------------------------------- #
+ARCADE_JSON = (
+    Path(__file__).resolve().parents[1] / "botsite/data/arcade.json"
+)
+
+
+def _arcade_blocker_ask_ids() -> dict[str, str]:
+    """slug → blocker ask_id from the committed arcade registry, read as
+    plain JSON (no cross-service import — services never import each other's
+    packages; the committed file IS the contract)."""
+    import json
+
+    games = json.loads(ARCADE_JSON.read_text(encoding="utf-8"))
+    return {
+        g["slug"]: g["blocker"]["ask_id"]
+        for g in games
+        if isinstance(g.get("blocker"), dict) and g["blocker"].get("ask_id")
+    }
+
+
+def test_arcade_blocker_joins_by_ask_id_even_when_the_signature_would_miss():
+    """The primary join key is the id: an ask carrying ASK-0010 binds to the
+    lumen-drift probe even when its headline has been reworded past every
+    keyword the old brittle signature match needed."""
+    reworded = "Publish the finished Game Boy Advance ROM's download release."
+    assert askverify.match(reworded) is None  # the old key would mismatch
+    entry = askverify.match(reworded, "ASK-0010")
+    assert entry is not None and entry["id"] == "lumen-drift-release"
+    entry = askverify.match("Flip the settings toggle.", "ASK-0011")
+    assert entry is not None and entry["id"] == "product-forge-pages"
+
+
+def test_arcade_blocker_idless_row_still_joins_via_signature_fallback():
+    """A row with no ID (legacy block, lane copy) keeps the old matching
+    logic: the keyword signature scan still lands it on the arcade probes."""
+    entry = askverify.match("Publish the lumen-drift v1.3 release, please.")
+    assert entry is not None and entry["id"] == "lumen-drift-release"
+    entry = askverify.match(
+        "In product-forge, configure GitHub Pages for games-web."
+    )
+    assert entry is not None and entry["id"] == "product-forge-pages"
+
+
+def test_annotate_joins_the_arcade_asks_by_id_and_probes_them(monkeypatch):
+    def responder(url):
+        if "releases/tags/lumen-drift-v1.3" in url:
+            return _envelope(url, status=404)  # release not published yet
+        if url.endswith("/repos/menno420/product-forge/pages"):
+            return _envelope(url, ok=True, status=200, error="",
+                             data={"status": "built"})
+        return _envelope(url)
+
+    _install_get(monkeypatch, responder)
+    items = [
+        {"what": "Reworded ROM release errand.", "ask_id": "ASK-0010"},
+        {"what": "Reworded Pages errand.", "ask_id": "ASK-0011"},
+    ]
+    rollup = _run(askverify.annotate(items))
+    assert items[0]["verify"]["verdict"] == askverify.STILL_OPEN
+    assert items[0]["verify"]["probe"] == "lumen-drift-release"
+    assert items[1]["verify"]["verdict"] == askverify.DONE
+    assert items[1]["verify"]["probe"] == "product-forge-pages"
+    assert rollup["machine_verified"] == 2 and rollup["unmatched"] == 0
+
+
+def test_committed_arcade_registry_ledger_and_probe_registry_agree():
+    """The one-ledger-edit-flips-both-surfaces pin: each committed arcade
+    blocker's ask_id (a) resolves by exact-ID to the registry entry whose
+    probe machine-checks that very blocker, and (b) is a real row in the
+    committed ledger's Open section."""
+    ids = _arcade_blocker_ask_ids()
+    assert ids == {"lumen-drift": "ASK-0010", "games-web": "ASK-0011"}
+    expected_probe = {
+        "lumen-drift": "lumen-drift-release",
+        "games-web": "product-forge-pages",
+    }
+    for slug, ask_id in ids.items():
+        entry = askverify.match("", ask_id)
+        assert entry is not None, f"{slug}: {ask_id} hits no registry entry"
+        assert entry["id"] == expected_probe[slug]
+    ledger_ids = {b.get("ask_id") for b in _open_ledger_blocks()}
+    for slug, ask_id in ids.items():
+        assert ask_id in ledger_ids, (
+            f"{slug}: {ask_id} is not an open ledger row"
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Cross-surface pin over ALL FOUR botsite registries (the 2026-07-16 registry
+# blocker join: catalog.json / products.json / puddle_museum.json gained the
+# arcade's optional blocker+ask_id object). Every committed blocker ask_id
+# must be a real Open ledger row AND resolve by exact id to a registry entry
+# — one ledger edit flips the public panel and the owner-console chip.
+# --------------------------------------------------------------------------- #
+DATA_DIR = Path(__file__).resolve().parents[1] / "botsite/data"
+
+# The write-slice parked catalog titles: agent work (a missing manuscript),
+# not owner actions — they must never carry a blocker or a ledger row.
+WRITE_SLICE_SLUGS = {
+    "the-marginalia-society", "the-night-kiln", "the-paper-orange",
+    "the-pepper-ledger", "the-windmill-mouse",
+}
+
+
+def _all_registry_blocker_ask_ids() -> dict[tuple[str, str], str]:
+    """(file, entry-key) → blocker ask_id across all four committed botsite
+    registries, read as plain JSON (no cross-service import — services never
+    import each other's packages; the committed files ARE the contract)."""
+    import json
+
+    found: dict[tuple[str, str], str] = {}
+
+    def _collect(fname: str, entries, key: str):
+        for e in entries:
+            blocker = e.get("blocker")
+            if isinstance(blocker, dict) and blocker.get("ask_id"):
+                found[(fname, e[key])] = blocker["ask_id"]
+
+    for fname, key in (
+        ("arcade.json", "slug"),
+        ("catalog.json", "slug"),
+        ("products.json", "slug"),
+    ):
+        _collect(fname, json.loads(
+            (DATA_DIR / fname).read_text(encoding="utf-8")
+        ), key)
+    museum = json.loads(
+        (DATA_DIR / "puddle_museum.json").read_text(encoding="utf-8")
+    )
+    _collect("puddle_museum.json", museum.get("editions") or [], "lang")
+    return found
+
+
+def test_every_committed_registry_blocker_ask_id_is_an_open_ledger_row():
+    found = _all_registry_blocker_ask_ids()
+    assert found, "no blocker ask_ids found in any committed registry"
+    ledger_ids = {b.get("ask_id") for b in _open_ledger_blocks()}
+    for (fname, entry), ask_id in found.items():
+        assert re.fullmatch(r"ASK-\d{4}", ask_id), (fname, entry, ask_id)
+        assert ask_id in ledger_ids, (
+            f"{fname}:{entry}: {ask_id} is not an open ledger row"
+        )
+        registry_entry = askverify.match("", ask_id)
+        assert registry_entry is not None, (
+            f"{fname}:{entry}: {ask_id} hits no askverify REGISTRY entry"
+        )
+        assert registry_entry["ask_id"] == ask_id
+
+
+def test_committed_registries_join_the_expected_asks():
+    """The exact committed mapping — the honest-blocker plan of record:
+    the Gumroad publish pass (ASK-0012) covers the ten publish-ready
+    catalog titles, their three fleet-store mirrors, and the component-
+    gated bundle; the four remaining owner gates each carry their own row;
+    the write-slice parked titles carry NO blocker at all."""
+    import json
+
+    found = _all_registry_blocker_ask_ids()
+    gumroad_catalog = {
+        "membership-kit", "template-packs", "agent-fleet-field-manual",
+        "kill-rule-intake-kit", "false-green-test-trap",
+        "merge-wall-cookbook", "the-slow-word", "the-weigh-house",
+        "de-waag", "het-trage-woord", "bundle-starter",
+    }
+    for slug in gumroad_catalog:
+        assert found[("catalog.json", slug)] == "ASK-0012", slug
+    for slug in (
+        "membership-site-boilerplate-kit", "agent-workflow-template-pack",
+        "agent-fleet-field-manual",
+    ):
+        assert found[("products.json", slug)] == "ASK-0012", slug
+    assert found[("catalog.json", "photo-packs")] == "ASK-0013"
+    assert found[("catalog.json", "ultramarine")] == "ASK-0014"
+    assert found[("catalog.json", "the-painted-stones")] == "ASK-0015"
+    assert found[("catalog.json", "the-puddle-museum")] == "ASK-0015"
+    for lang in ("en", "nl", "de"):
+        assert found[("puddle_museum.json", lang)] == "ASK-0015", lang
+    assert found[("catalog.json", "de-papieren-sinaasappel")] == "ASK-0016"
+    # The write-slice parked titles carry no blocker (and the one live
+    # catalog entry + live product don't either).
+    catalog = json.loads(
+        (DATA_DIR / "catalog.json").read_text(encoding="utf-8")
+    )
+    by_slug = {e["slug"]: e for e in catalog}
+    for slug in WRITE_SLICE_SLUGS:
+        assert "blocker" not in by_slug[slug], slug
+    assert "blocker" not in by_slug["stripe-webhook-test-kit"]
+    products = json.loads(
+        (DATA_DIR / "products.json").read_text(encoding="utf-8")
+    )
+    (live_product,) = [p for p in products if p["availability"] == "live"]
+    assert "blocker" not in live_product
+
+
+def test_the_five_new_asks_are_honestly_probe_less():
+    """ASK-0012..0016 are NOT machine-checkable (Gumroad state, off-repo
+    files, product/money decisions): each registers with ``probe=None`` and
+    a reason — never a fake probe, never a guessed verdict."""
+    for ask_id in ("ASK-0012", "ASK-0013", "ASK-0014", "ASK-0015",
+                   "ASK-0016"):
+        entry = askverify.match("", ask_id)
+        assert entry is not None, ask_id
+        assert entry["probe"] is None, ask_id
+        assert entry["reason"].strip(), ask_id
+
+
+def test_parser_extracts_the_id_line():
+    src = (
+        "⚑ OWNER-ACTION\n"
+        "ID: ASK-0042\n"
+        "WHAT: Do the thing.\n"
+        "WHERE: over there.\n"
+    )
+    _pre, blocks = owner_queue.parse_owner_actions(src)
+    assert len(blocks) == 1
+    assert blocks[0]["ask_id"] == "ASK-0042"
+    assert blocks[0]["what"] == "Do the thing."
+    # Flattened one-line lane copies carry the id too.
+    flat = "⚑ OWNER-ACTION ID: ASK-0042 WHAT: Do the thing. WHERE: there."
+    _pre, blocks = owner_queue.parse_owner_actions(flat)
+    assert blocks[0]["ask_id"] == "ASK-0042"
+
+
+def test_parser_is_absent_safe_for_legacy_blocks_without_an_id():
+    src = "⚑ OWNER-ACTION\nWHAT: Legacy ask.\nWHERE: here.\n"
+    _pre, blocks = owner_queue.parse_owner_actions(src)
+    assert "ask_id" not in blocks[0]
+    # An id MENTIONED in a field's prose never binds — only the header
+    # region before the first field label is scanned.
+    src = (
+        "⚑ OWNER-ACTION\n"
+        "WHAT: Legacy ask.\n"
+        "HOW: extends the ID: ASK-0007 errand above.\n"
+    )
+    _pre, blocks = owner_queue.parse_owner_actions(src)
+    assert "ask_id" not in blocks[0]
 
 
 # --------------------------------------------------------------------------- #

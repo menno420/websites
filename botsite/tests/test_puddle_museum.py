@@ -221,3 +221,110 @@ def test_committed_data_nothing_buyable():
         assert edition["is_buyable"] is False
         assert edition["status_note"]
         assert "venture-lab" in edition["source"]
+
+
+# --------------------------------------------------------------------------- #
+# blocker + ask_id — the shared schema (botsite/blockers.py, the arcade's
+# PR #360 object extended to the editions 2026-07-16). Optional and
+# fail-soft: a malformed blocker costs only the panel, a malformed ask_id
+# only the ledger ref — never the edition.
+# --------------------------------------------------------------------------- #
+
+def test_loader_normalizes_valid_edition_blocker(tmp_path):
+    reg = tmp_path / "puddle_museum.json"
+    reg.write_text(json.dumps({
+        "exhibits": [],
+        "editions": [{**EDITION_BASE,
+                      "blocker": {"owner_action": "  decide the thing  ",
+                                  "unblocks": " then it ships ",
+                                  "ask_id": "  ASK-0042  "}}],
+    }), encoding="utf-8")
+    (edition,) = puddle_museum.load_museum(reg)["editions"]
+    assert edition["blocker"] == {
+        "owner_action": "decide the thing", "unblocks": "then it ships",
+        "ask_id": "ASK-0042",
+    }
+
+
+@pytest.mark.parametrize("blocker", [
+    None, "just prose", {"owner_action": "click"}, {"unblocks": "ships"},
+    {"owner_action": "", "unblocks": "ships"},
+    {"owner_action": 42, "unblocks": "ships"},
+])
+def test_loader_malformed_blocker_degrades_to_none(tmp_path, blocker):
+    """A missing/malformed blocker is fail-soft: it normalizes to None and
+    never invalidates the edition (degrade, don't invent)."""
+    reg = tmp_path / "puddle_museum.json"
+    reg.write_text(json.dumps({
+        "exhibits": [],
+        "editions": [{**EDITION_BASE, "blocker": blocker}],
+    }), encoding="utf-8")
+    (edition,) = puddle_museum.load_museum(reg)["editions"]
+    assert edition["lang"] == "en"  # the edition survives
+    assert edition["blocker"] is None
+
+
+@pytest.mark.parametrize("ask_id", [
+    42, "", "   ", "ASK-42", "ASK-00100", "ask-0010",
+    "see ASK-0010", "ASK-0010 maybe",
+])
+def test_loader_malformed_ask_id_degrades_to_none_but_keeps_blocker(tmp_path, ask_id):
+    reg = tmp_path / "puddle_museum.json"
+    reg.write_text(json.dumps({
+        "exhibits": [],
+        "editions": [{**EDITION_BASE,
+                      "blocker": {"owner_action": "decide",
+                                  "unblocks": "ships", "ask_id": ask_id}}],
+    }), encoding="utf-8")
+    (edition,) = puddle_museum.load_museum(reg)["editions"]
+    assert edition["blocker"] is not None
+    assert edition["blocker"]["owner_action"] == "decide"
+    assert edition["blocker"]["ask_id"] is None
+
+
+def test_committed_editions_all_join_the_illustration_gate():
+    """All three committed editions wait on the same one owner decision —
+    the §5 illustration gate, ledger row ASK-0015 (the same id the two
+    parked picture books carry in catalog.json; cross-pinned repo-wide by
+    tests/test_askverify.py)."""
+    editions = puddle_museum.load_museum()["editions"]
+    assert len(editions) == 3
+    for edition in editions:
+        blocker = edition["blocker"]
+        assert blocker is not None, edition["lang"]
+        assert blocker["owner_action"].strip()
+        assert blocker["unblocks"].strip()
+        assert blocker["ask_id"] == "ASK-0015", edition["lang"]
+
+
+def test_page_renders_edition_blocker_panels_with_ledger_refs(client):
+    """Each coming-soon edition card renders the blocker panel: the owner
+    decision, how it unblocks, and the guarded ledger ref."""
+    r = client.get("/puddle-museum")
+    assert r.status_code == 200
+    assert r.text.count("The owner click:") == 3
+    assert r.text.count("How it unblocks:") == 3
+    assert r.text.count("Ledger ref:") == 3
+    assert r.text.count("<code>ASK-0015</code>") == 3
+    assert "owner-actions ledger" in r.text
+    # the honesty gate holds: still no store links, no forms
+    assert "gumroad" not in r.text.lower()
+    assert "<form" not in r.text.lower()
+
+
+def test_page_idless_blocker_renders_panel_without_ledger_ref(
+    client, monkeypatch, tmp_path
+):
+    reg = tmp_path / "puddle_museum.json"
+    reg.write_text(json.dumps({
+        "exhibits": [],
+        "editions": [{**EDITION_BASE,
+                      "blocker": {"owner_action": "decide the thing",
+                                  "unblocks": "then it ships"}}],
+    }), encoding="utf-8")
+    monkeypatch.setattr(puddle_museum, "MUSEUM_JSON_PATH", reg)
+    r = client.get("/puddle-museum")
+    assert r.status_code == 200
+    assert "The owner click:" in r.text
+    assert "decide the thing" in r.text
+    assert "Ledger ref:" not in r.text

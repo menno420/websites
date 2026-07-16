@@ -9,6 +9,11 @@
 
 ## 🟡 Open — waiting on the owner
 
+> **Ask IDs (2026-07-16):** every ⚑ ask block below carries one
+> `ID: ASK-<4 digits>` line directly under its marker. IDs are append-only —
+> assigned once, never reused, never renumbered; a new ask takes the next
+> free number. Verification chips (`app/askverify.py`) join on this ID exactly.
+
 | # | Decision | What it unblocks | Notes / where it lives |
 |---|---|---|---|
 | 1 | **Dashboard `/admin` live-bot control** — arm a production control path, or keep it dry-run? | The Discord-OAuth panel that writes the live bot's control API (settings / help / cog routing / submission moderation). | Needs your direct word. As of 2026-07-11 `/admin` is a complete **dry-run** management UX (typed previews + in-memory audit; zero control-API credentials present — `docs/planning/dashboard-bot-management-readiness.md`). Arming = a **separate** service (OAuth app + control-API token, spec `docs/specs/bot-control-api-v1.md`) + deciding *where bot control lives* (websites / superbot / superbot-next). Rework-plan **Q4** / **Q-0004** (`docs/question-router.md`); three ⚑ asks below. |
@@ -57,6 +62,7 @@ honestly say "no data mirrored yet". Optional, not blocking.
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0001
 WHAT: Answer Q-0004 — decide WHERE live bot control lives (websites / superbot / superbot-next), or explicitly keep the dashboard's control panel dry-run-only.
 WHERE: docs/question-router.md (Q-0004, open + blocking) — reply in chat or edit the "Maintainer answer" slot; the dry-run panel to judge from is live at the dashboard's /admin.
 HOW: one sentence is enough ("carry it into websites as a new service" / "leave it in superbot" / "superbot-next" / "stay dry-run"). Everything downstream (OAuth app, token, armed service) hangs off this answer.
@@ -67,6 +73,7 @@ VERIFIED-NEEDED: a product/topology decision only you can make (docs/question-ro
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0002
 WHAT: Create the Discord OAuth application for the future ARMED control panel and decide its redirect URI.
 WHERE: discord.com/developers/applications → New Application → OAuth2 (do this only after Q-0004 above names where the armed service lives).
 HOW: register the app; add redirect URI https://<armed-service-url>/auth/callback (the armed service's real URL once it exists); note the client id + client secret — they go ONLY into the armed service's Railway env (spec §9 names: the OAuth client id/secret + redirect + session-secret vars), NEVER into the dashboard service (a test forbids the literals there).
@@ -77,6 +84,7 @@ VERIFIED-NEEDED: creating a Discord application requires your Discord developer 
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0003
 WHAT: Provision the scoped bot control-API token and the SEPARATE armed Railway service that will hold it.
 WHERE: railway.app → project superbot-websites → New → Service (a NEW service, per the standing "never mounted on a read-only surface" rule) + the token minted on the bot side (superbot's control-api seam).
 HOW: after Q-0004 and the OAuth app: create the service, set its env per docs/specs/bot-control-api-v1.md §9 (OAuth client id/secret/redirect, session secret, control URL + scoped token). Never reuse the ambient production RAILWAY_*_ID vars (docs/RAILWAY-SAFETY.md); the dashboard service gets NOTHING.
@@ -125,6 +133,7 @@ path (`docs/CAPABILITIES.md`), so they are left in place for the owner.
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0004
 WHAT: Create the botsite submissions PostgreSQL database and give the botsite service its connection string.
 WHERE: railway.app → project superbot-websites → New → Database → PostgreSQL; then service botsite → Variables.
 HOW: add variable DATABASE_URL = the connection string Railway shows for the new Postgres. One paste.
@@ -150,6 +159,7 @@ is 0 at last check.
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0005
 WHAT: Set up PayPal Payouts — the payout rail you confirmed for the tester program (relayed live 2026-07-12) — and put its two credentials on the botsite service.
 WHERE: paypal.com (business account) → developer.paypal.com → Apps & Credentials; then railway.app → project superbot-websites → service botsite → Variables.
 HOW: (a) upgrade/create a PayPal BUSINESS account at paypal.com; (b) developer.paypal.com → Apps & Credentials → Live → Create App → copy the Client ID + Secret; (c) request/enable Payouts on that live app (PayPal gates Payouts approval on business accounts — this step can take days, start it early); (d) railway.app → superbot-websites → botsite → Variables → add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET with those values (names exactly as written; the values never go in the repo); (e) auto-pay STAYS OFF even then — it additionally requires TESTING_AUTOPAY_ENABLED=true, which you only set once PR3 ships the live call and you want it armed. Context for the record: a regular credit card can pay IN but cannot PUSH money OUT to testers — an outbound rail (PayPal Payouts / Stripe Connect / Wise / gift-card API) is structurally required, and PayPal Payouts is the confirmed choice.
@@ -161,6 +171,7 @@ VERIFIED-NEEDED: PayPal business-account/app creation is owner-held (no agent cr
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0006
 WHAT: Set SITE_PASSWORD on the botsite Railway service so the tester-program owner queue becomes reachable.
 WHERE: railway.app → project superbot-websites → service botsite → Variables → New Variable.
 HOW: name SITE_PASSWORD, value = a password only you know (same pattern as the control-plane owner area; any username works at the Basic-auth prompt). One paste, Save. The queue then lives at <botsite-url>/testing/owner.
@@ -192,6 +203,7 @@ server-side" — `ai_ready` is true at runtime, so the key is present.
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0007
 WHAT: Mint a fine-grained GitHub PAT with Contents read AND write scoped to menno420/websites ONLY, and paste it as GITHUB_TOKEN on the control-plane + botsite Railway services.
 WHERE: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token (Repository access: Only select repositories → menno420/websites; Permissions → Contents: Read and write); then railway.app → project superbot-websites → services control-plane and botsite → Variables → GITHUB_TOKEN.
 HOW: generate the token, copy it once, replace the GITHUB_TOKEN value on both services (the value never goes in the repo). The writeback engine reads the env at REQUEST time, so the capability lights up on the next submit/retry with no redeploy needed beyond Railway's automatic one.
@@ -218,6 +230,7 @@ the variable NAME `RAILWAY_TOKEN` present on control-plane/production
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0008
 WHAT: Extend the ORDER 020 fine-grained PAT so ONE token serves both needs — when minting it, grant menno420/websites BOTH Contents: Read and write (ORDER 020's writeback need) AND Pull requests: Read and write (bake PR creation as a real actor) — then ALSO store it as a websites repo Actions secret named BAKE_PAT; an agent session then switches review-bake's GH_TOKEN to it. **Recommended: one PAT, two scopes, three paste targets (control-plane + botsite Railway GITHUB_TOKEN per ORDER 020, plus the BAKE_PAT Actions secret) — this is the durable fix for the nightly bake PRs sitting blocked.**
 WHERE: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens (Repository access: Only select repositories → menno420/websites; Permissions → Contents: Read and write, Pull requests: Read and write); then github.com/menno420/websites → Settings → Secrets and variables → Actions → New repository secret → name BAKE_PAT.
 HOW: generate the token once with both permissions, paste it into the ORDER 020 targets (Railway GITHUB_TOKEN on control-plane + botsite) and into the new BAKE_PAT Actions secret (the value never goes in the repo). Say the word and a session flips review-bake.yml's landing step to `GH_TOKEN: ${{ secrets.BAKE_PAT || secrets.GITHUB_TOKEN }}`.
@@ -231,6 +244,7 @@ VERIFIED-NEEDED: the next scheduled bake's PR shows a pull_request-event `qualit
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0009
 WHAT: Delete the unused SITE_PASSWORD variable from the dashboard Railway service — set-but-unused drift left over from the removed 2026-07-09 Basic-auth gate.
 WHERE: railway.app → project superbot-websites → service dashboard → Variables → SITE_PASSWORD → delete.
 HOW: one delete, Save. Nothing else to change — the dashboard app has zero readers of this variable (`rg SITE_PASSWORD dashboard/` matches nothing; PR #282 read-path check, documented docs/dashboard.md:127). The real readers live elsewhere: app/config.py (control-plane /owner) and botsite/testing.py (/testing/owner) — those services' variables are untouched by this errand.
@@ -238,6 +252,112 @@ RISK: ✅ reversible and inert — the variable is read by nothing on the servic
 WHY-IT-MATTERS: a live credential-shaped variable that no code reads is pure drift — it misleads every env audit (the ORDER 026 names-only read flagged it as "undocumented") and pads the missing-vs-set signal on /owner/environments.
 UNBLOCKS: a clean dashboard env surface — future names-only reads and envhub audits stop tripping over a ghost variable.
 VERIFIED-NEEDED: Railway variable mutations are policy-walled/harness-denied for agents (docs/RAILWAY-SAFETY.md; docs/CAPABILITIES.md 2026-07-13 verbatim denial — deliberately not attempted). Verify after deletion: the next names-only read / the /owner/environments dashboard group no longer lists SITE_PASSWORD.
+```
+
+### ⚑ Asks added 2026-07-16 (arcade launch-blocker join — the two public arcade promises become ledger rows)
+
+> Both clicks have been rendered as "What's blocking launch" panels on the
+> public arcade detail pages since PR #349 and machine-probed by the owner
+> console since the 2026-07-15 preflight slice — but neither had a ledger
+> row, so their verification chips could only bind by keyword signature.
+> These rows give them stable ids; `botsite/data/arcade.json` blockers and
+> `app/askverify.py` now join on the id exactly.
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0010
+WHAT: Publish the GitHub Release lumen-drift-v1.3 in menno420/gba-homebrew — the one owner click between the finished GBA ROM and a public download.
+WHERE: github.com/menno420/gba-homebrew → Releases → draft/publish the lumen-drift-v1.3 release (attach the built ROM).
+HOW: one click on the release page. Afterwards say the word (or any session's healthcheck will notice): a session then records the release's download URL in botsite/data/arcade.json (availability → download, url set, blocker dropped) and the arcade card gains its real Download button.
+WHY-IT-MATTERS: the public arcade has promised this game since PR #349 — /arcade/lumen-drift renders this exact click as its "What's blocking launch" panel. A finished, publish-safe game the public page names but nobody can download is the longest-standing visible gap on the arcade.
+UNBLOCKS: the Lumen Drift card and detail page flip from blocker panel to a real Download button; the owner-console verification chip for this row flips to done-detected on its own.
+VERIFIED-NEEDED: machine-checked already — app/askverify.py probe lumen-drift-release GETs /repos/menno420/gba-homebrew/releases/tags/lumen-drift-v1.3 (200 = done, 404 = still open; still 404 at filing). Publishing a release on gba-homebrew is owner-held: no agent credential for that repo exists (write access unverified, deliberately not attempted — same wall class as the PAT asks above).
+```
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0011
+WHAT: In menno420/product-forge, set Settings → Pages → Source to GitHub Actions, so the existing games-web deploy workflow can publish the site.
+WHERE: github.com/menno420/product-forge → Settings → Pages → Build and deployment → Source: GitHub Actions.
+HOW: one settings click, Save. The already-committed deploy workflow then publishes on its next run; once the site's URL answers 200, a session records it in botsite/data/arcade.json (availability → live, url set, blocker dropped).
+WHY-IT-MATTERS: /arcade/games-web has rendered this exact click as its "What's blocking launch" panel since PR #349 — the deploy workflow exists but its documented URL returns 404 until Pages has a source, so the public card honestly says unavailable.
+UNBLOCKS: the games-web card and detail page flip from blocker panel to a real Play link; the owner-console verification chip for this row flips to done-detected on its own.
+VERIFIED-NEEDED: machine-checked already — app/askverify.py probe product-forge-pages GETs /repos/menno420/product-forge/pages (200 = configured, 404 = still open; unreadable-with-this-token = honest unknown, never inferred). Repository settings are owner-held — no agent credential can flip Pages source (deliberately not attempted).
+```
+
+### ⚑ Asks added 2026-07-16 (registry blocker join — catalog / products / puddle-museum owner gates become ledger rows)
+
+> The three remaining botsite registries (catalog.json, products.json,
+> puddle_museum.json) gained the same optional blocker+ask_id object the
+> arcade carries (PR #360's schema, shared via botsite/blockers.py): every
+> genuinely owner-gated entry now renders its owner click/decision on the
+> public page and joins these rows by stable id. The five write-slice
+> parked titles (the-marginalia-society, the-night-kiln, the-paper-orange,
+> the-pepper-ledger, the-windmill-mouse) get NO row and NO blocker — a
+> missing manuscript is agent work, not an owner action. Unlike
+> ASK-0010/0011, NONE of these five rows is machine-checkable (Gumroad
+> listing state, off-repo files, product/money decisions) — each
+> VERIFIED-NEEDED says so plainly, and app/askverify.py registers them
+> probe-less with the honest reason.
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0012
+WHAT: Run the Gumroad publish pass — one owner session that publishes the ten publish-ready catalog titles and products, which also un-gates the Ship-It Bundle and flips the three fleet-store coming-soon mirrors.
+WHERE: gumroad.com (the mennomagic01 store, where stripe-webhook-test-kit already lives) — the staged copy is in venture-lab (per-title vetting packets under docs/publishing/vetting/, launch copy under docs/launch/); the public faces are /products/catalog and /products on the botsite.
+HOW: for each of the ten (membership-kit, template-packs, agent-fleet-field-manual, kill-rule-intake-kit, false-green-test-trap, merge-wall-cookbook, the-slow-word, the-weigh-house, de-waag, het-trage-woord): create the listing from the staged copy, hit Publish, do your own test purchase, then say the word — a session records each live URL in botsite/data/catalog.json (+ the three products.json mirrors: membership-site-boilerplate-kit, agent-workflow-template-pack, agent-fleet-field-manual), flipping status/availability to live and dropping the blocker. The Ship-It Bundle (bundle-starter) becomes publish-ready the moment its two components (membership-kit + template-packs) are live — a Gumroad bundle references existing live products.
+RISK: ↩️ reversible — unpublish any listing on Gumroad at any time; nothing moves in this repo until a session records the live URLs.
+WHY-IT-MATTERS: eleven of the catalog's 22 entries plus three of the four store products sit honestly labeled "awaiting the owner's publish click" on the public pages — the entire publish-ready shelf is one owner session away from being real, and until then every card explains itself with a blocker panel instead of a Buy link.
+UNBLOCKS: the ten catalog entries and the three product mirrors flip from blocker panel to a real Buy link; bundle-starter's hard gate clears; the catalog's "publish-ready" group empties into "live".
+VERIFIED-NEEDED: NOT machine-checkable — Gumroad listing state is not observable by any read-only probe this repo holds (no Gumroad credential exists; deliberately not attempted). Verification is a session recording the live listing URLs in the registries, where the existing no-dead-links tests then pin them.
+```
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0013
+WHAT: Hand off the full-res photo originals for the two wallpaper packs (Dutch Skies + Golden Hours) — the sellable files are owner-held off-repo.
+WHERE: your own photo library → any private handoff channel you choose, or a direct upload to the Gumroad listing yourself; the one place they must NOT land is this public repo. The catalog entry is photo-packs on /products/catalog.
+HOW: deliver the full-resolution originals once (private share, or upload them straight to a Gumroad product you create); a session then packages/stages the sellable zips and the publish click follows the same Gumroad pass as ASK-0012.
+RISK: ↩️ reversible — a private handoff can be withdrawn before anything is published; nothing lands in the public tree by design.
+WHY-IT-MATTERS: the catalog says it honestly — "the sellable zips cannot exist in the public repo — full-res originals are owner-held off-repo, so nothing proceeds until the owner hands them off." No agent can produce this product without the files.
+UNBLOCKS: photo-packs moves from hard-gated to publish-ready (then live via the Gumroad pass); its blocker panel drops.
+VERIFIED-NEEDED: NOT machine-checkable — whether owner-held off-repo files have been handed off is not observable by any read-only probe; verification is the files arriving wherever you choose to put them, then a session updating the catalog entry.
+```
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0014
+WHAT: Pick the Ultramarine title — publish as "The Widow's Blue" (the vetting packet's recommended rename; the title-collision work is done) or keep Ultramarine.
+WHERE: reply in chat, or write it back from the site's owner console (/owner/queue); the packet is venture-lab docs/publishing/vetting/ultramarine.md; the catalog entry is ultramarine on /products/catalog.
+HOW: one sentence ("The Widow's Blue" / "keep Ultramarine"). A session then applies the chosen title across the manuscript and listing copy, and the book joins the ASK-0012 Gumroad publish pass.
+RISK: ↩️ reversible until publish — a title choice costs nothing to change while the book is unpublished.
+WHY-IT-MATTERS: the packet's status note records a title collision worked to a recommendation ("rename to 'The Widow's Blue' recommended … owner picks") — publishing under a colliding name buries the book in search results, and a naming call on a book is the owner's to make.
+UNBLOCKS: the last open decision on this title clears; ultramarine joins the ASK-0012 publish set.
+VERIFIED-NEEDED: NOT machine-checkable — a naming decision has no external state to probe; verification is your word (chat or console writeback), then the recorded title in the catalog entry.
+```
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0015
+WHAT: Decide the §5 illustration gate — the money-decision on commissioning illustrations for the picture books (The Painted Stones and The Puddle Museum), which also gates all three Puddle Museum editions (EN/NL/DE).
+WHERE: the vetting packets' §5 (venture-lab docs/publishing/vetting/the-painted-stones.md + the-puddle-museum.md); the public faces are /products/catalog (both parked entries) and /puddle-museum (all three coming-soon edition cards); reply in chat or via /owner/queue.
+HOW: one decision — fund/commission illustrations (name a budget or an illustrator and a session takes it from there), choose an alternative you accept, or explicitly keep them parked. The seat's recommendation on record is Park.
+RISK: 💰 a spend decision — the only ask in this set that can cost real money; parking costs nothing and is the recorded recommendation.
+WHY-IT-MATTERS: picture books do not ship without pictures, and buying illustration is a real-money commitment agents must never make on their own — five public cards (two catalog entries, three editions) honestly wait on this single fork.
+UNBLOCKS: on a go — the illustration work, then publication of both picture books and the three Puddle Museum editions; on an explicit park — the panels can say "parked by owner decision" instead of "pending".
+VERIFIED-NEEDED: NOT machine-checkable — a product/money decision with no external state to probe (the same class as ASK-0001); verification is your word, then this row moving to Decided.
+```
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0016
+WHAT: Arrange the native-speaker Dutch proofread for De papieren sinaasappel — its packet marks the proofread a blocking quality gate before that title's publish click.
+WHERE: a native Dutch reader you trust (you, or someone you pick); the packet is venture-lab docs/publishing/vetting/de-papieren-sinaasappel.md; the catalog entry is de-papieren-sinaasappel on /products/catalog.
+HOW: have the manuscript read by a native speaker and feed the corrections back in any form — notes in chat are enough, a session works them in. (De Waag and Het trage woord carry the same proofread as a pending explicit owner step, but their packets sequence them behind their EN editions rather than blocking on it — this row covers only the title whose packet says blocking.)
+RISK: ↩️ reversible — a proofread only ever improves the manuscript; nothing publishes until the separate publish click.
+WHY-IT-MATTERS: a Dutch literary-historical novel (WWII, Hongerwinter — a subject Dutch readers know intimately) shipping with non-native prose errors would damage the title and the store; the packet made this the one explicit blocking quality gate.
+UNBLOCKS: the last blocking step before de-papieren-sinaasappel joins the ASK-0012 Gumroad publish pass.
+VERIFIED-NEEDED: NOT machine-checkable — whether a human proofread happened is not observable by any probe; verification is the corrections arriving (chat or console writeback) and a session updating the packet's gate note.
 ```
 
 ## 🟢 Decided / resolved

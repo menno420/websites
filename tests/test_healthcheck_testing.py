@@ -31,13 +31,18 @@ def _summary(rows=(), flagged=(), skipped=(), ok=True, note="x"):
 
 
 def _stub_everything_else_healthy(monkeypatch):
-    """Exit-code tests: services + registry + arcade stubbed healthy so the
-    tester-task pass is the only variable — and nothing touches the network."""
+    """Exit-code tests: services + registry + arcade + release-drift stubbed
+    healthy so the tester-task pass is the only variable — and nothing
+    touches the network."""
     monkeypatch.setattr(healthcheck, "_probe", lambda url: (200, ""))
     monkeypatch.setattr(healthcheck, "check_fleet_registry", lambda: (True, "2 lanes parsed"))
     monkeypatch.setattr(
         healthcheck.arcade_probe, "probe_registry_urls",
         lambda: _summary(note="1 URL(s) probed (live+download), 0 flagged"),
+    )
+    monkeypatch.setattr(
+        healthcheck, "check_release_drift",
+        lambda: (True, ["0 blocker(s) across the 4 registries, 0 distinct ask(s) joined, 0 flagged"]),
     )
 
 
