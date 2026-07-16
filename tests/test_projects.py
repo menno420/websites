@@ -583,6 +583,62 @@ def test_detail_route_renders_copy_ready_dispatch_screen(monkeypatch):
     assert "notes.txt" in r.text
 
 
+def test_detail_screen_shows_dispatch_readiness_chips_ready_seat(monkeypatch):
+    """The dispatch screen surfaces the SAME coverage chips + ready label the
+    /projects index shows — _detail_api's package carries instructions +
+    coordinator + failsafe, so the seat reads dispatch-ready, no ✗."""
+    _detail_api(monkeypatch)
+    r = TestClient(app).get("/projects/websites")
+    assert r.status_code == 200
+    assert "dispatch readiness:" in r.text
+    assert "instructions ✓" in r.text
+    assert "coordinator ✓" in r.text
+    assert "failsafe ✓" in r.text
+    assert "dispatch-ready" in r.text
+    assert "NOT dispatch-ready" not in r.text
+    assert "✗" not in r.text
+
+
+def test_detail_screen_flags_missing_role_not_dispatch_ready(monkeypatch):
+    """A package missing its coordinator prompt reads NOT dispatch-ready on the
+    launch console — the chip row marks the gap instead of the coordinator
+    block just silently not rendering below the checklist."""
+
+    async def fake_api(repo, subpath="", refresh=False):
+        if subpath.endswith("/contents/projects"):
+            return _res(data=[
+                {"type": "dir", "name": "websites", "path": "projects/websites"},
+            ])
+        if subpath.endswith("/contents/projects/websites"):
+            return _res(data=[
+                {"type": "file", "path": "projects/websites/meta.md"},
+                {"type": "file",
+                 "path": "projects/websites/project-instructions.md"},
+                {"type": "file", "path": "projects/websites/failsafe.md"},
+            ])
+        return _res(ok=False, status=404, data=None, error="nf")
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        texts = {
+            "projects/websites/meta.md": "# websites\n\ndeployed: live\n",
+            "projects/websites/project-instructions.md": "INSTRUCTIONS",
+            "projects/websites/failsafe.md": "failsafe armed",
+        }
+        if path in texts:
+            return _res(data=texts[path])
+        return _res(ok=False, status=404, data=None, error="nf")
+
+    monkeypatch.setattr(github, "repo_api", fake_api)
+    monkeypatch.setattr(github, "fetch_file", fake_fetch)
+    r = TestClient(app).get("/projects/websites")
+    assert r.status_code == 200
+    assert "dispatch readiness:" in r.text
+    assert "instructions ✓" in r.text
+    assert "coordinator ✗" in r.text
+    assert "failsafe ✓" in r.text
+    assert "NOT dispatch-ready" in r.text
+
+
 def test_detail_per_file_fetch_error_degrades_per_cell(monkeypatch):
     _detail_api(
         monkeypatch, fail_paths=("projects/websites/coordinator-prompt.md",)
