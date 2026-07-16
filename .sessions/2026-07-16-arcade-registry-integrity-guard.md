@@ -1,6 +1,10 @@
 # arcade-registry-integrity-guard
 
-> **Status:** `in-progress`
+> **Status:** `complete` — branch `claude/arcade-registry-integrity-guard`;
+> a new read-only guard test (`botsite/tests/test_arcade_registry_integrity.py`,
+> 54 rows) over the four committed blocker registries. All four service suites
+> green (1685 passed); kit gate green once this card flips. No source or data
+> changed — the guard asserts through the shipped `botsite.blockers` schema.
 
 ## Slice
 A **data-integrity guard** for the committed botsite blocker registries. The
