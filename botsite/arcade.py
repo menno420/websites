@@ -21,11 +21,21 @@ Honesty rules (the "never fake data" doctrine, applied to games):
   as the "What's blocking launch" panel. It is OPTIONAL and fail-soft: a
   missing or malformed blocker normalizes to ``None`` (the panel simply
   falls back to the status note), never invented and never fatal.
+- A blocker may additionally carry ``ask_id`` — the stable ``ASK-NNNN`` id
+  of its row in the owner-actions ledger (docs/owner/OWNER-ACTIONS.md;
+  append-only, never reused). It is the PRIMARY join key between this
+  public panel and the gated owner console's verification chips
+  (app/askverify.py joins on the id exactly; keyword signatures remain the
+  fallback for id-less rows), so both surfaces flip from one ledger edit.
+  Fail-soft like the rest of the schema: a missing or malformed id
+  normalizes to ``None`` — the panel still renders, just without the
+  ledger ref, and the console falls back to its signature scan.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +56,12 @@ REF_QUERY = "ref=fleet-arcade"
 
 _REQUIRED = ("slug", "name", "tagline", "description", "maturity", "availability", "source_repo")
 
+# The owner-actions ledger's stable ask-id shape (``ID: ASK-NNNN`` lines in
+# docs/owner/OWNER-ACTIONS.md) — the exact join key the owner console's
+# verification chips use. Anything else on ``blocker.ask_id`` is malformed
+# and normalizes to ``None`` (fail-soft, never fatal).
+_ASK_ID_RE = re.compile(r"ASK-\d{4}\Z")
+
 
 def _valid(entry: Any) -> bool:
     """True when the entry has every required field with a sane value."""
@@ -65,10 +81,23 @@ def _valid(entry: Any) -> bool:
     return True
 
 
-def _normalized_blocker(entry: dict[str, Any]) -> dict[str, str] | None:
-    """The entry's ``blocker`` as ``{"owner_action", "unblocks"}`` with both
-    values non-empty strings — or ``None`` for a missing/malformed blocker
-    (fail-soft: a bad blocker never invalidates the game entry)."""
+def _normalized_ask_id(blocker: dict[str, Any]) -> str | None:
+    """The blocker's ``ask_id`` when it is a well-formed stable ledger id
+    (``ASK-NNNN``) — ``None`` for a missing or malformed one (fail-soft: a
+    bad id costs only the ledger ref, never the blocker itself; the owner
+    console then falls back to its keyword-signature join)."""
+    ask_id = blocker.get("ask_id")
+    if not isinstance(ask_id, str):
+        return None
+    ask_id = ask_id.strip()
+    return ask_id if _ASK_ID_RE.fullmatch(ask_id) else None
+
+
+def _normalized_blocker(entry: dict[str, Any]) -> dict[str, str | None] | None:
+    """The entry's ``blocker`` as ``{"owner_action", "unblocks", "ask_id"}``
+    with the first two values non-empty strings and ``ask_id`` a validated
+    stable ledger id or ``None`` — or ``None`` for a missing/malformed
+    blocker (fail-soft: a bad blocker never invalidates the game entry)."""
     blocker = entry.get("blocker")
     if not isinstance(blocker, dict):
         return None
@@ -78,7 +107,11 @@ def _normalized_blocker(entry: dict[str, Any]) -> dict[str, str] | None:
         return None
     if not isinstance(unblocks, str) or not unblocks.strip():
         return None
-    return {"owner_action": owner_action.strip(), "unblocks": unblocks.strip()}
+    return {
+        "owner_action": owner_action.strip(),
+        "unblocks": unblocks.strip(),
+        "ask_id": _normalized_ask_id(blocker),
+    }
 
 
 def _with_ref(url: str) -> str:
