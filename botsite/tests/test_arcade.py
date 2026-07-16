@@ -461,6 +461,48 @@ def test_arcade_catalog_summary_strip(client):
     assert "on 2 owner clicks" in r.text
 
 
+def test_games_front_door_shows_arcade_summary_strip(client):
+    """The /games front door surfaces the Fleet Arcade's launch-readiness at a
+    glance — the SAME live/blocked/distinct-owner-clicks summary the /arcade
+    catalog carries (reusing arcade.availability_summary over the committed
+    registry: 1 live, 2 blocked, 2 distinct owner clicks) — and cross-links to
+    /arcade."""
+    r = client.get("/games")
+    assert r.status_code == 200
+    assert "Fleet Arcade" in r.text
+    assert "1 live" in r.text
+    assert "2 blocked" in r.text
+    assert "on 2 owner clicks" in r.text
+    assert 'href="/arcade"' in r.text
+
+
+def test_games_arcade_summary_matches_helper(client, monkeypatch):
+    """The strip on /games reflects arcade.availability_summary exactly — no
+    duplicated counting. Stub the helper and assert the rendered figures track
+    it (singular 'owner click' when the count is 1)."""
+    monkeypatch.setattr(
+        arcade,
+        "availability_summary",
+        lambda games: {"total": 5, "live": 4, "blocked": 1, "owner_clicks": 1},
+    )
+    r = client.get("/games")
+    assert r.status_code == 200
+    assert "4 live" in r.text
+    assert "1 blocked" in r.text
+    assert "on 1 owner click" in r.text
+    assert "on 1 owner clicks" not in r.text
+
+
+def test_games_front_door_no_live_verdict_leaks(client):
+    """Same hard rail as /arcade: the /games summary is static registry text
+    only — never a live askverify verdict / verification chip."""
+    r = client.get("/games")
+    assert r.status_code == 200
+    lowered = r.text.lower()
+    for gated in ("askverify", "verified done", "verification chip"):
+        assert gated not in lowered
+
+
 def test_arcade_summary_counts_live_blocked_and_distinct_owner_clicks():
     """The pure helper counts live vs blocked games and the DISTINCT owner
     clicks among the blocked ones (deduplicated by ask_id / owner_action)."""

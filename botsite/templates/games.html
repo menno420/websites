@@ -11,6 +11,22 @@
       and progress feed into XP and the leaderboards.</p>
   </section>
 
+  {# Fleet Arcade launch-readiness at a glance — the same live / blocked /
+     distinct-owner-clicks summary the /arcade catalog carries
+     (arcade.availability_summary; static registry data only, no live
+     verdicts). Cross-links to the full arcade. #}
+  {% set s = arcade_summary %}
+  {% if s and s.total %}
+  <p class="sb-muted section-sm" style="margin:14px 0 0">
+    <strong>Fleet Arcade:</strong>
+    <strong>{{ s.live }} live</strong>
+    <span class="sep">·</span>
+    {{ s.blocked }} blocked{% if s.owner_clicks %} on {{ s.owner_clicks }} owner click{{ '' if s.owner_clicks == 1 else 's' }}{% endif %}
+    <span class="sep">·</span>
+    <a href="/arcade">Explore the Arcade {{ icon("chevron", 12) }}</a>
+  </p>
+  {% endif %}
+
   {% if games %}
   <div class="card-grid section-sm">
     {% for g in games %}
