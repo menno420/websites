@@ -9,6 +9,11 @@
 
 ## 🟡 Open — waiting on the owner
 
+> **Ask IDs (2026-07-16):** every ⚑ ask block below carries one
+> `ID: ASK-<4 digits>` line directly under its marker. IDs are append-only —
+> assigned once, never reused, never renumbered; a new ask takes the next
+> free number. Verification chips (`app/askverify.py`) join on this ID exactly.
+
 | # | Decision | What it unblocks | Notes / where it lives |
 |---|---|---|---|
 | 1 | **Dashboard `/admin` live-bot control** — arm a production control path, or keep it dry-run? | The Discord-OAuth panel that writes the live bot's control API (settings / help / cog routing / submission moderation). | Needs your direct word. As of 2026-07-11 `/admin` is a complete **dry-run** management UX (typed previews + in-memory audit; zero control-API credentials present — `docs/planning/dashboard-bot-management-readiness.md`). Arming = a **separate** service (OAuth app + control-API token, spec `docs/specs/bot-control-api-v1.md`) + deciding *where bot control lives* (websites / superbot / superbot-next). Rework-plan **Q4** / **Q-0004** (`docs/question-router.md`); three ⚑ asks below. |
@@ -57,6 +62,7 @@ honestly say "no data mirrored yet". Optional, not blocking.
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0001
 WHAT: Answer Q-0004 — decide WHERE live bot control lives (websites / superbot / superbot-next), or explicitly keep the dashboard's control panel dry-run-only.
 WHERE: docs/question-router.md (Q-0004, open + blocking) — reply in chat or edit the "Maintainer answer" slot; the dry-run panel to judge from is live at the dashboard's /admin.
 HOW: one sentence is enough ("carry it into websites as a new service" / "leave it in superbot" / "superbot-next" / "stay dry-run"). Everything downstream (OAuth app, token, armed service) hangs off this answer.
@@ -67,6 +73,7 @@ VERIFIED-NEEDED: a product/topology decision only you can make (docs/question-ro
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0002
 WHAT: Create the Discord OAuth application for the future ARMED control panel and decide its redirect URI.
 WHERE: discord.com/developers/applications → New Application → OAuth2 (do this only after Q-0004 above names where the armed service lives).
 HOW: register the app; add redirect URI https://<armed-service-url>/auth/callback (the armed service's real URL once it exists); note the client id + client secret — they go ONLY into the armed service's Railway env (spec §9 names: the OAuth client id/secret + redirect + session-secret vars), NEVER into the dashboard service (a test forbids the literals there).
@@ -77,6 +84,7 @@ VERIFIED-NEEDED: creating a Discord application requires your Discord developer 
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0003
 WHAT: Provision the scoped bot control-API token and the SEPARATE armed Railway service that will hold it.
 WHERE: railway.app → project superbot-websites → New → Service (a NEW service, per the standing "never mounted on a read-only surface" rule) + the token minted on the bot side (superbot's control-api seam).
 HOW: after Q-0004 and the OAuth app: create the service, set its env per docs/specs/bot-control-api-v1.md §9 (OAuth client id/secret/redirect, session secret, control URL + scoped token). Never reuse the ambient production RAILWAY_*_ID vars (docs/RAILWAY-SAFETY.md); the dashboard service gets NOTHING.
@@ -125,6 +133,7 @@ path (`docs/CAPABILITIES.md`), so they are left in place for the owner.
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0004
 WHAT: Create the botsite submissions PostgreSQL database and give the botsite service its connection string.
 WHERE: railway.app → project superbot-websites → New → Database → PostgreSQL; then service botsite → Variables.
 HOW: add variable DATABASE_URL = the connection string Railway shows for the new Postgres. One paste.
@@ -150,6 +159,7 @@ is 0 at last check.
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0005
 WHAT: Set up PayPal Payouts — the payout rail you confirmed for the tester program (relayed live 2026-07-12) — and put its two credentials on the botsite service.
 WHERE: paypal.com (business account) → developer.paypal.com → Apps & Credentials; then railway.app → project superbot-websites → service botsite → Variables.
 HOW: (a) upgrade/create a PayPal BUSINESS account at paypal.com; (b) developer.paypal.com → Apps & Credentials → Live → Create App → copy the Client ID + Secret; (c) request/enable Payouts on that live app (PayPal gates Payouts approval on business accounts — this step can take days, start it early); (d) railway.app → superbot-websites → botsite → Variables → add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET with those values (names exactly as written; the values never go in the repo); (e) auto-pay STAYS OFF even then — it additionally requires TESTING_AUTOPAY_ENABLED=true, which you only set once PR3 ships the live call and you want it armed. Context for the record: a regular credit card can pay IN but cannot PUSH money OUT to testers — an outbound rail (PayPal Payouts / Stripe Connect / Wise / gift-card API) is structurally required, and PayPal Payouts is the confirmed choice.
@@ -161,6 +171,7 @@ VERIFIED-NEEDED: PayPal business-account/app creation is owner-held (no agent cr
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0006
 WHAT: Set SITE_PASSWORD on the botsite Railway service so the tester-program owner queue becomes reachable.
 WHERE: railway.app → project superbot-websites → service botsite → Variables → New Variable.
 HOW: name SITE_PASSWORD, value = a password only you know (same pattern as the control-plane owner area; any username works at the Basic-auth prompt). One paste, Save. The queue then lives at <botsite-url>/testing/owner.
@@ -192,6 +203,7 @@ server-side" — `ai_ready` is true at runtime, so the key is present.
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0007
 WHAT: Mint a fine-grained GitHub PAT with Contents read AND write scoped to menno420/websites ONLY, and paste it as GITHUB_TOKEN on the control-plane + botsite Railway services.
 WHERE: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token (Repository access: Only select repositories → menno420/websites; Permissions → Contents: Read and write); then railway.app → project superbot-websites → services control-plane and botsite → Variables → GITHUB_TOKEN.
 HOW: generate the token, copy it once, replace the GITHUB_TOKEN value on both services (the value never goes in the repo). The writeback engine reads the env at REQUEST time, so the capability lights up on the next submit/retry with no redeploy needed beyond Railway's automatic one.
@@ -218,6 +230,7 @@ the variable NAME `RAILWAY_TOKEN` present on control-plane/production
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0008
 WHAT: Extend the ORDER 020 fine-grained PAT so ONE token serves both needs — when minting it, grant menno420/websites BOTH Contents: Read and write (ORDER 020's writeback need) AND Pull requests: Read and write (bake PR creation as a real actor) — then ALSO store it as a websites repo Actions secret named BAKE_PAT; an agent session then switches review-bake's GH_TOKEN to it. **Recommended: one PAT, two scopes, three paste targets (control-plane + botsite Railway GITHUB_TOKEN per ORDER 020, plus the BAKE_PAT Actions secret) — this is the durable fix for the nightly bake PRs sitting blocked.**
 WHERE: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens (Repository access: Only select repositories → menno420/websites; Permissions → Contents: Read and write, Pull requests: Read and write); then github.com/menno420/websites → Settings → Secrets and variables → Actions → New repository secret → name BAKE_PAT.
 HOW: generate the token once with both permissions, paste it into the ORDER 020 targets (Railway GITHUB_TOKEN on control-plane + botsite) and into the new BAKE_PAT Actions secret (the value never goes in the repo). Say the word and a session flips review-bake.yml's landing step to `GH_TOKEN: ${{ secrets.BAKE_PAT || secrets.GITHUB_TOKEN }}`.
@@ -231,6 +244,7 @@ VERIFIED-NEEDED: the next scheduled bake's PR shows a pull_request-event `qualit
 
 ```markdown
 ⚑ OWNER-ACTION
+ID: ASK-0009
 WHAT: Delete the unused SITE_PASSWORD variable from the dashboard Railway service — set-but-unused drift left over from the removed 2026-07-09 Basic-auth gate.
 WHERE: railway.app → project superbot-websites → service dashboard → Variables → SITE_PASSWORD → delete.
 HOW: one delete, Save. Nothing else to change — the dashboard app has zero readers of this variable (`rg SITE_PASSWORD dashboard/` matches nothing; PR #282 read-path check, documented docs/dashboard.md:127). The real readers live elsewhere: app/config.py (control-plane /owner) and botsite/testing.py (/testing/owner) — those services' variables are untouched by this errand.

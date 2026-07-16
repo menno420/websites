@@ -6,9 +6,11 @@ The owner console lists the open asks as static ledger text; verifying an
 errand (a pasted variable, a minted PAT, a flipped setting) has meant a
 session hand-probing services. This module turns that into verdict chips on
 the GATED owner surfaces (/owner, /owner/briefing, /owner/queue): a probe
-REGISTRY keyed by stable keyword signatures is matched against the parsed
-asks (the same ``owner_queue.parse_owner_actions`` output the briefing and
-/queue already carry), and each matched ask gets one live probe.
+REGISTRY keyed by the ledger's stable ask ids (``ID: ASK-NNNN`` — exact,
+drift-proof) with keyword signatures as the fallback for id-less asks is
+matched against the parsed asks (the same ``owner_queue.parse_owner_actions``
+output the briefing and /queue already carry), and each matched ask gets
+one live probe.
 
 HARD RAILS (coordinator-approved, binding):
 
@@ -366,49 +368,65 @@ async def probe_product_forge_pages(refresh: bool = False) -> dict[str, Any]:
 
 
 # --------------------------------------------------------------------------- #
-# Registry — stable keyword signatures over the ask HEADLINE (its WHAT, the
-# same normalized basis /queue dedups on). A signature matches when EVERY
-# keyword appears as a lowercase substring; an ask takes the FIRST matching
-# entry in this order (so the more specific BAKE_PAT row sits above the
-# ORDER-020 row it textually overlaps). Entries with ``probe=None`` are the
-# EXPLICIT not-machine-checkable registrations — product decisions or state
-# no read-only external probe can observe.
+# Registry — exact stable ask IDs first, keyword signatures as the fallback.
+#
+# ``ask_id`` is the ledger row's permanent ``ID: ASK-NNNN`` line
+# (docs/owner/OWNER-ACTIONS.md — append-only, never reused): an ask carrying
+# an id matches its entry EXACTLY, immune to rewording. The mapping below was
+# derived by running the signature matcher against the real ledger BEFORE the
+# ids landed, so every id points at the entry its ask matched then.
+# ``ask_id=None`` entries have no current ledger row and stay signature-only.
+#
+# Signatures remain the fallback basis: stable keywords over the ask HEADLINE
+# (its WHAT, the same normalized basis /queue dedups on). A signature matches
+# when EVERY keyword appears as a lowercase substring; an ask takes the FIRST
+# matching entry in this order (so the more specific BAKE_PAT row sits above
+# the ORDER-020 row it textually overlaps). Entries with ``probe=None`` are
+# the EXPLICIT not-machine-checkable registrations — product decisions or
+# state no read-only external probe can observe.
 # --------------------------------------------------------------------------- #
 ProbeFn = Callable[[bool], Awaitable[dict[str, Any]]]
 
 REGISTRY: list[dict[str, Any]] = [
     {
         "id": "bake-pat",
+        "ask_id": "ASK-0008",
         "signature": ("bake_pat",),
         "probe": probe_bake_pat_secret,
     },
     {
         "id": "order-020-pat",
+        "ask_id": "ASK-0007",
         "signature": ("github_token", "contents"),
         "probe": probe_order020_write_pat,
     },
     {
         "id": "botsite-gate",
+        "ask_id": "ASK-0006",
         "signature": ("site_password", "botsite"),
         "probe": probe_botsite_site_password,
     },
     {
         "id": "dashboard-site-password",
+        "ask_id": "ASK-0009",
         "signature": ("site_password", "dashboard"),
         "probe": probe_dashboard_site_password_gone,
     },
     {
         "id": "lumen-drift-release",
+        "ask_id": None,  # no current ledger row — signature-only
         "signature": ("lumen-drift",),
         "probe": probe_lumen_drift_release,
     },
     {
         "id": "product-forge-pages",
+        "ask_id": None,  # no current ledger row — signature-only
         "signature": ("product-forge", "pages"),
         "probe": probe_product_forge_pages,
     },
     {
         "id": "q-0004",
+        "ask_id": "ASK-0001",
         "signature": ("q-0004",),
         "probe": None,
         "reason": (
@@ -419,6 +437,7 @@ REGISTRY: list[dict[str, Any]] = [
     },
     {
         "id": "discord-oauth",
+        "ask_id": "ASK-0002",
         "signature": ("discord", "oauth"),
         "probe": None,
         "reason": (
@@ -428,6 +447,7 @@ REGISTRY: list[dict[str, Any]] = [
     },
     {
         "id": "armed-service",
+        "ask_id": "ASK-0003",
         "signature": ("control-api", "armed"),
         "probe": None,
         "reason": (
@@ -437,6 +457,7 @@ REGISTRY: list[dict[str, Any]] = [
     },
     {
         "id": "botsite-database-url",
+        "ask_id": "ASK-0004",
         "signature": ("postgresql", "botsite"),
         "probe": None,
         "reason": (
@@ -447,6 +468,7 @@ REGISTRY: list[dict[str, Any]] = [
     },
     {
         "id": "paypal-credentials",
+        "ask_id": "ASK-0005",
         "signature": ("paypal",),
         "probe": None,
         "reason": (
@@ -458,8 +480,8 @@ REGISTRY: list[dict[str, Any]] = [
 
 UNMATCHED_REASON = (
     "no registered probe matches this ask — left honestly unverified "
-    "(stable ask IDs would make matching exact; deliberately no fuzzy "
-    "matching)"
+    "(no registered ASK-NNNN id and no signature match; deliberately no "
+    "fuzzy matching)"
 )
 AMBIGUOUS_REASON = (
     "another ask already matched this probe this pass — an ambiguous "
@@ -477,10 +499,30 @@ def headline_of(item: dict[str, Any]) -> str:
     return item.get("what") or item.get("text") or ""
 
 
-def match(headline: str) -> Optional[dict[str, Any]]:
-    """The first REGISTRY entry whose every signature keyword appears in
-    the normalized headline; ``None`` when nothing matches (the honest
+# Exact lookup over the ledger's stable ids (ASK-NNNN → entry). Built once —
+# REGISTRY is module-level constant data.
+_BY_ASK_ID: dict[str, dict[str, Any]] = {
+    e["ask_id"]: e for e in REGISTRY if e.get("ask_id")
+}
+
+
+def match(
+    headline: str, ask_id: Optional[str] = None
+) -> Optional[dict[str, Any]]:
+    """The REGISTRY entry for an ask.
+
+    Exact-ID lookup wins: an ask carrying a stable ``ASK-NNNN`` id (the
+    ledger's ``ID:`` line) binds to the entry registered under that id,
+    immune to rewording. An id that hits no entry falls through to the
+    signature scan — a new not-yet-registered ask still matches honestly on
+    its keywords. Without an id (legacy blocks, lane copies), the original
+    signature path is unchanged: the first entry whose every keyword appears
+    in the normalized headline; ``None`` when nothing matches (the honest
     unmatched state — never a fuzzy fallback)."""
+    if ask_id:
+        entry = _BY_ASK_ID.get(ask_id)
+        if entry is not None:
+            return entry
     text = _normalize(headline)
     if not text:
         return None
@@ -496,8 +538,11 @@ async def annotate(
     """Attach one verdict per ask (``item["verify"]``) and return the
     rollup.
 
-    Matching is claim-once per pass (an entry matched by a second ask
-    yields the honest ambiguous chip for that ask). Each claimed entry's
+    Matching prefers each item's stable ``ask_id`` (exact, drift-proof; two
+    different ids can never collide) and falls back to the signature scan
+    for id-less items, then stays claim-once per pass (an entry matched by
+    a second ask yields the honest ambiguous chip for that ask — the
+    ambiguity rung guards the signature path). Each claimed entry's
     probe runs exactly once, concurrently; every probe is fail-soft — an
     exception is an honest ``unknown — <error>``, never a crash and never
     a fabricated rung.
@@ -510,7 +555,7 @@ async def annotate(
     claimed: dict[str, int] = {}
     ambiguous: set[int] = set()
     for i, item in enumerate(items):
-        entry = match(headline_of(item))
+        entry = match(headline_of(item), item.get("ask_id"))
         if entry is not None:
             if entry["id"] in claimed:
                 ambiguous.add(i)

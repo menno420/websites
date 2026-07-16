@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import re
 import sys
 from pathlib import Path
 
@@ -80,16 +81,26 @@ def _run(coro):
 # --------------------------------------------------------------------------- #
 # Matcher stability — the REAL committed ledger is the fixture
 # --------------------------------------------------------------------------- #
-def _open_ledger_headlines() -> list[str]:
+def _open_ledger_blocks() -> list[dict]:
     text = LEDGER_PATH.read_text(encoding="utf-8")
     section, note = briefing.open_section(text)
     assert note == ""  # the ledger has its Open heading
     _pre, blocks = owner_queue.parse_owner_actions(section)
-    return [b.get("what", "") for b in blocks]
+    return blocks
 
 
-def test_real_ledger_has_the_nine_open_asks():
-    assert len(_open_ledger_headlines()) == 9
+def _open_ledger_headlines() -> list[str]:
+    return [b.get("what", "") for b in _open_ledger_blocks()]
+
+
+def test_real_ledger_has_the_nine_open_asks_each_with_a_unique_id():
+    blocks = _open_ledger_blocks()
+    assert len(blocks) == 9
+    ids = [b.get("ask_id") for b in blocks]
+    assert all(
+        i and re.fullmatch(r"ASK-\d{4}", i) for i in ids
+    ), f"open ask without a well-formed ID: {ids}"
+    assert len(set(ids)) == 9, f"duplicated ask id in the ledger: {ids}"
 
 
 def test_every_real_open_ask_matches_a_distinct_registry_entry():
@@ -100,6 +111,15 @@ def test_every_real_open_ask_matches_a_distinct_registry_entry():
         assert entry is not None, f"unmatched real ask: {h[:80]!r}"
         ids.append(entry["id"])
     assert len(set(ids)) == len(ids), f"registry entry matched twice: {ids}"
+    # ID-matching lands every ask on the SAME entry its signature chose —
+    # the ids were assigned off the signature matcher's own mapping.
+    for b in _open_ledger_blocks():
+        by_sig = askverify.match(b["what"])
+        by_id = askverify.match("", b["ask_id"])
+        assert by_id is by_sig, (
+            f"{b['ask_id']} lands on {by_id and by_id['id']!r}, signature "
+            f"chose {by_sig and by_sig['id']!r}"
+        )
 
 
 def test_real_ledger_matches_land_on_the_intended_probes():
@@ -114,6 +134,26 @@ def test_real_ledger_matches_land_on_the_intended_probes():
     assert "BAKE_PAT" not in by_id["order-020-pat"]
 
 
+def test_ledger_ids_are_never_reused_anywhere_in_the_file():
+    """Uniqueness scan of the WHOLE committed ledger (Decided rows included):
+    an ASK-NNNN id, once written, may appear on at most one ``ID:`` line."""
+    text = LEDGER_PATH.read_text(encoding="utf-8")
+    id_lines = re.findall(r"^ID:\s*(ASK-\d{4})\s*$", text, re.M)
+    assert id_lines, "the ledger carries no ID: lines at all"
+    dupes = {i for i in id_lines if id_lines.count(i) > 1}
+    assert not dupes, f"ask id reused in the ledger: {sorted(dupes)}"
+
+
+def test_registry_ask_ids_are_unique_and_well_formed():
+    ids = [e["ask_id"] for e in askverify.REGISTRY if e.get("ask_id")]
+    assert len(set(ids)) == len(ids), f"registry reuses an ask id: {ids}"
+    assert all(re.fullmatch(r"ASK-\d{4}", i) for i in ids)
+    # Entries with no current ledger row stay signature-only, explicitly.
+    assert {
+        e["id"] for e in askverify.REGISTRY if e.get("ask_id") is None
+    } == {"lumen-drift-release", "product-forge-pages"}
+
+
 def test_match_unmatched_and_empty_are_none():
     assert askverify.match("Answer the briefing fixture question.") is None
     assert askverify.match("") is None
@@ -123,6 +163,88 @@ def test_match_unmatched_and_empty_are_none():
 def test_match_is_case_and_whitespace_insensitive():
     entry = askverify.match("set  SITE_PASSWORD   on the BOTSITE service")
     assert entry is not None and entry["id"] == "botsite-gate"
+
+
+# --------------------------------------------------------------------------- #
+# Stable ask IDs — exact-ID matching with honest signature fallback
+# --------------------------------------------------------------------------- #
+def test_id_exact_match_beats_signature():
+    # The headline signature-matches botsite-gate, but the stable id says
+    # dashboard-site-password — the id wins (rewording-proof by design).
+    headline = "Set SITE_PASSWORD on the botsite service"
+    assert askverify.match(headline)["id"] == "botsite-gate"
+    entry = askverify.match(headline, "ASK-0009")
+    assert entry is not None and entry["id"] == "dashboard-site-password"
+
+
+def test_unknown_id_falls_back_to_signature():
+    # A not-yet-registered new ask carrying a fresh id still matches
+    # honestly on its keywords instead of vanishing.
+    entry = askverify.match("store it as BAKE_PAT please", "ASK-9999")
+    assert entry is not None and entry["id"] == "bake-pat"
+    # ...and an unknown id over an unmatchable headline stays None.
+    assert askverify.match("A brand new unmatched ask.", "ASK-9999") is None
+
+
+def test_item_without_ask_id_keeps_the_signature_path_unchanged():
+    headline = "Set SITE_PASSWORD on the botsite service"
+    assert askverify.match(headline, None)["id"] == "botsite-gate"
+    assert askverify.match(headline, "")["id"] == "botsite-gate"
+    assert askverify.match(headline) is askverify.match(headline, None)
+
+
+def test_annotate_matches_on_the_item_ask_id(monkeypatch):
+    def responder(url):
+        if url == BOTSITE_OWNER_URL:
+            return _envelope(url, status=503)
+        return _envelope(url)
+
+    _install_get(monkeypatch, responder)
+    items = [
+        # Reworded beyond signature recognition, but carrying its id.
+        {"what": "Completely reworded botsite password errand.",
+         "ask_id": "ASK-0006"},
+        # id-less item on the signature path, same pass.
+        {"what": "Answer Q-0004 please."},
+    ]
+    rollup = _run(askverify.annotate(items))
+    assert items[0]["verify"]["verdict"] == askverify.STILL_OPEN
+    assert items[0]["verify"]["probe"] == "botsite-gate"
+    assert items[1]["verify"]["verdict"] == askverify.NOT_CHECKABLE
+    assert "Q-0004" in items[1]["verify"]["detail"]
+    assert rollup["machine_verified"] == 1 and rollup["unmatched"] == 0
+
+
+def test_parser_extracts_the_id_line():
+    src = (
+        "⚑ OWNER-ACTION\n"
+        "ID: ASK-0042\n"
+        "WHAT: Do the thing.\n"
+        "WHERE: over there.\n"
+    )
+    _pre, blocks = owner_queue.parse_owner_actions(src)
+    assert len(blocks) == 1
+    assert blocks[0]["ask_id"] == "ASK-0042"
+    assert blocks[0]["what"] == "Do the thing."
+    # Flattened one-line lane copies carry the id too.
+    flat = "⚑ OWNER-ACTION ID: ASK-0042 WHAT: Do the thing. WHERE: there."
+    _pre, blocks = owner_queue.parse_owner_actions(flat)
+    assert blocks[0]["ask_id"] == "ASK-0042"
+
+
+def test_parser_is_absent_safe_for_legacy_blocks_without_an_id():
+    src = "⚑ OWNER-ACTION\nWHAT: Legacy ask.\nWHERE: here.\n"
+    _pre, blocks = owner_queue.parse_owner_actions(src)
+    assert "ask_id" not in blocks[0]
+    # An id MENTIONED in a field's prose never binds — only the header
+    # region before the first field label is scanned.
+    src = (
+        "⚑ OWNER-ACTION\n"
+        "WHAT: Legacy ask.\n"
+        "HOW: extends the ID: ASK-0007 errand above.\n"
+    )
+    _pre, blocks = owner_queue.parse_owner_actions(src)
+    assert "ask_id" not in blocks[0]
 
 
 # --------------------------------------------------------------------------- #

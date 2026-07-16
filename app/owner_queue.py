@@ -37,6 +37,12 @@ OWNER_QUEUE_PATH = "docs/owner-queue.md"
 # raw markdown where it starts a line. Both split the same way.
 _BLOCK_RE = re.compile(r"⚑\s*OWNER-ACTION\b")
 
+# Stable ask id (``ID: ASK-NNNN``), written directly under the ⚑ marker —
+# append-only, never reused (scheme note atop docs/owner/OWNER-ACTIONS.md's
+# Open section). Only the header region before the first six-field label is
+# scanned, so an ask's prose MENTIONING another ask's id never binds.
+_ID_RE = re.compile(r"\bID\s*:\s*(ASK-\d{4})\b")
+
 # Six-field labels (control/README.md § OWNER-ACTION format). Tolerates
 # markdown emphasis around the label (``**WHAT:**``) and flattened one-line
 # blocks. WHY-IT-MATTERS is stored under the short key ``why``.
@@ -75,9 +81,15 @@ def _clean(value: str) -> str:
 
 def _parse_block(block: str) -> dict[str, str]:
     """Parse one OWNER-ACTION block's labeled fields (missing fields omitted —
-    rendered as absent, never invented)."""
+    rendered as absent, never invented). A stable ``ID: ASK-NNNN`` line in
+    the block header lands under ``ask_id``; legacy blocks without one simply
+    lack the key — every consumer treats it as absent-safe."""
     fields: dict[str, str] = {}
     matches = list(_FIELD_RE.finditer(block))
+    head = block[: matches[0].start()] if matches else block
+    id_match = _ID_RE.search(head)
+    if id_match:
+        fields["ask_id"] = id_match.group(1)
     for i, m in enumerate(matches):
         key = _FIELD_KEYS[m.group(1)]
         end = matches[i + 1].start() if i + 1 < len(matches) else len(block)
@@ -142,7 +154,14 @@ def _make_item(source: dict[str, Any], *, fields: Optional[dict] = None,
     item: dict[str, Any] = {
         "what": (fields or {}).get("what", ""),
         "text": _clean(text),
-        "fields": {k: v for k, v in (fields or {}).items() if k != "what"},
+        # Stable ask id when the block carries one (``ID: ASK-NNNN``);
+        # None for legacy blocks — downstream matching stays absent-safe.
+        "ask_id": (fields or {}).get("ask_id") or None,
+        "fields": {
+            k: v
+            for k, v in (fields or {}).items()
+            if k not in ("what", "ask_id")
+        },
         "sources": [source],
     }
     return item
@@ -400,6 +419,8 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
             # Prefer structured fields from whichever copy has them.
             for k, v in item["fields"].items():
                 merged[key]["fields"].setdefault(k, v)
+            if not merged[key].get("ask_id") and item.get("ask_id"):
+                merged[key]["ask_id"] = item["ask_id"]
         else:
             merged[key] = item
             order.append(key)

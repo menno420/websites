@@ -45,7 +45,9 @@ QUEUE_TOP = {
     "filter",  # ORDER 019: echo of the applied filter state (q/sort/selected…)
 }
 QUEUE_FILTER = {"q", "sort", "selected", "active", "shown", "total"}
-QUEUE_ITEM = {"what", "text", "fields", "sources"}
+# ask_id: the stable ledger id (``ID: ASK-NNNN``, 2026-07-16) — askverify's
+# exact join key; null for legacy blocks without one.
+QUEUE_ITEM = {"what", "text", "ask_id", "fields", "sources"}
 QUEUE_SOURCE = {"kind", "label", "url", "updated_iso", "age_hours", "age_human"}
 QUEUE_SUMMARY = {"total", "deduped", "lanes_with_asks", "lanes_total"}
 QUEUE_FM = {  # _fleet_manager_half minus body_html
