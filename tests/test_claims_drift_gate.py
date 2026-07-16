@@ -17,18 +17,30 @@ Terminality is decided with pure git plumbing — zero network:
    vs its merge-base gets one ``git patch-id --stable``, and each commit on
    ``<merge-base>..<main>`` (newest first, capped) is checked for the same
    patch-id. A hit is the squash commit — the work landed.
+3. **pruned-ref fallback via an optional ``PR #N`` bullet token**
+   (2026-07-16, closes a 2026-07-14 backlog idea) — lane 2 needs the
+   branch ref to diff against; a repo that prunes branches on merge (or
+   any claim whose branch was simply never pushed) makes the ref resolve
+   to nothing, which the gate has always treated as indeterminate-live.
+   If the claim bullet carries a trailing `` · PR #N `` token (appended by
+   hand once the PR opens — no kit/grammar change, pure free text this
+   gate alone reads), a pruned/unresolvable ref falls back to
+   ``git log <main> --grep='(#N)' --fixed-strings`` — a hit is this
+   repo's squash-merge subject convention (``<title> (#N)``), so the work
+   landed even though the branch itself is gone. No token, no fallback —
+   ref-less stays exactly as fail-safe-live as before.
 
 Everything else is deliberately treated as LIVE (fail-safe, never flag):
 an unparseable bullet or a scope-only token (``check_claims``'s
-``claims-format`` territory), a branch that resolves to no ref (never
-pushed, or pruned after merge — indeterminate without the network), a
-squash whose patch-id drifted (merge conflicts resolved in the PR, or the
-scan cap exceeded). A live claim for an open branch must always pass — the
-gate exists to catch orphans, not to nag in-flight work.
+``claims-format`` territory), a branch that resolves to no ref AND
+carries no PR token (never pushed, or pruned with nothing to fall back
+on), a squash whose patch-id drifted (merge conflicts resolved in the PR,
+or the scan cap exceeded). A live claim for an open branch must always
+pass — the gate exists to catch orphans, not to nag in-flight work.
 
 The committed-tree pin runs first; the synthetic-repo tests prove the
-detector itself (squash / true-merge / live / unknown) so the pin never
-silently rots into pass-everything.
+detector itself (squash / true-merge / live / pruned-ref-with-PR /
+unknown) so the pin never silently rots into pass-everything.
 """
 
 from __future__ import annotations
@@ -51,6 +63,12 @@ SQUASH_SCAN_CAP = 500
 # The claim bullet's leading backticked token (the branch-or-scope slot):
 #   - `claude/railway-placeholders` · **scope** — detail · area · 2026-07-13
 _CLAIM_TOKEN = re.compile(r"^-\s+`([^`\s]+)`")
+
+# The optional trailing PR-number token (anywhere on the bullet line, not
+# grammar-anchored like the leading token — free text this gate alone
+# reads, no kit/grammar coupling):
+#   - `claude/foo` · **scope** — detail · area · 2026-07-16 · PR #123
+_CLAIM_PR = re.compile(r"PR\s+#(\d+)\b")
 
 
 # --------------------------------------------------------------------------- #
@@ -77,12 +95,44 @@ def parse_claim_branch(text: str) -> str | None:
     return None
 
 
+def parse_claim_pr(text: str) -> str | None:
+    """The bullet's `` PR #N `` token (digits only), or None if absent."""
+    for line in text.splitlines():
+        if _CLAIM_TOKEN.match(line.strip()):
+            m = _CLAIM_PR.search(line)
+            if m:
+                return m.group(1)
+    return None
+
+
 def resolve_branch_ref(cwd: Path, token: str) -> str | None:
     """The token's ref if it exists (remote-tracking first), else None."""
     for candidate in (f"refs/remotes/origin/{token}", f"refs/heads/{token}"):
         if _rev(cwd, candidate):
             return candidate
     return None
+
+
+def resolve_via_pr_grep(cwd: Path, main_ref: str, pr_number: str) -> bool:
+    """True when a commit on ``main_ref`` carries this repo's squash-merge
+    subject convention ``... (#<pr_number>)`` — the pruned-ref fallback.
+
+    ``--fixed-strings`` so the number is matched literally (never a regex),
+    and the search string wraps the digits in parens exactly like the
+    convention (``(#N)``) so ``#12`` can never false-match a commit naming
+    ``#123``."""
+    res = _git(
+        [
+            "log",
+            main_ref,
+            "--fixed-strings",
+            f"--grep=(#{pr_number})",
+            "--format=%H",
+            "-1",
+        ],
+        cwd,
+    )
+    return res.returncode == 0 and bool(res.stdout.strip())
 
 
 def _combined_patch_id(cwd: Path, base: str, tip: str) -> str | None:
@@ -123,12 +173,19 @@ def stale_claims(
     for path in sorted(claims_dir.glob("*.md")):
         if path.name == "README.md":  # the convention doc, never a claim
             continue
-        token = parse_claim_branch(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+        token = parse_claim_branch(text)
         if not token or "/" not in token:
             continue  # unparseable or scope-only — claims-format territory, live
         ref = resolve_branch_ref(repo_root, token)
         if ref is None:
-            continue  # never pushed / ref pruned — indeterminate, live
+            # Never pushed, or pruned after merge — indeterminate from the
+            # ref alone. A bullet-carried `PR #N` token gives one more
+            # shot before falling back to fail-safe-live.
+            pr_number = parse_claim_pr(text)
+            if pr_number and resolve_via_pr_grep(repo_root, main_ref, pr_number):
+                found.append((path, token))
+            continue
         if branch_is_terminal(repo_root, ref, main_ref):
             found.append((path, token))
     return found
@@ -200,6 +257,17 @@ def synth_repo(tmp_path: Path) -> Path:
     assert _git(["checkout", "-q", "-b", "claude/live"], repo).returncode == 0
     _commit_file(repo, "wip.txt", "wip\n", "in-flight work")
     assert _git(["checkout", "-q", "main"], repo).returncode == 0
+
+    # Pruned-ref branch: squash-merged (subject carries "(#99)", this
+    # repo's convention) then its local ref DELETED — resolve_branch_ref
+    # must return None, exercising the PR-grep fallback lane.
+    assert _git(["checkout", "-q", "-b", "claude/pruned"], repo).returncode == 0
+    _commit_file(repo, "pruned.txt", "pruned\n", "pruned feature")
+    assert _git(["checkout", "-q", "main"], repo).returncode == 0
+    assert _git(["merge", "--squash", "-q", "claude/pruned"], repo).returncode == 0
+    assert _git(["commit", "-q", "-m", "pruned feature (#99)"], repo).returncode == 0
+    assert _git(["branch", "-D", "claude/pruned"], repo).returncode == 0
+
     return repo
 
 
@@ -226,6 +294,25 @@ def test_live_branch_is_live(synth_repo: Path):
     assert ref and not branch_is_terminal(synth_repo, ref, "main")
 
 
+def test_pruned_ref_resolves_to_none(synth_repo: Path):
+    """Fixture sanity: the pruned branch's ref is genuinely gone."""
+    assert resolve_branch_ref(synth_repo, "claude/pruned") is None
+
+
+def test_pr_grep_fallback_finds_the_landed_squash(synth_repo: Path):
+    assert resolve_via_pr_grep(synth_repo, "main", "99")
+
+
+def test_pr_grep_fallback_misses_an_unlanded_pr(synth_repo: Path):
+    """A PR number that never landed must never false-positive."""
+    assert not resolve_via_pr_grep(synth_repo, "main", "424242")
+
+
+def test_pr_grep_fallback_is_a_literal_match_not_a_prefix(synth_repo: Path):
+    """`#9` must not match a commit naming `#99` (fixed-string, parens-wrapped)."""
+    assert not resolve_via_pr_grep(synth_repo, "main", "9")
+
+
 def test_stale_claims_flags_only_the_orphans(synth_repo: Path):
     """End-to-end over a claims dir: orphan flagged; live claim, README,
     never-pushed branch, and a scope-only token all pass."""
@@ -248,8 +335,21 @@ def test_stale_claims_flags_only_the_orphans(synth_repo: Path):
         "# Claim\n\n- `docs-sweep` · **scope token** — no branch · files · 2026-07-14\n",
         encoding="utf-8",
     )
+    (claims / "pruned-landed.md").write_text(
+        "# Claim\n\n- `claude/pruned` · **feature** — landed, ref pruned · "
+        "files · 2026-07-14 · PR #99\n",
+        encoding="utf-8",
+    )
+    (claims / "pruned-unlanded.md").write_text(
+        "# Claim\n\n- `claude/never-opened` · **wip** — PR opened, not merged · "
+        "files · 2026-07-14 · PR #424242\n",
+        encoding="utf-8",
+    )
     orphans = stale_claims(synth_repo, claims, "main")
-    assert [(p.name, t) for p, t in orphans] == [("orphan.md", "claude/squashed")]
+    assert sorted((p.name, t) for p, t in orphans) == [
+        ("orphan.md", "claude/squashed"),
+        ("pruned-landed.md", "claude/pruned"),
+    ]
 
 
 def test_parse_claim_branch_grammar():
@@ -260,3 +360,26 @@ def test_parse_claim_branch_grammar():
         == "claude/railway-placeholders"
     )
     assert parse_claim_branch("# heading only\nprose, no bullet\n") is None
+
+
+def test_parse_claim_pr_grammar():
+    assert (
+        parse_claim_pr(
+            "# Claim\n\n- `claude/foo` · **scope** — d · a · 2026-07-16 · PR #123\n"
+        )
+        == "123"
+    )
+    # No PR token at all — the common case, must not raise or invent one.
+    assert (
+        parse_claim_pr("# Claim\n\n- `claude/foo` · **scope** — d · a · 2026-07-16\n")
+        is None
+    )
+    # A "PR #N" mention in prose ABOVE the bullet line must not leak in —
+    # only the bullet line itself is scanned.
+    assert (
+        parse_claim_pr(
+            "# Claim\n\nSee PR #999 for context.\n\n"
+            "- `claude/foo` · **scope** — d · a · 2026-07-16\n"
+        )
+        is None
+    )

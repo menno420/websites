@@ -55,6 +55,27 @@ Discover claims with `ls control/claims/` — this README never lists them.
    record is the PR and the living ledger — a claim is a whiteboard note,
    not an audit trail.
 
+## Optional: `PR #N` token once the PR opens (2026-07-16)
+
+`check_claims`'s drift gate (``tests/test_claims_drift_gate.py``) treats a
+claim whose branch resolves to no ref (never pushed, or pruned by a
+"delete branch on merge" setting) as indeterminate — fail-safe LIVE, never
+flagged, because there is no ref left to diff against. If your PR has
+opened, append `` · PR #N `` to the end of your claim bullet by hand (free
+text — not part of the kit-owned bullet grammar above, so no
+`bootstrap claim` flag renders it and no kit change is needed):
+
+```markdown
+- `claude/my-branch` · **scope** — detail · area · 2026-07-16 · PR #123
+```
+
+If the branch ref later goes missing, the gate falls back to
+`git log origin/main --grep='(#123)' --fixed-strings` — a hit is this
+repo's squash-merge subject convention (`<title> (#N)`), so a pruned-ref
+orphan is caught instead of silently staying invisible forever. No token,
+no fallback: the gate behaves exactly as before. This is purely additive —
+never required, never breaks a claim that omits it.
+
 ## Arbitration + expiry
 
 - **First claim merged to main wins** a collision — a deterministic tiebreak
