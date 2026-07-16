@@ -1,0 +1,61 @@
+name: quality-main-sweep
+
+# Scheduled backfill for missing `quality` runs on main.
+#
+# Why this exists: merges landed by github-actions[bot] (merge-on-green and
+# friends) push to main with the Actions GITHUB_TOKEN, and GitHub's
+# recursion guard suppresses the push event — so quality.yml's
+# `push: branches: [main]` lane never fires and the new main HEAD carries
+# NO `quality` check run. `quality` is the repo's required/health check,
+# so main health is unmeasured between bot merges (observed 2026-07-15:
+# ee47f8d, 6fafc1a, 68ad331, 3cac461 — every commit after 214ed0f — had
+# no push-event quality run).
+#
+# The fix mirrors the repo's documented recursion-guard exception (the
+# review-bake chain, see the comment in quality.yml's `on:` block):
+# workflow_dispatch events created WITH the GITHUB_TOKEN do fire. This
+# sweep wakes every 2 hours, and iff the current main HEAD has no
+# completed `quality` check run, dispatches quality.yml on main. The
+# resulting check run lands on the HEAD sha, closing the measurement gap.
+#
+# Idempotent and quiet: a HEAD that already has a completed quality run
+# (push, PR-merge-fastforward, or a previous sweep dispatch) logs
+# "quality present" and exits 0; a HEAD with a run still in flight is
+# left alone (no duplicate dispatch). API-only — no checkout needed.
+
+on:
+  schedule:
+    - cron: '17 */2 * * *'   # every 2 hours at :17 (off the top-of-hour rush)
+  workflow_dispatch:
+
+permissions:
+  actions: write   # gh workflow run quality.yml --ref main
+  checks: read     # read check runs on the main HEAD sha
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: backfill quality on main HEAD if no run exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          sha="$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha)"
+          echo "main HEAD: $sha"
+          # All check runs named `quality` on that sha (any status).
+          runs="$(gh api "repos/${{ github.repository }}/commits/$sha/check-runs?check_name=quality" \
+                    --jq '[.check_runs[] | {status, conclusion}]')"
+          total="$(printf '%s' "$runs" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')"
+          completed="$(printf '%s' "$runs" | python3 -c 'import json,sys; print(sum(1 for r in json.load(sys.stdin) if r["status"]=="completed"))')"
+          if [ "$completed" -gt 0 ]; then
+            echo "quality present: $completed completed quality check run(s) on $sha — nothing to do."
+            exit 0
+          fi
+          if [ "$total" -gt 0 ]; then
+            echo "quality pending: $total quality check run(s) on $sha still in flight — not dispatching a duplicate."
+            exit 0
+          fi
+          echo "no quality check run on $sha — dispatching quality.yml on main (GITHUB_TOKEN workflow_dispatch, the documented recursion-guard exception)."
+          gh workflow run quality.yml --ref main
+          echo "dispatched quality.yml on main for HEAD $sha."
