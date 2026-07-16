@@ -9,6 +9,16 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Console + review overnight planning menu — 25+ proposals awaiting owner
+  veto** · `planned` (2026-07-16, console-review-menu session) — a
+  deliberately long, veto-ready menu spanning the control-plane launch console
+  (`app/`) and the review service (`review/`), from small honest-status fixes
+  through ambitious features, each tagged effort (S/M/L) · risk (✅/↩️/⚠) ·
+  what it unblocks. Produced per the owner's LIVE OVERNIGHT ORDER (event
+  55f13541) when the buildable backlog ran thin: quantity is intentional, the
+  owner's veto is the filter. Surviving picks graduate into individual bullets
+  here (X1). Source: `docs/planning/2026-07-16-console-review-menu.md`.
+
 - **Shared `drift_report()` renderer — one structured join, three
   surfaces** · `captured` (2026-07-16, release-drift session 💡) — the
   healthcheck's release-drift pass (PR #365 `check_release_drift()`) and
