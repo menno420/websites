@@ -1,0 +1,1 @@
+- `claude/askverify-stable-ids` · **Stable ASK-NNNN ids for askverify exact matching — app/askverify.py + app/owner_queue.py + app/briefing.py + docs/owner/OWNER-ACTIONS.md + tests** · app/ + docs/owner/ + tests/ · 2026-07-16
