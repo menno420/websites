@@ -44,6 +44,7 @@ from . import (
     prompts,
     railway,
     readiness,
+    release_drift,
     writeback,
 )
 
@@ -409,6 +410,13 @@ async def _render_owner_queue(
     data["verify"] = await askverify.annotate(
         data["items"], refresh=_refresh(request)
     )
+    # Release-drift chip (2026-07-16): reuse #365's registry-blocker ↔ probe
+    # verdict (app/release_drift.py) to flag, per open ask, the done-detected
+    # -but-still-gated drift the healthcheck pass surfaces only in CI. Chip is
+    # None when the ask is not drifting, so the template omits it. Read-only:
+    # the SAME probe verdicts annotate already attached, no new fetch.
+    for item in data["items"]:
+        item["drift"] = release_drift.chip(item.get("verify"))
     return templates.TemplateResponse(
         request,
         "owner_queue.html",

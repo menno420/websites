@@ -133,6 +133,9 @@
     {% if it.verify.detail %}<span class="dim">— {{ it.verify.detail }}</span>{% endif %}
     {% if it.verify.url %}· <a href="{{ it.verify.url }}">evidence ↗</a>{% endif %}</p>
   {% endif %}
+  {% if it.drift %}
+  <p class="small"><span class="b {{ it.drift.css }}" title="{{ it.drift.title }}">{{ it.drift.label }}</span></p>
+  {% endif %}
   {% if it.fields %}
   <table>
     {% for key, label in q.field_order %}
