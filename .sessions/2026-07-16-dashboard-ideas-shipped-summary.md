@@ -1,6 +1,11 @@
 # 2026-07-16 — Dashboard /ideas: shipped-idea count on the hero
 
-> **Status:** `in-progress`
+> **Status:** `complete` — branch `claude/dashboard-ideas-shipped-summary`; the
+> `/ideas` backlog hero now shows `· K shipped` alongside its `N ideas` total,
+> closing the inconsistency with the sibling `/bugs` hero (which already shows
+> `· K open`). Backed by a pure `data_source.idea_stats(data)` helper whose
+> shipped set (`done`/`implemented`) matches the per-idea badge, so the hero
+> figure equals the count of green badges on the page. Read-only; +4 tests.
 
 - **📊 Model:** Claude Opus · high · dashboard-feature build
 

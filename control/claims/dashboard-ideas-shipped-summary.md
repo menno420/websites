@@ -1,1 +1,0 @@
-- `dashboard-ideas-shipped-summary` · **scope** — surface a shipped-idea count on the /ideas hero, mirroring the /bugs total·open idiom · dashboard/data_source.py + dashboard/templates/ideas.html + app.py + tests · 2026-07-16
