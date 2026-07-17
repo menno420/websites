@@ -9,7 +9,7 @@ blockers: none
 routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" (cron `45 */2 * * *`, next fire 2026-07-18T00:45:00Z) bound to the coordinator session; a ~15-min send_later pacemaker chain is kept alive coordinator-side. Old failsafe `trig_01VRT9F6jYNXym3nn18vVQQK` retiring (not re-armed). Tool wall: the capitalized alias `mcp__Claude_Code_Remote__list_triggers` is classifier-blocked; lowercase `mcp__claude-code-remote__list_triggers` works.
 landing: pushed-unmerged `claude/self-cleaning-owner-queue` — PR #386 READY (C14 self-cleaning owner queue); merges via the server-side auto-merge-enabler on green (agents cannot self-merge, classifier since 2026-07-15). Open PRs: this one.
 deployed: f21bbdf · four Railway services live (control-plane/botsite/dashboard/review). C14 touches control-plane app/ only.
-claims: this session holds `control/claims/self-cleaning-owner-queue.md`.
+claims: no active claims — the C14 branch `claude/self-cleaning-owner-queue` is merged (PR #386), so its claim was terminal and has been removed.
 notes: WIND-DOWN standing — the Claude Code Projects EAP goes READ-ONLY 2026-07-21; the autonomous apparatus is being retired and the Project recreated (inventory: docs/NEXT-TASKS.md → "Wind-down / retirement"). C14 is a control-plane product slice, independent of the retirement set.
 needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below) — none resolved this session.
 
