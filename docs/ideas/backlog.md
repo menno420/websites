@@ -9,6 +9,14 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Arcade + dashboard overnight proposal menu** · `captured` (2026-07-16,
+  arcade-dashboard-menu session 💡) — 24 distinct veto-ready proposals across
+  botsite/Fleet-Arcade and dashboard, small fixes → ambitious features, grouped
+  by service with pitch · effort (S/M/L) · risk & reversibility · what it
+  unblocks. Why: owner overnight order (event 55f13541) for a broad morning
+  veto-ready menu. Source:
+  `docs/planning/arcade-dashboard-menu-2026-07-16.md` (event 55f13541).
+
 - **Shared `drift_report()` renderer — one structured join, three
   surfaces** · `captured` (2026-07-16, release-drift session 💡) — the
   healthcheck's release-drift pass (PR #365 `check_release_drift()`) and
