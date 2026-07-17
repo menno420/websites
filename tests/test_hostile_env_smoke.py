@@ -87,6 +87,7 @@ ENV_VARS = [
     # dashboard/: data_source.py
     "DASHBOARD_JSON_URL",
     "CONSOLE_JSON_URL",
+    "ARCADE_JSON_URL",
     "DATA_CACHE_TTL_SECONDS",
     "SUPERBOT_REPO",
     "SUPERBOT_REF",
