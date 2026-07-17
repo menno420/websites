@@ -565,3 +565,82 @@ def test_arcade_summary_malformed_blocker_contributes_no_owner_click():
     ]
     summary = arcade.availability_summary(games)
     assert summary == {"total": 2, "live": 0, "blocked": 2, "owner_clicks": 0}
+
+
+# --- Owner action queue (arcade.pending_owner_actions) ---------------------- #
+
+
+def test_pending_owner_actions_lists_distinct_clicks_with_games():
+    """The queue names each DISTINCT owner click once, in first-seen order,
+    carrying its ask_id and the games it unblocks. Two blocked games sharing an
+    ask_id collapse into one entry whose ``games`` list holds both names."""
+    games = [
+        {"has_link": True, "name": "Live One"},
+        {"has_link": False, "name": "Alpha",
+         "blocker": {"owner_action": "click A", "ask_id": "ASK-0001"}},
+        {"has_link": False, "name": "Bravo",
+         "blocker": {"owner_action": "click B", "ask_id": "ASK-0002"}},
+        {"has_link": False, "name": "Charlie",
+         "blocker": {"owner_action": "click A again", "ask_id": "ASK-0001"}},
+    ]
+    actions = arcade.pending_owner_actions(games)
+    assert actions == [
+        {"owner_action": "click A", "ask_id": "ASK-0001", "games": ["Alpha", "Charlie"]},
+        {"owner_action": "click B", "ask_id": "ASK-0002", "games": ["Bravo"]},
+    ]
+
+
+def test_pending_owner_actions_length_equals_summary_owner_clicks():
+    """The queue's length tracks the summary strip's owner-click count exactly —
+    the panel and the count can never disagree — over the committed registry."""
+    games = arcade.load_games()
+    actions = arcade.pending_owner_actions(games)
+    assert len(actions) == arcade.availability_summary(games)["owner_clicks"]
+
+
+def test_pending_owner_actions_dedupes_idless_clicks_by_owner_action():
+    """Blockers without an ask_id dedupe by owner_action text — two games naming
+    the same click collapse to one entry (ask_id None)."""
+    games = [
+        {"has_link": False, "name": "Alpha", "blocker": {"owner_action": "flip the switch"}},
+        {"has_link": False, "name": "Bravo", "blocker": {"owner_action": "flip the switch"}},
+        {"has_link": False, "name": "Charlie", "blocker": {"owner_action": "press the button"}},
+    ]
+    actions = arcade.pending_owner_actions(games)
+    assert actions == [
+        {"owner_action": "flip the switch", "ask_id": None, "games": ["Alpha", "Bravo"]},
+        {"owner_action": "press the button", "ask_id": None, "games": ["Charlie"]},
+    ]
+
+
+def test_pending_owner_actions_skips_live_and_unnameable():
+    """Only blocked games with a nameable blocker contribute: a live game, a
+    non-dict blocker, and a blank owner_action all yield no queue entry."""
+    games = [
+        {"has_link": True, "name": "Live", "blocker": {"owner_action": "ignored"}},
+        {"has_link": False, "name": "Prose", "blocker": "just prose"},
+        {"has_link": False, "name": "Blank", "blocker": {"owner_action": "  "}},
+        {"has_link": False, "name": "Real", "blocker": {"owner_action": "do the thing"}},
+    ]
+    actions = arcade.pending_owner_actions(games)
+    assert actions == [
+        {"owner_action": "do the thing", "ask_id": None, "games": ["Real"]},
+    ]
+
+
+@pytest.mark.parametrize("bad", [None, 42, ["not a dict", 7, None]])
+def test_pending_owner_actions_fail_soft_on_malformed_input(bad):
+    """Fail-soft: a non-iterable input or non-dict entries never raise — they
+    degrade to an empty queue (the 'degrade, don't invent' doctrine)."""
+    assert arcade.pending_owner_actions(bad) == []
+
+
+def test_arcade_page_renders_owner_action_queue(client):
+    """The /arcade page surfaces the consolidated queue panel: its heading, the
+    committed registry's two ledger refs, and the games each unblocks."""
+    r = client.get("/arcade")
+    assert r.status_code == 200
+    assert "Owner action queue" in r.text
+    assert "ASK-0010" in r.text
+    assert "ASK-0011" in r.text
+    assert "unblocks" in r.text
