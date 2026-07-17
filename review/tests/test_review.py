@@ -122,6 +122,51 @@ def test_successes_page_evidence_linked():
         assert str(escape(item["title"])) in r.text
 
 
+# ---------------------------------------------------------------------------
+# At-a-glance ledger tally — the Problems/Successes hero count (read-only,
+# counted off the very lists the templates iterate so it can never drift)
+# ---------------------------------------------------------------------------
+def test_ledger_summary_counts_total_and_detailed():
+    """total == list length; detailed == entries carrying a structured
+    ``details`` incident timeline. PROBLEMS carries exactly the one 07-12
+    incident writeup; SUCCESSES carry none."""
+    p = story.ledger_summary(story.PROBLEMS)
+    assert p["total"] == len(story.PROBLEMS)
+    assert p["detailed"] == sum(1 for it in story.PROBLEMS if it.get("details"))
+    assert p["detailed"] >= 1  # the 2026-07-12 incident is a full writeup
+    s = story.ledger_summary(story.SUCCESSES)
+    assert s["total"] == len(story.SUCCESSES)
+    assert s["detailed"] == 0
+
+
+def test_ledger_summary_empty_is_safe():
+    assert story.ledger_summary([]) == {"total": 0, "detailed": 0}
+
+
+def test_ledger_summary_never_mutates_input():
+    items = [{"details": [1]}, {}]
+    story.ledger_summary(items)
+    assert items == [{"details": [1]}, {}]
+
+
+def test_problems_hero_shows_documented_tally():
+    """The Problems hero surfaces the ledger size, and — because at least one
+    entry is a full incident writeup — the secondary detailed count too."""
+    summary = story.ledger_summary(story.PROBLEMS)
+    r = client.get("/problems")
+    assert f"{summary['total']} documented problem" in r.text
+    assert f"{summary['detailed']} full incident writeup" in r.text
+
+
+def test_successes_hero_shows_documented_tally_without_incident_secondary():
+    """The Successes hero shows its total; with no structured details, the
+    incident-writeup secondary badge is omitted (the conditional, other way)."""
+    summary = story.ledger_summary(story.SUCCESSES)
+    r = client.get("/successes")
+    assert f"{summary['total']} documented win" in r.text
+    assert "incident writeup" not in r.text
+
+
 def test_story_json_serves_snapshot():
     r = client.get("/story.json")
     assert r.status_code == 200

@@ -185,14 +185,14 @@ async def growth(request: Request):
 @app.get("/successes", response_class=HTMLResponse)
 async def successes(request: Request):
     ctx = _base_ctx(request, "successes")
-    ctx.update({"items": story.SUCCESSES})
+    ctx.update({"items": story.SUCCESSES, "summary": story.ledger_summary(story.SUCCESSES)})
     return templates.TemplateResponse(request, "successes.html", ctx)
 
 
 @app.get("/problems", response_class=HTMLResponse)
 async def problems(request: Request):
     ctx = _base_ctx(request, "problems")
-    ctx.update({"items": story.PROBLEMS})
+    ctx.update({"items": story.PROBLEMS, "summary": story.ledger_summary(story.PROBLEMS)})
     return templates.TemplateResponse(request, "problems.html", ctx)
 
 

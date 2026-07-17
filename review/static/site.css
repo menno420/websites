@@ -82,6 +82,9 @@
 .rv-problem-kv { margin: var(--sb-s-4) 0; }
 .rv-problem-kv p { margin: var(--sb-s-1) 0 0; font-size: var(--sb-text-sm); }
 
+/* hero at-a-glance ledger tally (Problems / Successes) */
+.rv-ledger-tally { display: flex; flex-wrap: wrap; gap: var(--sb-s-2); margin-bottom: 0; }
+
 /* incident sub-findings (a problem too big for one paragraph) */
 .rv-problem-details { display: grid; gap: var(--sb-s-3); margin: var(--sb-s-4) 0; }
 .rv-problem-detail {
