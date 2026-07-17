@@ -1,18 +1,19 @@
 # websites · status
 
-updated: 2026-07-16T21:57:55Z
-phase: records/hygiene session (coordinator-dispatched 2026-07-16 night) — landed the owner's live OVERNIGHT ORDER into control/inbox.md as ORDER 032 and refreshed this heartbeat; control/**-only fast-lane PR, no session card (control fast lane).
-health: green — origin/main @ da63857 (#357). Last full four-suite run: 1588 passed on the #365 branch (2026-07-16); no code touched this session (control/** only), so no re-run.
-orders: acked=001-032 done=001-019,023-031 (020/021 owner-gated; 022 standing; 031 ack'd — EAP extended to 2026-07-21, routines not re-armed pending owner per-seat go; 032 STANDING — owner live overnight-autonomy order, in force through morning).
-landed-tonight: 7 PRs merged to main — #345, #357, #362, #365, #368, #369, #370 (coordinator live-verified 5: #345/#357/#368/#369/#370). origin/main HEAD da63857.
-open-PRs:
-- #359 — automated fleet-data bake (data-only, bot-authored); blocker: hands-off nightly bake needs ASK-0008 (BAKE_PAT PR-write secret); base predates #362's land.
-- #361 — rescue: straggler session card; draft, born-red by design (unresolved [[fill:]] slots) — held; a close-out session completes it or owner/coordinator closes.
-- #363 — rescue: second straggler card (detached-HEAD session); draft, born-red — held, owner/coordinator disposes.
-- #367 — rescue: third straggler card (main-boot auto-draft); draft, born-red — held.
-staged (owner-gated): the auto-merge draft-gap patch is staged in a session awaiting the owner's first-hand go-ahead (workflow write needs owner provenance). Green PRs opened overnight wait as ready-to-land drafts pending the owner's morning auto-merge go-ahead.
-overnight: planning sessions writing a veto-ready menu of proposals + a build session on contained/reversible slices, per ORDER 032.
-routine: failsafe cron 45 */2 present — trig_01VRT9F6jYNXym3nn18vVQQK "Websites failsafe wake" (ORDER 031: routines not re-armed pending the owner's per-seat go).
+updated: 2026-07-17T12:06:31Z
+phase: session close-out (coordinator-dispatched 2026-07-17) — owner is recreating projects; this heartbeat is written so a fresh seat resumes from the repo alone. control/**-only fast-lane PR, no session card.
+health: green — origin/main @ ecbe2bf (#383). Last full four-suite run reported 1588 passed (2026-07-16, #365 branch); this is a control/**-only heartbeat, no code touched, so no re-run.
+orders: acked=001-032 done=001-019,023-031 (020/021 owner-gated; 022 standing; 031 EAP extended to 2026-07-21, routines not re-armed pending owner per-seat go; 032 STANDING — owner live overnight-autonomy order).
+open-PRs: none — zero open PRs in the repo as of this write (live-verified against the PR list).
+landed-this-session: ~12 feature slices, all merged + Railway-live. Console: unblocks-N chips (#368), release-drift (#369), dispatch-readiness chips (#378). Arcade: catalog-blockers (#370), /games launch strip (#371), owner-action-queue panel (#381). Dashboard /ideas: shipped-count (#372), lifecycle filter pills (#382). Review: documented-count (#376), evidence-citation tallies (#383). CI guards: deploy-target guard (#377), arcade-registry integrity guard (#379). Records PR #374 already on main.
+planning-menus:
+- #373 MERGED — docs/planning/arcade-dashboard-menu-2026-07-16.md (24 proposals, docs-only).
+- #375 CLOSED unmerged — console/review menu (37 proposals). Preserved on branch claude/console-review-menu-20260716 + docs/planning/2026-07-16-console-review-menu.md. Owner reland decision pending.
+closed-not-landed (were held, now disposed):
+- #359 — automated fleet-data bake PR, CLOSED unmerged. Underlying need persists: hands-off nightly bake still blocked on BAKE_PAT PR-write secret (ASK-0008 / docs/owner/OWNER-ACTIONS.md).
+- #367 — born-red rescue straggler card (main-boot auto-draft), CLOSED unmerged. Sibling rescue drafts #361/#363 already closed earlier.
+landing-mechanism: server-side auto-merge WORKS for READY (non-draft) claude/* PRs via auto-merge-enabler.yml — proven this session: #381/#382/#383 self-landed on flip-to-green, zero human keystroke. Convention going forward: open claude/* PRs READY with the born-red session card as the brake. A draft-gap patch (auto-flip green drafts to ready) is STAGED but OPTIONAL, held by another session pending the owner's first-hand go-ahead (workflow write needs owner provenance).
+routine: no new triggers/pacemakers armed by the coordinator. The seat FAILSAFE cron "Websites failsafe wake" (45 */2 * * *) stays ARMED as the successor's dead-man bridge — fires ~every 2h into a fresh session.
 needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md)
@@ -34,7 +35,7 @@ needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 - ASK-0016 — arrange the native-speaker Dutch proofread for de-papieren-sinaasappel (details in docs/owner/OWNER-ACTIONS.md).
 
 ## NEXT-2-TASKS baton
-1. Owner lands the staged auto-merge draft-gap patch — then it sweeps the green overnight PRs into main.
-2. Resume the build loop (contained/reversible slices, one PR each, landed on green) once landing is unblocked.
+1. Owner decision on the #375 reland (console/review menu, preserved on claude/console-review-menu-20260716) — plus any veto of #373's merged picks.
+2. Fresh feature direction for the build loop — the pre-built planning menus are down to marginal picks; the next slice needs new owner intent or an agent-proposed direction.
 
 kit: v1.17.0
