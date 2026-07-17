@@ -1,1 +1,0 @@
-- `claude/arcade-owner-action-queue` · **scope** — botsite /arcade consolidated "Owner action queue" panel (arcade.py pending_owner_actions helper + arcade.html panel + tests) · 2026-07-17
