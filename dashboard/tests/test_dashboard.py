@@ -98,6 +98,23 @@ CONSOLE_FIXTURE = {
                                "merged_pr": None, "reverted_within_window": None}}],
 }
 
+# The committed arcade registry is a LIST of game entries (botsite/data/arcade.json).
+# Mix chosen so live/blocked are both non-zero and distinguishable: a live game with
+# a url, a download game with a url (both "live" = reachable link), and an
+# unavailable game with no url (blocked). live=2, blocked=1, total=3.
+ARCADE_FIXTURE = [
+    {"slug": "live-game", "name": "Live Game", "tagline": "t", "description": "d",
+     "maturity": "playable", "availability": "live", "source_repo": "menno420/x",
+     "url": "https://live.example", "status_note": ""},
+    {"slug": "dl-game", "name": "DL Game", "tagline": "t", "description": "d",
+     "maturity": "beta", "availability": "download", "source_repo": "menno420/y",
+     "url": "https://dl.example/rom", "status_note": ""},
+    {"slug": "blocked-game", "name": "Blocked Game", "tagline": "t", "description": "d",
+     "maturity": "beta", "availability": "unavailable", "source_repo": "menno420/z",
+     "url": None, "status_note": "pending owner click",
+     "blocker": {"owner_action": "click", "unblocks": "launch", "ask_id": "ASK-9999"}},
+]
+
 READ_ONLY_PATHS = [
     "/", "/functions", "/commands", "/aliases", "/settings", "/access",
     "/env", "/ideas", "/bugs", "/updates", "/status", "/console", "/admin",
@@ -112,6 +129,7 @@ def client():
     cp.controller.clear()  # the dry-run audit log is per-process; isolate tests
     ds.prime_cache(ds.DASHBOARD_JSON_URL, DASHBOARD_FIXTURE)
     ds.prime_cache(ds.CONSOLE_JSON_URL, CONSOLE_FIXTURE)
+    ds.prime_cache(ds.ARCADE_JSON_URL, ARCADE_FIXTURE)
     ds.set_client(ds.make_client())  # never actually hit (cache is warm)
     with TestClient(app_module.app) as c:
         yield c
@@ -428,6 +446,7 @@ def _client_with_dashboard(data):
     ds.clear_cache()
     ds.prime_cache(ds.DASHBOARD_JSON_URL, data)
     ds.prime_cache(ds.CONSOLE_JSON_URL, CONSOLE_FIXTURE)
+    ds.prime_cache(ds.ARCADE_JSON_URL, ARCADE_FIXTURE)
     ds.set_client(ds.make_client())
     return TestClient(app_module.app)
 
@@ -649,4 +668,60 @@ def test_ideas_status_pills_hidden_on_uniform_backlog():
         assert 'data-filter-pill="shipped"' not in r.text
         assert 'data-filter-pill="open"' not in r.text
         assert 'data-cat="open"' in r.text  # card still lane-tagged for when a pill appears
+    ds.clear_cache()
+
+
+# --- /status arcade live/blocked counts (B1) ------------------------------
+def test_arcade_counts_known_fixture():
+    """Pure helper: live = reachable link (availability live/download AND a url),
+    blocked = the honest inverse, live+blocked == total. Mirrors
+    botsite.arcade.availability_summary's live/blocked over the raw feed shape."""
+    assert ds.arcade_counts(ARCADE_FIXTURE) == {"total": 3, "live": 2, "blocked": 1}
+
+
+def test_arcade_counts_fail_soft_on_bad_input():
+    """Never raises on feed content: a non-list input degrades to all-zero, a
+    non-dict entry is skipped, and a live entry with no url is blocked (not a
+    false live). Same degrade-don't-invent posture as the rest of the module."""
+    assert ds.arcade_counts(None) == {"total": 0, "live": 0, "blocked": 0}
+    assert ds.arcade_counts("nope") == {"total": 0, "live": 0, "blocked": 0}
+    mixed = [
+        "not-a-dict",
+        {"availability": "live", "url": ""},        # live-claimed but no url -> blocked
+        {"availability": "live", "url": "https://a"},  # reachable -> live
+    ]
+    assert ds.arcade_counts(mixed) == {"total": 2, "live": 1, "blocked": 1}
+
+
+def test_status_shows_arcade_live_blocked_counts(client):
+    """/status renders the arcade line with live and blocked counts from the feed."""
+    r = client.get("/status")
+    assert r.status_code == 200
+    assert "3 games" in r.text
+    assert "2 live" in r.text
+    assert "1 blocked" in r.text
+
+
+def test_status_arcade_degrades_honestly_when_feed_unavailable():
+    """No fake data: a failed arcade fetch shows an honest 'unavailable' on /status
+    (still 200) — never a false '0 live / 0 blocked'. The bot feeds stay warm from
+    cache, so only the arcade fetch actually hits the (failing) client."""
+    ds.clear_cache()
+    ds.prime_cache(ds.DASHBOARD_JSON_URL, DASHBOARD_FIXTURE)
+    ds.prime_cache(ds.CONSOLE_JSON_URL, CONSOLE_FIXTURE)
+    # arcade.json is deliberately NOT primed -> fetch_arcade hits the client below.
+
+    class _ArcadeBoom:
+        async def get(self, url, *a, **k):
+            raise RuntimeError("arcade feed down")
+
+        async def aclose(self):
+            pass
+
+    ds.set_client(_ArcadeBoom())  # type: ignore[arg-type]
+    with TestClient(app_module.app) as c:
+        r = c.get("/status")
+        assert r.status_code == 200
+        assert "counts unavailable" in r.text.lower()
+        assert "0 live" not in r.text  # honest '—', never a faked zero
     ds.clear_cache()
