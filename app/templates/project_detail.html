@@ -35,6 +35,23 @@
   {% endif %}
 
   {% if d.state == 'ok' and pkg and not pkg.error %}
+  {% if pkg.coverage %}
+  {# Dispatch-readiness chip row — the SAME pkg.coverage / pkg.dispatch_ready
+     the /projects index shows, computed once in projects._build_package (zero
+     extra fetches). On the launch console itself so a missing role file is a
+     glance at the top, not a silent gap under the checklist below. #}
+  <p class="small">dispatch readiness:
+    {% for c in pkg.coverage %}
+    <span class="b {{ 'ok' if c.present else 'bad' }}"
+          title="{{ c.label }}{{ '' if c.present else ' — missing from the package' }}">{{
+      c.role }} {{ '✓' if c.present else '✗' }}</span>
+    {% endfor %}
+    {% if pkg.dispatch_ready %}<span class="dim">· dispatch-ready — all three role
+      files present</span>
+    {% else %}<span class="dim">· NOT dispatch-ready — a ✗ role file is missing
+      upstream; the seat can't launch until it lands</span>{% endif %}
+  </p>
+  {% endif %}
   <table>
     <tr><th>deployed state</th>
         <td>{% if pkg.state %}<span class="b ok">{{ pkg.state }}</span>
