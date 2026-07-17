@@ -1,8 +1,8 @@
 # Session — dashboard /ideas status filter pills
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
-- **📊 Model:** Claude Opus · high · dashboard-feature build
+- **📊 Model:** Claude Opus · high · feature build
 
 ## Goal
 Give the dashboard `/ideas` backlog a lifecycle-status filter: `all` / `open` / `shipped`
