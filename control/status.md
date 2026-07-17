@@ -1,14 +1,16 @@
 # websites · status
 
 updated: 2026-07-17T13:18:21Z
-phase: fresh-start cleanup (owner-authorized) — docs-only wind-down pass on branch `claude/fresh-start-cleanup`: trued `docs/current-state.md`, added the classifier-safe landing doctrine, added `docs/NEXT-TASKS.md` (curated menus) + `docs/OWNER-STEPS.md` (console-only, names-only), fixed the CONSTITUTION 4th-service (review/) omission, and banner-marked the retiring `control/` + routine apparatus.
-health: green — origin/main @ ecbe2bf (#383). Last full four-suite run 1588 (2026-07-16, #365 branch); grown since with #371–#383. This session is docs-only (no app/ source touched).
-wind-down: the Claude Code Projects EAP goes READ-ONLY 2026-07-21 (read-only Tuesday). A ~2026-07-15 permission-classifier change froze autonomous merges (agents can no longer ready-flip or REST/MCP-merge). The autonomous apparatus is being RETIRED and the Project will be RECREATED. This heartbeat / message-bus is part of the retirement set — see `docs/NEXT-TASKS.md` → "Wind-down / retirement".
-open-PRs: none. The 13 frozen recon PRs (#359–#380) are cleared — the 8 green drafts + bake #380 merged; bake #359 (superseded) and rescue cards #361/#363/#367 closed; follow-on #381/#382/#383 landed.
-claims: none active (`control/claims/` holds only its README).
-routine: failsafe cron `trig_01VRT9F6jYNXym3nn18vVQQK` ("Websites failsafe wake") — to be retired with the apparatus (owner/console); not re-armed.
-landing: PR-tooling — this session opens ONE ready non-draft PR via the GitHub API and does NOT self-merge (classifier-denied); the server-side `auto-merge-enabler` disposition is the owner's.
-needs-owner: the 16 ⚑ rows in `docs/owner/OWNER-ACTIONS.md` (mirror below). The console-only subset for this repo is curated names-only in `docs/OWNER-STEPS.md`.
+phase: fresh-start cleanup (owner-authorized) — docs-only wind-down pass on branch `claude/fresh-start-cleanup`; trued current-state, added the classifier-safe landing doctrine, added docs/NEXT-TASKS.md + docs/OWNER-STEPS.md, fixed the CONSTITUTION 4th-service (review/) omission, banner-marked the retiring control/ + routine apparatus.
+health: green — origin/main @ ecbe2bf (#383). Last full four-suite run 1588 (2026-07-16, #365 branch); grown since with #371–#383. Docs-only session (no app/ source touched).
+last-shipped: #383 — review Successes/Problems heroes also tally evidence citations.
+orders: acked=001-032 done=001-019,023-031
+blockers: none
+routine: none — failsafe trigger trig_01VRT9F6jYNXym3nn18vVQQK retiring with the apparatus; not re-enabled (owner/console).
+landing: pushed-unmerged claude/fresh-start-cleanup
+deployed: ecbe2bf · four Railway services live (control-plane/botsite/dashboard/review), unchanged by this docs-only pass
+notes: WIND-DOWN — the Claude Code Projects EAP goes READ-ONLY 2026-07-21 (read-only Tuesday); a ~2026-07-15 permission-classifier change froze autonomous merges (agents can no longer ready-flip or REST/MCP-merge). The autonomous apparatus is being RETIRED and the Project RECREATED; this heartbeat / control message-bus / routines are part of the retirement set (inventory: docs/NEXT-TASKS.md → "Wind-down / retirement"). Open PRs: none — the 13 frozen recon PRs (#359–#380) are cleared (8 green drafts + bake #380 merged; bake #359 and rescue cards #361/#363/#367 closed; follow-on #381/#382/#383 landed). No active claims (control/claims/ holds only its README). Console-only owner steps curated names-only in docs/OWNER-STEPS.md.
+needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below); console-only subset curated names-only in docs/OWNER-STEPS.md.
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md)
 - ASK-0001 — answer Q-0004: where live bot control lives (or keep /admin dry-run).
@@ -29,7 +31,7 @@ needs-owner: the 16 ⚑ rows in `docs/owner/OWNER-ACTIONS.md` (mirror below). Th
 - ASK-0016 — arrange the native-speaker Dutch proofread for de-papieren-sinaasappel (details in docs/owner/OWNER-ACTIONS.md).
 
 ## NEXT-2-TASKS baton
-1. Owner: recreate the Project from `main` once the EAP successor is chosen; strip the retired routine/heartbeat/coordinator apparatus (this file included) per `docs/NEXT-TASKS.md`.
-2. Land the curated service backlog in `docs/NEXT-TASKS.md` and clear the console steps in `docs/OWNER-STEPS.md`.
+1. Owner: recreate the Project from `main` once the EAP successor is chosen; strip the retired routine/heartbeat/coordinator apparatus (this file included) per docs/NEXT-TASKS.md.
+2. Land the curated service backlog in docs/NEXT-TASKS.md and clear the console steps in docs/OWNER-STEPS.md.
 
 kit: v1.17.0
