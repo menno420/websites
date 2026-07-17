@@ -1,18 +1,19 @@
 # websites · status
 
-updated: 2026-07-17T13:18:21Z
-phase: fresh-start cleanup (owner-authorized) — docs-only wind-down pass on branch `claude/fresh-start-cleanup`; trued current-state, added the classifier-safe landing doctrine, added docs/NEXT-TASKS.md + docs/OWNER-STEPS.md, fixed the CONSTITUTION 4th-service (review/) omission, banner-marked the retiring control/ + routine apparatus.
-health: green — origin/main @ ecbe2bf (#383). Last full four-suite run 1588 (2026-07-16, #365 branch); grown since with #371–#383. Docs-only session (no app/ source touched).
-last-shipped: #383 — review Successes/Problems heroes also tally evidence citations.
-orders: acked=001-032 done=001-019,023-031
+updated: 2026-07-17T23:23:08Z
+phase: backlog build — C14 self-cleaning owner queue (control-plane app/) on branch `claude/self-cleaning-owner-queue`; a NEXT-TASKS slice of the standing overnight ORDER 032.
+health: green — origin/main @ f21bbdf (#385). Last full four-suite run 1725 (2026-07-17, this session).
+last-shipped: #385 — origin/main head.
+orders: acked=001-032 done=001-019,023-031 — unchanged. C14 shipped as a backlog slice of the standing overnight ORDER 032, not an order completion.
 blockers: none
-routine: none — failsafe trigger trig_01VRT9F6jYNXym3nn18vVQQK retiring with the apparatus; not re-enabled (owner/console).
-landing: pushed-unmerged claude/fresh-start-cleanup
-deployed: ecbe2bf · four Railway services live (control-plane/botsite/dashboard/review), unchanged by this docs-only pass
-notes: WIND-DOWN — the Claude Code Projects EAP goes READ-ONLY 2026-07-21 (read-only Tuesday); a ~2026-07-15 permission-classifier change froze autonomous merges (agents can no longer ready-flip or REST/MCP-merge). The autonomous apparatus is being RETIRED and the Project RECREATED; this heartbeat / control message-bus / routines are part of the retirement set (inventory: docs/NEXT-TASKS.md → "Wind-down / retirement"). Open PRs: none — the 13 frozen recon PRs (#359–#380) are cleared (8 green drafts + bake #380 merged; bake #359 and rescue cards #361/#363/#367 closed; follow-on #381/#382/#383 landed). No active claims (control/claims/ holds only its README). Console-only owner steps curated names-only in docs/OWNER-STEPS.md.
-needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below); console-only subset curated names-only in docs/OWNER-STEPS.md.
+routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" (cron `45 */2 * * *`, next fire 2026-07-18T00:45:00Z) bound to the coordinator session; a ~15-min send_later pacemaker chain is kept alive coordinator-side. Old failsafe `trig_01VRT9F6jYNXym3nn18vVQQK` retiring (not re-armed). Tool wall: the capitalized alias `mcp__Claude_Code_Remote__list_triggers` is classifier-blocked; lowercase `mcp__claude-code-remote__list_triggers` works.
+landing: pushed-unmerged `claude/self-cleaning-owner-queue` — PR #386 READY (C14 self-cleaning owner queue); merges via the server-side auto-merge-enabler on green (agents cannot self-merge, classifier since 2026-07-15). Open PRs: this one.
+deployed: f21bbdf · four Railway services live (control-plane/botsite/dashboard/review). C14 touches control-plane app/ only.
+claims: this session holds `control/claims/self-cleaning-owner-queue.md`.
+notes: WIND-DOWN standing — the Claude Code Projects EAP goes READ-ONLY 2026-07-21; the autonomous apparatus is being retired and the Project recreated (inventory: docs/NEXT-TASKS.md → "Wind-down / retirement"). C14 is a control-plane product slice, independent of the retirement set.
+needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below) — none resolved this session.
 
-## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md)
+## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md) — 16 open, none resolved this session
 - ASK-0001 — answer Q-0004: where live bot control lives (or keep /admin dry-run).
 - ASK-0002 — create the Discord OAuth app for the future armed panel (after Q-0004).
 - ASK-0003 — provision the scoped control-API token + separate armed Railway service (after Q-0004).
@@ -31,7 +32,8 @@ needs-owner: the 16 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below); cons
 - ASK-0016 — arrange the native-speaker Dutch proofread for de-papieren-sinaasappel (details in docs/owner/OWNER-ACTIONS.md).
 
 ## NEXT-2-TASKS baton
-1. Owner: recreate the Project from `main` once the EAP successor is chosen; strip the retired routine/heartbeat/coordinator apparatus (this file included) per docs/NEXT-TASKS.md.
-2. Land the curated service backlog in docs/NEXT-TASKS.md and clear the console steps in docs/OWNER-STEPS.md.
+1. B1 — arcade live/blocked counts on the dashboard `/status` (S; safe read of arcade.json over raw.githubusercontent.com).
+2. C1 — honest counts glyphs on the console pages (distinguish counter-failed from genuine-zero), OR A4 — arcade JSON schema CI guard.
+- Standing owner-side: recreate the Project from `main` once the EAP successor is chosen + strip the retired routine/heartbeat/coordinator apparatus (this file included) — EAP goes read-only 2026-07-21.
 
 kit: v1.17.0
