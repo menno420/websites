@@ -206,10 +206,23 @@ async def command_detail(request: Request, name: str):
 
 @app.get("/games", response_class=HTMLResponse)
 async def games(request: Request):
+    """In-chat mini-games front door (data: the public ``site.json`` feed). It
+    also surfaces the Fleet Arcade's launch-readiness at a glance — the same
+    live / blocked / distinct-owner-clicks summary the /arcade catalog carries
+    (``arcade.availability_summary`` over the committed registry read from disk;
+    no network, no duplicated counting) — cross-linking to /arcade. Read-only:
+    the summary is static registry data, never a live verdict."""
     res = await ds.fetch_site(refresh=_refresh(request))
     site = res.get("data", {}) or {}
     ctx = _base_ctx(request, "games", res)
-    ctx.update({"games": ds.games(site)})
+    ctx.update(
+        {
+            "games": ds.games(site),
+            "arcade_summary": arcade_registry.availability_summary(
+                arcade_registry.load_games()
+            ),
+        }
+    )
     return templates.TemplateResponse(request, "games.html", ctx)
 
 
