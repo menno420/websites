@@ -13,6 +13,9 @@
     {% if summary %}
     <p class="rv-ledger-tally" style="margin-top:var(--sb-s-4)">
       <span class="sb-badge sb-badge-neutral">{{ summary.total }} documented win{{ '' if summary.total == 1 else 's' }}</span>
+      {% if summary.citations %}
+      <span class="sb-badge sb-badge-neutral">{{ summary.citations }} evidence citation{{ '' if summary.citations == 1 else 's' }}</span>
+      {% endif %}
     </p>
     {% endif %}
   </div>

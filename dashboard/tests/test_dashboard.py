@@ -605,3 +605,48 @@ def test_ideas_hero_omits_shipped_when_none():
         assert "1 ideas" in r.text
         assert "shipped" not in r.text
     ds.clear_cache()
+
+
+# --- /ideas lifecycle-status filter pills ----------------------------------
+def test_idea_bucket_lanes_shipped_vs_open():
+    """Pure helper: shipped statuses (idea_stats' own set) bucket 'shipped';
+    everything else — including cased/padded, blank, and missing — buckets
+    'open', never raises."""
+    assert ds.idea_bucket({"status": "done"}) == "shipped"
+    assert ds.idea_bucket({"status": " Implemented "}) == "shipped"  # cased+padded
+    assert ds.idea_bucket({"status": "ideas"}) == "open"
+    assert ds.idea_bucket({"status": ""}) == "open"
+    assert ds.idea_bucket({}) == "open"
+
+
+def test_ideas_status_pills_render_and_bucket_cards():
+    """A mixed backlog surfaces the all/open/shipped filter bar, and each card
+    carries the data-cat lane the shared client-side filter keys on."""
+    data = {**DASHBOARD_FIXTURE, "ideas": [
+        {"file": "x.md", "title": "Done thing", "status": "implemented", "summary": "Shipped."},
+        {"file": "y.md", "title": "Pending thing", "status": "ideas", "summary": "Not yet."},
+    ]}
+    with _client_with_dashboard(data) as c:
+        r = c.get("/ideas")
+        assert r.status_code == 200
+        assert 'data-filter-pill="all"' in r.text
+        assert 'data-filter-pill="open"' in r.text
+        assert 'data-filter-pill="shipped"' in r.text
+        assert 'data-cat="shipped"' in r.text  # the implemented idea's lane
+        assert 'data-cat="open"' in r.text  # the still-open idea's lane
+    ds.clear_cache()
+
+
+def test_ideas_status_pills_hidden_on_uniform_backlog():
+    """No shipped idea -> no filter bar (nothing to separate); the list stays a
+    plain search-only page, no 'shipped'/'open' pill noise."""
+    data = {**DASHBOARD_FIXTURE, "ideas": [
+        {"file": "y.md", "title": "Pending", "status": "ideas", "summary": "x"},
+    ]}
+    with _client_with_dashboard(data) as c:
+        r = c.get("/ideas")
+        assert r.status_code == 200
+        assert 'data-filter-pill="shipped"' not in r.text
+        assert 'data-filter-pill="open"' not in r.text
+        assert 'data-cat="open"' in r.text  # card still lane-tagged for when a pill appears
+    ds.clear_cache()

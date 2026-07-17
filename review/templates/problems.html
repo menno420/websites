@@ -17,6 +17,9 @@
       {% if summary.detailed %}
       <span class="sb-badge sb-badge-neutral">{{ summary.detailed }} full incident writeup{{ '' if summary.detailed == 1 else 's' }}</span>
       {% endif %}
+      {% if summary.citations %}
+      <span class="sb-badge sb-badge-neutral">{{ summary.citations }} evidence citation{{ '' if summary.citations == 1 else 's' }}</span>
+      {% endif %}
     </p>
     {% endif %}
   </div>

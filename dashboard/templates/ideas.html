@@ -19,10 +19,17 @@
       </div>
       <span class="cmd-count"><span data-filter-count>{{ ideas|length }}</span> shown</span>
     </div>
+    {% if idea_stats and idea_stats.shipped %}
+    <div class="sb-filterbar">
+      <button class="sb-pill" data-filter-pill="all" aria-pressed="true">all</button>
+      <button class="sb-pill" data-filter-pill="open" aria-pressed="false">open</button>
+      <button class="sb-pill" data-filter-pill="shipped" aria-pressed="false">shipped</button>
+    </div>
+    {% endif %}
 
     <div class="sb-cmdlist">
       {% for i in ideas %}
-      <a class="sb-card" style="cursor:default; display:block" data-filter-item data-cat="all"
+      <a class="sb-card" style="cursor:default; display:block" data-filter-item data-cat="{{ i.bucket }}"
          data-search="{{ i.title }} {{ i.summary }} {{ i.status }} {{ (i.subsystems or [])|join(' ') }}">
         <div class="top" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px">
           <span class="sb-badge {{ 'sb-badge-ok' if i.status in ('done','implemented') else 'sb-badge-info' }}">{{ i.status or 'idea' }}</span>
