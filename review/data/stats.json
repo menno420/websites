@@ -1,160 +1,160 @@
 {
-  "generated_at": "2026-07-15T07:25:42Z",
+  "generated_at": "2026-07-17T07:31:05Z",
   "auth": "token",
   "note": "Two REST calls per repo, fail-soft; a repo the API would not serve carries its exact reason. total_prs counts every PR ever opened; open_issues_and_prs is GitHub's combined open count.",
   "repos": {
     "superbot": {
       "ok": true,
-      "pushed_at": "2026-07-15T06:33:23Z",
+      "pushed_at": "2026-07-17T06:32:52Z",
       "created_at": "2025-08-10T21:39:44Z",
       "description": "The best bot ever made",
       "open_issues_and_prs": 1,
       "default_branch": "main",
-      "total_prs": 2048
+      "total_prs": 2068
     },
     "superbot-next": {
       "ok": true,
-      "pushed_at": "2026-07-15T04:57:26Z",
+      "pushed_at": "2026-07-16T09:57:51Z",
       "created_at": "2026-07-07T20:08:08Z",
       "description": "the finalised version of SuperBot",
-      "open_issues_and_prs": 12,
+      "open_issues_and_prs": 5,
       "default_branch": "main",
-      "total_prs": 490
+      "total_prs": 503
     },
     "substrate-kit": {
       "ok": true,
-      "pushed_at": "2026-07-15T06:17:08Z",
+      "pushed_at": "2026-07-16T22:23:47Z",
       "created_at": "2026-07-07T21:39:56Z",
       "description": "AI self improvement system in progress",
-      "open_issues_and_prs": 0,
+      "open_issues_and_prs": 2,
       "default_branch": "main",
-      "total_prs": 379
+      "total_prs": 430
     },
     "websites": {
       "ok": true,
-      "pushed_at": "2026-07-15T04:12:21Z",
+      "pushed_at": "2026-07-17T00:17:55Z",
       "created_at": "2026-07-09T00:41:59Z",
       "description": "the websites for managing the projects and bot",
-      "open_issues_and_prs": 1,
+      "open_issues_and_prs": 12,
       "default_branch": "main",
-      "total_prs": 342
+      "total_prs": 379
     },
     "trading-strategy": {
       "ok": true,
-      "pushed_at": "2026-07-15T03:38:26Z",
+      "pushed_at": "2026-07-16T22:09:56Z",
       "created_at": "2026-07-09T12:26:35Z",
       "description": "autonomous trading strategy improvement",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 128
+      "total_prs": 137
     },
     "venture-lab": {
       "ok": true,
-      "pushed_at": "2026-07-15T04:10:06Z",
+      "pushed_at": "2026-07-16T22:14:07Z",
       "created_at": "2026-07-09T22:33:24Z",
       "description": "a repoabout making money",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 203
+      "total_prs": 216
     },
     "superbot-games": {
       "ok": true,
-      "pushed_at": "2026-07-15T03:38:31Z",
+      "pushed_at": "2026-07-16T22:43:51Z",
       "created_at": "2026-07-09T14:21:38Z",
       "description": "a shared games repo for superbot",
-      "open_issues_and_prs": 0,
+      "open_issues_and_prs": 2,
       "default_branch": "main",
-      "total_prs": 145
+      "total_prs": 151
     },
     "superbot-idle": {
       "ok": true,
-      "pushed_at": "2026-07-15T03:38:40Z",
+      "pushed_at": "2026-07-16T22:03:20Z",
       "created_at": "2026-07-10T22:21:40Z",
       "description": "idle game for superbot",
-      "open_issues_and_prs": 0,
+      "open_issues_and_prs": 1,
       "default_branch": "main",
-      "total_prs": 139
+      "total_prs": 146
     },
     "superbot-mineverse": {
       "ok": true,
-      "pushed_at": "2026-07-15T03:40:12Z",
+      "pushed_at": "2026-07-16T15:56:54Z",
       "created_at": "2026-07-11T01:14:30Z",
       "description": "webbrowsergame linked to bots game",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 113
+      "total_prs": 118
     },
     "gba-homebrew": {
       "ok": true,
-      "pushed_at": "2026-07-15T06:22:07Z",
+      "pushed_at": "2026-07-17T03:36:53Z",
       "created_at": "2026-07-09T23:56:44Z",
       "description": "repo for creation of custom gba games",
-      "open_issues_and_prs": 0,
+      "open_issues_and_prs": 28,
       "default_branch": "main",
-      "total_prs": 145
+      "total_prs": 180
     },
     "product-forge": {
       "ok": true,
-      "pushed_at": "2026-07-14T07:06:59Z",
+      "pushed_at": "2026-07-15T15:30:14Z",
       "created_at": "2026-07-10T18:08:37Z",
       "description": "home to all the homeless projects",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 24
+      "total_prs": 26
     },
     "idea-engine": {
       "ok": true,
-      "pushed_at": "2026-07-15T06:49:09Z",
+      "pushed_at": "2026-07-17T07:13:09Z",
       "created_at": "2026-07-10T17:35:49Z",
       "description": "ideas for all the repos",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 431
+      "total_prs": 473
     },
     "sim-lab": {
       "ok": true,
-      "pushed_at": "2026-07-15T07:20:53Z",
+      "pushed_at": "2026-07-17T06:12:29Z",
       "created_at": "2026-07-10T18:31:46Z",
       "description": "simulations for every new or existing idea/feature across all repos",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 149
+      "total_prs": 177
     },
     "codetool-lab-fable5": {
       "ok": true,
-      "pushed_at": "2026-07-15T04:36:28Z",
+      "pushed_at": "2026-07-15T16:54:14Z",
       "created_at": "2026-07-09T12:55:10Z",
       "description": "test repo for a fable 5 project",
-      "open_issues_and_prs": 1,
+      "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 16
+      "total_prs": 18
     },
     "codetool-lab-opus4.8": {
       "ok": true,
-      "pushed_at": "2026-07-14T07:07:07Z",
+      "pushed_at": "2026-07-15T15:30:45Z",
       "created_at": "2026-07-09T12:56:52Z",
       "description": "test repo for an opus 4.8 project",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 23
+      "total_prs": 25
     },
     "codetool-lab-sonnet5": {
       "ok": true,
-      "pushed_at": "2026-07-14T07:07:05Z",
+      "pushed_at": "2026-07-15T15:30:32Z",
       "created_at": "2026-07-09T13:27:30Z",
       "description": "test repo for a sonnet 5 project",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 17
+      "total_prs": 19
     },
     "fleet-manager": {
       "ok": true,
-      "pushed_at": "2026-07-15T06:38:34Z",
+      "pushed_at": "2026-07-17T06:59:36Z",
       "created_at": "2026-07-09T16:56:41Z",
       "description": "The working memory of the manager Project",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 224
+      "total_prs": 278
     }
   }
 }
