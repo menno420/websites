@@ -249,6 +249,7 @@ async def arcade(request: Request):
         {
             "arcade_games": games,
             "arcade_summary": arcade_registry.availability_summary(games),
+            "arcade_owner_actions": arcade_registry.pending_owner_actions(games),
             "arcade_filter": listfilter.apply(
                 arcade_registry.FILTER_SPEC, games, state
             ),

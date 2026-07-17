@@ -23,6 +23,26 @@
     <span class="sep">·</span>
     {{ s.blocked }} blocked{% if s.owner_clicks %} on {{ s.owner_clicks }} owner click{{ '' if s.owner_clicks == 1 else 's' }}{% endif %}
   </p>
+  {# Owner action queue — the distinct owner clicks between the blocked games
+     and launch, each named once with its ledger ref and the games it unblocks
+     (arcade.pending_owner_actions; honest ledger text only, never a live
+     verdict). Panel length equals the strip's owner-click count. #}
+  {% set actions = arcade_owner_actions %}
+  {% if actions %}
+  <div class="sb-panel section-sm">
+    <p style="margin:0"><strong>Owner action queue</strong>
+      <span class="sb-muted">— {{ actions|length }} owner click{{ '' if actions|length == 1 else 's' }} between the blocked games and launch</span></p>
+    <ul style="margin:8px 0 0;padding-left:18px">
+      {% for a in actions %}
+      <li style="margin:6px 0 0">
+        {{ a.owner_action }}
+        {% if a.ask_id %}<code>{{ a.ask_id }}</code>{% endif %}
+        {% if a.games %}<span class="sb-muted">— unblocks {{ a.games|join(", ") }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
   {# ORDER 019: the centralized filter/sort/search widget (vendored listfilter) #}
   {% set lf = arcade_filter %}
   {% include "_listfilter.html" %}

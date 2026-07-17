@@ -168,6 +168,59 @@ def availability_summary(games: Any) -> dict[str, int]:
     }
 
 
+def pending_owner_actions(games: Any) -> list[dict[str, Any]]:
+    """The consolidated owner-action queue for the /arcade summary panel.
+
+    Given enriched game dicts (as :func:`load_games` returns), returns one
+    entry per DISTINCT pending owner click standing between the blocked games
+    and launch, in first-seen order::
+
+        {"owner_action": str, "ask_id": str | None, "games": [name, ...]}
+
+    Distinctness matches :func:`availability_summary`'s ``owner_clicks`` count
+    exactly — deduplicated by ``ask_id`` when present, else by ``owner_action``
+    text — so the panel's length always equals the summary strip's click
+    count. When two blocked games name the same click they collapse to a single
+    entry whose ``games`` list carries both names. Only games with no reachable
+    link (``has_link`` falsy) and a recorded, nameable blocker contribute — we
+    surface the clicks the registry actually names, never invent one.
+
+    Pure and fail-soft: a non-iterable input or a malformed entry degrades to
+    ``[]`` / skip, the same "degrade, don't invent" doctrine as the loader and
+    the summary. Touches no disk and no network.
+    """
+    order: list[str] = []
+    by_key: dict[str, dict[str, Any]] = {}
+    try:
+        iterator = iter(games)
+    except TypeError:
+        return []
+    for game in iterator:
+        if not isinstance(game, dict):
+            continue
+        if game.get("has_link"):
+            continue
+        blocker = game.get("blocker")
+        if not isinstance(blocker, dict):
+            continue
+        owner_action = blocker.get("owner_action")
+        if not (isinstance(owner_action, str) and owner_action.strip()):
+            continue
+        owner_action = owner_action.strip()
+        raw_ask = blocker.get("ask_id")
+        ask_id = raw_ask.strip() if isinstance(raw_ask, str) and raw_ask.strip() else None
+        key = "ask:" + ask_id if ask_id else "act:" + owner_action
+        entry = by_key.get(key)
+        if entry is None:
+            entry = {"owner_action": owner_action, "ask_id": ask_id, "games": []}
+            by_key[key] = entry
+            order.append(key)
+        name = game.get("name")
+        if isinstance(name, str) and name.strip():
+            entry["games"].append(name.strip())
+    return [by_key[k] for k in order]
+
+
 def game_by_slug(slug: str, path: Path | None = None) -> dict[str, Any] | None:
     """The enriched game entry for ``slug``, or ``None`` when the registry has
     no such (valid) game — the /arcade/{slug} route turns that into the site's
