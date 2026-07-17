@@ -1,0 +1,1 @@
+- **dashboard-idea-status-filter** · branch `claude/dashboard-idea-status-filter` · scope: add lifecycle-status filter pills (all/open/shipped) to dashboard `/ideas` — dashboard/ only · 2026-07-17
