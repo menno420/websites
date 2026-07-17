@@ -424,6 +424,16 @@ async def _render_owner_queue(
     # beside the verify chip. Gated view only; the public /queue never runs
     # this (its overview() stays byte-identical). No network, no state.
     card_gating.annotate_unblocks(data["items"])
+    # C14 self-cleaning owner queue (2026-07-17): partition the annotated asks
+    # so an ask whose underlying condition askverify POSITIVELY re-verified as
+    # resolved (the done-detected rung only) drops out of the active nag list
+    # into a separate "self-cleaned this pass" section. Fail-soft lives in
+    # askverify.split_self_cleaned: still-open / unknown / probe-error / any
+    # ambiguous or unreachable state keeps the ask active. Gated view only —
+    # the public /queue overview() is untouched (byte-identical, contract-pinned).
+    data["active_items"], data["auto_cleared_items"] = (
+        askverify.split_self_cleaned(data["items"])
+    )
     return templates.TemplateResponse(
         request,
         "owner_queue.html",

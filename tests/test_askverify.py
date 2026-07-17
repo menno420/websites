@@ -715,8 +715,9 @@ def test_annotate_unmatched_ask_stays_honestly_unverified(monkeypatch):
     assert "no registered probe matches" in v["detail"]
     assert rollup == {
         "total": 1, "machine_verified": 0, "done": 0, "still_open": 0,
-        "not_checkable": 1, "unknown": 0, "unmatched": 1,
+        "not_checkable": 1, "unknown": 0, "unmatched": 1, "auto_cleared": 0,
     }
+    assert items[0]["auto_cleared"] is False  # nothing positively resolved
 
 
 def test_annotate_not_checkable_registrations_carry_their_reason():
@@ -777,10 +778,122 @@ def test_annotate_rollup_counts_mixed_verdicts(monkeypatch):
     rollup = _run(askverify.annotate(items))
     assert rollup == {
         "total": 4, "machine_verified": 2, "done": 1, "still_open": 1,
-        "not_checkable": 2, "unknown": 0, "unmatched": 1,
+        "not_checkable": 2, "unknown": 0, "unmatched": 1, "auto_cleared": 1,
     }
     assert items[0]["verify"]["verdict"] == askverify.DONE
     assert items[1]["verify"]["verdict"] == askverify.STILL_OPEN
+    # Only the done-detected ask is flagged for self-cleaning; the still-open,
+    # not-checkable and unmatched asks all stay active.
+    assert items[0]["auto_cleared"] is True
+    assert [it["auto_cleared"] for it in items] == [True, False, False, False]
+
+
+# --------------------------------------------------------------------------- #
+# C14 self-cleaning owner queue — an ask auto-clears ONLY on a positive
+# done-detected signal; every ambiguous / failed / still-open state keeps it.
+# --------------------------------------------------------------------------- #
+def test_self_cleaning_positive_done_auto_clears(monkeypatch):
+    """(a) A probe that POSITIVELY confirms the condition resolved
+    (done-detected) flags the ask auto_cleared and splits it into the
+    cleared list."""
+    _install_get(monkeypatch, lambda url: _envelope(url, status=401))  # DONE
+    items = [{"what": "Set SITE_PASSWORD on the botsite Railway service."}]
+    rollup = _run(askverify.annotate(items))
+    assert items[0]["verify"]["verdict"] == askverify.DONE
+    assert items[0]["auto_cleared"] is True
+    assert rollup["auto_cleared"] == 1
+    active, cleared = askverify.split_self_cleaned(items)
+    assert active == [] and cleared == [items[0]]
+
+
+def test_self_cleaning_still_open_ask_stays(monkeypatch):
+    """(b) A probe that positively observes the NOT-done state (still-open)
+    never clears — the ask stays in the active queue."""
+    _install_get(monkeypatch, lambda url: _envelope(url, status=503))  # STILL_OPEN
+    items = [{"what": "Set SITE_PASSWORD on the botsite Railway service."}]
+    rollup = _run(askverify.annotate(items))
+    assert items[0]["verify"]["verdict"] == askverify.STILL_OPEN
+    assert items[0]["auto_cleared"] is False
+    assert rollup["auto_cleared"] == 0
+    active, cleared = askverify.split_self_cleaned(items)
+    assert active == [items[0]] and cleared == []
+
+
+def test_self_cleaning_fetch_error_keeps_the_ask(monkeypatch):
+    """(c, load-bearing) A fetch failure / unreachable source is an honest
+    unknown — the ask MUST stay. A real owner request never vanishes because
+    a check could not complete."""
+    # status 0 / offline envelope → the botsite probe's honest-unknown rung.
+    _install_get(monkeypatch, lambda url: _envelope(url, status=0))
+    items = [{"what": "Set SITE_PASSWORD on the botsite Railway service."}]
+    rollup = _run(askverify.annotate(items))
+    assert items[0]["verify"]["verdict"] == askverify.UNKNOWN
+    assert items[0]["auto_cleared"] is False
+    assert rollup["auto_cleared"] == 0 and rollup["unknown"] == 1
+    active, cleared = askverify.split_self_cleaned(items)
+    assert active == [items[0]] and cleared == []
+
+
+def test_self_cleaning_raised_probe_exception_keeps_the_ask(monkeypatch):
+    """(c, load-bearing) A probe that RAISES is fail-soft to unknown — never
+    a crash, and above all never a silent auto-clear."""
+    async def boom(refresh):
+        raise RuntimeError("kaboom")
+
+    monkeypatch.setitem(askverify.REGISTRY[0], "probe", boom)
+    items = [{"what": "store it as BAKE_PAT."}]
+    rollup = _run(askverify.annotate(items))
+    assert items[0]["verify"]["verdict"] == askverify.UNKNOWN
+    assert items[0]["auto_cleared"] is False
+    assert rollup["auto_cleared"] == 0
+    active, cleared = askverify.split_self_cleaned(items)
+    assert active == [items[0]] and cleared == []
+
+
+def test_self_cleaning_ambiguous_and_not_checkable_stay(monkeypatch):
+    """The ambiguous claim-once collision and every not-machine-checkable
+    registration also stay active — only a positive done clears."""
+    items = [
+        {"what": "Set up PayPal Payouts for the tester program."},
+        {"what": "Another paypal-flavoured duplicate ask."},   # ambiguous
+        {"what": "Answer Q-0004 please."},                     # not-checkable
+    ]
+    rollup = _run(askverify.annotate(items))
+    assert rollup["auto_cleared"] == 0
+    assert all(it["auto_cleared"] is False for it in items)
+    active, cleared = askverify.split_self_cleaned(items)
+    assert cleared == [] and active == items
+
+
+def test_split_self_cleaned_preserves_order_and_partitions(monkeypatch):
+    """The split is order-preserving: cleared asks come out in their original
+    order, and active + cleared together reconstruct the input."""
+    def responder(url):
+        if url == BOTSITE_OWNER_URL:
+            return _envelope(url, status=401)   # done → cleared
+        if "lumen-drift" in url:
+            return _envelope(url, status=404)   # still-open → active
+        return _envelope(url)
+
+    _install_get(monkeypatch, responder)
+    items = [
+        {"what": "Publish the lumen-drift release."},                 # active
+        {"what": "Set SITE_PASSWORD on the botsite Railway service."},  # cleared
+        {"what": "Answer Q-0004 please."},                            # active
+    ]
+    _run(askverify.annotate(items))
+    active, cleared = askverify.split_self_cleaned(items)
+    assert cleared == [items[1]]
+    assert active == [items[0], items[2]]
+    assert len(active) + len(cleared) == len(items)
+
+
+def test_split_self_cleaned_treats_unannotated_items_as_active():
+    """An item never passed through annotate (no auto_cleared key) is treated
+    as active — the split never fabricates a clear."""
+    items = [{"what": "raw ask, never annotated"}]
+    active, cleared = askverify.split_self_cleaned(items)
+    assert active == items and cleared == []
 
 
 # --------------------------------------------------------------------------- #
@@ -851,6 +964,59 @@ def test_owner_queue_renders_the_verdict_chip(monkeypatch, tmp_path):
         assert "preflight: still-open" in r.text
         assert "SITE_PASSWORD unset" in r.text
         assert "1 of 1 machine-verified" in r.text
+        # A still-open ask stays in the active list, never self-cleaned.
+        assert "self-cleaned this pass" not in r.text
+
+
+def test_owner_queue_self_cleans_a_resolved_ask(monkeypatch, tmp_path):
+    """C14 wiring: on the GATED /owner/queue, an ask whose condition is
+    POSITIVELY re-verified resolved (done-detected) moves into the
+    self-cleaned section, while a still-open ask stays in the active list."""
+    async def fake_overview(refresh=False):
+        def _ask(what):
+            return {
+                "what": what, "text": "", "fields": {},
+                "sources": [{
+                    "kind": "lane", "label": "websites", "url": "https://x",
+                    "updated_iso": "", "age_hours": 1.0, "age_human": "1h ago",
+                }],
+            }
+
+        return {
+            "items": [
+                _ask("Set SITE_PASSWORD on the botsite Railway service."),
+                _ask("Publish the lumen-drift v1.3 release."),
+            ],
+            "lane_notes": [],
+            "fleet_manager": {"state": "ok", "reason": "", "items": [],
+                              "preamble": "", "body_html": "",
+                              "token_set": False, "url": ""},
+            "field_order": owner_queue.FIELD_ORDER,
+            "summary": {"total": 2, "deduped": 0, "lanes_with_asks": 1,
+                        "lanes_total": 1},
+            "unreadable_lanes": [],
+            "lane_source": {},
+        }
+
+    monkeypatch.setattr(owner_queue, "overview", fake_overview)
+
+    def responder(url):
+        if url == BOTSITE_OWNER_URL:
+            return _envelope(url, status=401)   # done → self-cleaned
+        if "lumen-drift" in url:
+            return _envelope(url, status=404)   # still-open → stays active
+        return _envelope(url)
+
+    with _offline_client(monkeypatch, tmp_path, responder) as c:
+        r = c.get("/owner/queue", headers=_basic())
+        assert r.status_code == 200
+        # The resolved botsite ask cleared into its own section.
+        assert "self-cleaned this pass" in r.text
+        assert "1 self-cleaned" in r.text
+        assert "done-detected — ledger update pending" in r.text
+        # The still-open lumen-drift ask stayed in the active list.
+        assert "preflight: still-open" in r.text
+        assert "2 of 2 machine-verified" in r.text
 
 
 def test_owner_briefing_asks_carry_verdict_chips(monkeypatch, tmp_path):

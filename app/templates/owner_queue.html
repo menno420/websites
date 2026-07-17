@@ -111,13 +111,13 @@
   {% endif %}
 </div>
 
-<h2 class="dim" style="font-size:14px;margin:.8rem 0 .4rem;">owner-action queue — {{ q.summary.total }} ask{{ 's' if q.summary.total != 1 }}{% if q.verify %} · {{ q.verify.machine_verified }} of {{ q.verify.total }} machine-verified <span class="small">(read-only preflight probes — honest unknown beats a guess)</span>{% endif %}</h2>
+<h2 class="dim" style="font-size:14px;margin:.8rem 0 .4rem;">owner-action queue — {{ q.summary.total }} ask{{ 's' if q.summary.total != 1 }}{% if q.verify %} · {{ q.verify.machine_verified }} of {{ q.verify.total }} machine-verified <span class="small">(read-only preflight probes — honest unknown beats a guess)</span>{% if q.verify.auto_cleared %} · {{ q.verify.auto_cleared }} self-cleaned{% endif %}{% endif %}</h2>
 
 {% if not q['items'] %}
 <div class="card"><p class="dim">No owner asks found in the readable sources right now.</p></div>
 {% endif %}
 
-{% for it in q['items'] %}
+{% for it in q.active_items %}
 {% set headline = it.what or it.text %}
 <div class="card">
   <h2>{{ headline }}</h2>
@@ -176,6 +176,28 @@
   </div>
 </div>
 {% endfor %}
+
+{% if q.auto_cleared_items %}
+<h2 class="dim" style="font-size:14px;margin:1.4rem 0 .4rem;">self-cleaned this pass — {{ q.auto_cleared_items|length }} ask{{ 's' if q.auto_cleared_items|length != 1 }} <span class="small">(underlying condition positively re-verified resolved · ledger update pending)</span></h2>
+{% for it in q.auto_cleared_items %}
+{% set headline = it.what or it.text %}
+<div class="card" style="opacity:.72;">
+  <h2 style="text-decoration:line-through;">{{ headline }}</h2>
+  {% if it.verify %}
+  <p class="small"><span class="b {{ it.verify.css }}" title="{{ it.verify.probe }}">preflight: {{ it.verify.label }}</span>
+    {% if it.verify.detail %}<span class="dim">— {{ it.verify.detail }}</span>{% endif %}
+    {% if it.verify.url %}· <a href="{{ it.verify.url }}">evidence ↗</a>{% endif %}</p>
+  {% endif %}
+  <p class="small dim">Auto-cleared from the active queue — the underlying condition was positively re-verified as resolved. The ledger row is still the human record of the ask; mark it complete to move it.</p>
+  <form method="post" action="/owner/queue/actions/preview" style="max-width:340px;">
+    <input type="hidden" name="target" value="{{ headline }}">
+    <input type="hidden" name="action" value="complete">
+    <input name="text" placeholder="optional note (how/when you did it)" maxlength="4000" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;font:inherit;">
+    <p><button type="submit">✓ mark complete…</button></p>
+  </form>
+</div>
+{% endfor %}
+{% endif %}
 
 <p class="dim small">🔒 owner writeback — gated by <code>SITE_PASSWORD</code>; every submit also passes the
 same-origin + rate-limit guards. The public <a href="/queue">/queue</a> stays read-only.</p>

@@ -617,7 +617,11 @@ async def annotate(
 
     Rollup: ``total`` asks · ``machine_verified`` (chips carrying a live
     probe verdict: done-detected or still-open) · per-rung counts ·
-    ``unmatched`` (asks no registry entry matched, ambiguous included).
+    ``unmatched`` (asks no registry entry matched, ambiguous included) ·
+    ``auto_cleared`` (C14: asks positively re-verified resolved this pass —
+    equal to ``done``, the count the queue self-clears out of the active
+    list). Each item additionally carries an ``auto_cleared`` bool, True only
+    on the positive ``done`` rung (fail-soft: nothing else clears an ask).
     """
     matches: list[Optional[dict[str, Any]]] = []
     claimed: dict[str, int] = {}
@@ -657,6 +661,7 @@ async def annotate(
         "not_checkable": 0,
         "unknown": 0,
         "unmatched": 0,
+        "auto_cleared": 0,
     }
     for i, (item, entry) in enumerate(zip(items, matches)):
         if entry is None:
@@ -668,9 +673,18 @@ async def annotate(
         else:
             v = verdict_by_id[entry["id"]]
         item["verify"] = v
+        # C14 self-cleaning: an ask auto-clears ONLY on a positive ``done``
+        # signal — the probe POSITIVELY observed the underlying condition
+        # resolved. Every other rung (still-open, not-machine-checkable, the
+        # ambiguous claim-once collision, unknown / probe-error / a raised
+        # exception) leaves the ask exactly where it was: fail-soft, when in
+        # doubt keep the ask. A real owner request never vanishes on a failed
+        # check.
+        item["auto_cleared"] = v["verdict"] == DONE
         if v["verdict"] == DONE:
             rollup["done"] += 1
             rollup["machine_verified"] += 1
+            rollup["auto_cleared"] += 1
         elif v["verdict"] == STILL_OPEN:
             rollup["still_open"] += 1
             rollup["machine_verified"] += 1
@@ -679,3 +693,24 @@ async def annotate(
         else:
             rollup["unknown"] += 1
     return rollup
+
+
+def split_self_cleaned(
+    items: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Partition annotated asks into ``(active, auto_cleared)``.
+
+    An ask is auto-cleared ONLY when :func:`annotate` flagged it — i.e. its
+    probe returned the positive ``done`` rung, having POSITIVELY observed the
+    underlying condition resolved. Anything a probe could not positively
+    confirm — still-open, not-machine-checkable, ambiguous, unknown, a fetch
+    error, a timeout, an unreachable source, a raised exception — stays in the
+    active list. Fail-soft by construction: a real owner ask never leaves the
+    active queue because a check failed.
+
+    Order-preserving. Call only on a list already passed through
+    :func:`annotate`; an un-annotated item (no ``auto_cleared`` key) is treated
+    as active, never cleared."""
+    active = [it for it in items if not it.get("auto_cleared")]
+    cleared = [it for it in items if it.get("auto_cleared")]
+    return active, cleared
