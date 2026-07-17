@@ -41,6 +41,13 @@ CONSOLE_JSON_URL = os.environ.get(
     "CONSOLE_JSON_URL",
     "https://raw.githubusercontent.com/menno420/superbot/main/botsite/data/console.json",
 )
+# The fleet arcade registry is committed IN THIS repo (botsite/data/arcade.json,
+# hand-maintained — no producer in superbot), so this feed points at
+# menno420/websites@main, not superbot. Overridable for testing / forks.
+ARCADE_JSON_URL = os.environ.get(
+    "ARCADE_JSON_URL",
+    "https://raw.githubusercontent.com/menno420/websites/main/botsite/data/arcade.json",
+)
 def _env_int(name: str, default: int) -> int:
     """Parse an integer env var, falling back to ``default``.
 
@@ -146,6 +153,54 @@ async def fetch_dashboard(refresh: bool = False) -> dict[str, Any]:
 
 async def fetch_console(refresh: bool = False) -> dict[str, Any]:
     return await _fetch(CONSOLE_JSON_URL, refresh=refresh)
+
+
+async def fetch_arcade(refresh: bool = False) -> dict[str, Any]:
+    return await _fetch(ARCADE_JSON_URL, refresh=refresh)
+
+
+# ---------------------------------------------------------------------------
+# Arcade registry summary (read-only, cross-repo-safe).
+#
+# The committed botsite/data/arcade.json is a LIST of game entries. This
+# consumer never imports botsite code (import rules: no service imports
+# another service's package), so it re-derives the same live/blocked semantics
+# botsite.arcade.availability_summary uses over the RAW feed shape (the enriched
+# has_link/is_live fields are computed by botsite's loader and are NOT present
+# in the committed file): a game is "live" when it carries a reachable link —
+# availability is live/download AND a url is present — and "blocked" is the
+# honest inverse (an unavailable game, or one with no url). Pure and fail-soft:
+# a non-list feed, a non-dict entry, or a missing field is simply skipped, and
+# the caller distinguishes a genuine zero from a fetch failure via the feed's
+# own ``ok`` envelope (never a faked 0).
+# ---------------------------------------------------------------------------
+ARCADE_LINKED_AVAILABILITIES = ("live", "download")
+
+
+def arcade_counts(games: Any) -> dict[str, int]:
+    """Total / live / blocked counts over the raw arcade registry list.
+
+    ``live`` mirrors ``botsite.arcade``'s reachable-link definition (availability
+    in live/download AND a non-empty url); ``blocked`` is the honest inverse so
+    ``live + blocked == total``. Never raises on feed content — a non-list input
+    or a malformed entry degrades to a skip, same never-fake-data posture as the
+    rest of this module. Callers must gate on the feed's ``ok`` flag to tell a
+    genuine zero from a failed fetch.
+    """
+    total = live = blocked = 0
+    if not isinstance(games, list):
+        return {"total": 0, "live": 0, "blocked": 0}
+    for game in games:
+        if not isinstance(game, dict):
+            continue
+        total += 1
+        url = game.get("url")
+        has_url = isinstance(url, str) and bool(url.strip())
+        if game.get("availability") in ARCADE_LINKED_AVAILABILITIES and has_url:
+            live += 1
+        else:
+            blocked += 1
+    return {"total": total, "live": live, "blocked": blocked}
 
 
 # ---------------------------------------------------------------------------
