@@ -418,6 +418,21 @@ def idea_stats(data: dict[str, Any]) -> dict[str, int]:
     return {"total": len(items), "shipped": shipped, "open": len(items) - shipped}
 
 
+def idea_bucket(idea: dict[str, Any]) -> str:
+    """Which /ideas filter lane a single idea falls in: ``"shipped"`` or ``"open"``.
+
+    Uses ``SHIPPED_IDEA_STATUSES`` — the same set ``idea_stats`` counts and the
+    per-idea green badge greens on — so the filter-pill lanes, the hero shipped
+    count, and the badges can never disagree. Case- and whitespace-insensitive;
+    missing/blank status buckets as ``"open"``, never raises.
+    """
+    return (
+        "shipped"
+        if str(idea.get("status") or "").strip().lower() in SHIPPED_IDEA_STATUSES
+        else "open"
+    )
+
+
 def bugs(data: dict[str, Any]) -> list[dict[str, Any]]:
     return list(data.get("bugs", []) or [])
 
