@@ -5,7 +5,7 @@
 {% block content %}
 <div class="wrap">
   <section class="sb-page-hero">
-    <span class="sb-ey"><span class="dot">·</span> {{ ideas|length }} ideas</span>
+    <span class="sb-ey"><span class="dot">·</span> {{ ideas|length }} ideas{% if idea_stats and idea_stats.shipped %} · {{ idea_stats.shipped }} shipped{% endif %}</span>
     <div class="head-row"><h1>Idea backlog</h1></div>
     <p class="sb-lead">The bot's idea backlog, straight from <code class="sb-mono">docs/ideas/</code> —
       every captured idea with its lifecycle status. Read-only.</p>

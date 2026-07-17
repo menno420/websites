@@ -396,6 +396,28 @@ def ideas(data: dict[str, Any]) -> list[dict[str, Any]]:
     return list(data.get("ideas", []) or [])
 
 
+# Idea lifecycle statuses the backlog treats as "shipped" — the same set the
+# per-idea badge greens on /ideas. Kept in one place so the hero summary count
+# and the per-card badge never drift.
+SHIPPED_IDEA_STATUSES = frozenset({"done", "implemented"})
+
+
+def idea_stats(data: dict[str, Any]) -> dict[str, int]:
+    """Counts for the idea backlog: ``total``, ``shipped``, ``open``.
+
+    Mirrors the /bugs hero's ``total · open`` summary so the two backlog pages
+    read the same way. ``shipped`` uses ``SHIPPED_IDEA_STATUSES`` — the same
+    status set the per-idea badge greens — so the hero figure equals the number
+    of green badges rendered on the page; ``open`` is the remainder. Case- and
+    whitespace-insensitive; missing/blank statuses count as open, never raise.
+    """
+    items = ideas(data)
+    shipped = sum(
+        1 for i in items if str(i.get("status") or "").strip().lower() in SHIPPED_IDEA_STATUSES
+    )
+    return {"total": len(items), "shipped": shipped, "open": len(items) - shipped}
+
+
 def bugs(data: dict[str, Any]) -> list[dict[str, Any]]:
     return list(data.get("bugs", []) or [])
 

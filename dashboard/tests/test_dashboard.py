@@ -555,3 +555,53 @@ def test_pinned_contract_matches_what_this_consumer_reads():
         assert set(row) == set(contract["session"])
     for row in CONSOLE_FIXTURE["telemetry"]:
         assert set(row) == set(contract["telemetry"])
+
+
+# --- /ideas backlog hero: shipped count -----------------------------------
+def test_idea_stats_counts_shipped_open_total():
+    """Pure helper: shipped = done/implemented (badge's own set), open = rest,
+    case/whitespace-insensitive; blank/missing status counts as open, no raise."""
+    data = {"ideas": [
+        {"title": "a", "status": "ideas"},
+        {"title": "b", "status": "Done"},          # cased -> shipped
+        {"title": "c", "status": " implemented "},  # padded -> shipped
+        {"title": "d", "status": "proposed"},        # open
+        {"title": "e"},                              # missing status -> open
+    ]}
+    assert ds.idea_stats(data) == {"total": 5, "shipped": 2, "open": 3}
+
+
+def test_idea_stats_empty_and_none_safe():
+    assert ds.idea_stats({}) == {"total": 0, "shipped": 0, "open": 0}
+    assert ds.idea_stats({"ideas": None}) == {"total": 0, "shipped": 0, "open": 0}
+
+
+def test_ideas_hero_shows_shipped_count():
+    """A backlog with a shipped idea surfaces '· K shipped' on the hero — the
+    same total·secondary idiom /bugs uses; K equals the shipped-status count."""
+    data = {**DASHBOARD_FIXTURE, "ideas": [
+        {"file": "x.md", "title": "Done thing", "status": "implemented",
+         "date": "2026-07-01", "summary": "Shipped."},
+        {"file": "y.md", "title": "Pending thing", "status": "ideas",
+         "date": "2026-07-02", "summary": "Not yet."},
+    ]}
+    with _client_with_dashboard(data) as c:
+        r = c.get("/ideas")
+        assert r.status_code == 200
+        assert "2 ideas" in r.text
+        assert "1 shipped" in r.text
+    ds.clear_cache()
+
+
+def test_ideas_hero_omits_shipped_when_none():
+    """No shipped idea -> the '· N shipped' segment is omitted (no noise), not
+    '0 shipped'."""
+    data = {**DASHBOARD_FIXTURE, "ideas": [
+        {"file": "y.md", "title": "Pending", "status": "ideas", "summary": "x"},
+    ]}
+    with _client_with_dashboard(data) as c:
+        r = c.get("/ideas")
+        assert r.status_code == 200
+        assert "1 ideas" in r.text
+        assert "shipped" not in r.text
+    ds.clear_cache()

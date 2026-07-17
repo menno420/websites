@@ -234,7 +234,7 @@ async def env_page(request: Request):
 @app.get("/ideas", response_class=HTMLResponse)
 async def ideas_page(request: Request):
     ctx = await _base_ctx(request, "ideas")
-    ctx.update({"ideas": ds.ideas(ctx["data"])})
+    ctx.update({"ideas": ds.ideas(ctx["data"]), "idea_stats": ds.idea_stats(ctx["data"])})
     return templates.TemplateResponse(request, "ideas.html", ctx)
 
 
