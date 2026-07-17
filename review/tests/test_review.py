@@ -139,14 +139,39 @@ def test_ledger_summary_counts_total_and_detailed():
     assert s["detailed"] == 0
 
 
+def test_ledger_summary_counts_evidence_citations():
+    """``citations`` sums each entry's top-level ``evidence`` links plus any
+    nested ``details[].evidence`` — the receipts the page actually renders,
+    counted off the very lists the templates iterate so it can never drift."""
+    def _expected(items):
+        n = 0
+        for it in items:
+            n += len(it.get("evidence") or [])
+            for d in it.get("details") or []:
+                n += len(d.get("evidence") or [])
+        return n
+
+    assert story.ledger_summary(story.SUCCESSES)["citations"] == _expected(story.SUCCESSES)
+    p = story.ledger_summary(story.PROBLEMS)
+    assert p["citations"] == _expected(story.PROBLEMS)
+    # PROBLEMS carry nested details evidence, so their citation count must
+    # exceed the top-level-only sum — proving the timeline links are counted.
+    top_level_only = sum(len(it.get("evidence") or []) for it in story.PROBLEMS)
+    assert p["citations"] > top_level_only
+
+    # A single entry with both top-level and nested evidence, counted whole.
+    mixed = [{"evidence": [("a", "u")], "details": [{"evidence": [("b", "u"), ("c", "u")]}]}]
+    assert story.ledger_summary(mixed)["citations"] == 3
+
+
 def test_ledger_summary_empty_is_safe():
-    assert story.ledger_summary([]) == {"total": 0, "detailed": 0}
+    assert story.ledger_summary([]) == {"total": 0, "detailed": 0, "citations": 0}
 
 
 def test_ledger_summary_never_mutates_input():
-    items = [{"details": [1]}, {}]
+    items = [{"evidence": [("a", "u")], "details": [{"evidence": [("b", "u")]}]}, {}]
     story.ledger_summary(items)
-    assert items == [{"details": [1]}, {}]
+    assert items == [{"evidence": [("a", "u")], "details": [{"evidence": [("b", "u")]}]}, {}]
 
 
 def test_problems_hero_shows_documented_tally():
@@ -156,6 +181,7 @@ def test_problems_hero_shows_documented_tally():
     r = client.get("/problems")
     assert f"{summary['total']} documented problem" in r.text
     assert f"{summary['detailed']} full incident writeup" in r.text
+    assert f"{summary['citations']} evidence citation" in r.text
 
 
 def test_successes_hero_shows_documented_tally_without_incident_secondary():
@@ -165,6 +191,7 @@ def test_successes_hero_shows_documented_tally_without_incident_secondary():
     r = client.get("/successes")
     assert f"{summary['total']} documented win" in r.text
     assert "incident writeup" not in r.text
+    assert f"{summary['citations']} evidence citation" in r.text
 
 
 def test_story_json_serves_snapshot():

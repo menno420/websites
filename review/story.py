@@ -767,12 +767,21 @@ def ledger_summary(items: list[dict[str, Any]]) -> dict[str, int]:
 
     ``total`` is the number of documented entries; ``detailed`` is how many
     carry a structured ``details`` incident timeline (the deep writeups, as
-    opposed to the one-paragraph entries). Counted straight off the very list
-    the template iterates, so the hero tally always equals the cards rendered
-    below it — no second source to drift. Pure: the list is never mutated."""
+    opposed to the one-paragraph entries); ``citations`` is the total count of
+    evidence links the page renders — each entry's top-level ``evidence`` plus
+    any nested ``details[].evidence`` (the problems page's incident timelines).
+    All three are counted straight off the very list the template iterates, so
+    the hero tally always equals the cards rendered below it — no second source
+    to drift. Pure: the list is never mutated."""
+    citations = 0
+    for it in items:
+        citations += len(it.get("evidence") or [])
+        for d in it.get("details") or []:
+            citations += len(d.get("evidence") or [])
     return {
         "total": len(items),
         "detailed": sum(1 for it in items if it.get("details")),
+        "citations": citations,
     }
 
 
