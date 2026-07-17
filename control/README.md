@@ -1,5 +1,11 @@
 # Fleet coordination protocol — `control/`
 
+> **⚠ RETIRING (2026-07-17).** This `control/` message-bus (inbox / status /
+> claims) is part of the autonomous apparatus being wound down — the EAP goes
+> read-only 2026-07-21 and the Project will be recreated. Do **not** build new
+> coordination on it; it is inventoried for removal in `docs/NEXT-TASKS.md` →
+> "Wind-down / retirement". Kept read-only for history until recreation.
+
 > Local copy for this repo. Canonical spec: `menno420/superbot` →
 > `docs/planning/fleet-coordination-protocol-2026-07-09.md` (§1). Projects cannot talk to each
 > other directly — committed git files are the only shared medium; this directory is the bus.
