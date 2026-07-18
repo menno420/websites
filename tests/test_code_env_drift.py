@@ -14,8 +14,9 @@ Held invariants:
   reason, never a fabricated match;
 - the page renders 200 behind the /owner gate with NAMES ONLY — no value-
   looking string leaks;
-- against the REAL committed snapshot + manifest the feature honestly surfaces
-  the current genuine finds and shows the in-sync services green.
+- against the REAL committed snapshot + manifest every service now reads
+  in-sync (the two first finds — WRITEBACK_BRANCH_PREFIX / ARCADE_JSON_URL —
+  were declared in the manifest by PR #403, closing the loop).
 
 No network: the live-Railway read is left not-configured (the code-drift half
 is fully static and independent of it).
@@ -257,11 +258,12 @@ def test_annotated_payload_holds_only_env_name_shaped_strings(monkeypatch):
 # --- live-data sanity: the feature's real finds ------------------------------
 
 
-def test_real_snapshot_surfaces_current_genuine_finds():
-    """Against the REAL committed snapshot + manifest, the feature must flag the
-    known genuine referenced-but-undeclared finds and leave the in-sync
-    services green — a guard that the wiring works on live data, not just
-    fixtures. Update this if the manifest is corrected."""
+def test_real_snapshot_all_services_in_sync():
+    """Against the REAL committed snapshot + manifest, every service reads
+    in-sync — a guard that the wiring works on live data, not just fixtures.
+    The feature's first two finds (WRITEBACK_BRANCH_PREFIX / ARCADE_JSON_URL)
+    were declared in the manifest by PR #403, closing the loop. Update this if
+    a new referenced-but-undeclared omission appears."""
     import asyncio
 
     data = asyncio.run(railway.overview(refresh=True))
@@ -271,8 +273,13 @@ def test_real_snapshot_surfaces_current_genuine_finds():
     codedrift.annotate(data)
     by_name = {s["name"]: s["code_drift"] for s in data["services"]}
 
-    assert "WRITEBACK_BRANCH_PREFIX" in by_name["control-plane"]["referenced_but_undeclared"]
-    assert "ARCADE_JSON_URL" in by_name["dashboard"]["referenced_but_undeclared"]
+    # WRITEBACK_BRANCH_PREFIX (control-plane) and ARCADE_JSON_URL (dashboard)
+    # were the feature's first real finds; PR #403 declared both in the
+    # manifest, so they are now IN-SYNC — declared and no longer flagged.
+    assert "WRITEBACK_BRANCH_PREFIX" not in by_name["control-plane"]["referenced_but_undeclared"]
+    assert "ARCADE_JSON_URL" not in by_name["dashboard"]["referenced_but_undeclared"]
+    assert by_name["control-plane"]["state"] == "in-sync"
+    assert by_name["dashboard"]["state"] == "in-sync"
     # botsite / review reference only declared + platform-injected names.
     assert by_name["botsite"]["state"] == "in-sync"
     assert by_name["review"]["state"] == "in-sync"

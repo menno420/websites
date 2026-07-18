@@ -108,6 +108,7 @@ SERVICES: list[dict[str, Any]] = [
             _var("OWNER_ASSIST_MODEL", "drafting-assistant model override (default pinned in app/owner_assist.py)"),
             _var("OWNER_ASSIST_DAILY_CAP", "drafting-assistant daily call cap (default 30)"),
             _var("WRITEBACK_BRANCH", "owner-writeback target branch (default main)"),
+            _var("WRITEBACK_BRANCH_PREFIX", "owner-writeback PR branch-name prefix (optional; default claude/owner-writeback- — the claude/* prefix is what arms the auto-merge-enabler)"),
             _var("WRITEBACK_DB_PATH", "SQLite path for the writeback audit log (default app/writeback.sqlite3 — ephemeral on Railway, stated in the UI)"),
         ],
     },
@@ -147,6 +148,7 @@ SERVICES: list[dict[str, Any]] = [
         "self": False,
         "env_vars": [
             _var("DASHBOARD_JSON_URL", "committed dashboard.json data source (raw.githubusercontent)"),
+            _var("ARCADE_JSON_URL", "committed arcade.json counts source for the fleet arcade (raw.githubusercontent; optional, default menno420/websites@main)"),
             _var("CONSOLE_JSON_URL", "committed console feed data source"),
             _var("DATA_CACHE_TTL_SECONDS", "data cache TTL (default 180)"),
             _var("SUPERBOT_REPO", "upstream repo for committed JSON (default menno420/superbot)"),
