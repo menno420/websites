@@ -16,7 +16,7 @@
 
 | # | Decision | What it unblocks | Notes / where it lives |
 |---|---|---|---|
-| 1 | ~~**Dashboard `/admin` live-bot control** — arm a production control path, or keep it dry-run?~~ **DECIDED 2026-07-18 (ORDER 035).** | The Discord-OAuth panel that writes the live bot's control API (settings / help / cog routing / submission moderation). | **DECIDED (Q-0004 / ASK-0001):** live bot control lives on the websites CONTROL-PLANE (`app/`) owner surface, gated by Discord OAuth reusing the existing SuperBot app; `/admin` dry-run stays the preview tier; the control-API token + a SEPARATE armed Railway service (ASK-0003) hold the armed path. The login half is built this session; ASK-0002/ASK-0003 are the remaining owner steps. See ORDER 035 (`control/inbox.md`) + Decided row P. |
+| 1 | ~~**Dashboard `/admin` live-bot control** — arm a production control path, or keep it dry-run?~~ **DECIDED 2026-07-18 (ORDER 035).** | The Discord-OAuth panel that writes the live bot's control API (settings / help / cog routing / submission moderation). | **DECIDED (Q-0004 / ASK-0001):** live bot control lives on the websites CONTROL-PLANE (`app/`) owner surface, gated by Discord OAuth reusing the existing SuperBot app; `/admin` dry-run stays the preview tier; the control-API token + a SEPARATE armed Railway service (ASK-0003) hold the armed path. The login half is built this session; ASK-0002/ASK-0003 are the remaining owner steps. See ORDER 035 (`control/inbox.md`) + Decided row R. |
 | 2 | **Botsite `/submit`** — provision a submissions Postgres + moderation mirror, or keep the stub? | The public feature/bug intake pipeline (moderated queue → GitHub-issue mirror). | Stub today: `botsite/templates/submit.html` (now shows a "Stub — not wired" badge). Needs a Postgres + mirror PAT. Rework-plan **Q5**. |
 | 3 | **Redeploy-from-browser scoped deploy hook** — yes / no? | A gated `/owner` button that triggers a Railway redeploy of a websites service from the site itself. | Would require a Railway deploy hook (scoped to `superbot-websites` only — never the ambient production IDs, see `docs/RAILWAY-SAFETY.md`). Currently deploy = merge to `main` (auto). |
 | 4 | **Custom domains** for the three sites (control-plane / botsite / dashboard). | Friendly URLs instead of `*.up.railway.app`. | Deferred to cutover. Rework-plan **Q6**. |
@@ -294,27 +294,31 @@ VERIFIED-NEEDED: Railway variable mutations are policy-walled/harness-denied for
 > These rows give them stable ids; `botsite/data/arcade.json` blockers and
 > `app/askverify.py` now join on the id exactly.
 
-```markdown
-⚑ OWNER-ACTION
-ID: ASK-0010
-WHAT: Publish the GitHub Release lumen-drift-v1.3 in menno420/gba-homebrew — the one owner click between the finished GBA ROM and a public download.
-WHERE: github.com/menno420/gba-homebrew → Releases → draft/publish the lumen-drift-v1.3 release (attach the built ROM).
-HOW: one click on the release page. Afterwards say the word (or any session's healthcheck will notice): a session then records the release's download URL in botsite/data/arcade.json (availability → download, url set, blocker dropped) and the arcade card gains its real Download button.
-WHY-IT-MATTERS: the public arcade has promised this game since PR #349 — /arcade/lumen-drift renders this exact click as its "What's blocking launch" panel. A finished, publish-safe game the public page names but nobody can download is the longest-standing visible gap on the arcade.
-UNBLOCKS: the Lumen Drift card and detail page flip from blocker panel to a real Download button; the owner-console verification chip for this row flips to done-detected on its own.
-VERIFIED-NEEDED: machine-checked already — app/askverify.py probe lumen-drift-release GETs /repos/menno420/gba-homebrew/releases/tags/lumen-drift-v1.3 (200 = done, 404 = still open; still 404 at filing). Publishing a release on gba-homebrew is owner-held: no agent credential for that repo exists (write access unverified, deliberately not attempted — same wall class as the PAT asks above).
-```
+**STRUCK 2026-07-18 (SATISFIED — moved to Decided row P below; the six-field
+ask text is kept verbatim under the Decided table, per "do not delete, move").**
+The owner published the GitHub Release `lumen-drift-v1.3` on
+`menno420/gba-homebrew` (~2026-07-18 20:10Z). Independently verified 2026-07-18:
+`git ls-remote --tags https://github.com/menno420/gba-homebrew.git` reads the
+live tag `lumen-drift-v1.3` (SHA `e64651ce4dbb5e99f31adf370da23f31716ef849`),
+and the review release-drift bake (`review/gen_releases.py`) now records
+lumen-drift `drift: false` ("expected release lumen-drift-v1.3 matches the live
+latest tag"; `drift_count` 1 → 0). `botsite/data/arcade.json` flipped:
+availability → `download`, url set to the published release page
+(`https://github.com/menno420/gba-homebrew/releases/tag/lumen-drift-v1.3` — the
+direct `.gba` asset URL is not HTTP-verifiable from the session egress, so the
+guaranteed-live release page is recorded), blocker dropped. The arcade card +
+detail page now carry a real Download button.
 
-```markdown
-⚑ OWNER-ACTION
-ID: ASK-0011
-WHAT: In menno420/product-forge, set Settings → Pages → Source to GitHub Actions, so the existing games-web deploy workflow can publish the site.
-WHERE: github.com/menno420/product-forge → Settings → Pages → Build and deployment → Source: GitHub Actions.
-HOW: one settings click, Save. The already-committed deploy workflow then publishes on its next run; once the site's URL answers 200, a session records it in botsite/data/arcade.json (availability → live, url set, blocker dropped).
-WHY-IT-MATTERS: /arcade/games-web has rendered this exact click as its "What's blocking launch" panel since PR #349 — the deploy workflow exists but its documented URL returns 404 until Pages has a source, so the public card honestly says unavailable.
-UNBLOCKS: the games-web card and detail page flip from blocker panel to a real Play link; the owner-console verification chip for this row flips to done-detected on its own.
-VERIFIED-NEEDED: machine-checked already — app/askverify.py probe product-forge-pages GETs /repos/menno420/product-forge/pages (200 = configured, 404 = still open; unreadable-with-this-token = honest unknown, never inferred). Repository settings are owner-held — no agent credential can flip Pages source (deliberately not attempted).
-```
+**STRUCK 2026-07-18 (SATISFIED — moved to Decided row Q below; the six-field
+ask text is kept verbatim under the Decided table, per "do not delete, move").**
+The owner ran product-forge's "Deploy games-web to Pages" workflow (run #3,
+SUCCESS, 2026-07-18 ~20:10Z), publishing the site. Independently verified
+2026-07-18: `https://menno420.github.io/product-forge/` returns HTTP 200 with
+real content (the games-web character-sheet app — `<title>games-web · Character
+Sheet (phase 1 · mock data)</title>`, not a Pages 404 placeholder).
+`botsite/data/arcade.json` flipped: availability → `live`, url set to
+`https://menno420.github.io/product-forge/`, blocker dropped. The arcade card +
+detail page now carry a real Play link.
 
 ### ⚑ Asks added 2026-07-16 (registry blocker join — catalog / products / puddle-museum owner gates become ledger rows)
 
@@ -413,7 +417,11 @@ VERIFIED-NEEDED: NOT machine-checkable — whether a human proofread happened is
 
 | O | **O-020 owner writeback PAT / GITHUB_TOKEN** (was ASK-0007) | **SATISFIED — verified LIVE 2026-07-18, no owner action needed.** O-020 owner writeback commits end-to-end via branch+auto-PR: a live `/owner/queue` test note → branch `claude/owner-writeback-1` (`0be58459`) → auto-PR **#399** → quality green → auto-merged to `main` as **`b12dcd9`**. The deployed control-plane `GITHUB_TOKEN` already carries BOTH `contents:write` AND `pull-requests:write` (the runtime opens the PR itself), so **no owner paste or overwrite was needed** — ORDER 020's done-when is discharged. The 2026-07-18 "direct-to-main vs branch+PR" design question is resolved to branch+PR (Q2=b owner-confirmed, PR #398). | Live submit→branch→PR→merge chain verified 2026-07-18 (real commit SHA `0be58459`, PR #399, merge `b12dcd9`); ask text kept verbatim below. |
 
-| P | **Where live bot control lives (Q-0004 / ASK-0001)** (was Open row 1 + the standing three-ask block) | **DECIDED 2026-07-18 — owner delegated the call to the dispatched session (ORDER 035).** Live bot control lives on the websites CONTROL-PLANE (`app/`) owner surface, gated by Discord OAuth REUSING the existing fleet-side SuperBot Discord app. The dashboard `/admin` dry-run panel stays the safe preview tier. The scoped control-API token + a SEPARATE armed Railway service (ASK-0003) remain the armed-execution architecture, stubbed until owner-gated creds exist. The non-gated login half — `app/discord_auth.py` (the OAuth authorization-code login flow, signed session cookie, CSRF `state` floor) + `require_owner` accepting a Discord session OR SITE_PASSWORD — is built + test-covered this session; env-unset stays fail-closed and names the opening owner action. Remaining owner steps: ASK-0002 (redirect URI + env) and ASK-0003 (token + armed service). | ORDER 035 (`control/inbox.md`, 2026-07-18); owner verbatim delegation "#4 … if you have a recomended decision, then decide"; branch `claude/discord-oauth-owner-gate`; ASK-0001 six-field ask kept verbatim above. |
+| P | **Publish the lumen-drift-v1.3 release** (was ASK-0010) | **DONE by owner — verified LIVE 2026-07-18.** The GitHub Release `lumen-drift-v1.3` is published on `menno420/gba-homebrew` (~2026-07-18 20:10Z). Independently verified: `git ls-remote --tags` reads the live tag `lumen-drift-v1.3` (SHA `e64651ce4dbb5e99f31adf370da23f31716ef849`), and the review release-drift bake now records lumen-drift `drift: false` (`drift_count` 1 → 0). `botsite/data/arcade.json` flipped (availability → `download`, url → the release page, blocker dropped) — the arcade card gains its real Download button. The direct `.gba` asset URL was not HTTP-verifiable from the session egress (github.com web/API for gba-homebrew is walled for this session; only git transport is allowed), so the guaranteed-live release page is the recorded download target. | Live git-transport tag read + release-drift bake 2026-07-18; arcade flip in `botsite/data/arcade.json`; `review/data/releases.json` `drift_count: 0`; ask text kept verbatim below. |
+
+| Q | **Configure product-forge Pages** (was ASK-0011) | **DONE by owner — verified LIVE 2026-07-18.** The owner ran product-forge's "Deploy games-web to Pages" workflow (run #3, SUCCESS, 2026-07-18 ~20:10Z). Independently verified: `https://menno420.github.io/product-forge/` returns HTTP 200 with real content (the games-web character-sheet app, not a Pages 404 placeholder). `botsite/data/arcade.json` flipped (availability → `live`, url set, blocker dropped) — the arcade card gains its real Play link. | Live HTTPS 200 + real-content read 2026-07-18; arcade flip in `botsite/data/arcade.json`; ask text kept verbatim below. |
+
+| R | **Where live bot control lives (Q-0004 / ASK-0001)** (was Open row 1 + the standing three-ask block) | **DECIDED 2026-07-18 — owner delegated the call to the dispatched session (ORDER 035).** Live bot control lives on the websites CONTROL-PLANE (`app/`) owner surface, gated by Discord OAuth REUSING the existing fleet-side SuperBot Discord app. The dashboard `/admin` dry-run panel stays the safe preview tier. The scoped control-API token + a SEPARATE armed Railway service (ASK-0003) remain the armed-execution architecture, stubbed until owner-gated creds exist. The non-gated login half — `app/discord_auth.py` (the OAuth authorization-code login flow, signed session cookie, CSRF `state` floor) + `require_owner` accepting a Discord session OR SITE_PASSWORD — is built + test-covered this session; env-unset stays fail-closed and names the opening owner action. Remaining owner steps: ASK-0002 (redirect URI + env) and ASK-0003 (token + armed service). | ORDER 035 (`control/inbox.md`, 2026-07-18); owner verbatim delegation "#4 … if you have a recomended decision, then decide"; branch `claude/discord-oauth-owner-gate`; ASK-0001 six-field ask kept verbatim above. |
 
 ### Resolved guidance — kept as six fields (Decided row N, 2026-07-13)
 
@@ -502,6 +510,32 @@ VERIFIED-NEEDED: submit a note on /owner/queue (reachable from /queue) and see a
 > runtime opens the PR itself). ASK-0008's PAT-scope half is therefore also
 > already covered on the Railway `GITHUB_TOKEN`; only its `BAKE_PAT` Actions
 > secret half remains open.
+
+### Satisfied ask — kept verbatim (Decided row P, satisfied by 2026-07-18)
+
+```markdown
+⚑ OWNER-ACTION — SATISFIED 2026-07-18 (Decided row P; kept for the record)
+ID: ASK-0010
+WHAT: Publish the GitHub Release lumen-drift-v1.3 in menno420/gba-homebrew — the one owner click between the finished GBA ROM and a public download.
+WHERE: github.com/menno420/gba-homebrew → Releases → draft/publish the lumen-drift-v1.3 release (attach the built ROM).
+HOW: one click on the release page. Afterwards say the word (or any session's healthcheck will notice): a session then records the release's download URL in botsite/data/arcade.json (availability → download, url set, blocker dropped) and the arcade card gains its real Download button.
+WHY-IT-MATTERS: the public arcade has promised this game since PR #349 — /arcade/lumen-drift renders this exact click as its "What's blocking launch" panel. A finished, publish-safe game the public page names but nobody can download is the longest-standing visible gap on the arcade.
+UNBLOCKS: the Lumen Drift card and detail page flip from blocker panel to a real Download button; the owner-console verification chip for this row flips to done-detected on its own.
+VERIFIED-NEEDED: machine-checked already — app/askverify.py probe lumen-drift-release GETs /repos/menno420/gba-homebrew/releases/tags/lumen-drift-v1.3 (200 = done, 404 = still open; still 404 at filing). Publishing a release on gba-homebrew is owner-held: no agent credential for that repo exists (write access unverified, deliberately not attempted — same wall class as the PAT asks above).
+```
+
+### Satisfied ask — kept verbatim (Decided row Q, satisfied by 2026-07-18)
+
+```markdown
+⚑ OWNER-ACTION — SATISFIED 2026-07-18 (Decided row Q; kept for the record)
+ID: ASK-0011
+WHAT: In menno420/product-forge, set Settings → Pages → Source to GitHub Actions, so the existing games-web deploy workflow can publish the site.
+WHERE: github.com/menno420/product-forge → Settings → Pages → Build and deployment → Source: GitHub Actions.
+HOW: one settings click, Save. The already-committed deploy workflow then publishes on its next run; once the site's URL answers 200, a session records it in botsite/data/arcade.json (availability → live, url set, blocker dropped).
+WHY-IT-MATTERS: /arcade/games-web has rendered this exact click as its "What's blocking launch" panel since PR #349 — the deploy workflow exists but its documented URL returns 404 until Pages has a source, so the public card honestly says unavailable.
+UNBLOCKS: the games-web card and detail page flip from blocker panel to a real Play link; the owner-console verification chip for this row flips to done-detected on its own.
+VERIFIED-NEEDED: machine-checked already — app/askverify.py probe product-forge-pages GETs /repos/menno420/product-forge/pages (200 = configured, 404 = still open; unreadable-with-this-token = honest unknown, never inferred). Repository settings are owner-held — no agent credential can flip Pages source (deliberately not attempted).
+```
 
 ## How to use this doc
 
