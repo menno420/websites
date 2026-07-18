@@ -63,7 +63,7 @@
   GitHub. All history moves forward (squash-merge, no force-push) [D-0001].
 - **One repo, many Railway services — share code, not a process.** `control-plane`
   (`app/`), `botsite/`, `dashboard/`, and `review/` (the fourth service, live
-  since 2026-07-11 at review-production-f027) are separate services so the
+  since 2026-07-11 at review-production-fc91) are separate services so the
   public sites stay secret-isolated from the private overlay [D-0007].
 - **Never deploy into, or configure via, the production-bot Railway project.**
   Use only `superbot-websites` IDs and `RAILWAY_API_KEY`; the ambient

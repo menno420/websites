@@ -1976,3 +1976,25 @@
   retires more OLD surfaces whose paths moved, and the invariant is
   currently unenforced. Source:
   `.sessions/2026-07-18-dashboard-consolidation-redirects.md` 💡.
+
+- **A prose-lint that flags a retire-target domain named without a
+  retire/dup/old label** · `captured` (2026-07-18,
+  consolidation-cutover-plan session 💡) — #407's ground-truth pin catches
+  an inverted canonical/duplicate mapping in the *structured* files
+  (`web_presence.json`, `environments.json`, `config.py`, the healthcheck
+  tables), but the residual `f027`-as-canonical references this session
+  corrected all lived in *free prose* (`CONSTITUTION.md`,
+  `docs/current-state.md`, `docs/owner/OWNER-ACTIONS.md`, `review/ai.py`'s
+  system prompt, a tester-task URL) — unpinned, so they survived the code
+  fix. A small advisory checker that scans committed docs/strings for a
+  known retire-target domain (`review-production-f027`, `superbot-app`,
+  `superbot-dashboard`) and flags any occurrence not within N tokens of a
+  retire/dup/old/OLD/superseded label would turn "prose still names the
+  retired service as canonical" into a check finding instead of a
+  human-spotted follow-up. Distinct from the two consolidation ideas above
+  (the structured-file ground-truth pin and the redirect-path coverage
+  test) — this one guards the prose layer neither covers. Worth having
+  because the cutover will retire these services for real, after which a
+  bare canonical reference to a dead domain is a broken promise to a
+  reader. Source:
+  `.sessions/2026-07-18-consolidation-cutover-plan.md` 💡.

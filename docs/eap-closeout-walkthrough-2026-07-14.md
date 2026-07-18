@@ -131,7 +131,7 @@ PR clicks and cross-references:
 - **dashboard** — <https://dashboard-production-a91b.up.railway.app> — the
   read-only bot inventory; `/admin` is the honest dry-run control panel
   awaiting Q-0004.
-- **review** — <https://review-production-f027.up.railway.app> — built for
+- **review** — <https://review-production-fc91.up.railway.app> — built for
   reviewers: `/process`, `/growth` (charts from real git history),
   `/problems` (as specific as the successes), `/questionnaire` (every answer
   cited).
