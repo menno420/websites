@@ -201,19 +201,35 @@ async def board_json(request: Request):
 
 async def _count_queue(refresh: bool):
     d = await owner_queue.overview(refresh=refresh)
+    # A lane whose status could not be fetched means asks may be missing — the
+    # total is an undercount, not the truth, so degrade to the honest — rather
+    # than report a fetch-failure as a genuine count (C1: failed != zero).
+    if d["unreadable_lanes"]:
+        return None
     n = d["summary"]["total"]
     return n, "open", ("warn" if n else "ok")
 
 
 async def _count_orders(refresh: bool):
     d = await orders.overview(refresh=refresh)
+    # A repo whose inbox fetch errored zeros its open-order contribution — the
+    # summary open count would understate the truth, so a failed fetch shows —
+    # (a genuine all-repos-zero, with no fetch error, still reports a real 0).
+    if d["summary"]["errored"]:
+        return None
     n = d["summary"]["open"]
     return n, "open", ("warn" if n else "ok")
 
 
 async def _count_ideas(refresh: bool):
     repos = await ideas.overview(refresh=refresh)
-    return ideas.totals(repos)["ideas"], "ideas", "repo"
+    totals = ideas.totals(repos)
+    # A repo whose ideas listing errored (not-configured / unavailable) is an
+    # undercount; a repo with no ideas dir is `missing` (an honest absence, not
+    # an error) and still counts toward a real 0. Only a true fetch error → —.
+    if totals["errors"]:
+        return None
+    return totals["ideas"], "ideas", "repo"
 
 
 async def _count_reviews(refresh: bool):
@@ -226,6 +242,11 @@ async def _count_reviews(refresh: bool):
 
 async def _count_activity(refresh: bool):
     d = await activity.timeline(refresh=refresh)
+    # A per-repo PR fetch failure is collected into `errors`; when any is
+    # present the shown-item count is understated, so degrade to the honest —
+    # rather than pass a fetch-failure off as a genuine recent-PR count.
+    if d["errors"]:
+        return None
     return len(d["items"]), "recent PRs", "repo"
 
 
