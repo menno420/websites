@@ -93,17 +93,19 @@ def _open_ledger_headlines() -> list[str]:
     return [b.get("what", "") for b in _open_ledger_blocks()]
 
 
-def test_real_ledger_has_the_sixteen_open_asks_each_with_a_unique_id():
+def test_real_ledger_has_the_fifteen_open_asks_each_with_a_unique_id():
     # 9 from the 2026-07-16 id backfill + the 2 arcade launch blockers
     # (ASK-0010/0011) + the 5 registry blocker rows (ASK-0012..0016 — the
-    # catalog / products / puddle-museum owner gates, same day).
+    # catalog / products / puddle-museum owner gates, same day), LESS
+    # ASK-0007 (order-020-pat) — SATISFIED / verified-live 2026-07-18 and
+    # moved to Decided row O, so it is no longer an open block.
     blocks = _open_ledger_blocks()
-    assert len(blocks) == 16
+    assert len(blocks) == 15
     ids = [b.get("ask_id") for b in blocks]
     assert all(
         i and re.fullmatch(r"ASK-\d{4}", i) for i in ids
     ), f"open ask without a well-formed ID: {ids}"
-    assert len(set(ids)) == 16, f"duplicated ask id in the ledger: {ids}"
+    assert len(set(ids)) == 15, f"duplicated ask id in the ledger: {ids}"
 
 
 def test_every_real_open_ask_matches_a_distinct_registry_entry():
@@ -127,17 +129,20 @@ def test_every_real_open_ask_matches_a_distinct_registry_entry():
 
 def test_real_ledger_matches_land_on_the_intended_probes():
     by_id = {askverify.match(h)["id"]: h for h in _open_ledger_headlines()}
+    # order-020-pat (ASK-0007) is absent: SATISFIED / verified-live
+    # 2026-07-18, moved to Decided row O — no longer an open ledger row.
     assert set(by_id) == {
         "q-0004", "discord-oauth", "armed-service", "botsite-database-url",
-        "paypal-credentials", "botsite-gate", "order-020-pat", "bake-pat",
+        "paypal-credentials", "botsite-gate", "bake-pat",
         "dashboard-site-password", "lumen-drift-release",
         "product-forge-pages", "gumroad-publish-pass",
         "photo-packs-originals", "ultramarine-rename", "illustration-gate",
         "sinaasappel-proofread",
     }
-    # Spot-check the two textually-overlapping PAT asks disambiguate.
+    # The BAKE_PAT ask still resolves to its own probe (the textually-
+    # overlapping order-020 PAT ask it once had to disambiguate from is now
+    # in Decided, so only bake-pat remains in the Open section).
     assert "BAKE_PAT" in by_id["bake-pat"]
-    assert "BAKE_PAT" not in by_id["order-020-pat"]
 
 
 def test_ledger_ids_are_never_reused_anywhere_in_the_file():
