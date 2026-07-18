@@ -85,9 +85,10 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from datetime import datetime, timezone
 from typing import Any, Optional
 
-from . import config, github, prompt_artifacts
+from . import clock, config, github, prompt_artifacts
 
 # Shared fetch+parse path (ORDER 015) — re-exported so consumers and tests
 # keep one import surface for the library's registry semantics.
@@ -751,7 +752,73 @@ async def seat_drift(seat: str, refresh: bool = False) -> Optional[dict[str, Any
     }
 
 
-async def console_rollup(refresh: bool = False) -> dict[str, Any]:
+# The failsafe snapshot (fleet-manager telemetry/triggers-snapshot.json) is an
+# MCP-only, manager-wake artifact: it only refreshes when the manager seat wakes
+# and re-dumps list_triggers. When that seat parks, the snapshot freezes — this
+# panel reads LIVE and renders it honestly, but a frozen captured_at read as a
+# bare timestamp looks like OUR bug. Past this age we surface it as stale AND
+# attribute it upstream (mirrors fleet-manager's own roster-regen >24h warning).
+SNAPSHOT_STALE_HOURS = 24
+
+# ISO-ish captured_at parse (mirrors fleet._parse_iso): handles second-less
+# ``2026-07-17T16:32Z``, full ``…:25Z``, and a space separator. Every fleet
+# telemetry stamp writes UTC (``Z``), so wall-clock is treated as UTC.
+_CAPTURED_RE = re.compile(
+    r"(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?"
+)
+
+
+def _human_age(hours: float) -> str:
+    """Coarse human age (mirrors fleet._human_age) — 'just now' / 'Nm ago' /
+    'Nh ago' / 'Nd ago'."""
+    if hours < 0:
+        return "just now"
+    if hours < 1:
+        return f"{int(hours * 60)}m ago"
+    if hours < 48:
+        return f"{int(hours)}h ago"
+    return f"{int(hours / 24)}d ago"
+
+
+def _snapshot_age(captured_at: str, now: datetime) -> dict[str, Any]:
+    """The failsafe snapshot's age vs an injectable ``now`` (deterministic in
+    tests via the pinned :mod:`app.clock`). Returns
+    ``{captured_ok, age_hours, age_human, is_stale}``. An unparseable/empty
+    stamp is ``captured_ok=False`` — the panel keeps the raw timestamp and
+    shows no age, never a faked-fresh verdict."""
+    m = _CAPTURED_RE.search(captured_at or "")
+    if not m:
+        return {
+            "captured_ok": False,
+            "age_hours": None,
+            "age_human": "",
+            "is_stale": False,
+        }
+    y, mo, d, h, mi, se = m.groups()
+    try:
+        dt = datetime(
+            int(y), int(mo), int(d), int(h), int(mi), int(se or 0),
+            tzinfo=timezone.utc,
+        )
+    except ValueError:
+        return {
+            "captured_ok": False,
+            "age_hours": None,
+            "age_human": "",
+            "is_stale": False,
+        }
+    age_hours = (now - dt).total_seconds() / 3600
+    return {
+        "captured_ok": True,
+        "age_hours": age_hours,
+        "age_human": _human_age(age_hours),
+        "is_stale": age_hours >= SNAPSHOT_STALE_HOURS,
+    }
+
+
+async def console_rollup(
+    refresh: bool = False, now: Optional[datetime] = None
+) -> dict[str, Any]:
     """The owner console's per-seat prompt-state rows (ORDER 041 remainder):
     every roster seat reduced to one row — deployed vs canonical (the
     Custom-Instructions version line), stale count across the seat's 3
@@ -762,7 +829,15 @@ async def console_rollup(refresh: bool = False) -> dict[str, Any]:
     renders (identical URLs → shared TTL cache), no new fetch path, no
     prompt copy stored. Never raises; failures degrade per row exactly as
     they do on /prompts.
+
+    The failsafe snapshot carries an age (:func:`_snapshot_age`) against an
+    injectable ``now`` (falls back to :func:`app.clock.now`): the panel
+    reads live, but the snapshot itself is an MCP-only manager-wake artifact
+    that freezes when the manager seat parks, so a captured_at older than
+    :data:`SNAPSHOT_STALE_HOURS` is flagged ``is_stale`` and attributed
+    upstream in the template — not read as this panel's bug.
     """
+    now = now or clock.now()
     spec = [s for s in _artifact_spec() if s["seat"] is not None]
     artifacts = list(
         await asyncio.gather(
@@ -800,9 +875,16 @@ async def console_rollup(refresh: bool = False) -> dict[str, Any]:
                 "history_url": f"/prompts/history/{s['name']}",
             }
         )
+    # Enrich the failsafe snapshot with its age (deterministic via ``now``):
+    # captured_at is only refreshed on a manager-seat wake, so the panel says
+    # how old it is and, past SNAPSHOT_STALE_HOURS, that the freeze is upstream.
+    snapshot = dict(built["snapshot"])
+    if snapshot.get("ok"):
+        snapshot.update(_snapshot_age(snapshot.get("captured_at", ""), now))
+        snapshot["stale_hours"] = SNAPSHOT_STALE_HOURS
     return {
         "rows": rows,
-        "snapshot": built["snapshot"],
+        "snapshot": snapshot,
         "counts": built["counts"],
         "stale_total": sum(r["stale"] for r in rows),
     }

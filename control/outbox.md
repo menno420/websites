@@ -76,3 +76,27 @@ Options:
 - **(B)** give botsite a TTL-cached GitHub client mirroring app/github.py (fresh, but a new outbound surface + rate-limit exposure on a public site).
 
 Seat recommendation: **A**.
+
+## ASK · 2026-07-18T14:40Z · websites → manager · FLEET PROMPT-STATE DATA FIXES (4 cross-repo asks for menno420/fleet-manager)
+re: the /owner "Prompt state" panel. The panel reads the fleet-manager registry LIVE and renders it honestly — it is correct. But the DATA it renders is stale upstream, so it currently shows a frozen failsafe-snapshot timestamp and a stale Websites deployed-state row. Websites PR #408 makes that staleness unmistakable and attributes it upstream (snapshot age + a ">24h stale — awaiting an upstream fleet-manager refresh" warning); these 4 asks fix the underlying data on the fleet-manager side. Each is paste-ready for the manager to action against `menno420/fleet-manager`.
+
+**ASK 1 — refresh the frozen triggers snapshot.**
+- WHAT: re-dump `list_triggers` and commit it to `fleet-manager/telemetry/triggers-snapshot.json`.
+- WHY: the snapshot is an MCP-only, manager-wake artifact; it froze at `captured_at: 2026-07-17T16:32:25Z` (>24h) when the manager seat parked, so the panel's failsafe-drift row reads a stale deployed record. (Websites failsafe trigger it should reflect: `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake", cron `45 */2 * * *`.)
+- WHERE: `fleet-manager/telemetry/triggers-snapshot.json` (the `captured_at` + `data[]` export the panel byte-compares against the registry copies).
+- ALSO: arm the documented CCR fallback routine that re-dumps the snapshot on a schedule, so the export survives the manager seat parking and never goes >24h stale again on its own.
+
+**ASK 2 — update the Websites Deployed-state ledger to the current paste.**
+- WHAT: update the "Deployed-state per part" table in `fleet-manager/projects/websites/meta.md` to record the Websites seat's CURRENT deployed prompt = **v3.7 (2026-07-15 paste)**.
+- WHY: it currently records the superseded **2026-07-10 gen-2/v1** state, so the panel's meta.md-derived row for Websites shows "stale" against the v3.x canonical registry copies — a stale RECORD, not a stale deploy.
+- WHERE: `fleet-manager/projects/websites/meta.md` → `## Deployed-state per part` (the `instructions` / `coordinator prompt` rows).
+
+**ASK 3 — (optional, low-pri) new-seat meta stubs.**
+- WHAT: `fleet-manager/projects/superbot-world/meta.md` and `.../superbot-2.0/meta.md` have no "Deployed-state per part" table (new-seat stubs, nothing deployed yet).
+- WHY: the panel's "meta.md has no parseable Deployed-state table" for these seats is already HONEST — no fix required. Add tables only if/when a known-green deployed state exists to record.
+- WHERE: `fleet-manager/projects/{superbot-world,superbot-2.0}/meta.md`.
+
+**ASK 4 — self-healing rule so this panel maintains itself.**
+- WHAT: add a per-seat step to the fleet-manager per-seat boot/session-ender prompts: "stamp the deployed prompt version into `projects/<seat>/meta.md` Deployed-state table at session-ender".
+- WHY: mirrors the manager's existing `captured_at` snapshot-dump discipline; makes the deployed-state ledger self-maintaining so the panel stays green without the owner ever messaging projects by hand.
+- WHERE: the fleet-manager per-seat boot + session-ender prompt templates (the registry's per-seat prompt sources).

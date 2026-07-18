@@ -115,8 +115,20 @@
     {% elif promptstate.counts['unreachable'] %}<span class="b unknown">{{ promptstate.counts['unreachable'] }} row{{ 's' if promptstate.counts['unreachable'] != 1 }} unreachable — no verdict assumed</span>
     {% else %}<span class="b ok">no stale or drifted record</span>{% endif %}
     · failsafe snapshot:
-    {% if promptstate.snapshot.ok %}captured {{ promptstate.snapshot.captured_at }}
+    {% if promptstate.snapshot.ok %}captured {{ promptstate.snapshot.captured_at }}{% if promptstate.snapshot.captured_ok %} <span class="dim">({{ promptstate.snapshot.age_human }})</span>{% endif %}
     {% else %}unavailable — {{ promptstate.snapshot.error }}{% endif %}</p>
+  {% if promptstate.snapshot.ok and promptstate.snapshot.is_stale %}
+  {# Snapshot-age attribution banner: the failsafe snapshot is an MCP-only,
+     manager-wake artifact (fleet-manager telemetry/triggers-snapshot.json) —
+     it freezes when the manager seat parks. This panel reads LIVE, so a frozen
+     captured_at is an UPSTREAM freeze, not our bug. Mirror the spirit of
+     fleet-manager's own roster-regen >24h warning. #}
+  <p class="b warn" style="display:block;padding:.5rem .8rem;">⚠ failsafe snapshot
+    &gt;{{ promptstate.snapshot.stale_hours }}h stale ({{ promptstate.snapshot.age_human }})
+    — awaiting an upstream <a href="https://github.com/menno420/fleet-manager/blob/main/telemetry/triggers-snapshot.json">fleet-manager</a>
+    refresh. This panel reads live; the snapshot is a manager-wake
+    <code>list_triggers</code> dump frozen upstream, not a fault here.</p>
+  {% endif %}
   <table class="small">
     <tr><th>seat</th><th>deployed vs canonical <span class="note">(Custom Instructions)</span></th>
       <th>stale</th><th>per artifact</th><th>state</th><th>history</th></tr>
