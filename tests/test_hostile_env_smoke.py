@@ -67,6 +67,7 @@ ENV_VARS = [
     "OWNER_ASSIST_MODEL",
     "OWNER_ASSIST_DAILY_CAP",
     "WRITEBACK_BRANCH",
+    "WRITEBACK_BRANCH_PREFIX",
     "WRITEBACK_DB_PATH",
     # botsite/: data_source.py, testing.py, testing_store.py, testing_ai.py,
     # testing_payouts.py
