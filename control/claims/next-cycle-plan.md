@@ -1,1 +1,0 @@
-- `claude/next-cycle-plan` · Planning pass: groomed next-cycle queue + doc hygiene (NEXT-TASKS prune, current-state refresh, baton) + orphaned-claim cleanup · 2026-07-18

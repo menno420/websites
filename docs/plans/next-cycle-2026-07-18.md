@@ -1,6 +1,6 @@
 # Next-cycle plan — 2026-07-18
 
-> **Status:** `groomed` — planning pass at HEAD `07b4bb9` (#421). Re-groom when new owner intent or hub capacity lands.
+> **Status:** `plan` — planning pass at HEAD `07b4bb9` (#421). Re-groom when new owner intent or hub capacity lands.
 
 ## Context
 
