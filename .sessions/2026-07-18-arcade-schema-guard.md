@@ -1,6 +1,6 @@
 # 2026-07-18 — Arcade JSON schema CI guard (A4)
 
-> **Status:** `in-progress` — branch `claude/arcade-schema-guard`; a new
+> **Status:** `complete` — branch `claude/arcade-schema-guard`; a new
 > read-only schema guard over the committed `botsite/data/arcade.json`, added
 > to `botsite/tests/test_arcade_registry_integrity.py`. Test-only: no product
 > code or data changes. Asserts every arcade entry through the shipped
@@ -52,9 +52,10 @@ serialized payload, no env, no product code touched.
   so the negative case ships as a real committed assertion. This card +
   `control/status.md` heartbeat.
 - git: branch `claude/arcade-schema-guard` from `origin/main` @ `258343f`
-  (#389); commits — born-red card, guard build, heartbeat status, + this flip.
+  (#389); commits `a71c020` (born-red card), `89dba99` (guard build + committed
+  malformed-sample teeth), `454b6ec` (heartbeat status), + this flip.
 - verify: `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests
-  -q` green; `python3 bootstrap.py check --strict` (and
+  -q` — **1763 passed, 1 warning** (exit 0); `python3 bootstrap.py check --strict` (and
   `--require-session-log`, the CI form) — the only red during the session was
   the DESIGNED born-red hold on this card, released at this flip. No serialized
   JSON payload / env / contract changed — the guard is a test that reads the
