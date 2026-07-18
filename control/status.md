@@ -1,29 +1,29 @@
 # websites · status
 
-updated: 2026-07-18T17:30:00Z
-phase: SESSION-ENDER close-out — routine disposition verified + baton handed to the successor. No build work this heartbeat; control-only fast-lane close-out (control/status.md only, no session card by design).
-health: green; origin/main at latest; this session merged ~21 PRs, 0 open PRs, all terminal.
-last-shipped: session close-out — ~21 PRs merged this session, all terminal on origin/main; four service suites green, kit check --strict green.
+updated: 2026-07-18T17:35:00Z
+phase: ORDER 033 build — baked release-drift banner in the review service; PR open on `claude/release-drift-banner`, born-red card holding, awaiting the completion flip.
+health: green locally — ORDER 033 PR open (claude/release-drift-banner, ORDER 033): CI pending, the born-red session card holds the merge red by design, awaiting flip; four service suites (1917 passed) + kit check --strict green locally except the designed born-red hold.
+last-shipped: prior session — ~21 PRs merged, all terminal on origin/main; ORDER 033 release-drift banner is in flight (PR open, not yet merged).
 blockers: none
-orders: acked=001-032 done=001-019,020,023-031.
-routine: VERIFIED via full list_triggers pagination (25 pages / 2,500 triggers / has_more=false).
-    • CLOSED: pacemaker one-shot `trig_01BGZ6q7mmWV5a9LoAxYEStZ` deleted; ZERO pending send_later/wake triggers remain bound to the coordinator session `session_01Aj5zJFsRphJgNcfRzXCSir` (~30 historical one-shots all ended run_once_fired).
-    • LEFT ARMED (successor bridge, by design): failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *`, enabled, next fire 2026-07-18T16:45:00Z — the successor's boot cutover rebinds-then-deletes it.
-    • Business crons: none created by this seat. Uncloseable: none.
-    • Tool wall: capitalized alias `mcp__Claude_Code_Remote__list_triggers` classifier-blocked; lowercase `mcp__claude-code-remote__list_triggers` works.
-landing: `all-merged — ~21 PRs this session all terminal, 0 open; chain closed with zero new routines armed.`
+orders: acked=001-033 done=001-020,022-032 (021 open/owner-gated; 033 in flight — PR open, awaiting flip/merge).
+routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` remains ARMED, still bound to the predecessor session (successor bridge kept by design).
+    • This coordinator's trigger / send_later arming is classifier-denied (worker relays blocked at spawn), so the rebind-then-delete of the failsafe cron rides the hub venue.
+    • send_later chain: none pending (walled).
+    • Business crons: none created by this seat.
+landing: `ORDER 033 review release-drift banner — PR open on claude/release-drift-banner (born-red card holding); daily-rebake workflow wiring deferred to the hub venue.`
 deployed: origin/main at latest · four Railway services live (control-plane-…-abb0 / botsite-…-cfd7 / dashboard-…-a91b / review-…-fc91, the superbot-websites project). O-020 owner writeback is LIVE + verified; RAILWAY_API_KEY enables self-verifying/setting deployed env (see docs/CAPABILITIES.md).
-claims: no active claims (no claim filed this session).
+claims: 1 active — `claude/release-drift-banner` (ORDER 033 review release-drift banner), 2026-07-18; delete at session close.
 needs-owner: the 15 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## NEXT-2-TASKS baton
-1. SITE-CONSOLIDATION RETIREMENT — DESTRUCTIVE, GATED on the owner's explicit "go"; plan at `docs/plans/site-consolidation-cutover.md` (KEEP superbot-websites: control-plane-abb0 / dashboard-a91b / botsite-cfd7 / review-fc91; RETIRE reliable-grace review-production-f027 + old superbot-repo superbot-dashboard / superbot-app; NEVER the reliable-grace `worker` Discord bot or the Postgres DBs).
+1. WIRE gen_releases.py INTO THE DAILY BAKE — add `python3 review/gen_releases.py` to `.github/workflows/review-bake.yml` so `review/data/releases.json` auto-rebakes daily (hands-off release-drift refresh). Workflow diff → rides the hub venue, deliberately NOT in the ORDER 033 PR.
 2. FLEET-MANAGER OUTBOX ASKS 1-4 in `control/outbox.md` await the fleet-manager manager seat (refresh frozen triggers-snapshot.json; update fleet-manager/projects/websites/meta.md to v3.7 / 2026-07-15; self-healing per-seat deployed-version stamp rule).
+- Also gated: SITE-CONSOLIDATION RETIREMENT — DESTRUCTIVE, GATED on the owner's explicit "go"; plan at `docs/plans/site-consolidation-cutover.md` (KEEP superbot-websites: control-plane-abb0 / dashboard-a91b / botsite-cfd7 / review-fc91; RETIRE reliable-grace review-production-f027 + old superbot-repo superbot-dashboard / superbot-app; NEVER the reliable-grace `worker` Discord bot or the Postgres DBs).
 - Also gated: ASK-0002 Discord OAuth (reuse the existing SuperBot app — owner); R10 auto-draft review edition (workflow / hub-venue).
 - Note for the successor: O-020 owner writeback is LIVE + verified; RAILWAY_API_KEY enables self-verifying/setting deployed env (see docs/CAPABILITIES.md).
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md) — 15 open
-ASK-0007 satisfied this session; ASK-0002 open with the SuperBot-reuse recon note.
+ASK-0007 satisfied a prior session; ASK-0002 open with the SuperBot-reuse recon note. ASK-0010 (publish lumen-drift-v1.3) is the release the ORDER 033 drift banner surfaces.
 - ASK-0001 — answer Q-0004: where live bot control lives (or keep /admin dry-run).
 - ASK-0002 — create the Discord OAuth app for the future armed panel (after Q-0004). RECON 2026-07-18: 0/4 websites-repo services have Discord login; REUSE of the existing SuperBot Discord app is the recommended cheapest path vs a fresh one — pending owner preference. Still OPEN.
 - ASK-0003 — provision the scoped control-API token + separate armed Railway service (after Q-0004).
