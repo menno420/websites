@@ -1,26 +1,26 @@
 {
- "as_of": "2026-07-18T07:12:30Z",
+ "as_of": "2026-07-18T19:48:03Z",
  "source": "https://github.com/menno420/trading-strategy/blob/main/experiments/index.jsonl",
- "source_sha": "cefb25d36d950903129301d0e66f4863eb9566fd",
+ "source_sha": "32cbb5fcedbd49449702f8c5d4f16d4d3ac7e6b5",
  "source_sha_reason": "",
  "verdict_rule": "derived at bake time from the ledger's own fields \u2014 KEEP (dev-candidate only) when a run's stitched-OOS Sharpe beats its same-window buy-and-hold benchmark, KILL otherwise; PROMOTED requires the lab's closed validation protocol (holdout spent) and is 0 by the program's own record",
  "aggregate": {
-  "runs": 703,
-  "config_evals": 9218,
-  "skipped_ledger_lines": 0,
+  "runs": 719,
+  "config_evals": 9404,
+  "skipped_ledger_lines": 1,
   "verdicts": {
    "promoted": 0,
-   "keep": 249,
-   "kill": 454
+   "keep": 262,
+   "kill": 457
   },
-  "strategies": 34,
+  "strategies": 35,
   "instruments": 17,
   "timeframes": [
    "daily",
    "hourly"
   ],
   "best_sharpe": 2.435,
-  "median_sharpe": 0.711,
+  "median_sharpe": 0.719,
   "worst_sharpe": -1.243,
   "holdout_unlocked_runs": 13,
   "data_start": "1980-12-12 00:00:00",
@@ -47,6 +47,16 @@
     "cagr": 1.025,
     "max_drawdown": -0.195,
     "variants_tried": 44
+   },
+   {
+    "strategy": "drawdown_reversion",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 2.306,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.24,
+    "max_drawdown": -0.069,
+    "variants_tried": 12
    },
    {
     "strategy": "donchian",
@@ -109,6 +119,16 @@
     "variants_tried": 12
    },
    {
+    "strategy": "high_proximity",
+    "instrument": "NVDA",
+    "timeframe": "hourly",
+    "sharpe": 2.056,
+    "benchmark_sharpe": 1.949,
+    "cagr": 0.827,
+    "max_drawdown": -0.202,
+    "variants_tried": 12
+   },
+   {
     "strategy": "trix_momentum",
     "instrument": "NVDA",
     "timeframe": "hourly",
@@ -126,6 +146,16 @@
     "benchmark_sharpe": 1.949,
     "cagr": 0.69,
     "max_drawdown": -0.177,
+    "variants_tried": 12
+   },
+   {
+    "strategy": "high_proximity",
+    "instrument": "GLD",
+    "timeframe": "hourly",
+    "sharpe": 1.985,
+    "benchmark_sharpe": 1.702,
+    "cagr": 0.277,
+    "max_drawdown": -0.082,
     "variants_tried": 12
    },
    {
@@ -179,6 +209,16 @@
     "variants_tried": 12
    },
    {
+    "strategy": "drawdown_reversion",
+    "instrument": "SLV",
+    "timeframe": "hourly",
+    "sharpe": 1.831,
+    "benchmark_sharpe": 0.786,
+    "cagr": 0.114,
+    "max_drawdown": -0.026,
+    "variants_tried": 12
+   },
+   {
     "strategy": "adx_filtered_sma",
     "instrument": "GLD",
     "timeframe": "hourly",
@@ -186,46 +226,6 @@
     "benchmark_sharpe": 1.702,
     "cagr": 0.182,
     "max_drawdown": -0.087,
-    "variants_tried": 12
-   },
-   {
-    "strategy": "sma_crossover",
-    "instrument": "META",
-    "timeframe": "hourly",
-    "sharpe": 1.817,
-    "benchmark_sharpe": 1.463,
-    "cagr": 0.525,
-    "max_drawdown": -0.132,
-    "variants_tried": 44
-   },
-   {
-    "strategy": "stochastic_reversion",
-    "instrument": "META",
-    "timeframe": "hourly",
-    "sharpe": 1.792,
-    "benchmark_sharpe": 0.494,
-    "cagr": 0.219,
-    "max_drawdown": -0.09,
-    "variants_tried": 1
-   },
-   {
-    "strategy": "xsec_momentum",
-    "instrument": "XSEC-9",
-    "timeframe": "daily",
-    "sharpe": 1.777,
-    "benchmark_sharpe": 1.288,
-    "cagr": 0.8,
-    "max_drawdown": -0.528,
-    "variants_tried": 6
-   },
-   {
-    "strategy": "stochastic_reversion",
-    "instrument": "META",
-    "timeframe": "hourly",
-    "sharpe": 1.766,
-    "benchmark_sharpe": 1.463,
-    "cagr": 0.242,
-    "max_drawdown": -0.09,
     "variants_tried": 12
    }
   ],
@@ -391,6 +391,16 @@
     "variants_tried": 41
    },
    {
+    "strategy": "drawdown_reversion",
+    "instrument": "META",
+    "timeframe": "hourly",
+    "sharpe": 1.417,
+    "benchmark_sharpe": 1.463,
+    "cagr": 0.184,
+    "max_drawdown": -0.082,
+    "variants_tried": 12
+   },
+   {
     "strategy": "ema_crossover",
     "instrument": "META",
     "timeframe": "hourly",
@@ -419,16 +429,6 @@
     "cagr": 0.383,
     "max_drawdown": -0.182,
     "variants_tried": 41
-   },
-   {
-    "strategy": "donchian",
-    "instrument": "META",
-    "timeframe": "hourly",
-    "sharpe": 1.384,
-    "benchmark_sharpe": 1.463,
-    "cagr": 0.383,
-    "max_drawdown": -0.182,
-    "variants_tried": 1
    }
   ]
  },
@@ -462,6 +462,16 @@
    "best_sharpe": 2.332,
    "best_cagr": 1.025,
    "worst_max_drawdown": -0.781
+  },
+  {
+   "strategy": "high_proximity",
+   "runs": 23,
+   "config_evals": 276,
+   "keep": 15,
+   "kill": 8,
+   "best_sharpe": 2.056,
+   "best_cagr": 0.827,
+   "worst_max_drawdown": -0.598
   },
   {
    "strategy": "aroon_trend",
@@ -512,6 +522,16 @@
    "best_sharpe": 1.898,
    "best_cagr": 0.463,
    "worst_max_drawdown": -0.586
+  },
+  {
+   "strategy": "drawdown_reversion",
+   "runs": 22,
+   "config_evals": 264,
+   "keep": 10,
+   "kill": 12,
+   "best_sharpe": 2.306,
+   "best_cagr": 0.278,
+   "worst_max_drawdown": -0.815
   },
   {
    "strategy": "atr_trailing",
@@ -594,16 +614,6 @@
    "worst_max_drawdown": -0.617
   },
   {
-   "strategy": "high_proximity",
-   "runs": 15,
-   "config_evals": 180,
-   "keep": 7,
-   "kill": 8,
-   "best_sharpe": 1.444,
-   "best_cagr": 0.442,
-   "worst_max_drawdown": -0.598
-  },
-  {
    "strategy": "obv_trend",
    "runs": 23,
    "config_evals": 276,
@@ -642,16 +652,6 @@
    "best_sharpe": 1.242,
    "best_cagr": 0.479,
    "worst_max_drawdown": -0.543
-  },
-  {
-   "strategy": "drawdown_reversion",
-   "runs": 15,
-   "config_evals": 180,
-   "keep": 5,
-   "kill": 10,
-   "best_sharpe": 0.855,
-   "best_cagr": 0.278,
-   "worst_max_drawdown": -0.815
   },
   {
    "strategy": "macd",
@@ -742,6 +742,16 @@
    "best_sharpe": 1.07,
    "best_cagr": 0.473,
    "worst_max_drawdown": -0.834
+  },
+  {
+   "strategy": "xsec_drawdown",
+   "runs": 1,
+   "config_evals": 6,
+   "keep": 0,
+   "kill": 1,
+   "best_sharpe": 0.962,
+   "best_cagr": 0.274,
+   "worst_max_drawdown": -0.436
   },
   {
    "strategy": "xsec_reversal",
