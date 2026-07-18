@@ -1,0 +1,1 @@
+- `claude/nav-guard-siblings` — botsite/tests + dashboard/tests NAV-completeness guards (router-introspection, test-only) · 2026-07-18T18:09:03Z
