@@ -13,6 +13,16 @@
       availability label. A play or download link only appears when the game is really reachable.</p>
   </section>
 
+  {# Cross-link to the in-chat games surface (/games) — the mini-games and
+     casino modes that run right inside Discord channels, the counterpart to
+     this public arcade catalog. Mirrors the /games page's "Explore the Arcade"
+     strip; a GET nav link, no live data. #}
+  <p class="sb-muted section-sm" style="margin:14px 0 0">
+    <strong>In chat:</strong> mini-games and casino modes that run right in your channels
+    <span class="sep">·</span>
+    <a href="/games">Play in chat {{ icon("chevron", 12) }}</a>
+  </p>
+
   {% if arcade_games %}
   {# Availability summary strip — live vs blocked games and the distinct owner
      clicks among the blocked ones (arcade.availability_summary; static
