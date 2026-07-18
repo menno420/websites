@@ -113,7 +113,7 @@ jobs:
 
       - name: Commit and land the refreshed data
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.BAKE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "review-bake[bot]"
           git config user.email "review-bake@users.noreply.github.com"
