@@ -1,13 +1,13 @@
 # websites · status
 
-updated: 2026-07-18T20:44:34Z
+updated: 2026-07-18T21:26:09Z
 phase: Discord OAuth owner login flow landed on the control-plane (PR #426, ORDER 035 / ASK-0001 DECIDED). Branch brought up to date with origin/main (HEAD a84d8de) and the session card flipped complete.
 health: green — four service suites green (1947 passed); kit check --strict green once the session card flip releases this branch's designed born-red hold. Orphaned env-drift-flags claim cleared by the main merge (PR #429 merged).
 last-shipped: Discord OAuth owner login flow on the control-plane — PR #426 (app/discord_auth.py + app/templates/owner_login.html + the require_owner gate wiring + tests/test_discord_auth.py; fail-closed when env-unset). Branch merged current main a84d8de (B6 dashboard /env #427 + env-drift-flags claim clear #429), which deleted the orphaned control/claims/env-drift-flags.md that was tripping the drift gate in the PR merge-preview.
 blockers: none
 orders: acked=001-033,035 done=001-020,022-033,035 (021 open, owner-gated — the ORDER 021 owner-environments hub; 035 login half built and green this session, its remaining armed-write half owner-gated on ASK-0002/ASK-0003; 034 unused).
 routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` ARMED, still bound to the predecessor session (successor bridge by design); rebind rides the hub venue (this coordinator's trigger/send_later arming is classifier-denied 2026-07-18). send_later chain: none pending.
-landing: pushed-unmerged claude/discord-oauth-owner-gate — Discord OAuth login PR #426; auto-merge (squash) armed, lands on green; 0 other open coordinator PRs.
+landing: pushed-unmerged claude/wire-bake-pat — review-bake.yml BAKE_PAT wiring PR #434 (ASK-0008; landing step GH_TOKEN → `${{ secrets.BAKE_PAT || secrets.GITHUB_TOKEN }}`), READY (non-draft), session card flipped complete releasing the designed born-red hold; a `.github/workflows/**` hub-venue diff may need a hand to merge. Prior: claude/discord-oauth-owner-gate PR #426.
 deployed: origin/main at a84d8de · four Railway services live (control-plane-…-abb0 / botsite-…-cfd7 / dashboard-…-a91b / review-…-fc91, the superbot-websites project). Discord OAuth env still owner-unset → owner login stays fail-closed until ASK-0002.
 claims: control/claims/discord-oauth-owner-gate.md is this branch's own in-flight claim (removed at the closing flip per claims README step 4); nav-reachability-guard orphan removed by the main merge.
 needs-owner: the ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below). ASK-0001 is now DECIDED (ORDER 035); ASK-0002 narrowed to the SuperBot-app redirect URI + control-plane Railway env; ASK-0003 unblocked but owner-gated.
@@ -23,7 +23,7 @@ ASK-0001 DECIDED (ORDER 035); ASK-0010 + ASK-0011 satisfied on claude/lumen-drif
 - ASK-0004 — create the botsite submissions PostgreSQL + connection string.
 - ASK-0005 — set up PayPal Payouts + put its two credentials on the botsite service.
 - ASK-0006 — decide the unwired SITE_PASSWORD on the botsite Railway service (wire or remove).
-- ASK-0008 — extend the O-020 PAT with PR write + store as BAKE_PAT Actions secret (only the BAKE_PAT Actions-secret half remains open).
+- ASK-0008 — BAKE_PAT Actions secret added by owner; review-bake.yml landing-step GH_TOKEN now flipped to prefer it in PR #434 (pending merge + post-merge PAT-path proof).
 - ASK-0009 — delete the unused SITE_PASSWORD variable from the dashboard service.
 - ASK-0012 — run the Gumroad publish pass for the ten publish-ready titles/products (details in docs/owner/OWNER-ACTIONS.md).
 - ASK-0013 — hand off the full-res photo originals for the two wallpaper packs (details in docs/owner/OWNER-ACTIONS.md).

@@ -1998,3 +1998,14 @@
   bare canonical reference to a dead domain is a broken promise to a
   reader. Source:
   `.sessions/2026-07-18-consolidation-cutover-plan.md` 💡.
+
+- **Visible BAKE_PAT-vs-fallback line in the review-bake landing step** ·
+  `captured` (2026-07-18, wire-bake-pat session 💡) — after the landing step
+  was switched to `GH_TOKEN: ${{ secrets.BAKE_PAT || secrets.GITHUB_TOKEN }}`,
+  a reverted/expired `BAKE_PAT` silently resumes the old blocked-PR behavior
+  with no signal. A one-line `echo` into `$GITHUB_STEP_SUMMARY` reporting which
+  identity the landing step used (guarded so it never prints the secret) turns
+  that silent regression into a visible run-summary line. Why: the `||`
+  fallback is safe but invisible; a dead-secret regression should be a run
+  signal, not a mystery blocked PR. Source:
+  `.sessions/2026-07-18-wire-bake-pat.md` 💡.

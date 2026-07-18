@@ -1,13 +1,13 @@
 # 2026-07-18 — wire BAKE_PAT into review-bake landing step (ASK-0008)
 
-> **Status:** `in-progress` — branch `claude/wire-bake-pat`; flips the
+> **Status:** `complete` — branch `claude/wire-bake-pat`, PR #434; flipped the
 > landing step's `GH_TOKEN` in `.github/workflows/review-bake.yml` to prefer
 > the owner-added `BAKE_PAT` secret (falling back to `GITHUB_TOKEN`) so the
 > scheduled bake PR is authored by the PAT identity, gets a real
-> `pull_request` quality run, and auto-merges on green. Born red; flips to
+> `pull_request` quality run, and auto-merges on green. Born red; flipped to
 > `complete` as the deliberate LAST code step.
 
-- **📊 Model:** [[fill: family-only model line at flip]]
+- **📊 Model:** Claude Opus family · medium · mechanical refactor
 
 **What this session is about:** The scheduled `review-bake` workflow lands its
 data-refresh PR with the Actions `GITHUB_TOKEN`. A PR created with that token
@@ -41,8 +41,10 @@ Work-ladder rung: order — fm ORDER 048 + live owner action (owner added the
 - `control/claims/wire-bake-pat.md` — work claim for this branch (deleted in
   the flip commit so it merges away with the PR).
 - Verified: `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q`
-  — [[fill: N passed at flip]]; `python3 bootstrap.py check --strict` —
-  [[fill: verdict at flip]].
+  — **1969 passed** (exit 0); `python3 bootstrap.py check --strict` — green
+  except the DESIGNED born-red hold on this card (confirmed as the single CI
+  finding on PR #434, run 29661461089: `[session-card-hold]` — "designed hold,
+  not a defect"), released at this flip.
 
 **Verify plan:** four-suite (`tests/ botsite/tests dashboard/tests
 review/tests`) + `bootstrap.py check --strict` before flip; post-merge, a
@@ -51,8 +53,20 @@ authored by the PAT identity and gets a real `pull_request` quality run.
 
 ## 💡 Session idea
 
-[[fill: genuine one-line idea + why worth having, deduped, at flip]]
+**A `secrets.BAKE_PAT != ''` self-check line in the review-bake landing step.**
+The workflow now silently falls back to `GITHUB_TOKEN` when `BAKE_PAT` is unset
+— safe, but invisible: a reverted/expired secret would quietly resume the old
+blocked-PR behavior with no signal. Worth having because a one-line
+`echo "landing as: ${BAKE_PAT_PRESENT:-GITHUB_TOKEN fallback}"` (guarded so it
+never prints the secret) into `$GITHUB_STEP_SUMMARY` turns a silent regression
+into a visible run-summary line. Deduped against `docs/ideas/backlog.md` + the
+NEXT list: not present. Captured in `docs/ideas/backlog.md`.
 
 ## ⟲ Previous-session review
 
-[[fill: one-line remark on release-drift-banner card at flip]]
+`.sessions/2026-07-18-release-drift-banner.md` did well to keep the ORDER 033
+diff product-only and explicitly defer the review-bake **workflow wiring** to
+the hub venue (naming this exact follow-up) — a clean scope boundary; it did
+trip the PL-004 model-line advisory (`high effort` / a non-taxonomy task-class),
+a small format miss this card avoids by using the taught `<effort> · <class>`
+form.
