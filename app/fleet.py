@@ -751,7 +751,9 @@ async def overview(
     lanes concurrently (cache-backed) against a single ``now`` so every age is
     measured from the same instant. Returns the lane list plus roll-up counts
     (total / live / stale / broken / errored / no-file) so the page can show one
-    glanceable header line. ``now`` is injectable (defaults to wall clock,
+    glanceable header line — each count paired with a member list (the lanes
+    behind it) so the page can drill each count down to its lanes. ``now`` is
+    injectable (defaults to wall clock,
     same convention as every other age-measuring function here) so tests
     with fixed heartbeat stamps stay deterministic instead of time-bombing
     when the fixtures cross the stale threshold."""
@@ -764,30 +766,85 @@ async def overview(
     )
     lanes.sort(key=_sort_key)
 
-    summary = {
-        "total": len(lanes),
-        "healthy": sum(
-            1
+    # Per-count drill-down member lists (owner ask 2026-07-18): every fleet
+    # summary count is a tappable drill-down to the lanes behind it, so a count
+    # and its member list are derived TOGETHER here — a count can never disagree
+    # with the list the page expands under it (one source of truth). Each entry
+    # carries {lane, repo} so the template can deep-link to the lane's card
+    # anchor; stranded/outstanding also carry the branch / order-id detail the
+    # drill-down shows. Pure presentation over already-fetched lanes — no new
+    # fetch, no new state, no CSRF surface.
+    def _members(pred) -> list[dict[str, str]]:
+        return [
+            {"lane": lane["lane"], "repo": lane["repo"]}
             for lane in lanes
-            if lane["health"]["kind"] in ("ok", "design")
-            and not lane["freshness"].get("stale")
-            and not lane["fetch_error"]
-        ),
-        "stale": sum(1 for lane in lanes if lane["freshness"].get("stale")),
-        "broken": sum(1 for lane in lanes if lane["health"]["kind"] == "broken"),
-        "errored": sum(1 for lane in lanes if lane["fetch_error"]),
-        "no_file": sum(1 for lane in lanes if lane["missing"]),
+            if pred(lane)
+        ]
+
+    total_lanes = _members(lambda lane: True)
+    live_lanes = _members(
+        lambda lane: lane["health"]["kind"] in ("ok", "design")
+        and not lane["freshness"].get("stale")
+        and not lane["fetch_error"]
+    )
+    stale_lanes = _members(lambda lane: lane["freshness"].get("stale"))
+    broken_lanes = _members(lambda lane: lane["health"]["kind"] == "broken")
+    errored_lanes = _members(lambda lane: lane["fetch_error"])
+    no_file_lanes = _members(lambda lane: lane["missing"])
+    silent_routine_lanes = _members(lambda lane: lane["routine_info"]["silent"])
+    stranded_lanes = [
+        {
+            "lane": lane["lane"],
+            "repo": lane["repo"],
+            "branch": lane["landing_info"]["branch"],
+            "kind": lane["landing_info"]["kind"],
+        }
+        for lane in lanes
+        if lane["landing_info"]["attention"]
+    ]
+    outstanding_order_lanes = [
+        {
+            "lane": lane["lane"],
+            "repo": lane["repo"],
+            "ids": lane["orders_info"]["outstanding"],
+        }
+        for lane in lanes
+        if lane["orders_info"]["outstanding"]
+    ]
+
+    summary = {
+        # Counts derived from the member lists above so the badge and its
+        # drill-down can never disagree.
+        "total": len(total_lanes),
+        "healthy": len(live_lanes),
+        "stale": len(stale_lanes),
+        "broken": len(broken_lanes),
+        "errored": len(errored_lanes),
+        "no_file": len(no_file_lanes),
         # Enriched-field roll-ups (0 when no lane writes the optional lines).
-        "stranded": sum(1 for lane in lanes if lane["landing_info"]["attention"]),
-        "silent_routines": sum(1 for lane in lanes if lane["routine_info"]["silent"]),
+        "stranded": len(stranded_lanes),
+        "silent_routines": len(silent_routine_lanes),
+        # outstanding_orders counts ORDER IDs (a lane can have several), not
+        # lanes — the sum of every lane's outstanding-id list.
         "outstanding_orders": sum(
-            len(lane["orders_info"]["outstanding"]) for lane in lanes
+            len(entry["ids"]) for entry in outstanding_order_lanes
         ),
         # kit-version rollup (idea: kit rollup on /fleet) — pure presentation
         # over the already-parsed `kit:` lines: version → lane count, plus a
         # `none` bucket for readable lanes whose heartbeat carries no kit
         # line. Sorted most-common-first for the header badge.
         "kit_versions": kit_rollup(lanes),
+        # Drill-down member lists: "which lanes are behind this count?" Each
+        # summary count above has a matching list here (see docstring).
+        "total_lanes": total_lanes,
+        "live_lanes": live_lanes,
+        "stale_lanes": stale_lanes,
+        "broken_lanes": broken_lanes,
+        "errored_lanes": errored_lanes,
+        "no_file_lanes": no_file_lanes,
+        "stranded_lanes": stranded_lanes,
+        "silent_routine_lanes": silent_routine_lanes,
+        "outstanding_order_lanes": outstanding_order_lanes,
     }
     return {
         "lanes": lanes,

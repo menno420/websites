@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 {% block title %}fleet heartbeat{% endblock %}
 {% block headright %}<a href="/fleet.json">json</a> · <a href="/fleet?refresh=1">refresh now</a>{% endblock %}
+{#- A count badge that drills down inline to the lanes behind it (owner ask
+    2026-07-18). A non-empty member list renders an expandable <details>
+    (caret affordance, no CSRF, no JS); an empty list renders a flat, honest
+    non-interactive `.tag` badge so a zero count never dangles a dead expander.
+    Each member deep-links to its lane's card anchor (id="lane-<repo>"). -#}
+{% macro count_drill(cls, label, members) -%}
+{%- if members -%}
+<details class="drill"><summary><span class="b {{ cls }}">{{ label }}</span></summary>
+  <div class="drill-list">{% for m in members %}<a href="#lane-{{ m.repo }}">{{ m.lane }}</a>{{ ", " if not loop.last }}{% endfor %}</div>
+</details>
+{%- else -%}
+<span class="b {{ cls }} tag">{{ label }}</span>
+{%- endif -%}
+{% endmacro -%}
 {% block content %}
 {% include "_autorefresh.html" %}
 <div id="live-content">
@@ -16,7 +30,7 @@
     {{ f.stale_hours }}h badges <span class="b warn">stale</span>; a lane with no status
     file yet shows an honest absence, not an error.</p>
   {% if f.lane_source.source == 'registry' %}
-  <p class="dim small">lane set: <span class="b ok">live from registry</span> —
+  <p class="dim small">lane set: <span class="b ok tag">live from registry</span> —
     {{ f.lane_source.count }} lanes parsed from the
     <a href="{{ f.registry_url }}">fleet-manager registry ↗</a>.</p>
   {% else %}
@@ -25,17 +39,29 @@
     ({{ f.lane_source.reason }}); showing the last hand-kept lane copy. The lanes are
     real; only the SET may be stale until the registry is reachable again.</div>
   {% endif %}
-  <p class="small">
-    <span class="b repo">{{ f.summary.total }} lanes</span>
-    <span class="b ok">{{ f.summary.healthy }} live</span>
-    {% if f.summary.stale %}<span class="b warn">{{ f.summary.stale }} stale</span>{% endif %}
-    {% if f.summary.broken %}<span class="b bad">{{ f.summary.broken }} broken</span>{% endif %}
-    {% if f.summary.errored %}<span class="b bad">{{ f.summary.errored }} unreachable</span>{% endif %}
-    {% if f.summary.no_file %}<span class="b unknown">{{ f.summary.no_file }} no status file</span>{% endif %}
-    {% if f.summary.stranded %}<span class="b warn">{{ f.summary.stranded }} stranded landing{{ 's' if f.summary.stranded != 1 }}</span>{% endif %}
-    {% if f.summary.silent_routines %}<span class="b warn">{{ f.summary.silent_routines }} silent routine{{ 's' if f.summary.silent_routines != 1 }}</span>{% endif %}
-    {% if f.summary.outstanding_orders %}<span class="b warn">{{ f.summary.outstanding_orders }} outstanding order{{ 's' if f.summary.outstanding_orders != 1 }}</span>{% endif %}
-  </p>
+  {#- The summary strip: each count is a drill-down to the lanes behind it
+      (tap `12 stale` → see WHICH lanes are stale). A .drillrow flex container
+      lets an opened expander take its own full-width row while the closed
+      badges stay a compact strip. -#}
+  <div class="drillrow small">
+    {{ count_drill('repo', f.summary.total ~ ' lanes', f.summary.total_lanes) }}
+    {{ count_drill('ok', f.summary.healthy ~ ' live', f.summary.live_lanes) }}
+    {% if f.summary.stale %}{{ count_drill('warn', f.summary.stale ~ ' stale', f.summary.stale_lanes) }}{% endif %}
+    {% if f.summary.broken %}{{ count_drill('bad', f.summary.broken ~ ' broken', f.summary.broken_lanes) }}{% endif %}
+    {% if f.summary.errored %}{{ count_drill('bad', f.summary.errored ~ ' unreachable', f.summary.errored_lanes) }}{% endif %}
+    {% if f.summary.no_file %}{{ count_drill('unknown', f.summary.no_file ~ ' no status file', f.summary.no_file_lanes) }}{% endif %}
+    {% if f.summary.stranded %}
+    <details class="drill"><summary><span class="b warn">{{ f.summary.stranded }} stranded landing{{ 's' if f.summary.stranded != 1 }}</span></summary>
+      <div class="drill-list">{% for m in f.summary.stranded_lanes %}<a href="#lane-{{ m.repo }}">{{ m.lane }}</a>{% if m.branch %} <code>{{ m.branch }}</code>{% endif %} <span class="dim">({{ m.kind }})</span>{{ ", " if not loop.last }}{% endfor %}</div>
+    </details>
+    {% endif %}
+    {% if f.summary.silent_routines %}{{ count_drill('warn', f.summary.silent_routines ~ ' silent routine' ~ ('s' if f.summary.silent_routines != 1 else ''), f.summary.silent_routine_lanes) }}{% endif %}
+    {% if f.summary.outstanding_orders %}
+    <details class="drill"><summary><span class="b warn">{{ f.summary.outstanding_orders }} outstanding order{{ 's' if f.summary.outstanding_orders != 1 }}</span></summary>
+      <div class="drill-list">{% for m in f.summary.outstanding_order_lanes %}<a href="#lane-{{ m.repo }}">{{ m.lane }}</a>: {{ m.ids | join(', ') }}{{ " · " if not loop.last }}{% endfor %}</div>
+    </details>
+    {% endif %}
+  </div>
   {% if f.summary.kit_versions %}
   <p class="dim small">kit adoption:
     {% for kv in f.summary.kit_versions %}{{ kv.count }}×{{ kv.version }}{{ " · " if not loop.last }}{% endfor %}
@@ -47,29 +73,29 @@
      listing unreadable = coverage UNKNOWN, never a fabricated zero. #}
   <p class="small">seat packages:
     {% if cov.state != 'ok' %}
-    <span class="b unknown" title="{{ cov.reason }}">coverage unknown</span>
+    <span class="b unknown tag" title="{{ cov.reason }}">coverage unknown</span>
     <span class="dim">— {{ cov.reason }}; nothing is assumed complete.</span>
     {% elif cov.incomplete %}
-    <span class="b warn" title="seats missing a dispatch-critical role file (instructions / coordinator / failsafe)">packages incomplete: {{ cov.incomplete }}</span>
-    <span class="dim">—
-      {% for n in cov.incomplete_names %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
-      · chips per seat on <a href="/projects">/projects</a></span>
-    {% if cov.unlistable %}<span class="b unknown" title="{{ cov.unlistable_names | join(', ') }}">+{{ cov.unlistable }} unlistable — coverage unknown</span>{% endif %}
+    <details class="drill"><summary><span class="b warn" title="seats missing a dispatch-critical role file (instructions / coordinator / failsafe)">packages incomplete: {{ cov.incomplete }}</span></summary>
+      <div class="drill-list">{% for n in cov.incomplete_names %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+        · role chips per seat on <a href="/projects">/projects</a></div>
+    </details>
+    {% if cov.unlistable %}<span class="b unknown tag" title="{{ cov.unlistable_names | join(', ') }}">+{{ cov.unlistable }} unlistable — coverage unknown</span>{% endif %}
     {% elif cov.unlistable %}
-    <span class="b unknown" title="{{ cov.unlistable_names | join(', ') }}">coverage unknown for {{ cov.unlistable }} seat{{ 's' if cov.unlistable != 1 }}</span>
+    <span class="b unknown tag" title="{{ cov.unlistable_names | join(', ') }}">coverage unknown for {{ cov.unlistable }} seat{{ 's' if cov.unlistable != 1 }}</span>
     <span class="dim">— the package listing{{ 's' if cov.unlistable != 1 }} could not be fetched; never assumed complete.</span>
     {% else %}
-    <span class="b ok" title="every active seat package carries instructions + coordinator + failsafe">coverage: complete ({{ cov.seats }} seat{{ 's' if cov.seats != 1 }})</span>
+    <span class="b ok tag" title="every active seat package carries instructions + coordinator + failsafe">coverage: complete ({{ cov.seats }} seat{{ 's' if cov.seats != 1 }})</span>
     {% endif %}
   </p>
 </div>
 
 {% for l in f.lanes %}
-<div class="card">
+<div class="card" id="lane-{{ l.repo }}">
   <div class="rowhead">
     <h2>{{ l.lane }}
-      <span class="b {{ l.health.badge }}">{{ l.health.label }}</span>
-      {% if l.freshness.stale %}<span class="b warn">stale</span>{% endif %}
+      <span class="b {{ l.health.badge }} tag">{{ l.health.label }}</span>
+      {% if l.freshness.stale %}<span class="b warn tag">stale</span>{% endif %}
       <span class="dim small">·
         <a href="{{ l.repo_url }}">{{ l.repo }}</a>
         {% if l.model and l.model != 'unknown' %}· {{ l.model }}{% endif %}
@@ -87,7 +113,7 @@
      {% if l.note %}<br><span class="note">{{ l.note }}</span>{% endif %}</p>
   {% else %}
 
-  <table>
+  <table class="kv">
     <tr><th>updated</th><td>
       {% if l.fields.updated %}{{ l.fields.updated }}{% else %}<span class="dim">—</span>{% endif %}
       <span class="dim small">· {{ l.freshness.age_human }}</span></td></tr>
@@ -96,24 +122,24 @@
     <tr><th>blockers</th><td>{{ l.fields.blockers or '—' }}</td></tr>
     <tr><th>orders</th><td>{{ l.fields.orders or '—' }}
       {% if l.orders_info.ok %}
-        {% if l.orders_info.outstanding %}<span class="b warn">outstanding: {{ l.orders_info.outstanding | join(', ') }}</span>
-        {% else %}<span class="b ok">all acked done</span>{% endif %}
+        {% if l.orders_info.outstanding %}<span class="b warn tag">outstanding: {{ l.orders_info.outstanding | join(', ') }}</span>
+        {% else %}<span class="b ok tag">all acked done</span>{% endif %}
       {% endif %}</td></tr>
     {% if l.fields.routine %}
     <tr><th>routine</th><td>{{ l.fields.routine }}
-      {% if l.routine_info.silent %}<span class="b warn">armed but no fire in {{ l.routine_info.fired_age_human }}</span>
-      {% elif l.routine_info.no_fire_recorded %}<span class="b unknown">no fire recorded yet</span>{% endif %}</td></tr>
+      {% if l.routine_info.silent %}<span class="b warn tag">armed but no fire in {{ l.routine_info.fired_age_human }}</span>
+      {% elif l.routine_info.no_fire_recorded %}<span class="b unknown tag">no fire recorded yet</span>{% endif %}</td></tr>
     {% endif %}
     {% if l.fields.landing %}
     <tr><th>landing</th><td>{{ l.fields.landing }}
-      {% if l.landing_info.kind == 'local' %}<span class="b bad">LOCAL-ONLY — stranded work</span>
-      {% elif l.landing_info.kind == 'pushed' %}<span class="b warn">pushed, unmerged — rescue candidate</span>
-      {% elif l.landing_info.kind == 'clean' %}<span class="b ok">all merged</span>{% endif %}</td></tr>
+      {% if l.landing_info.kind == 'local' %}<span class="b bad tag">LOCAL-ONLY — stranded work</span>
+      {% elif l.landing_info.kind == 'pushed' %}<span class="b warn tag">pushed, unmerged — rescue candidate</span>
+      {% elif l.landing_info.kind == 'clean' %}<span class="b ok tag">all merged</span>{% endif %}</td></tr>
     {% endif %}
     {% if l.fields.deployed %}<tr><th>deployed</th><td>{{ l.fields.deployed }}</td></tr>{% endif %}
     {% if l.fields.rung %}<tr><th>rung</th><td>{{ l.fields.rung }}</td></tr>{% endif %}
     {% if l.fields.tooling %}<tr><th>tooling</th><td>{{ l.fields.tooling }}
-      {% if 'ritual-only' in l.fields.tooling %}<span class="b warn">cannot land work</span>{% endif %}</td></tr>{% endif %}
+      {% if 'ritual-only' in l.fields.tooling %}<span class="b warn tag">cannot land work</span>{% endif %}</td></tr>{% endif %}
     {% if l.fields.kit %}<tr><th>kit</th><td>{{ l.fields.kit }}</td></tr>{% endif %}
     <tr><th>⚑ needs-owner</th><td>
       {% if l.fields['needs-owner'] %}<span class="note">{{ l.fields['needs-owner'] }}</span>

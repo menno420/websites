@@ -160,6 +160,38 @@ details.pagehelp > summary::before { content:"ⓘ "; }
 .copywrap .copy-btn:hover { border-color:var(--blue); color:var(--blue); }
 .copywrap pre { background:var(--bg); border:1px solid var(--border); border-radius:6px;
      padding:.7rem; overflow-x:auto; font-size:13px; margin-top:.3rem; }
+/* /fleet count-badge drill-downs (owner ask 2026-07-18): each summary count
+   is a tappable <details> that expands inline to the lanes behind it. A caret
+   INSIDE the pill marks it expandable without needing hover (i.e. it reads as
+   interactive on a phone); informational `.b.tag` pills drop the outlined,
+   button-ish look so ONLY real drill-downs read as interactive. The .drillrow
+   flex container keeps closed badges a compact strip but lets an opened
+   expander take its own full-width row (details[open] { flex-basis:100% }). */
+.drillrow { display:flex; flex-wrap:wrap; gap:.4rem .5rem; align-items:baseline;
+     margin:.4rem 0 .1rem; }
+details.drill { display:inline-block; }
+details.drill[open] { flex-basis:100%; }
+details.drill > summary { cursor:pointer; list-style:none; display:inline-block; }
+details.drill > summary::-webkit-details-marker { display:none; }
+details.drill > summary .b::after { content:" \25B8"; color:var(--dim); }
+details.drill[open] > summary .b::after { content:" \25BE"; }
+details.drill > summary:hover .b { border-color:var(--blue); color:var(--blue); }
+details.drill > summary:hover .b::after { color:var(--blue); }
+.drill-list { margin:.3rem 0 .2rem; padding:.35rem .55rem; font-size:12px;
+     line-height:1.9; color:var(--fg); background:var(--bg);
+     border:1px solid var(--border); border-radius:6px; overflow-wrap:anywhere; }
+.drill-list code { background:var(--panel); padding:.05rem .3rem; border-radius:4px; }
+/* informational pills: a colored status TAG, not a button — no outline, no
+   pointer, so the owner stops tapping things that were never interactive. */
+.b.tag { border-color:transparent; cursor:default; }
+/* /fleet per-seat status cards (owner ask 2026-07-18): the 2-column key/value
+   table. Long monospace values (heartbeat prose, `done=` lines, trigger IDs,
+   tool + branch names) WRAP instead of clipping behind a phone-width
+   horizontal scrollbar; the label column reads at a legible contrast rather
+   than the faint --dim grey. The wide-table min-width scroll rule (below, in
+   the phone media query) is overridden here so the kv table shrinks to fit. */
+table.kv th { color:#c9d1d9; white-space:nowrap; }
+table.kv td { overflow-wrap:anywhere; word-break:break-word; }
 /* supersession warnings (/prompts + dispatch + history): red unmissable
    banner on artifacts whose OWN header says superseded/do-not-paste, and a
    red border on the demoted (still copyable) paste body. */
@@ -177,6 +209,10 @@ pre.superseded, .copywrap pre.superseded { border:1px solid var(--red); }
   .card h2 { font-size:15px; }
   /* wide tables scroll inside their card rather than squashing/overflowing */
   .card table { min-width:520px; }
+  /* …except the /fleet key/value status table, which wraps to fit instead of
+     forcing a horizontal scrollbar that clips long monospace values (owner
+     ask 2026-07-18). */
+  .card table.kv { min-width:0; }
   .card .searchbox, .card .searchbox input { min-width:0; }
   .md { font-size:14px; max-width:100%; }
   .md table { min-width:480px; }
