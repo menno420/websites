@@ -26,7 +26,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -44,6 +44,7 @@ from . import stripe_gotchas as stripe_gotchas_registry
 from . import webhook_analyzer as webhook_analyzer_registry
 from . import listfilter
 from . import testing
+from . import submissions_store
 
 BASE_DIR = Path(__file__).resolve().parent
 NAV = [
@@ -546,17 +547,48 @@ async def submit_form(request: Request):
 
 
 @app.post("/submit", response_class=HTMLResponse)
-async def submit_post(request: Request):
-    # INTAKE STUB (owner-deferred Q5): the submissions Postgres is not provisioned in
-    # superbot-websites yet, so there is no write target. Rather than fake acceptance,
-    # the form honestly reports the intake is not live. When the submissions DB + role
-    # is provisioned, this handler INSERTs one pending row (INSERT-only DSN, the only
-    # secret this public surface may ever hold) and mirrors to a GitHub issue on
-    # moderation — exactly superbot's flow, re-provisioned. See docs/botsite.md.
+async def submit_post(request: Request, _: None = Depends(testing.guard_state_change)):
+    # Durable intake (ORDER 034 / ASK-0004): when DATABASE_URL is configured the
+    # public /submit form persists one pending row to the submissions database
+    # (Postgres in production, SQLite in tests). Without DATABASE_URL the intake
+    # is not live and the form honestly says so -- no fake acceptance. The POST is
+    # guarded (same-origin + rate limit) because it now changes state.
     res = await ds.fetch_site()
+    form = await request.form()
+    kind = str(form.get("kind") or "").strip().lower()[:40]
+    if kind not in submissions_store.KINDS:
+        kind = submissions_store.KINDS[0]
+    title = str(form.get("title") or "").strip()[:120]
+    body = str(form.get("body") or "").strip()[:5000]
+    live = submissions_store.is_live()
+    stored = None
+    if live and title and body:
+        try:
+            stored = submissions_store.create_submission(kind, title, body)
+        except Exception:  # pragma: no cover - a DB hiccup must not 500 a public page
+            stored = None
     ctx = _base_ctx(request, "submit", res)
-    ctx.update({"submitted": True, "intake_live": False})
+    ctx.update(
+        {
+            "submitted": True,
+            "intake_live": live,
+            "accepted": stored is not None,
+            "missing_fields": live and not (title and body),
+        }
+    )
     return templates.TemplateResponse(request, "submit.html", ctx)
+
+
+@app.get("/submit/queue.json")
+async def submit_queue(request: Request, _: None = Depends(testing.require_owner)):
+    """Owner-authed moderation queue -- the read-back seed for ASK-0004. The
+    GitHub-issue mirror on moderation is the follow-up build."""
+    return JSONResponse(
+        {
+            "live": submissions_store.is_live(),
+            "submissions": submissions_store.list_submissions(),
+        }
+    )
 
 
 @app.get("/palette.json")

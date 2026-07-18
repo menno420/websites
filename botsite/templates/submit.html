@@ -12,16 +12,31 @@
   </section>
 
   {% if submitted %}
-  <div class="sb-lane-pending section-sm">
-    <div class="head">{{ icon("inbox", 16) }}<h4>Submissions intake is not live yet</h4></div>
-    <p>Thanks — but to be honest with you: the public submission pipeline (a moderated
-      queue that mirrors approved items to GitHub) is <strong>not yet provisioned</strong>
-      on this site, so your message was <strong>not stored</strong>. This is a known
-      open item, deferred to the site owner. Nothing here pretends to have saved it.</p>
-    <span class="feed">intake: pending · needs submissions Postgres + moderation service (plan Q5)</span>
-    <p style="margin-top:14px">In the meantime, open an issue directly on the bot's repo:</p>
-    <a class="sb-btn sb-btn-ghost sb-btn-sm" href="https://github.com/menno420/superbot/issues/new" target="_blank" rel="noopener">Open a GitHub issue {{ icon("external", 15) }}</a>
-  </div>
+    {% if accepted %}
+    <div class="sb-lane-pending section-sm">
+      <div class="head">{{ icon("inbox", 16) }}<h4>Thanks — your submission was received</h4></div>
+      <p>Your submission is <strong>saved</strong> and queued for moderation. It will be
+        reviewed before anything is published. Nothing else is needed from you.</p>
+      <span class="feed">intake: live · submission stored, pending review</span>
+    </div>
+    {% elif missing_fields %}
+    <div class="sb-lane-pending section-sm">
+      <div class="head">{{ icon("alert", 16) }}<h4>Please add a title and a description</h4></div>
+      <p>Both a title and a description are required so we can act on your submission.</p>
+      <a class="sb-btn sb-btn-ghost sb-btn-sm" href="/submit">Back to the form</a>
+    </div>
+    {% else %}
+    <div class="sb-lane-pending section-sm">
+      <div class="head">{{ icon("inbox", 16) }}<h4>Submissions intake is not live yet</h4></div>
+      <p>Thanks — but to be honest with you: the public submission pipeline (a moderated
+        queue that mirrors approved items to GitHub) is <strong>not yet provisioned</strong>
+        on this site, so your message was <strong>not stored</strong>. This is a known
+        open item, deferred to the site owner. Nothing here pretends to have saved it.</p>
+      <span class="feed">intake: pending · needs submissions Postgres + moderation service (plan Q5)</span>
+      <p style="margin-top:14px">In the meantime, open an issue directly on the bot's repo:</p>
+      <a class="sb-btn sb-btn-ghost sb-btn-sm" href="https://github.com/menno420/superbot/issues/new" target="_blank" rel="noopener">Open a GitHub issue {{ icon("external", 15) }}</a>
+    </div>
+    {% endif %}
   {% else %}
   <form class="section-sm" method="post" action="/submit">
     <div class="sb-field">

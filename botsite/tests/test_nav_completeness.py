@@ -20,6 +20,7 @@ NON_PAGE_PATHS = {
     "/favicon.ico",
     "/palette.json",
     "/testing/owner/export.json",
+    "/submit/queue.json",
 }
 
 # Real HTML pages that are reachable but deliberately NOT in the top nav
