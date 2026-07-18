@@ -8,6 +8,8 @@ loudly, and forces every new top-level GET route to be classified as one of:
 a nav page (NAV), a non-page endpoint (NON_PAGE_PATHS), or a real page that is
 intentionally kept out of the top nav (PAGES_NOT_IN_NAV).
 """
+from fastapi.testclient import TestClient
+
 from botsite.app import NAV, app
 
 # GET routes that are not pages: health/probe endpoints, machine-readable
@@ -34,6 +36,20 @@ PAGES_NOT_IN_NAV = {
 }
 
 NAV_PATHS = {entry[2] for entry in NAV}
+
+# Documented reachable status for any off-nav page that does NOT return a plain
+# 200. Maps a PAGES_NOT_IN_NAV path to its expected status: an int pins an exact
+# status, a set allows a small documented range where the status is genuinely
+# environment-dependent. Every off-nav path absent from this dict must return
+# 200. A 404 or 500 is never allowed here — that is the route-rot this guard
+# exists to catch.
+OFF_NAV_EXPECTED_STATUS = {
+    # Gated owner queue, fail-closed auth (botsite/testing.py::require_owner,
+    # mirroring app/owner.py): 503 when SITE_PASSWORD is unset (the default in
+    # tests/CI), 401 when it is set but no/wrong Basic auth is sent. Both are
+    # the intentional auth gate — the page is reachable, never a broken route.
+    "/testing/owner": {401, 503},
+}
 
 
 def _iter_get_routes(router):
@@ -74,3 +90,25 @@ def test_classification_lists_have_no_stale_entries():
     paths = _top_level_get_paths()
     stale = (NON_PAGE_PATHS | PAGES_NOT_IN_NAV) - paths
     assert not stale, f"classification lists name unregistered paths: {sorted(stale)}"
+
+
+def test_off_nav_pages_still_reachable():
+    """Every intentional off-nav page still RESPONDS with its documented status.
+
+    Classification (the tests above) proves a page's route is *registered*;
+    this proves it still *responds*. A route can stay registered while throwing
+    at request time, so an off-nav page (home, /design, the gated owner queue)
+    could silently 404/500 while PAGES_NOT_IN_NAV still names it as a live page.
+    This GETs each one and pins its documented reachable status, so that rot
+    fails loudly. Redirects are not followed so a 3xx is observed as a 3xx.
+    """
+    with TestClient(app) as client:
+        for path in sorted(PAGES_NOT_IN_NAV):
+            resp = client.get(path, follow_redirects=False)
+            expected = OFF_NAV_EXPECTED_STATUS.get(path, 200)
+            allowed = {expected} if isinstance(expected, int) else set(expected)
+            assert resp.status_code in allowed, (
+                f"off-nav page {path!r} returned {resp.status_code}; expected "
+                f"{sorted(allowed)} — a page listed in PAGES_NOT_IN_NAV must "
+                "stay reachable (never a silent 404/500)"
+            )
