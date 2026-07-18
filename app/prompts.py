@@ -111,7 +111,7 @@ from .projects import ROOT as _REGISTRY_ROOT
 # (``app/roster.py``). Verified live per seat (2026-07-12; curious-research
 # 2026-07-13): projects/<seat>/{coordinator-prompt.md,instructions.md,
 # failsafe-prompt.md} all present upstream for every pinned seat.
-from .roster import SEATS  # noqa: F401
+from .roster import NON_SEAT_DIRS, SEATS  # noqa: F401
 
 # The three per-seat registry artifacts ORDER 014 names, as
 # (filename, human label) — len(SEATS) x 3 per-seat artifacts.
@@ -127,8 +127,14 @@ SEAT_FILES: tuple[tuple[str, str], ...] = (
 # drowned among the per-seat prompts, which repeat that phrase in their
 # bodies). The session-ender's own header says "THIS file stays the
 # canonical single source" (v3.3, verified live 2026-07-13) — current.
+# universal-continue.md is the CURRENT mid-life RESUME artifact (owner-directed
+# 2026-07-18): pasted to an EXISTING project to resume after a night run /
+# new instructions / a stall — NOT a cold-start. It takes over the resume role
+# the retired universal-startup.md (demoted to HISTORICAL below) used to hint
+# at; verified live on fleet-manager@main 2026-07-18.
 FLEET_WIDE: tuple[tuple[str, str], ...] = (
     ("docs/prompts/v3/session-ender.md", "Universal Session-Ender"),
+    ("docs/prompts/v3/universal-continue.md", "Universal Continue"),
 )
 
 # Registry files SUPERSEDED BY THEIR OWN HEADER (owner order 2026-07-13:
@@ -196,9 +202,13 @@ async def registry_drift(refresh: bool = False) -> dict[str, Any]:
     is ``unknown`` — drift can NOT be declared matched without the listing,
     so no green is ever fabricated. A listing that succeeds but holds no
     package directories is a real (empty) registry: every pinned seat is
-    genuinely missing, and that renders as drift, not unknown. Retired-stub
-    directories count as ``added`` on purpose — they exist upstream and are
-    not pinned; the chip reports the raw set difference, never a guess.
+    genuinely missing, and that renders as drift, not unknown. Known non-seat
+    directories (:data:`app.roster.NON_SEAT_DIRS` — merged-source tombstone
+    stubs from the 2026-07-11 consolidation + the ``_inventory`` metadata dir)
+    are EXCLUDED from ``added``: they exist upstream but are not unpinned
+    seats, so flagging them would demand pinning three prompt files that do
+    not exist. A genuinely new seat directory (in neither the pinned set nor
+    the non-seat set) still reports as ``added`` — the chip's real signal.
     """
     out: dict[str, Any] = {"state": "ok", "added": [], "missing": [], "reason": ""}
     listing = await github.repo_api(
@@ -226,9 +236,18 @@ async def registry_drift(refresh: bool = False) -> dict[str, Any]:
         for e in listing["data"]
         if e.get("type") == "dir" and e.get("name")
     }
-    pinned = set(SEATS)
-    out["added"] = sorted(registry - pinned)
-    out["missing"] = sorted(pinned - registry)
+    # ADDED drift = registry dirs that are NEITHER a pinned render-seat NOR a
+    # known non-seat directory (:data:`app.roster.NON_SEAT_DIRS` — the
+    # 2026-07-11 merged-source tombstone stubs + the ``_inventory`` metadata
+    # dir). A tombstone stub is not an unpinned seat: it holds only a meta.md
+    # pointer, so pinning it would 404 its three prompt cells. Excluding the
+    # known non-seats keeps the chip's real signal — a GENUINELY NEW seat dir
+    # (in neither set) still flags → re-pin it — while retiring the tombstone
+    # noise. MISSING drift stays keyed on SEATS only: a pinned render-seat that
+    # vanished upstream is real drift; a tombstone that disappears is not.
+    expected = set(SEATS) | set(NON_SEAT_DIRS)
+    out["added"] = sorted(registry - expected)
+    out["missing"] = sorted(set(SEATS) - registry)
     if out["added"] or out["missing"]:
         out["state"] = "drift"
     return out
