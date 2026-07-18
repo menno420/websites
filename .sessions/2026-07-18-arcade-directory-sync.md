@@ -1,10 +1,10 @@
 # 2026-07-18 — Arcade + /directory registry sync (Lumen Drift direct-download, games-web live)
 
-> **Status:** `in-progress` — branch `claude/arcade-directory-sync`. Born red:
+> **Status:** `complete` — branch `claude/arcade-directory-sync`. Born red:
 > this card holds the `docs`/`quality` gate red until the two registries are
 > synced to live reality, the drift guard lands, and the whole suite is green.
 
-- **📊 Model:** [[fill:]]
+- **📊 Model:** Opus 4.8 · high effort · registry-sync + drift-guard
 
 **What this session is about:** after #428 flipped the arcade live, two registries
 still disagree about the same games. `botsite/data/arcade.json` points Lumen Drift
@@ -39,8 +39,13 @@ cross-registry drift guard flagged as the 💡 idea of `.sessions/2026-07-18-lum
 
 ## 💡 Session idea
 
-[[fill:]]
+Add `follow_redirects=True` (or a HEAD-with-redirect probe) to the `/directory`
+release-download probe path so a live `.gba` download can be health-probed
+instead of being marked `probe:false` — today a 302→CDN redirect would
+false-negative as "degraded (HTTP 302)".
 
 ## ⟲ Previous-session review
 
-[[fill:]]
+Builds on the release-drift-banner card (ORDER 033), whose 💡 idea (a
+published-Release REST cross-check) is what motivated verifying the real
+`.gba` asset directly this session rather than trusting the stale registry.
