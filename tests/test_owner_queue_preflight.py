@@ -141,13 +141,20 @@ def client(monkeypatch, tmp_path):
 
 
 def _fake_contents_api(monkeypatch):
-    """Recording contents-API fake for the CONFIRM round-trips (the same
-    shape tests/test_owner_writeback.py uses)."""
+    """Recording GitHub fake for the CONFIRM round-trips — the branch+PR flow
+    (the one writeback path): base ref → create branch → contents GET → PUT →
+    open PR."""
     calls: list[tuple] = []
 
     async def fake(method, path, json_body=None, token=""):
         calls.append((method, path, json_body, token))
-        if method == "GET":
+        if method == "GET" and "/git/ref/heads/" in path:
+            return {"ok": True, "status": 200,
+                    "data": {"object": {"sha": "ba5e" + "0" * 36}}, "error": ""}
+        if method == "POST" and path.endswith("/git/refs"):
+            return {"ok": True, "status": 201,
+                    "data": {"ref": (json_body or {}).get("ref")}, "error": ""}
+        if method == "GET" and "/contents/" in path:
             return {
                 "ok": True, "status": 200,
                 "data": {"content": base64.b64encode(
@@ -155,15 +162,22 @@ def _fake_contents_api(monkeypatch):
                     "sha": "blobsha123"},
                 "error": "",
             }
-        return {
-            "ok": True, "status": 200,
-            "data": {"commit": {
-                "sha": COMMIT_SHA,
-                "html_url": ("https://github.com/menno420/websites/commit/"
-                             + COMMIT_SHA),
-            }},
-            "error": "",
-        }
+        if method == "PUT" and "/contents/" in path:
+            return {
+                "ok": True, "status": 200,
+                "data": {"commit": {
+                    "sha": COMMIT_SHA,
+                    "html_url": ("https://github.com/menno420/websites/commit/"
+                                 + COMMIT_SHA),
+                }},
+                "error": "",
+            }
+        if method == "POST" and path.endswith("/pulls"):
+            return {"ok": True, "status": 201,
+                    "data": {"number": 4020,
+                             "html_url": "https://github.com/menno420/websites/pull/4020"},
+                    "error": ""}
+        raise AssertionError(f"unexpected GitHub call {method} {path}")
 
     monkeypatch.setattr(github, "api_request", fake)
     return calls
@@ -184,9 +198,9 @@ def test_note_preview_renders_block_and_stores_nothing(client):
     assert "owner note/correction/idea" in r.text
     assert "target: the arcade page" in r.text
     assert "idea: add sound toggle" in r.text
-    # target file + branch + token state (unset → honest queued warning)
-    assert "docs/owner/owner-notes.md" in r.text
-    assert "menno420/websites@main" in r.text
+    # target file + the branch+PR landing + token state (unset → queued warning)
+    assert "control/owner-notes.md" in r.text
+    assert "auto-PR into main" in r.text
     assert "GITHUB_TOKEN not set" in r.text
     assert "stores the entry locally" in r.text
     # confirm re-POSTs the SAME payload to the UNCHANGED firing route
@@ -344,9 +358,12 @@ def test_confirm_roundtrip_fires_the_previewed_payload(client, monkeypatch):
     e = writeback.list_entries()[0]
     assert e["status"] == "committed"
     assert e["commit_sha"] == COMMIT_SHA
-    # the committed block is the block the preview rendered
-    method, path, body, _tok = calls[-1]
-    assert method == "PUT" and writeback.NOTES_PATH in path
+    # the committed block is the block the preview rendered — find the contents
+    # PUT (the last call is now the POST that opens the PR)
+    puts = [c for c in calls if c[0] == "PUT" and "/contents/" in c[1]]
+    _method, path, body, _tok = puts[-1]
+    assert writeback.NOTES_PATH in path
+    assert body["branch"].startswith("claude/owner-writeback-")
     landed = base64.b64decode(body["content"]).decode()
     assert "owner note/correction/idea" in landed
     assert "target: the arcade page" in landed

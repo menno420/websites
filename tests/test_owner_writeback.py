@@ -37,6 +37,9 @@ FAKE_INBOX = (
     "do: something else\n"
 )
 COMMIT_SHA = "deadbeefcafe0123456789abcdef0123456789ab"
+BASE_SHA = "ba5e0000000000000000000000000000000000ba"
+PR_NUMBER = 4020
+PR_URL = "https://github.com/menno420/websites/pull/4020"
 
 
 def _basic(pw: str = OWNER_PW, user: str = "owner") -> dict:
@@ -86,42 +89,71 @@ def client(monkeypatch, tmp_path):
 
 
 def _fake_api(monkeypatch, *, read_status=200, read_text=FAKE_INBOX,
-              put_status=200, put_sha=COMMIT_SHA):
-    """Install a recording contents-API fake; returns the call list."""
+              put_status=200, put_sha=COMMIT_SHA, ref_status=200,
+              create_status=201, pr_status=201, pr_number=PR_NUMBER):
+    """Install a recording GitHub fake for the branch+PR flow (the one
+    writeback path); returns the ordered call list.
+
+    The sequence a happy submit produces:
+      GET  /git/ref/heads/<base>   → base head sha
+      POST /git/refs               → create the writeback branch
+      GET  /contents/<path>?ref=…  → the target file on the branch
+      PUT  /contents/<path>        → the append commit (verified by SHA)
+      POST /pulls                  → open the auto-merging PR
+    """
     calls: list[tuple] = []
+
+    def _err(status, msg="Not Found"):
+        return {"ok": False, "status": status, "data": None, "error": msg}
 
     async def fake(method, path, json_body=None, token=""):
         calls.append((method, path, json_body, token))
-        if method == "GET":
+        if method == "GET" and "/git/ref/heads/" in path:
+            if ref_status != 200:
+                return _err(ref_status)
+            return {"ok": True, "status": 200,
+                    "data": {"object": {"sha": BASE_SHA}}, "error": ""}
+        if method == "POST" and path.endswith("/git/refs"):
+            if create_status in (200, 201):
+                return {"ok": True, "status": create_status,
+                        "data": {"ref": (json_body or {}).get("ref")},
+                        "error": ""}
+            return _err(create_status,
+                        "Resource not accessible by personal access token")
+        if method == "GET" and "/contents/" in path:
             if read_status != 200:
-                return {"ok": False, "status": read_status, "data": None,
-                        "error": "Not Found"}
-            return {
-                "ok": True, "status": 200,
-                "data": {
-                    "content": base64.b64encode(
-                        read_text.encode()).decode(),
-                    "sha": "blobsha123",
-                },
-                "error": "",
-            }
-        if put_status == 200:
-            return {
-                "ok": True, "status": 200,
-                "data": {"commit": {
-                    "sha": put_sha,
-                    "html_url": (
-                        "https://github.com/menno420/websites/commit/"
-                        + put_sha
-                    ),
-                }},
-                "error": "",
-            }
-        return {"ok": False, "status": put_status, "data": None,
-                "error": "Resource not accessible by personal access token"}
+                return _err(read_status)
+            return {"ok": True, "status": 200,
+                    "data": {"content": base64.b64encode(read_text.encode()).decode(),
+                             "sha": "blobsha123"}, "error": ""}
+        if method == "PUT" and "/contents/" in path:
+            if put_status == 200:
+                return {"ok": True, "status": 200,
+                        "data": {"commit": {
+                            "sha": put_sha,
+                            "html_url": ("https://github.com/menno420/websites/commit/"
+                                         + put_sha)}}, "error": ""}
+            return _err(put_status,
+                        "Resource not accessible by personal access token")
+        if method == "POST" and path.endswith("/pulls"):
+            if pr_status in (200, 201):
+                return {"ok": True, "status": pr_status,
+                        "data": {"number": pr_number,
+                                 "html_url": PR_URL}, "error": ""}
+            return _err(pr_status, "Validation Failed")
+        if method == "GET" and "/pulls?" in path:
+            return {"ok": True, "status": 200,
+                    "data": [{"number": pr_number, "html_url": PR_URL}],
+                    "error": ""}
+        raise AssertionError(f"unexpected GitHub call {method} {path}")
 
     monkeypatch.setattr(github, "api_request", fake)
     return calls
+
+
+def _puts(calls):
+    """The contents-PUT calls recorded by the fake."""
+    return [c for c in calls if c[0] == "PUT" and "/contents/" in c[1]]
 
 
 # --------------------------------------------------------------------------
@@ -213,18 +245,30 @@ def test_assist_commits_a_numbered_inbox_order(client, monkeypatch):
     assert e["status"] == "committed"
     assert e["commit_sha"] == COMMIT_SHA
     assert e["path"] == writeback.INBOX_PATH
-    assert e["commit_url"].endswith(COMMIT_SHA)
-    # the PUT appended a new ORDER numbered after the file's max (019 → 020)
-    method, path, body, token = calls[-1]
-    assert method == "PUT" and writeback.INBOX_PATH in path
+    # committed via a claude/* branch + PR: the entry links the PR, not a
+    # bare commit page; the branch is the per-submit writeback branch.
+    assert e["branch"] == writeback.writeback_branch_name(e)
+    assert e["pr_number"] == PR_NUMBER
+    assert e["pr_url"] == PR_URL
+    assert e["commit_url"] == PR_URL
+    # the append committed to the BRANCH (not main), then a PR was opened
+    method, path, body, token = _puts(calls)[-1]
+    assert writeback.INBOX_PATH in path
     assert token == "write-token"
+    assert body["branch"] == writeback.writeback_branch_name(e)
+    assert body["branch"].startswith("claude/owner-writeback-")
+    assert body["sha"] == "blobsha123"
     new_text = base64.b64decode(body["content"]).decode()
     assert new_text.startswith(FAKE_INBOX.rstrip("\n"))  # append-only
     assert "## ORDER 020 ·" in new_text
     assert "BEGIN ORDER TEXT\nplease wire PayPal\nEND ORDER TEXT" in new_text
+    assert "done-when:" in new_text  # inbox-gate grammar (four required fields)
     assert "owner via launch console" in new_text
-    assert body["branch"] == "main"
-    assert body["sha"] == "blobsha123"
+    # the runtime opened the auto-merging PR itself (base main, head the branch)
+    pr_call = next(c for c in calls if c[0] == "POST" and c[1].endswith("/pulls"))
+    assert pr_call[2]["base"] == "main"
+    assert pr_call[2]["head"] == writeback.writeback_branch_name(e)
+    assert pr_call[2]["draft"] is False
 
 
 def test_complete_appends_to_owner_notes(client, monkeypatch):
@@ -239,8 +283,11 @@ def test_complete_appends_to_owner_notes(client, monkeypatch):
     e = writeback.list_entries()[0]
     assert e["status"] == "committed"
     assert e["path"] == writeback.NOTES_PATH
-    _, path, body, _ = calls[-1]
+    # the note/complete target is under control/** (the fast-lane invariant)
+    assert writeback.NOTES_PATH.startswith("control/")
+    _, path, body, _ = _puts(calls)[-1]
     assert writeback.NOTES_PATH in path
+    assert body["branch"].startswith("claude/owner-writeback-")
     new_text = base64.b64decode(body["content"]).decode()
     assert "owner marked COMPLETE" in new_text
     assert "target: Mint the PAT" in new_text
@@ -256,7 +303,7 @@ def test_notes_log_created_with_header_when_absent(client, monkeypatch):
         headers=_headers(),
     )
     assert r.status_code == 200
-    _, _, body, _ = calls[-1]
+    _, _, body, _ = _puts(calls)[-1]
     assert "sha" not in body  # create, not update
     new_text = base64.b64decode(body["content"]).decode()
     assert new_text.startswith("# Owner notes")
@@ -287,10 +334,16 @@ def test_put_success_without_sha_is_not_claimed(client, monkeypatch):
     monkeypatch.setenv(writeback.ENV_TOKEN, "write-token")
 
     async def fake(method, path, json_body=None, token=""):
-        if method == "GET":
+        if method == "GET" and "/git/ref/heads/" in path:
+            return {"ok": True, "status": 200,
+                    "data": {"object": {"sha": BASE_SHA}}, "error": ""}
+        if method == "POST" and path.endswith("/git/refs"):
+            return {"ok": True, "status": 201, "data": {}, "error": ""}
+        if method == "GET" and "/contents/" in path:
             return {"ok": True, "status": 200,
                     "data": {"content": base64.b64encode(b"x").decode(),
                              "sha": "s"}, "error": ""}
+        # a PUT that answers 200 but carries NO commit SHA — must not be claimed
         return {"ok": True, "status": 200, "data": {}, "error": ""}
 
     monkeypatch.setattr(github, "api_request", fake)
