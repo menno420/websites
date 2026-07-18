@@ -7,7 +7,8 @@
   <p class="dim small">All {{ p.total }} registry artifacts rendered live from
     <a href="{{ p.repo_url }}">fleet-manager <code>main</code> ↗</a> — the
     {{ p.seats|length }} seats' coordinator prompt (the seat's expanded startup) /
-    Custom Instructions / failsafe plus the fleet-wide Universal Session-Ender:
+    Custom Instructions / failsafe plus the fleet-wide universals
+    ({% for a in p.fleet_wide %}{{ a.label }}{% if not loop.last %}, {% endif %}{% endfor %}):
     the {{ p.current_count }} <strong>current paste sources</strong>, first. Registry files
     whose own header says superseded / do-not-paste ({{ p.historical|length }} today) are
     demoted to the collapsed <a href="#historical">Historical reference</a> section at the
@@ -70,7 +71,10 @@
     {%- for s in p.seats %}
     <a href="#{{ s.anchor }}"><code>{{ s.name }}</code></a> ·
     {%- endfor %}
-    <a href="#universal"><code>universal session-ender</code></a>
+    {%- for a in p.fleet_wide %}
+    <a href="#{{ a.anchor }}"><code>{{ a.label|lower }}</code></a>
+    {%- if not loop.last %} ·{% endif %}
+    {%- endfor %}
     {%- if p.historical %} · <a href="#historical">historical reference</a>{% endif %}
   </p>
 </div>

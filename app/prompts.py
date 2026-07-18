@@ -2,7 +2,7 @@
 always-current — ORDER 014 (owner-directed via the fleet manager, 2026-07-12).
 
 The fleet's paste artifacts (coordinator prompts, Custom Instructions,
-failsafes, plus the fleet-wide session-ender and universal-startup) live in
+failsafes, plus the fleet-wide session-ender and universal-continue) live in
 the ``menno420/fleet-manager`` registry; the owner pastes them by hand and
 stale local copies drift. This page renders all of them INLINE from
 fleet-manager ``main`` so every merged prompt update appears automatically —
