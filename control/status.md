@@ -1,19 +1,19 @@
 # websites · status
 
-updated: 2026-07-18T19:10:00Z
-phase: O-020 owner writeback is VERIFIED LIVE end-to-end on the deployed control-plane. A live `/owner/queue` note POST committed to branch `claude/owner-writeback-1` (`0be58459`), opened auto-PR #399, went quality-green, and auto-merged to `main` as `b12dcd9` — the full submit→branch→PR→auto-merge chain proven with a real commit SHA. The deployed control-plane `GITHUB_TOKEN` already carried BOTH `contents:write` AND `pull-requests:write`, so no owner paste/overwrite was needed and ASK-0007 is satisfied. This session lands a docs/ledger-only truth PR recording that (ASK-0007 → Decided row O; current-state note; owner-notes.md test-artifact removed) plus a Railway account-API capability finding, with the open-ask contract-pin dropped 16→15.
-health: green — origin/main @ `b12dcd9` (O-020 live-verify merge). This PR (#400) is READY. The four service suites pass 1839 and strict is green apart from the by-design born-red card hold released at the closing flip. No payload change — docs/control/tests-pin only.
-last-shipped: `b12dcd9` — O-020 owner-writeback live-verify merge (auto-PR #399) on origin/main.
+updated: 2026-07-18T20:05:00Z
+phase: B6 config-drift built and landing. The gated `/owner/environments` page already held the COMMITTED per-service declared env manifest (`app/railway.py` SERVICES) and the committed-vs-LIVE Railway name diff (`app/envdrift.py`); B6 adds the missing third axis — code-referenced-vs-declared drift (Q1=a: contained, names-only, static). A build-time AST scan (`app/gen_env_coderefs.py`, the `review/gen_*.py` idiom) bakes the env-var NAMES each service's runtime code reads into a committed names-only snapshot (`app/data/env_coderefs.json`); `app/codedrift.py` diffs it against the manifest and flags referenced-but-undeclared (a deploy silently gets an empty value) and declared-but-unreferenced (stale) per service, with PORT/GIT_SHA/RAILWAY_* carved out as informational (consistent with envdrift). No source scan and no Railway call at request time — the deployed control-plane reads the baked snapshot. First real finds surfaced by the feature: control-plane `WRITEBACK_BRANCH_PREFIX` and dashboard `ARCADE_JSON_URL` are read by runtime code but absent from the manifest; botsite and review are in sync.
+health: green — origin/main @ `e0d94f2` (O-020 verified-live #400 landed). PR #401 (B6) is READY. The four service suites pass 1858 (1839 + 19 new) and strict is green apart from the by-design born-red card hold released at the closing flip.
+last-shipped: `e0d94f2` — O-020 verified-live ledger + Railway-API capability (PR #400) on origin/main.
 blockers: none
-orders: acked=001-032 done=001-019,020,023-031 — 020 added (O-020 owner writeback now verified-complete end-to-end). 021/022 remain non-done (021 armed-panel owner-gated; 022 was a reconcile order).
+orders: acked=001-032 done=001-019,020,023-031 — B6 is a backlog item (owner-decided Q1=a), not an order; 021/022 remain non-done (021 armed-panel owner-gated; 022 was a reconcile order).
 routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" (cron `45 */2 * * *`) bound to the coordinator session; a pacemaker chain is kept alive coordinator-side. Old failsafe `trig_01VRT9F6jYNXym3nn18vVQQK` retiring (not re-armed). Tool wall: the capitalized alias `mcp__Claude_Code_Remote__list_triggers` is classifier-blocked; lowercase `mcp__claude-code-remote__list_triggers` works.
-landing: pushed-unmerged claude/o020-verified-ledger — PR #400 READY (O-020 verified-live ledger + Railway capability); merges via auto-merge-enabler on green.
-deployed: origin/main head `b12dcd9` · four Railway services live (control-plane/botsite/dashboard/review). This PR is docs/control/tests-pin only (OWNER-ACTIONS.md, CAPABILITIES.md, current-state.md, control/owner-notes.md, control/status.md, tests/test_askverify.py) — no runtime product change.
+landing: pushed-unmerged claude/env-config-drift — PR #401 READY (B6 names-only code-vs-declared config-drift on /owner/environments); merges via auto-merge-enabler on green.
+deployed: origin/main head `e0d94f2` · four Railway services live (control-plane/botsite/dashboard/review). PR #401 adds a read-only names-only drift section to the gated /owner/environments page + a build-time generator + committed snapshot + tests — no new runtime network surface.
 claims: no active claims (no claim filed — committed branch-claims orphan on squash-merge).
-notes: O-020 owner writeback VERIFIED LIVE (PR #399→`b12dcd9`); ASK-0007 satisfied — the deployed control-plane `GITHUB_TOKEN` already held both `contents:write` + `pull-requests:write`, so no owner paste was needed. ASK-0008's PAT-scope half is therefore also covered on the Railway token; only its `BAKE_PAT` Actions-secret half stays open. New capability recorded (docs/CAPABILITIES.md): the Railway account API (`RAILWAY_API_KEY`) is available to the seat for enumerate + read/set variables (values treated as secrets).
-needs-owner: the 15 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below) — ASK-0007 satisfied this session; none of the remaining 15 resolved.
+notes: B6 surface chosen after verifying where an env surface actually lives — the control-plane `/owner/environments` page (the real env-manifest surface), not the dashboard `/env` (which renders the Discord bot's env usage from superbot JSON, a different domain). The declared manifest (ii) reuses the existing `app/railway.py` SERVICES; the code-reference source (i) is a committed static-scan snapshot because the deployed control-plane image ships only `app/` (`COPY app ./app`) and cannot scan the other services' source at runtime. Contract-pin added: `tests/test_env_coderefs_snapshot.py` fails the build if the snapshot drifts from a fresh scan.
+needs-owner: the 15 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below) — unchanged this session (ASK-0007 was satisfied last session).
 
-## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md) — 15 open; ASK-0007 satisfied this session (verified-live, Decided row O)
+## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md) — 15 open; ASK-0007 satisfied (verified-live, Decided row O)
 - ASK-0001 — answer Q-0004: where live bot control lives (or keep /admin dry-run).
 - ASK-0002 — create the Discord OAuth app for the future armed panel (after Q-0004). RECON 2026-07-18: 0/4 websites-repo services have Discord login; REUSE of the existing SuperBot Discord app is the recommended cheapest path vs a fresh one — pending owner preference. Still OPEN.
 - ASK-0003 — provision the scoped control-API token + separate armed Railway service (after Q-0004).
@@ -31,8 +31,8 @@ needs-owner: the 15 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below) — A
 - ASK-0016 — arrange the native-speaker Dutch proofread for de-papieren-sinaasappel (details in docs/owner/OWNER-ACTIONS.md).
 
 ## NEXT-2-TASKS baton
-1. B6 — names-only config-drift check on the dashboard /env surface (Q1=a — names-only): a committed names-only manifest diffed against the live env the dashboard cannot read. Buildable once the manifest source is chosen.
-2. Remaining-backlog assessment — sweep the open backlog for the next-highest-value buildable slice now that O-020 is fully discharged.
+1. Honest remaining-backlog assessment — the leftover backlog is largely owner-gated (ASK-0002 Discord OAuth reuse, ASK-0003 armed token/service) or workflow (R10 hub-venue, needs the owner-side hub decision) or superseded by the shipped environments-hub / env-drift surfaces. Sweep for any self-contained buildable slice; otherwise the value is in the assessment itself.
+2. Await owner direction — Q-0004 (where live bot control lives) still gates the armed-panel chain (ASK-0001/0002/0003).
 - Blocked-not-mine: O-021 / ASK-0002 (the Discord OAuth app — REUSE of the SuperBot app recommended, pending owner); R10 (workflow-touch / hub-venue — needs the owner-side hub decision).
 
 kit: v1.17.0
