@@ -466,13 +466,19 @@ def _entry_banner(entry: dict) -> dict:
     """One honest line per submission outcome — a SHA link only for a
     commit that verifiably landed; the exact error class otherwise."""
     if entry["status"] == "committed":
+        pr_bit = (
+            f" — PR #{entry['pr_number']} opened (auto-merging on green)"
+            if entry.get("pr_number")
+            else ""
+        )
         return {
             "ok": True,
             "text": (
-                f"{entry['action']} committed to {entry['path']} — "
-                f"commit {entry['commit_sha'][:8]}"
+                f"{entry['action']} committed to {entry['path']} on "
+                f"{entry.get('branch') or '?'} (commit "
+                f"{entry['commit_sha'][:8]}){pr_bit}"
             ),
-            "url": entry["commit_url"],
+            "url": entry.get("pr_url") or entry["commit_url"],
         }
     return {
         "ok": False,
@@ -558,8 +564,9 @@ def _token_state_fact() -> dict:
     wb = writeback.state_summary()
     if wb["token_set"]:
         value = (
-            f"{wb['token_env']} present — the confirm commits straight to "
-            "git (claimed only with the verified SHA)"
+            f"{wb['token_env']} present — the confirm commits to a "
+            f"{wb['branch_prefix']}<n> branch and opens an auto-merging PR "
+            f"into {wb['base']} (claimed only with the verified SHA + open PR)"
         )
     else:
         value = (
@@ -623,7 +630,11 @@ async def _render_queue_preview(
         },
         {
             "label": "lands in",
-            "value": f"{wb['repo']}@{wb['branch']} · {writeback.target_path(action)}",
+            "value": (
+                f"{wb['repo']} · {writeback.target_path(action)} → "
+                f"auto-PR into {wb['base']} "
+                f"(branch {wb['branch_prefix']}<n>)"
+            ),
             "code": True,
         },
         _token_state_fact(),

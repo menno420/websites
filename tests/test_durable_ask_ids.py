@@ -176,21 +176,35 @@ def client(monkeypatch, tmp_path):
 
 
 def _fake_contents_api(monkeypatch):
-    """Recording contents-API fake for the confirm round-trips."""
+    """Recording GitHub fake for the confirm round-trips — the branch+PR flow
+    (base ref → create branch → contents GET → PUT → open PR)."""
     calls: list[tuple] = []
 
     async def fake(method, path, json_body=None, token=""):
         calls.append((method, path, json_body, token))
-        if method == "GET":
+        if method == "GET" and "/git/ref/heads/" in path:
+            return {"ok": True, "status": 200,
+                    "data": {"object": {"sha": "ba5e" + "0" * 36}}, "error": ""}
+        if method == "POST" and path.endswith("/git/refs"):
+            return {"ok": True, "status": 201,
+                    "data": {"ref": (json_body or {}).get("ref")}, "error": ""}
+        if method == "GET" and "/contents/" in path:
             return {"ok": True, "status": 200,
                     "data": {"content": base64.b64encode(
                         b"# Owner notes\n\nold entry\n").decode(),
                         "sha": "blobsha123"}, "error": ""}
-        return {"ok": True, "status": 200,
-                "data": {"commit": {
-                    "sha": COMMIT_SHA,
-                    "html_url": ("https://github.com/menno420/websites/commit/"
-                                 + COMMIT_SHA)}}, "error": ""}
+        if method == "PUT" and "/contents/" in path:
+            return {"ok": True, "status": 200,
+                    "data": {"commit": {
+                        "sha": COMMIT_SHA,
+                        "html_url": ("https://github.com/menno420/websites/commit/"
+                                     + COMMIT_SHA)}}, "error": ""}
+        if method == "POST" and path.endswith("/pulls"):
+            return {"ok": True, "status": 201,
+                    "data": {"number": 4020,
+                             "html_url": "https://github.com/menno420/websites/pull/4020"},
+                    "error": ""}
+        raise AssertionError(f"unexpected GitHub call {method} {path}")
 
     monkeypatch.setattr(github, "api_request", fake)
     return calls

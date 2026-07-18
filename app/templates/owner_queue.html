@@ -7,10 +7,12 @@
   <h2>🔒 owner writeback — act on the queue, straight into git</h2>
   <p class="small dim">Mark an owner-action complete, request assistance, or add a
     note/correction/idea. Each submission is stored in the local audit log below, then
-    committed to <code>{{ wb.repo }}</code>@<code>{{ wb.branch }}</code>:
+    committed to a <code>{{ wb.branch_prefix }}&lt;n&gt;</code> branch on
+    <code>{{ wb.repo }}</code> and landed by an auto-merging PR into
+    <code>{{ wb.base }}</code> (main moves by PR only):
     assistance requests append an ORDER to <code>{{ wb.inbox_path }}</code>;
     completions and notes append to <code>{{ wb.notes_path }}</code>.
-    A commit is only ever claimed with its verified SHA.</p>
+    A submission is only ever claimed committed with its verified SHA and an open PR.</p>
   <p class="small">
     {% if wb.token_set %}<span class="b ok">{{ wb.token_env }} present</span>
     {% else %}<span class="b warn">{{ wb.token_env }} not set — submissions queue locally</span>{% endif %}
