@@ -33,10 +33,10 @@
   },
   "review_log": [],
   "session_anchor": {
-    "branch": "main",
-    "epoch": 1783947509.856349,
-    "head": "5381fdba18379dac0c2c0cb75a35e69610d7b2c7",
-    "ts": "2026-07-13T12:58:29+00:00"
+    "branch": null,
+    "epoch": 1784393875.31349,
+    "head": "fcb38d1a99ee2e1a40ab8487282f3e3c7f47117d",
+    "ts": "2026-07-18T16:57:55+00:00"
   },
   "session_count": 12,
   "slot_values": {
