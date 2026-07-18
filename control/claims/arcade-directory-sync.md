@@ -1,0 +1,1 @@
+- `claude/arcade-directory-sync` · arcade.json + web_presence.json registry sync (Lumen Drift direct-download + games-web live labels) + cross-registry drift guard test · 2026-07-18
