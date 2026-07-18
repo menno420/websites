@@ -55,6 +55,7 @@ NAV = [
     ("fleet", "Fleet", "/fleet"),
     ("reviews", "Reviews", "/reviews"),
     ("questionnaire", "Q&A", "/questionnaire"),
+    ("questions", "Answer log", "/questions"),
     ("ask", "Ask AI", "/ask"),
     ("successes", "Successes", "/successes"),
     ("problems", "Problems", "/problems"),
@@ -359,8 +360,9 @@ async def ask(request: Request):
 async def questions(request: Request):
     """ORDER 019 PR2: filter/sort/search over the centralized listfilter core
     (status / answered dimensions + title search, defined in story.py); no
-    params renders exactly the pre-filter page."""
-    ctx = _base_ctx(request, "questionnaire")
+    params renders exactly the pre-filter page. R1: its own NAV active state
+    (``questions``) so the header highlights the ledger, not its Q&A sibling."""
+    ctx = _base_ctx(request, "questions")
     q = story.load_questions()
     records = q["data"].get("questions") or [] if q["ok"] else []
     state = listfilter.parse(story.QUESTIONS_FILTER_SPEC, request.query_params)
