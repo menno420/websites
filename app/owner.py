@@ -89,6 +89,15 @@ _UNAUTH_HEADERS = {"WWW-Authenticate": 'Basic realm="owner area"'}
 RATE_LIMIT_MAX_REQUESTS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60.0
 
+# Failed-login throttle for the GET auth gate (require_owner). The password
+# check alone left `/owner` GETs open to unlimited brute-force guessing — an
+# attacker only ever saw 401, never a slowdown. This caps FAILED Basic-auth
+# attempts per client host, reusing the same sliding-window mechanism and
+# window as the POST-action limiter above; a SUCCESSFUL auth is never counted.
+# Same shape as the POST limiter (10 / 60s), tracked separately so the two
+# budgets never cross-consume.
+AUTH_FAIL_MAX_ATTEMPTS = 10
+
 _rate_buckets: dict[str, deque] = defaultdict(deque)
 
 
@@ -136,22 +145,38 @@ def _require_same_origin(request: Request) -> None:
     )
 
 
-def _enforce_rate_limit(request: Request) -> None:
-    """Sliding-window limiter per (route path, client host); 429 when tripped."""
-    client_host = request.client.host if request.client else "unknown"
-    key = f"{request.url.path}|{client_host}"
+def _sliding_window_hit(key: str, max_hits: int, detail: str) -> None:
+    """Record one hit against a per-key sliding window; 429 when it overflows.
+
+    The shared core of both limiters — the per-(route, client) POST-action
+    limiter and the per-client failed-auth limiter on the GET gate. Same
+    window (RATE_LIMIT_WINDOW_SECONDS), same in-memory bucket store
+    (_rate_buckets, resettable via reset_rate_limits), same Retry-After 429
+    shape; only the key namespace and the ceiling differ. The (max_hits+1)-th
+    hit inside the window raises 429 instead of being recorded."""
     now = time.monotonic()
     bucket = _rate_buckets[key]
     while bucket and now - bucket[0] > RATE_LIMIT_WINDOW_SECONDS:
         bucket.popleft()
-    if len(bucket) >= RATE_LIMIT_MAX_REQUESTS:
+    if len(bucket) >= max_hits:
         retry_after = max(1, int(RATE_LIMIT_WINDOW_SECONDS - (now - bucket[0])) + 1)
         raise HTTPException(
             status_code=429,
-            detail="rate limit exceeded for owner actions — retry shortly",
+            detail=detail,
             headers={"Retry-After": str(retry_after)},
         )
     bucket.append(now)
+
+
+def _enforce_rate_limit(request: Request) -> None:
+    """Sliding-window limiter per (route path, client host); 429 when tripped."""
+    client_host = request.client.host if request.client else "unknown"
+    key = f"{request.url.path}|{client_host}"
+    _sliding_window_hit(
+        key,
+        RATE_LIMIT_MAX_REQUESTS,
+        "rate limit exceeded for owner actions — retry shortly",
+    )
 
 
 def require_owner(request: Request) -> None:
@@ -171,12 +196,26 @@ def require_owner(request: Request) -> None:
             _user, _, supplied = decoded.partition(":")
         except Exception:
             supplied = ""
-    if not supplied or not secrets.compare_digest(supplied, config.SITE_PASSWORD):
-        raise HTTPException(
-            status_code=401,
-            detail="owner authentication required",
-            headers=_UNAUTH_HEADERS,
-        )
+    if supplied and secrets.compare_digest(supplied, config.SITE_PASSWORD):
+        # Correct password — return immediately. A successful auth is NEVER
+        # throttled and never touches the failed-attempt budget.
+        return
+    # Failed attempt (bad or missing password): brute-force throttle. The
+    # (AUTH_FAIL_MAX_ATTEMPTS+1)-th failure from this client host inside the
+    # window raises 429 (with Retry-After) BEFORE re-prompting, closing the
+    # previously unbounded 401 loop. Keyed per client host across ALL /owner
+    # GET paths (one shared budget), so path-hopping cannot mint fresh tries.
+    client_host = request.client.host if request.client else "unknown"
+    _sliding_window_hit(
+        f"auth-fail|{client_host}",
+        AUTH_FAIL_MAX_ATTEMPTS,
+        "too many failed owner logins — retry shortly",
+    )
+    raise HTTPException(
+        status_code=401,
+        detail="owner authentication required",
+        headers=_UNAUTH_HEADERS,
+    )
 
 
 def require_owner_action(request: Request) -> None:
