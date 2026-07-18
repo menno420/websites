@@ -1,7 +1,11 @@
 # 2026-07-18 — Fix inverted canonical/duplicate service inventory to match live Railway
 
-> **Status:** `in-progress` — branch `claude/fix-inverted-service-inventory`;
-> flips to `complete` + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/fix-inverted-service-inventory`,
+> PR **#407**. Un-inverted the canonical/duplicate service inventory to match
+> live-Railway ground truth: canonical = superbot-websites
+> (`abb0`/`a91b`/`cfd7`/`fc91`), old/duplicate = reliable-grace (review `f027`,
+> `superbot-dashboard`, `superbot-app`); review redirect + deploy-drift probes
+> corrected `f027`→`fc91`.
 
 - **📊 Model:** Claude Opus 4.8 · high · runtime bugfix
 
@@ -60,9 +64,14 @@ the live Discord bot — NOT a website, never retire).
   to no-`f027`), `tests/test_web_directory.py` (`DUPLICATE_IDS` set + SEED_URLS),
   `tests/test_envhub.py` (railway SERVICES review url + rendered-text pin) —
   all updated to the corrected ground truth.
-- **Verified:** [[fill: pytest four-suite result + exit]]; [[fill: bootstrap
-  check --strict verdict]]; [[fill: --require-session-log HOLD only on this card]].
-  Commits: [[fill: hashes]].
+- **Verified:** `python3 -m pytest tests/ botsite/tests dashboard/tests
+  review/tests -q` — **1882 passed, 1 warning** (exit 0; the one warning is the
+  pre-existing Starlette/httpx TestClient deprecation, not this work).
+  `python3 bootstrap.py check --strict` — clean, **exit 0**.
+  `python3 bootstrap.py check --strict --require-session-log` — the only red is
+  the DESIGNED born-red HOLD on THIS card (gating on exactly 1 card — mine),
+  released at this flip. Commits: `eb760c5` (born-red card), `a893fa3`
+  (corrections across the 11 files), `638c305` (heartbeat), + this flip.
 
 ⚑ Self-initiated: no — coordinator-dispatched data-integrity fix (duplicate-sites
 consolidation track prerequisite).
