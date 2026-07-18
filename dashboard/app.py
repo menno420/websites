@@ -42,7 +42,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -64,6 +64,30 @@ NAV = [
     ("updates", "Updates", "/updates"),
     ("console", "Console", "/console"),
 ]
+
+# ---------------------------------------------------------------------------
+# Consolidation redirect targets (duplicate-sites cutover).
+#
+# The OLD dashboard served /games and /reviews; on THIS (new) dashboard that
+# content was deliberately RE-HOMED — games to the botsite service, reviews to
+# the review service — so those paths would 404 here. To keep inbound links
+# alive across the cutover (when OLD is retired and its URL repoints to NEW) the
+# /games and /reviews routes below FORWARD to the re-homed surfaces instead of
+# 404ing. The targets are env-overridable so a domain rename at cutover is a
+# config change, not a code edit; the defaults are the repo's canonical NEW
+# service URLs (app/config.py SERVICE_DEPLOY_TARGETS) — botsite-…-cfd7 and the
+# review service …-f027 (NOT the …-fc91 parallel copy, which is itself retired
+# at consolidation). Same env-var-with-default idiom as data_source.py's feed
+# URLs; declared in the dashboard manifest (app/railway.py) so the env-drift
+# panel reads them in-sync.
+BOTSITE_GAMES_URL = os.environ.get(
+    "BOTSITE_GAMES_URL",
+    "https://botsite-production-cfd7.up.railway.app/games",
+).strip()
+REVIEW_REVIEWS_URL = os.environ.get(
+    "REVIEW_REVIEWS_URL",
+    "https://review-production-f027.up.railway.app/reviews",
+).strip()
 
 
 @asynccontextmanager
@@ -363,6 +387,49 @@ async def palette(request: Request):
     for name in ds.command_names(data):
         items.append({"group": "Commands", "label": name, "code": f"!{name}", "href": f"/commands#cmd-{name}"})
     return JSONResponse(items)
+
+
+# ---------------------------------------------------------------------------
+# Consolidation redirects — /games and /reviews were RE-HOMED off this
+# dashboard, so a bare link to them would 404. Forward to the re-homed content
+# instead (see the BOTSITE_GAMES_URL / REVIEW_REVIEWS_URL block above). GET-only,
+# so there is no CSRF surface.
+# ---------------------------------------------------------------------------
+def _consolidation_redirect(target: str, surface: str, moved_to: str):
+    """302 to a re-homed surface. If the target is unresolvable (env set to an
+    empty string with no default) degrade honestly to a small linking page
+    rather than redirecting to "" or raising a 500."""
+    if target:
+        return RedirectResponse(target, status_code=302)
+    body = (
+        "<!doctype html><html><head><meta charset=\"utf-8\">"
+        f"<title>{surface} moved</title></head><body>"
+        f"<h1>{surface} has moved</h1>"
+        f"<p>The {surface.lower()} content now lives on the {moved_to}. "
+        "Its address is not configured on this deployment — set the "
+        f"redirect target env var to restore the forward.</p>"
+        "<p><a href=\"/\">Back to the dashboard home</a></p>"
+        "</body></html>"
+    )
+    return HTMLResponse(body, status_code=200)
+
+
+@app.get("/games")
+async def games_redirect():
+    """Consolidation redirect: the games content was re-homed to the botsite
+    service. Forward there so an inbound /games link does not 404."""
+    return _consolidation_redirect(
+        BOTSITE_GAMES_URL, "Games", "botsite service"
+    )
+
+
+@app.get("/reviews")
+async def reviews_redirect():
+    """Consolidation redirect: the reviews content was re-homed to the review
+    service. Forward there so an inbound /reviews link does not 404."""
+    return _consolidation_redirect(
+        REVIEW_REVIEWS_URL, "Reviews", "review service"
+    )
 
 
 # ===========================================================================

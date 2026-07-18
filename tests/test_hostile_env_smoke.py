@@ -85,13 +85,15 @@ ENV_VARS = [
     "TESTING_AUTOPAY_MIN_SCORE",
     "TESTING_PAYOUT_DAILY_CAP_USD",
     "TESTING_PAYOUT_MONTHLY_CAP_USD",
-    # dashboard/: data_source.py
+    # dashboard/: data_source.py, app.py (consolidation redirect targets)
     "DASHBOARD_JSON_URL",
     "CONSOLE_JSON_URL",
     "ARCADE_JSON_URL",
     "DATA_CACHE_TTL_SECONDS",
     "SUPERBOT_REPO",
     "SUPERBOT_REF",
+    "BOTSITE_GAMES_URL",
+    "REVIEW_REVIEWS_URL",
     # review/: ai.py (GITHUB_TOKEN in review/gen_stats.py is baker-only)
     "REVIEW_AI_LOG_SALT",
     "REVIEW_AI_MODEL",

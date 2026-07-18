@@ -153,6 +153,8 @@ SERVICES: list[dict[str, Any]] = [
             _var("DATA_CACHE_TTL_SECONDS", "data cache TTL (default 180)"),
             _var("SUPERBOT_REPO", "upstream repo for committed JSON (default menno420/superbot)"),
             _var("SUPERBOT_REF", "upstream ref (default main)"),
+            _var("BOTSITE_GAMES_URL", "consolidation-redirect target for /games — the re-homed games surface on the botsite service (optional; default botsite-production-cfd7/games — env-overridable for cutover)"),
+            _var("REVIEW_REVIEWS_URL", "consolidation-redirect target for /reviews — the re-homed reviews surface on the review service (optional; default review-production-f027/reviews — env-overridable for cutover)"),
             _var("PORT", "bind port (Railway injects it)"),
         ],
     },

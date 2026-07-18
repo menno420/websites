@@ -159,6 +159,8 @@ NON_PAGE_GET_ROUTES: dict[str, str] = {
     "/version": "JSON deployed-sha endpoint — machine twin, no page shell",
     "/favicon.ico": "the site icon at the browser-probed path — a file, not a page",
     "/palette.json": "JSON design-palette feed — machine data, no page shell",
+    "/games": "consolidation 302 redirect to the re-homed botsite games surface — not a page rendered here",
+    "/reviews": "consolidation 302 redirect to the re-homed review-service reviews surface — not a page rendered here",
 }
 
 MOUNT_EXEMPT: dict[str, str] = {

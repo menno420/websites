@@ -186,6 +186,45 @@ def test_root_is_public_no_auth(client):
     assert "www-authenticate" not in {k.lower() for k in r.headers}
 
 
+# --- consolidation redirects (/games, /reviews) --------------------------
+# The OLD dashboard served /games and /reviews; on this NEW dashboard that
+# content was deliberately RE-HOMED (games -> botsite service, reviews ->
+# review service), so those paths would 404. The routes 302-forward to the
+# re-homed surfaces so inbound links survive the duplicate-sites cutover.
+def test_games_redirects_to_botsite(client):
+    r = client.get("/games", follow_redirects=False)
+    assert r.status_code == 302
+    loc = r.headers["location"]
+    assert "botsite" in loc and loc.endswith("/games")
+
+
+def test_reviews_redirects_to_review_service(client):
+    r = client.get("/reviews", follow_redirects=False)
+    assert r.status_code == 302
+    loc = r.headers["location"]
+    assert "review" in loc and loc.endswith("/reviews")
+
+
+def test_redirect_targets_are_env_overridable(client, monkeypatch):
+    """The redirect targets resolve from BOTSITE_GAMES_URL / REVIEW_REVIEWS_URL
+    (defaults otherwise). They are resolved into module constants at import, so
+    the routes read those constants — patch them to prove the override path a
+    cutover domain-rename would use lands in the Location header."""
+    monkeypatch.setattr(app_module, "BOTSITE_GAMES_URL", "https://new-botsite.example/games")
+    monkeypatch.setattr(app_module, "REVIEW_REVIEWS_URL", "https://new-review.example/reviews")
+    assert client.get("/games", follow_redirects=False).headers["location"] == "https://new-botsite.example/games"
+    assert client.get("/reviews", follow_redirects=False).headers["location"] == "https://new-review.example/reviews"
+
+
+def test_redirect_degrades_honestly_when_target_unresolved(client, monkeypatch):
+    """If a target resolves empty (env blanked, no default) the route serves a
+    small linking page (200), never a redirect to "" or a 500."""
+    monkeypatch.setattr(app_module, "BOTSITE_GAMES_URL", "")
+    r = client.get("/games", follow_redirects=False)
+    assert r.status_code == 200
+    assert "moved" in r.text.lower() and 'href="/"' in r.text
+
+
 # --- read-only pages -----------------------------------------------------
 @pytest.mark.parametrize("path", READ_ONLY_PATHS)
 def test_pages_render(client, path):
