@@ -1,26 +1,20 @@
 # websites · status
 
-updated: 2026-07-18T17:55:43Z
-phase: ORDER 033 landed (review release-drift banner merged via PR #414, claim cleanup #415); this session adds a router-introspection NAV-completeness guard test to the review service — PR #416 open on `claude/review-nav-guard`, born-red card holding, awaiting the completion flip.
-health: green locally — four service suites (1920 passed, 1 warning) + kit check --strict green except the DESIGNED born-red hold on this session's in-progress card (PR #416, claude/review-nav-guard). ORDER 033 terminal on origin/main.
-last-shipped: ORDER 033 review release-drift banner landed — PR #414 (merge d700938) then claim cleanup #415; both terminal on origin/main.
+updated: 2026-07-18T18:42:02Z
+phase: NAV-guard sweep landed — all four service router-introspection NAV-completeness tests are on origin/main (review PR #416, botsite+dashboard PR #418); claims dir clear; no in-progress card. Backlog is owner-gated ladder + hub-venue wiring (baton below).
+health: green — four service suites green on origin/main (1926 passed at the #418 landing), kit check --strict green, zero born-red holds (claims/ holds only README.md).
+last-shipped: NAV-completeness guards — review PR #416 (merge 0e769d5) + botsite/dashboard PR #418 (merge 13c1804), with claim cleanups #417 / #419; all terminal on origin/main.
 blockers: none
-orders: acked=001-033 done=001-020,022-033 (021 open/owner-gated).
-routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` remains ARMED, still bound to the predecessor session (successor bridge kept by design).
-    • This coordinator's trigger / send_later arming is classifier-denied (worker relays blocked at spawn), so the rebind-then-delete of the failsafe cron rides the hub venue.
-    • send_later chain: none pending (walled).
-    • Business crons: none created by this seat.
-landing: `pushed-unmerged claude/review-nav-guard` — review NAV-completeness guard test (PR #416 open, born-red card holding, awaiting completion flip).
-deployed: origin/main at latest · four Railway services live (control-plane-…-abb0 / botsite-…-cfd7 / dashboard-…-a91b / review-…-fc91, the superbot-websites project). O-020 owner writeback is LIVE + verified; RAILWAY_API_KEY enables self-verifying/setting deployed env (see docs/CAPABILITIES.md).
-claims: 1 active — `claude/review-nav-guard` (review NAV-completeness guard test), 2026-07-18; delete at session close.
+orders: acked=001-033 done=001-020,022-033 (021 open, owner-gated — the ORDER 021 owner-environments hub).
+routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` ARMED, still bound to the predecessor session (successor bridge by design); rebind rides the hub venue (this coordinator's trigger/send_later arming is classifier-denied 2026-07-18). send_later chain: none pending.
+landing: all-merged — PRs #414–#419 terminal on origin/main, 0 open coordinator PRs (draft #413 = coordinator rescue doc, close-without-merge disposition, excluded from the landing count).
+deployed: origin/main at 60c67fd · four Railway services live (control-plane-…-abb0 / botsite-…-cfd7 / dashboard-…-a91b / review-…-fc91, the superbot-websites project). O-020 owner writeback LIVE + verified; RAILWAY_API_KEY enables self-verifying/setting deployed env (docs/CAPABILITIES.md).
+claims: none active — claims/ holds only README.md.
 needs-owner: the 15 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## NEXT-2-TASKS baton
-1. WIRE gen_releases.py INTO THE DAILY BAKE — add `python3 review/gen_releases.py` to `.github/workflows/review-bake.yml` so `review/data/releases.json` auto-rebakes daily (hands-off release-drift refresh). Workflow diff → rides the hub venue, deliberately NOT in the ORDER 033 PR.
-2. FLEET-MANAGER OUTBOX ASKS 1-4 in `control/outbox.md` await the fleet-manager manager seat (refresh frozen triggers-snapshot.json; update fleet-manager/projects/websites/meta.md to v3.7 / 2026-07-15; self-healing per-seat deployed-version stamp rule).
-- Also gated: SITE-CONSOLIDATION RETIREMENT — DESTRUCTIVE, GATED on the owner's explicit "go"; plan at `docs/plans/site-consolidation-cutover.md` (KEEP superbot-websites: control-plane-abb0 / dashboard-a91b / botsite-cfd7 / review-fc91; RETIRE reliable-grace review-production-f027 + old superbot-repo superbot-dashboard / superbot-app; NEVER the reliable-grace `worker` Discord bot or the Postgres DBs).
-- Also gated: ASK-0002 Discord OAuth (reuse the existing SuperBot app — owner); R10 auto-draft review edition (workflow / hub-venue).
-- Note for the successor: O-020 owner writeback is LIVE + verified; RAILWAY_API_KEY enables self-verifying/setting deployed env (see docs/CAPABILITIES.md).
+1. HUB VENUE — wire `python3 review/gen_releases.py` into `.github/workflows/review-bake.yml` (daily auto-rebake of review/data/releases.json for hands-off release-drift refresh) AND rebind the failsafe cron to a live session. Both are `.github/workflows/**` / trigger changes → hub venue, not a seat PR.
+2. OWNER-GATED LADDER — the 15 ⚑ asks in docs/owner/OWNER-ACTIONS.md await owner input; SITE-CONSOLIDATION RETIREMENT (docs/plans/site-consolidation-cutover.md) is DESTRUCTIVE and awaits the owner's explicit "go". No non-gated seat-buildable increment blocks these.
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md) — 15 open
 ASK-0007 satisfied a prior session; ASK-0002 open with the SuperBot-reuse recon note. ASK-0010 (publish lumen-drift-v1.3) is the release the ORDER 033 drift banner surfaces.
