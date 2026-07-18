@@ -508,6 +508,71 @@ def env_usage(data: dict[str, Any]) -> list[dict[str, Any]]:
     return list(data.get("env_usage", []) or [])
 
 
+# --- Env config-drift classifier -----------------------------------------
+#
+# HONEST SCOPE — read before extending. The dashboard's env map is STATIC
+# ANALYSIS of the bot source: variable NAMES + code locations only, and per the
+# secret-safety invariant it NEVER carries a value. The live environment
+# (Railway's actual set-var list) is deliberately never committed anywhere this
+# service can read. So the LITERAL "referenced-but-unset" (referenced in code
+# but not set in Railway) and "set-but-unused" (set in Railway, read by nothing)
+# are NOT honestly computable here — we have no committed record of what is set.
+# We do NOT fabricate that record.
+#
+# What IS genuinely computable, purely from fields already in the committed feed
+# (`required` + per-usage `has_default`), is drift between a var's DECLARED
+# requiredness and how the code actually reads it:
+#   * required_but_defaulted  — declared required, yet every read supplies a
+#     default. The "required" flag is misleading: an unset value silently takes
+#     the default instead of failing. (A "set-but-effectively-optional" drift.)
+#   * optional_but_undefended — declared optional, yet at least one read has no
+#     default. If unset, that read has no fallback (None / KeyError). This is the
+#     honest analog of a referenced-but-unset RISK.
+# Everything else is clean. No value is ever read; these are pure over the feed.
+ENV_DRIFT_REQUIRED_DEFAULTED = "required_but_defaulted"
+ENV_DRIFT_OPTIONAL_UNDEFENDED = "optional_but_undefended"
+
+
+def classify_env_var(var: dict[str, Any]) -> str:
+    """Classify one env var into a drift bucket, or ``""`` when clean.
+
+    Pure over the committed feed's own fields (``required`` and
+    ``usages[].has_default``); reads no environment value. Missing/blank fields
+    degrade to clean, never raises.
+    """
+    usages = var.get("usages") or []
+    if not usages:
+        # Static analysis builds the map FROM reads, so a var with no observed
+        # read is degenerate — nothing to judge default-defense on. Treat clean.
+        return ""
+    required = bool(var.get("required"))
+    all_defaulted = all(bool(u.get("has_default")) for u in usages)
+    if required and all_defaulted:
+        return ENV_DRIFT_REQUIRED_DEFAULTED
+    if not required and not all_defaulted:
+        return ENV_DRIFT_OPTIONAL_UNDEFENDED
+    return ""
+
+
+def env_drift(data: dict[str, Any]) -> dict[str, Any]:
+    """Env vars annotated with a drift bucket, plus a summary /env renders.
+
+    Returns ``{"flagged": [...drifted vars, each + a "drift" key...],
+    "counts": {bucket: n}, "any": bool}``. Degrades to an empty/clean summary,
+    never raises. Reads no value — only ``required``/``has_default`` from the
+    committed feed (see the classifier note above for why the literal
+    referenced-but-unset / set-but-unused signal is not computable here).
+    """
+    counts = {ENV_DRIFT_REQUIRED_DEFAULTED: 0, ENV_DRIFT_OPTIONAL_UNDEFENDED: 0}
+    flagged: list[dict[str, Any]] = []
+    for v in env_usage(data):
+        bucket = classify_env_var(v)
+        if bucket:
+            counts[bucket] += 1
+            flagged.append({**v, "drift": bucket})
+    return {"flagged": flagged, "counts": counts, "any": bool(flagged)}
+
+
 def synonyms(data: dict[str, Any]) -> list[dict[str, Any]]:
     return list(data.get("synonyms", []) or [])
 
