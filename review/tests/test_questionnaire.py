@@ -476,5 +476,19 @@ def test_no_aging_banner_when_shas_match(monkeypatch):
 
 def test_nav_covers_all_sections():
     r = client.get("/")
-    for href in ["/process", "/growth", "/fleet", "/reviews", "/questionnaire", "/successes", "/problems"]:
+    for href in ["/process", "/growth", "/fleet", "/reviews", "/questionnaire", "/questions", "/successes", "/problems"]:
         assert f'href="{href}"' in r.text
+
+
+def test_nav_surfaces_questions_ledger():
+    # R1: the built /questions ledger is reachable from the header NAV, not
+    # only by direct URL — and the page it links to still returns 200 with its
+    # deliberately-honest empty state over the empty committed ledger.
+    home = client.get("/")
+    assert 'href="/questions"' in home.text
+    q = client.get("/questions")
+    assert q.status_code == 200
+    assert "No external reviewer questions on record yet" in q.text
+    # on the ledger page, its own NAV entry is the current one (not its Q&A
+    # sibling) — the R1 active-state fix
+    assert 'href="/questions" aria-current="page"' in q.text
