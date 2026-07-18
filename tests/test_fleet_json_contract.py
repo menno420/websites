@@ -49,6 +49,13 @@ LANDING_INFO_KEYS = {"present", "kind", "attention", "branch"}
 SUMMARY_KEYS = {
     "total", "healthy", "stale", "broken", "errored", "no_file",
     "stranded", "silent_routines", "outstanding_orders", "kit_versions",
+    # Per-count drill-down member lists added 2026-07-18 (overview count-badge
+    # drill-downs): each count above is paired with the lanes behind it so the
+    # /fleet page can expand a count to its lanes and machine consumers can
+    # read WHICH lanes, not just how many.
+    "total_lanes", "live_lanes", "stale_lanes", "broken_lanes", "errored_lanes",
+    "no_file_lanes", "stranded_lanes", "silent_routine_lanes",
+    "outstanding_order_lanes",
 }
 KIT_VERSION_ITEM_KEYS = {"version", "count"}
 
