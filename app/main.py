@@ -43,6 +43,7 @@ from . import (
     prompt_history,
     prompts,
     readiness,
+    releasedrift,
     reviews,
     web_presence,
 )
@@ -155,7 +156,7 @@ async def board(request: Request):
     # board stays a readiness surface; /ideas is the honest home for idea
     # errors/absences.
     repo_names = list(config.REPOS)
-    rows, idea_rows, fleet_fresh = await asyncio.gather(
+    rows, idea_rows, fleet_fresh, drift = await asyncio.gather(
         readiness.board(refresh=refresh),
         ideas.overview(refresh=refresh),
         # Heartbeat-freshness chips: ONLY the board repos' status.md files
@@ -163,6 +164,10 @@ async def board(request: Request):
         asyncio.gather(
             *[fleet.heartbeat_freshness(r, refresh=refresh) for r in repo_names]
         ),
+        # Release-drift parity: re-render review's already-baked release-drift
+        # mirror over the shared TTL-cached raw path. Never recomputes drift;
+        # degrades to count 0 / no chip on any fetch failure.
+        releasedrift.overview(refresh=refresh),
     )
     idea_chips = {
         r["repo"]: {"counts": r["state_counts"], "shown": r["shown"],
@@ -183,6 +188,8 @@ async def board(request: Request):
             "idea_chips": idea_chips,
             "heartbeat_chips": heartbeat_chips,
             "attention": _attention(rows, heartbeat_chips),
+            "release_drift_count": drift["count"],
+            "release_drift_entries": drift["entries"],
             "ttl": config.CACHE_TTL_SECONDS,
             "active": "board",
             "autorefresh_seconds": config.AUTOREFRESH_SECONDS,

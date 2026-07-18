@@ -154,6 +154,7 @@ SERVICES: list[dict[str, Any]] = [
         "env_vars": [
             _var("DASHBOARD_JSON_URL", "committed dashboard.json data source (raw.githubusercontent)"),
             _var("ARCADE_JSON_URL", "committed arcade.json counts source for the fleet arcade (raw.githubusercontent; optional, default menno420/websites@main)"),
+            _var("RELEASES_JSON_URL", "committed release-drift mirror source for the /status release-drift card, baked by the review service (raw.githubusercontent; optional, default menno420/websites@main)"),
             _var("CONSOLE_JSON_URL", "committed console feed data source"),
             _var("DATA_CACHE_TTL_SECONDS", "data cache TTL (default 180)"),
             _var("SUPERBOT_REPO", "upstream repo for committed JSON (default menno420/superbot)"),

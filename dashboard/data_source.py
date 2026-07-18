@@ -48,6 +48,15 @@ ARCADE_JSON_URL = os.environ.get(
     "ARCADE_JSON_URL",
     "https://raw.githubusercontent.com/menno420/websites/main/botsite/data/arcade.json",
 )
+# The release-drift mirror is baked by the review service and committed IN THIS
+# repo (review/data/releases.json), so this feed points at menno420/websites@main
+# like ARCADE_JSON_URL — NOT superbot. Read-only, forward-only: this surface never
+# recomputes drift, it only re-renders the already-baked signal. Overridable for
+# testing / forks.
+RELEASES_JSON_URL = os.environ.get(
+    "RELEASES_JSON_URL",
+    "https://raw.githubusercontent.com/menno420/websites/main/review/data/releases.json",
+)
 def _env_int(name: str, default: int) -> int:
     """Parse an integer env var, falling back to ``default``.
 
@@ -159,6 +168,10 @@ async def fetch_arcade(refresh: bool = False) -> dict[str, Any]:
     return await _fetch(ARCADE_JSON_URL, refresh=refresh)
 
 
+async def fetch_releases(refresh: bool = False) -> dict[str, Any]:
+    return await _fetch(RELEASES_JSON_URL, refresh=refresh)
+
+
 # ---------------------------------------------------------------------------
 # Arcade registry summary (read-only, cross-repo-safe).
 #
@@ -201,6 +214,32 @@ def arcade_counts(games: Any) -> dict[str, int]:
         else:
             blocked += 1
     return {"total": total, "live": live, "blocked": blocked}
+
+
+# ---------------------------------------------------------------------------
+# Release-drift mirror summary (read-only, cross-service-safe).
+#
+# The review service bakes release-drift to review/data/releases.json (top-level
+# {generated_at, note, entries:[...], drift_count}; each entry {slug, name,
+# source_repo, expected_tag, live_tag, drift(bool), reason}). This surface NEVER
+# recomputes drift and NEVER imports review's package — it re-renders the already
+# baked signal over the raw feed. Pure and fail-soft, mirroring review's honest
+# handling: a missing/empty feed yields an empty list, count 0, and never raises.
+# ---------------------------------------------------------------------------
+def release_drift(data: Any) -> dict[str, Any]:
+    """Baked drifting entries + count over the committed releases mirror.
+
+    Filters the mirror's entries to those flagged ``drift`` by the producer (review),
+    never re-deriving the flag. Missing/empty/None input degrades to an empty list
+    and count 0; never raises. Callers gate the card on ``count > 0`` so no drift
+    renders no card (honest — never a faked zero-state card).
+    """
+    entries = [e for e in ((data or {}).get("entries") or []) if e.get("drift")]
+    return {
+        "entries": entries,
+        "count": len(entries),
+        "generated_at": (data or {}).get("generated_at") or "",
+    }
 
 
 # ---------------------------------------------------------------------------
