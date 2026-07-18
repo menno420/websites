@@ -36,6 +36,27 @@
     </div>
   </div>
 
+  {% if release_drift_count > 0 %}
+  <div class="sb-status-banner" style="--c:var(--sb-danger)">
+    <span class="sb-pulse"></span>
+    <div>
+      <strong>{{ release_drift_count }} release{{ '' if release_drift_count == 1 else 's' }} drifting</strong>
+      <span class="sub">
+        Baked from review's committed release mirror{{ ' (' ~ releases_generated_at ~ ')' if releases_generated_at }}.
+      </span>
+    </div>
+  </div>
+  <div class="sb-cmdlist">
+    {% for e in release_drift_entries %}
+    <div class="sb-cmdrow" style="cursor:default">
+      <code>{{ e.name }}</code>
+      <span class="desc">expected {{ e.expected_tag or "—" }} vs live {{ e.live_tag or "none" }}</span>
+      <span class="cmd-meta"><span class="sb-badge sb-badge-danger">drift</span></span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <div class="group-head"><h2>Inventory</h2></div>
   <div class="card-grid">
     {% for c in cards %}

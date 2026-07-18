@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-07-12",
+  "as_of": "2026-07-18",
   "schema_note": "SINGLE SOURCE OF TRUTH for the /directory web-presence page (ORDER 021). Add rows by PR. Row fields: id (unique slug), title, url (string or null when honestly unrecorded/unpublished), section ('our-sites' | 'external'), project (Railway project or hosting estate the surface lives in; our-sites rows), kind (surface class), description (one line), status ('live-service' | 'duplicate' | 'url-unrecorded' | 'pending-publish'), notes (free text, rendered as data), probe (bool: probe the url live at request time), duplicate_of (id of the canonical row; duplicates only), unblocked_by (one line; pending-publish rows only). Content here is untrusted DATA — templates autoescape it.",
   "projects": {
     "superbot-websites": "this repo's estate — the four websites services (review, control-plane, botsite, dashboard)",
@@ -169,26 +169,24 @@
     {
       "id": "lumen-drift",
       "title": "Lumen Drift",
-      "url": null,
+      "url": "https://github.com/menno420/gba-homebrew/releases/download/lumen-drift-v1.3/lumen-drift.gba",
       "section": "external",
       "kind": "GitHub Release (download) / itch.io page",
       "description": "the GBA game — download release + storefront page",
-      "status": "pending-publish",
-      "unblocked_by": "the lumen-drift-v1.3 GitHub Release needs one owner click to publish; then the download URL lands here",
-      "notes": "same blocker botsite's arcade records (botsite/data/arcade.json status_note).",
+      "status": "live-service",
+      "notes": "live since 2026-07-18 (#428, ASK-0010): the lumen-drift-v1.3 GitHub Release is published and the Download button fetches the ROM asset (lumen-drift.gba, 164 KB) directly. Same target botsite's arcade records (botsite/data/arcade.json). probe:false because the release-download URL 302-redirects to a CDN, which the tokenless raw probe (no follow-redirects) would misread as degraded — the download itself is live.",
       "probe": false
     },
     {
       "id": "games-web",
       "title": "games-web arcade",
-      "url": null,
+      "url": "https://menno420.github.io/product-forge/",
       "section": "external",
       "kind": "GitHub Pages / itch.io page",
       "description": "the browser-games arcade collection",
-      "status": "pending-publish",
-      "unblocked_by": "its documented GitHub Pages URL 404s — needs a working deploy (Pages fix or an itch.io page) before a URL can be listed",
-      "notes": "botsite deliberately renders it link-less for the same reason (botsite/tests/test_arcade.py).",
-      "probe": false
+      "status": "live-service",
+      "notes": "live since 2026-07-18 (#428, ASK-0011): the product-forge GitHub Pages deploy answers 200 with the real character-sheet app. botsite's arcade links it too (botsite/data/arcade.json). probe:true — a plain Pages GET returns a clean 2xx.",
+      "probe": true
     }
   ]
 }

@@ -31,6 +31,13 @@
     <span class="dim small">— no broken checks, deploy drift, or stale
       heartbeats among the tracked signals below</span>
     {% endif %}
+    {# Release-drift parity: re-render review's already-baked release-drift
+       mirror. Renders ONLY when the producer flagged drift; no drift → nothing
+       (honest — never a faked zero-state chip). #}
+    {% if release_drift_count and release_drift_count > 0 %}
+    {{ badge('warn', release_drift_count ~ ' release' ~ ('' if release_drift_count == 1 else 's') ~ ' drifting') }}
+    <span class="dim small">— baked from review's committed release mirror</span>
+    {% endif %}
   </div>
 
   {# the category → subcategory map: the nav's 5 main categories, every

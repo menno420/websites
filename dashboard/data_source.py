@@ -48,6 +48,15 @@ ARCADE_JSON_URL = os.environ.get(
     "ARCADE_JSON_URL",
     "https://raw.githubusercontent.com/menno420/websites/main/botsite/data/arcade.json",
 )
+# The release-drift mirror is baked by the review service and committed IN THIS
+# repo (review/data/releases.json), so this feed points at menno420/websites@main
+# like ARCADE_JSON_URL — NOT superbot. Read-only, forward-only: this surface never
+# recomputes drift, it only re-renders the already-baked signal. Overridable for
+# testing / forks.
+RELEASES_JSON_URL = os.environ.get(
+    "RELEASES_JSON_URL",
+    "https://raw.githubusercontent.com/menno420/websites/main/review/data/releases.json",
+)
 def _env_int(name: str, default: int) -> int:
     """Parse an integer env var, falling back to ``default``.
 
@@ -159,6 +168,10 @@ async def fetch_arcade(refresh: bool = False) -> dict[str, Any]:
     return await _fetch(ARCADE_JSON_URL, refresh=refresh)
 
 
+async def fetch_releases(refresh: bool = False) -> dict[str, Any]:
+    return await _fetch(RELEASES_JSON_URL, refresh=refresh)
+
+
 # ---------------------------------------------------------------------------
 # Arcade registry summary (read-only, cross-repo-safe).
 #
@@ -201,6 +214,32 @@ def arcade_counts(games: Any) -> dict[str, int]:
         else:
             blocked += 1
     return {"total": total, "live": live, "blocked": blocked}
+
+
+# ---------------------------------------------------------------------------
+# Release-drift mirror summary (read-only, cross-service-safe).
+#
+# The review service bakes release-drift to review/data/releases.json (top-level
+# {generated_at, note, entries:[...], drift_count}; each entry {slug, name,
+# source_repo, expected_tag, live_tag, drift(bool), reason}). This surface NEVER
+# recomputes drift and NEVER imports review's package — it re-renders the already
+# baked signal over the raw feed. Pure and fail-soft, mirroring review's honest
+# handling: a missing/empty feed yields an empty list, count 0, and never raises.
+# ---------------------------------------------------------------------------
+def release_drift(data: Any) -> dict[str, Any]:
+    """Baked drifting entries + count over the committed releases mirror.
+
+    Filters the mirror's entries to those flagged ``drift`` by the producer (review),
+    never re-deriving the flag. Missing/empty/None input degrades to an empty list
+    and count 0; never raises. Callers gate the card on ``count > 0`` so no drift
+    renders no card (honest — never a faked zero-state card).
+    """
+    entries = [e for e in ((data or {}).get("entries") or []) if e.get("drift")]
+    return {
+        "entries": entries,
+        "count": len(entries),
+        "generated_at": (data or {}).get("generated_at") or "",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -506,6 +545,71 @@ def settings(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 def env_usage(data: dict[str, Any]) -> list[dict[str, Any]]:
     return list(data.get("env_usage", []) or [])
+
+
+# --- Env config-drift classifier -----------------------------------------
+#
+# HONEST SCOPE — read before extending. The dashboard's env map is STATIC
+# ANALYSIS of the bot source: variable NAMES + code locations only, and per the
+# secret-safety invariant it NEVER carries a value. The live environment
+# (Railway's actual set-var list) is deliberately never committed anywhere this
+# service can read. So the LITERAL "referenced-but-unset" (referenced in code
+# but not set in Railway) and "set-but-unused" (set in Railway, read by nothing)
+# are NOT honestly computable here — we have no committed record of what is set.
+# We do NOT fabricate that record.
+#
+# What IS genuinely computable, purely from fields already in the committed feed
+# (`required` + per-usage `has_default`), is drift between a var's DECLARED
+# requiredness and how the code actually reads it:
+#   * required_but_defaulted  — declared required, yet every read supplies a
+#     default. The "required" flag is misleading: an unset value silently takes
+#     the default instead of failing. (A "set-but-effectively-optional" drift.)
+#   * optional_but_undefended — declared optional, yet at least one read has no
+#     default. If unset, that read has no fallback (None / KeyError). This is the
+#     honest analog of a referenced-but-unset RISK.
+# Everything else is clean. No value is ever read; these are pure over the feed.
+ENV_DRIFT_REQUIRED_DEFAULTED = "required_but_defaulted"
+ENV_DRIFT_OPTIONAL_UNDEFENDED = "optional_but_undefended"
+
+
+def classify_env_var(var: dict[str, Any]) -> str:
+    """Classify one env var into a drift bucket, or ``""`` when clean.
+
+    Pure over the committed feed's own fields (``required`` and
+    ``usages[].has_default``); reads no environment value. Missing/blank fields
+    degrade to clean, never raises.
+    """
+    usages = var.get("usages") or []
+    if not usages:
+        # Static analysis builds the map FROM reads, so a var with no observed
+        # read is degenerate — nothing to judge default-defense on. Treat clean.
+        return ""
+    required = bool(var.get("required"))
+    all_defaulted = all(bool(u.get("has_default")) for u in usages)
+    if required and all_defaulted:
+        return ENV_DRIFT_REQUIRED_DEFAULTED
+    if not required and not all_defaulted:
+        return ENV_DRIFT_OPTIONAL_UNDEFENDED
+    return ""
+
+
+def env_drift(data: dict[str, Any]) -> dict[str, Any]:
+    """Env vars annotated with a drift bucket, plus a summary /env renders.
+
+    Returns ``{"flagged": [...drifted vars, each + a "drift" key...],
+    "counts": {bucket: n}, "any": bool}``. Degrades to an empty/clean summary,
+    never raises. Reads no value — only ``required``/``has_default`` from the
+    committed feed (see the classifier note above for why the literal
+    referenced-but-unset / set-but-unused signal is not computable here).
+    """
+    counts = {ENV_DRIFT_REQUIRED_DEFAULTED: 0, ENV_DRIFT_OPTIONAL_UNDEFENDED: 0}
+    flagged: list[dict[str, Any]] = []
+    for v in env_usage(data):
+        bucket = classify_env_var(v)
+        if bucket:
+            counts[bucket] += 1
+            flagged.append({**v, "drift": bucket})
+    return {"flagged": flagged, "counts": counts, "any": bool(flagged)}
 
 
 def synonyms(data: dict[str, Any]) -> list[dict[str, Any]]:

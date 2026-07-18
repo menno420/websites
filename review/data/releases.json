@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-18T17:17:17Z",
+  "generated_at": "2026-07-18T20:17:48Z",
   "note": "Per arcade game with a source repo: the release tag the committed botsite/data/arcade.json expects (parsed from the game's blocker/status free text \u2014 arcade.json has no structured tag field) vs. the live latest tag on that source repo, read over anonymous git transport (git ls-remote --tags) at bake time. drift=true means a known expected tag differs from the live latest tag (including an expected release not yet published). A game with no encoded tag, or whose live tags could not be read, records drift=false with an honest reason.",
   "entries": [
     {
@@ -7,9 +7,9 @@
       "name": "Lumen Drift",
       "source_repo": "menno420/gba-homebrew",
       "expected_tag": "lumen-drift-v1.3",
-      "live_tag": null,
-      "drift": true,
-      "reason": "expected release lumen-drift-v1.3 is not published on the source repo (no matching live tag found)"
+      "live_tag": "lumen-drift-v1.3",
+      "drift": false,
+      "reason": "expected release lumen-drift-v1.3 matches the live latest tag"
     },
     {
       "slug": "mineverse",
@@ -30,5 +30,5 @@
       "reason": "no release tag is encoded in the arcade registry for this game"
     }
   ],
-  "drift_count": 1
+  "drift_count": 0
 }

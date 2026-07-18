@@ -3,17 +3,12 @@
     "slug": "lumen-drift",
     "name": "Lumen Drift",
     "tagline": "An original Game Boy Advance game — finished, publish-safe, 100% original assets.",
-    "description": "A finished homebrew GBA ROM (v1.3) built entirely from original assets. Play it by loading the ROM into any GBA emulator once the download release is published.",
+    "description": "A finished homebrew GBA ROM (v1.3) built entirely from original assets. Download the ROM and load it into any GBA emulator to play.",
     "maturity": "playable",
-    "availability": "unavailable",
-    "url": null,
+    "availability": "download",
+    "url": "https://github.com/menno420/gba-homebrew/releases/download/lumen-drift-v1.3/lumen-drift.gba",
     "source_repo": "menno420/gba-homebrew",
-    "status_note": "Download release pending: the GitHub Release (lumen-drift-v1.3) needs one owner click before the ROM can be offered here.",
-    "blocker": {
-      "owner_action": "Publish the GitHub Release lumen-drift-v1.3 in menno420/gba-homebrew — one owner click on the release page.",
-      "unblocks": "The published release gives the ROM a public download URL; once that URL is recorded in this registry, the card gains a real Download button.",
-      "ask_id": "ASK-0010"
-    }
+    "status_note": "Downloadable now — the lumen-drift-v1.3 GitHub Release is published; the Download button fetches the ROM (lumen-drift.gba) directly from that release."
   },
   {
     "slug": "mineverse",
@@ -30,16 +25,11 @@
     "slug": "games-web",
     "name": "games-web",
     "tagline": "A zero-dependency web app: an RPG mining character sheet in the browser.",
-    "description": "A zero-dependency web app showing an RPG mining character sheet. The GitHub Pages deploy workflow exists, but the site is not reachable yet — its documented URL currently returns 404.",
+    "description": "A zero-dependency web app showing an RPG mining character sheet, deployed live to GitHub Pages. Open it in the browser and switch between sample characters.",
     "maturity": "beta",
-    "availability": "unavailable",
-    "url": null,
+    "availability": "live",
+    "url": "https://menno420.github.io/product-forge/",
     "source_repo": "menno420/product-forge",
-    "status_note": "GitHub Pages deployment pending an owner settings click (Settings → Pages → Source: GitHub Actions); no reachable URL until then.",
-    "blocker": {
-      "owner_action": "In menno420/product-forge, set Settings → Pages → Source to GitHub Actions — one owner settings click.",
-      "unblocks": "The existing deploy workflow can then publish the site; once its URL is reachable, this registry records it and the card links out.",
-      "ask_id": "ASK-0011"
-    }
+    "status_note": "Live on GitHub Pages — a phase-1 character sheet rendered over mock data."
   }
 ]

@@ -252,7 +252,13 @@ async def access_page(request: Request):
 @app.get("/env", response_class=HTMLResponse)
 async def env_page(request: Request):
     ctx = await _base_ctx(request, "env")
-    ctx.update({"env_usage": ds.env_usage(ctx["data"]), "source_url": ds.source_url})
+    ctx.update(
+        {
+            "env_usage": ds.env_usage(ctx["data"]),
+            "env_drift": ds.env_drift(ctx["data"]),
+            "source_url": ds.source_url,
+        }
+    )
     return templates.TemplateResponse(request, "env.html", ctx)
 
 
@@ -342,6 +348,12 @@ async def status_page(request: Request):
     # honestly (arcade_ok=False → the template shows "unavailable", never a
     # faked 0 live / 0 blocked).
     ares = await ds.fetch_arcade(refresh=_refresh(request))
+    # Release-drift parity — re-render review's already-baked release-drift mirror
+    # (review/data/releases.json) over the same raw feed mechanism. This surface
+    # NEVER recomputes drift; a failed fetch degrades honestly (releases_ok=False →
+    # count 0, empty list, no card — never a faked zero-state card).
+    rres = await ds.fetch_releases(refresh=_refresh(request))
+    drift = ds.release_drift(rres["data"] if rres["ok"] else {})
     ctx.update(
         {
             "cards": cards,
@@ -350,6 +362,10 @@ async def status_page(request: Request):
             "arcade_ok": ares.get("ok", False),
             "arcade_error": ares.get("error", ""),
             "arcade": ds.arcade_counts(ares.get("data")) if ares.get("ok") else None,
+            "release_drift_entries": drift["entries"],
+            "release_drift_count": drift["count"],
+            "releases_ok": rres.get("ok", False),
+            "releases_generated_at": drift["generated_at"],
         }
     )
     return templates.TemplateResponse(request, "status.html", ctx)

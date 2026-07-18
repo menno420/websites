@@ -377,6 +377,26 @@ why: simplest, no runtime outbound dependency, matches the seat's own recommenda
 done-when: seat acknowledges the verdict and builds the baked-drift-banner path (or the owner vetoes).
 provenance: manager → websites verdict on SIM-REQUEST #355, 2026-07-18.
 
+## ORDER 035 · 2026-07-18T20:06:00Z · status: new
+priority: P1
+do: record the ASK-0001 / Q-0004 decision (below) and build the NON-gated half — the Discord OAuth owner login flow on the control-plane, fail-closed and test-covered; leave the armed bot-control write path stubbed pending ASK-0003.
+why: the owner delegated the Q-0004 decision to the dispatched session; the credential boundary + one Discord-authed control surface must be recorded and the login half built so ASK-0002/ASK-0003 are the only remaining owner steps.
+done-when: the decision is recorded here + in docs/owner/OWNER-ACTIONS.md (ASK-0001 DECIDED, Decided row P), app/discord_auth.py + the require_owner gate wiring are built and green, and the remaining owner steps are narrowed to ASK-0002 (redirect URI + env) and ASK-0003 (token + armed service).
+executor: Websites coordinator (dispatched session)
+provenance: owner live in the coordinator session 2026-07-18, delegating the decision — verbatim: "#4, as mentioned in the continue prompt, if you have a recomended decision, then decide"
+decision (ASK-0001 / Q-0004): Live bot control lives on the websites CONTROL-PLANE (app/) owner surface, gated by Discord OAuth REUSING the existing fleet-side SuperBot Discord application. The dashboard /admin dry-run panel stays the safe preview tier. The scoped bot control-API token + a SEPARATE armed Railway service (ASK-0003) remain the armed-execution architecture, stubbed until owner-gated creds exist.
+rationale: preserves the credential boundary — the bot control-API token never lands on a read-only surface; it stays on a separate armed service — while giving the owner one Discord-authed control surface on the control-plane, where ORDER 021's environments hub and the owner routes already live and where app/owner.py already declares Discord OAuth replaces require_owner. REUSE of the existing SuperBot Discord app is the cheapest owner path (add a redirect URI + copy client id/secret vs registering a fresh app).
+built this session: the Discord OAuth authorization-code login flow on the control-plane (fail-closed; env-unset → locked and names the opening owner action), signed session cookie, CSRF floor on state-changing routes; wired as the owner gate for the environments-hub remainder (ORDER 021) and the future armed panel. Armed execution stays stubbed pending ASK-0003.
+remaining owner steps: ASK-0002 (add a redirect URI on the existing SuperBot Discord app + copy the client id/secret/owner-id/session-secret onto the control-plane Railway env) and ASK-0003 (scoped control-API token + separate armed Railway service).
+
+## ORDER 036 · 2026-07-18T21:18:32Z · status: new
+priority: P2
+executor: websites coordinator (next wake or live session)
+do: UNSTICK THE AUTOMATED BAKE PR #422 — "[bake] fleet data refresh 2026-07-18T19:48:04Z" (branch bake/review-data-20260718-194805, head e26ca64). Its dispatched `quality` run 29658485481 FAILED at 2026-07-18T19:49Z, and the PR body's own contract says "if either could not be armed, this PR waits for a human hand" — so the daily data refresh is wedged red with no one assigned. Do: (1) read the failed run's logs and root-cause the quality failure; (2) fix the underlying failure, or rebake (re-run the bake workflow for a fresh branch/PR) if the snapshot itself is the problem; (3) land the refresh — #422 merged on green, or the fresh bake PR merged and #422 closed as superseded with a one-line reason. Durable follow-up (lane's judgment, not gated on this order): consider making the bake workflow auto-supersede a red bake PR — each cycle closes the previous stale red bake PR and opens a fresh one — so a transient red never wedges the refresh pipeline again.
+why: the committed data mirrors (review/data/snapshot.json, fleet.json, stats.json; botsite/data/graveyard.json) go stale while the bake PR sits red; nothing in the lane's claims or the two live session PRs (#425 botsite submissions; #428 merged) covers it.
+done-when: the 2026-07-18 fleet-data refresh is on main (via #422 or a superseding green bake) and #422 is terminal (merged or closed-with-reason); the auto-supersede follow-up is built or honestly ledgered to the backlog; status acks+done 036.
+provenance: (a) fleet rail — "the manager ORDERs lane inboxes" (fleet-manager seat brief); (b) owner live directive 2026-07-18 ~21:25Z, verbatim: "keep an eye out on the projects, route some work their way if you think it's necessary". Manager routing note recorded in fleet-manager docs/fleet-triage.md, 2026-07-18 sweep entry.
+
 ## ORDER 034 · 2026-07-18T20:08:40Z · status: new
 priority: P2
 do: provision the superbot-websites Postgres, wire botsite's public /submit intake to persist via DATABASE_URL (Postgres in prod, sqlite in CI; fail-soft when unset), set DATABASE_URL on the botsite service, live-verify. Owner line verbatim: "for #5, that's a job for you" — #5 = "Botsite database: in Railway, add Postgres and set DATABASE_URL on the botsite service (ASK-0004). Unblocks durable submissions."

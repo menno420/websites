@@ -22,8 +22,17 @@ FIXTURE = {
     "bot_changelog": [],
 }
 
-# games-web's documented (404) Pages URL — must never be rendered as a link.
-DEAD_PAGES_URL = "https://menno420.github.io/product-forge/"
+# games-web's GitHub Pages deployment — LIVE since 2026-07-18 (ASK-0011: the
+# owner ran product-forge's Pages deploy; the site answers 200 with the real
+# character-sheet app). The old dead-URL pin is retired: this URL is now a real
+# outbound link, not a URL that must never appear.
+GAMES_WEB_URL = "https://menno420.github.io/product-forge/"
+
+# lumen-drift's published GitHub Release asset — the direct .gba download target
+# since 2026-07-18 (ASK-0010: the owner published lumen-drift-v1.3; availability
+# is now "download"). Repointed from the release *page* to the direct asset URL
+# once the attached .gba was confirmed (164 KB, SHA256 195a8679…babae94).
+LUMEN_DRIFT_URL = "https://github.com/menno420/gba-homebrew/releases/download/lumen-drift-v1.3/lumen-drift.gba"
 
 # mineverse's live Railway deployment (ORDER 022; cold-verified 200).
 MINEVERSE_URL = "https://web-production-97636.up.railway.app"
@@ -50,16 +59,21 @@ def test_arcade_lists_all_games_with_maturity_badges(client):
     assert "sb-badge-ok" in r.text and "sb-badge-info" in r.text
 
 
-def test_arcade_no_dead_links(client):
-    """Only really-reachable games get anchors: the 404 games-web Pages URL must
-    not appear as an href (or at all), and the two unavailable games render
-    honest status notes instead of links."""
+def test_arcade_all_committed_games_are_reachable_after_the_flip(client):
+    """Both launch blockers cleared 2026-07-18 (ASK-0010 lumen-drift release +
+    ASK-0011 games-web Pages): every committed game now renders a real outbound
+    link with the attribution ref — games-web's Pages URL, once the dead-URL
+    pin, is now a live Play link, and lumen-drift a Download link. No blocker
+    panel or 'pending' note survives on the catalog."""
     r = client.get("/arcade")
     assert r.status_code == 200
-    assert f'href="{DEAD_PAGES_URL}' not in r.text
-    assert DEAD_PAGES_URL not in r.text
-    # honest status notes show for the two still-unavailable games
-    assert "pending" in r.text.lower()
+    # the formerly-dead games-web Pages URL is now a real outbound Play link
+    assert f'href="{GAMES_WEB_URL}?ref=fleet-arcade"' in r.text
+    # lumen-drift's published release is now a Download link
+    assert f'href="{LUMEN_DRIFT_URL}?ref=fleet-arcade"' in r.text
+    # nothing is blocked any more: no owner-click panel, no pending note
+    assert "The owner click:" not in r.text
+    assert "pending" not in r.text.lower()
 
 
 def test_arcade_mineverse_live_link(client):
@@ -189,23 +203,37 @@ def test_has_link_covers_exactly_the_linked_availabilities(tmp_path):
 
 
 def test_committed_registry_is_honest():
-    """The committed registry loads, has all three games; mineverse is live
-    (ORDER 022) and the other two stay honestly unavailable with notes."""
+    """The committed registry loads with all three games, and after the
+    2026-07-18 flip every one is reachable: mineverse live (ORDER 022),
+    games-web live (ASK-0011 Pages deploy), lumen-drift download (ASK-0010
+    published release). Each renders an outbound link with the attribution ref
+    and keeps an honest status note; none carries a blocker."""
     games = arcade.load_games()
     assert [g["slug"] for g in games] == ["lumen-drift", "mineverse", "games-web"]
     by_slug = {g["slug"]: g for g in games}
+
     mv = by_slug["mineverse"]
     assert mv["availability"] == "live"
     assert mv["url"] == MINEVERSE_URL
     assert mv["is_live"] is True and mv["has_link"] is True
     assert mv["link_url"] == f"{MINEVERSE_URL}?ref=fleet-arcade"
-    assert mv["status_note"]  # honest: read-only demo, sign-in launching
-    for slug in ("lumen-drift", "games-web"):
-        g = by_slug[slug]
-        assert g["availability"] == "unavailable"
-        assert g["url"] is None
-        assert g["has_link"] is False
-        assert g["status_note"]  # every unavailable game explains itself
+
+    gw = by_slug["games-web"]
+    assert gw["availability"] == "live"
+    assert gw["url"] == GAMES_WEB_URL
+    assert gw["is_live"] is True and gw["has_link"] is True
+    assert gw["link_url"] == f"{GAMES_WEB_URL}?ref=fleet-arcade"
+
+    ld = by_slug["lumen-drift"]
+    assert ld["availability"] == "download"
+    assert ld["url"] == LUMEN_DRIFT_URL
+    # a download game is has_link (a Download button) but NOT is_live
+    assert ld["is_live"] is False and ld["has_link"] is True
+    assert ld["link_url"] == f"{LUMEN_DRIFT_URL}?ref=fleet-arcade"
+
+    for g in games:
+        assert g["status_note"]  # every game still explains itself honestly
+        assert g["blocker"] is None  # no launch blockers remain
 
 
 # --------------------------------------------------------------------------- #
@@ -228,32 +256,31 @@ def test_arcade_detail_unknown_slug_404(client):
     assert "does-not-exist" in r.text
 
 
-def test_arcade_detail_lumen_drift_blocker_panel(client):
-    """The unavailable GBA game explains itself: the structured blocker panel
-    renders the named owner click recorded in the registry, plus the honest
-    'how it unblocks' line."""
+def test_arcade_detail_lumen_drift_download_affordance(client):
+    """The GBA game flipped to download (ASK-0010, 2026-07-18): its detail page
+    carries a real Download button to the published release and NO blocker
+    panel — the launch is no longer blocked."""
     r = client.get("/arcade/lumen-drift")
     assert r.status_code == 200
-    assert "What&#39;s blocking launch" in r.text or "What's blocking launch" in r.text
-    assert "The owner click:" in r.text
-    assert "lumen-drift-v1.3" in r.text
-    assert "one owner click on the release page" in r.text
-    assert "How it unblocks:" in r.text
-    assert "Download button" in r.text
-    # honest: no play/download affordance for an unreachable game
+    assert f'href="{LUMEN_DRIFT_URL}?ref=fleet-arcade"' in r.text
+    assert "Download" in r.text
+    # honest: the blocker panel is gone now the game is reachable
+    assert "What's blocking launch" not in r.text
+    assert "The owner click:" not in r.text
+    # a download game is not "live" — no Play affordance
     assert "Play now" not in r.text
-    assert "?ref=fleet-arcade" not in r.text and "&ref=fleet-arcade" not in r.text
 
 
-def test_arcade_detail_games_web_blocker_panel(client):
+def test_arcade_detail_games_web_play_affordance(client):
+    """games-web flipped to live (ASK-0011 Pages deploy, 2026-07-18): its detail
+    page carries a real Play link to the Pages site and NO blocker panel. The
+    formerly-dead Pages URL is now an honest outbound link."""
     r = client.get("/arcade/games-web")
     assert r.status_code == 200
-    assert "The owner click:" in r.text
-    assert "Source to GitHub Actions" in r.text
-    assert "one owner settings click" in r.text
-    assert "How it unblocks:" in r.text
-    # the documented-but-404 Pages URL must never appear on the detail page
-    assert DEAD_PAGES_URL not in r.text
+    assert f'href="{GAMES_WEB_URL}?ref=fleet-arcade"' in r.text
+    assert "Play now" in r.text
+    assert "What's blocking launch" not in r.text
+    assert "The owner click:" not in r.text
 
 
 def test_arcade_detail_mineverse_play_affordance(client):
@@ -331,19 +358,15 @@ def test_game_by_slug_returns_enriched_entry_or_none():
     assert arcade.game_by_slug("no-such-game") is None
 
 
-def test_committed_registry_blockers_are_recorded_for_unavailable_games():
-    """Schema guard on the committed registry: both unavailable games carry a
-    structured blocker (the named owner click + how it unblocks); the live
-    game carries none. Detail URLs derive from slugs."""
+def test_committed_registry_carries_no_blockers_after_the_flip():
+    """Schema guard on the committed registry post-flip (2026-07-18): both
+    arcade launch blockers cleared (ASK-0010 lumen-drift release + ASK-0011
+    games-web Pages), so NO game carries a blocker now — every game is
+    reachable. Detail URLs still derive from slugs."""
     by_slug = {g["slug"]: g for g in arcade.load_games()}
-    for slug in ("lumen-drift", "games-web"):
-        blocker = by_slug[slug]["blocker"]
-        assert blocker is not None
-        assert blocker["owner_action"].strip()
-        assert blocker["unblocks"].strip()
-        assert "owner" in blocker["owner_action"].lower()  # a NAMED owner click
-    assert by_slug["mineverse"]["blocker"] is None
     for slug, g in by_slug.items():
+        assert g["blocker"] is None, slug
+        assert g["has_link"] is True, slug  # every game is reachable
         assert g["detail_url"] == f"/arcade/{slug}"
 
 
@@ -393,24 +416,24 @@ def test_loader_malformed_ask_id_degrades_to_none_but_keeps_blocker(tmp_path, as
     assert game["blocker"]["ask_id"] is None
 
 
-def test_committed_registry_blockers_carry_their_ledger_ask_ids():
-    """The committed registry joins both launch blockers to their owner-actions
-    ledger rows by stable id (docs/owner/OWNER-ACTIONS.md; the same ids
-    app/askverify.py's arcade probes are registered under — pinned repo-wide
-    by tests/test_askverify.py's consistency test)."""
+def test_committed_registry_no_longer_carries_the_launch_blocker_ask_ids():
+    """Post-flip (2026-07-18) the committed registry carries no blocker at all,
+    so neither ASK-0010 nor ASK-0011 is joined from arcade.json any more (both
+    moved to Decided rows P/Q in docs/owner/OWNER-ACTIONS.md; the id-consistency
+    pin now lives in tests/test_askverify.py)."""
     by_slug = {g["slug"]: g for g in arcade.load_games()}
-    assert by_slug["lumen-drift"]["blocker"]["ask_id"] == "ASK-0010"
-    assert by_slug["games-web"]["blocker"]["ask_id"] == "ASK-0011"
+    for slug in ("lumen-drift", "games-web"):
+        assert by_slug[slug]["blocker"] is None
 
 
-def test_arcade_detail_renders_the_ledger_ref(client):
-    """Both blocked games' detail panels show the stable ledger ref — the
-    visible half of the ask_id join."""
-    for slug, ask_id in (("lumen-drift", "ASK-0010"), ("games-web", "ASK-0011")):
+def test_arcade_detail_renders_no_ledger_ref_after_the_flip(client):
+    """With every game reachable and no blocker, no detail page renders a
+    'Ledger ref:' line — the visible half of the ask_id join is gone with the
+    blocker panels."""
+    for slug in ("lumen-drift", "games-web", "mineverse"):
         r = client.get(f"/arcade/{slug}")
         assert r.status_code == 200
-        assert "Ledger ref:" in r.text
-        assert f"<code>{ask_id}</code>" in r.text
+        assert "Ledger ref:" not in r.text
 
 
 def test_arcade_detail_idless_blocker_renders_panel_without_ledger_ref(
@@ -441,20 +464,16 @@ def test_arcade_detail_idless_blocker_renders_panel_without_ledger_ref(
 # blocked games and the distinct owner clicks among the blocked ones.
 # --------------------------------------------------------------------------- #
 
-def test_arcade_catalog_card_surfaces_blocker_owner_action_and_ask_id(client):
-    """Each unavailable card on the catalog carries its blocking owner click and
-    stable ledger ref — the same ledger text the /arcade/{slug} panel renders,
-    now on the card itself so a visitor never has to click through to see it."""
+def test_arcade_catalog_cards_carry_no_blocker_after_the_flip(client):
+    """Post-flip (2026-07-18) no catalog card carries a blocking owner click or
+    ledger ref — both blockers cleared (ASK-0010 / ASK-0011), so the cards show
+    their reachable Play/Download affordances instead of an owner-click panel."""
     r = client.get("/arcade")
     assert r.status_code == 200
-    assert "The owner click:" in r.text
-    # lumen-drift's blocker (owner_action + ask_id) is now on the catalog card
-    assert "Publish the GitHub Release lumen-drift-v1.3" in r.text
-    assert "<code>ASK-0010</code>" in r.text
-    # games-web's blocker too
-    assert "Source to GitHub Actions" in r.text
-    assert "<code>ASK-0011</code>" in r.text
-    assert "Ledger ref:" in r.text
+    assert "The owner click:" not in r.text
+    assert "Ledger ref:" not in r.text
+    assert "<code>ASK-0010</code>" not in r.text
+    assert "<code>ASK-0011</code>" not in r.text
 
 
 def test_arcade_catalog_no_live_verdict_leaks_to_public_page(client):
@@ -469,28 +488,27 @@ def test_arcade_catalog_no_live_verdict_leaks_to_public_page(client):
 
 
 def test_arcade_catalog_summary_strip(client):
-    """The top-of-page availability strip counts the committed registry: one
-    live game (mineverse), two blocked (lumen-drift, games-web) on two distinct
-    owner clicks (ASK-0010, ASK-0011)."""
+    """The top-of-page availability strip counts the committed registry post-flip
+    (2026-07-18): all three games reachable (mineverse + games-web live,
+    lumen-drift download), zero blocked, so no owner-click clause renders."""
     r = client.get("/arcade")
     assert r.status_code == 200
-    assert "1 live" in r.text
-    assert "2 blocked" in r.text
-    assert "on 2 owner clicks" in r.text
+    assert "3 live" in r.text
+    assert "0 blocked" in r.text
+    assert "owner click" not in r.text  # nothing blocked → no owner-click clause
 
 
 def test_games_front_door_shows_arcade_summary_strip(client):
     """The /games front door surfaces the Fleet Arcade's launch-readiness at a
-    glance — the SAME live/blocked/distinct-owner-clicks summary the /arcade
-    catalog carries (reusing arcade.availability_summary over the committed
-    registry: 1 live, 2 blocked, 2 distinct owner clicks) — and cross-links to
+    glance — the SAME live/blocked/owner-clicks summary the /arcade catalog
+    carries (reusing arcade.availability_summary over the committed registry,
+    post-flip: 3 live, 0 blocked, 0 owner clicks) — and cross-links to
     /arcade."""
     r = client.get("/games")
     assert r.status_code == 200
     assert "Fleet Arcade" in r.text
-    assert "1 live" in r.text
-    assert "2 blocked" in r.text
-    assert "on 2 owner clicks" in r.text
+    assert "3 live" in r.text
+    assert "0 blocked" in r.text
     assert 'href="/arcade"' in r.text
 
 
@@ -552,13 +570,14 @@ def test_arcade_summary_dedupes_idless_clicks_by_owner_action():
 
 
 def test_arcade_summary_over_committed_registry():
-    """The helper agrees with the committed registry read through the loader:
-    1 live, 2 blocked, 2 distinct owner clicks."""
+    """The helper agrees with the committed registry read through the loader,
+    post-flip (2026-07-18): all three games reachable, none blocked, no
+    outstanding owner clicks."""
     summary = arcade.availability_summary(arcade.load_games())
     assert summary["total"] == 3
-    assert summary["live"] == 1
-    assert summary["blocked"] == 2
-    assert summary["owner_clicks"] == 2
+    assert summary["live"] == 3
+    assert summary["blocked"] == 0
+    assert summary["owner_clicks"] == 0
 
 
 @pytest.mark.parametrize("bad", [
@@ -653,12 +672,13 @@ def test_pending_owner_actions_fail_soft_on_malformed_input(bad):
     assert arcade.pending_owner_actions(bad) == []
 
 
-def test_arcade_page_renders_owner_action_queue(client):
-    """The /arcade page surfaces the consolidated queue panel: its heading, the
-    committed registry's two ledger refs, and the games each unblocks."""
+def test_arcade_page_omits_owner_action_queue_when_nothing_is_blocked(client):
+    """Post-flip (2026-07-18) no game is blocked, so the consolidated owner
+    action queue panel is not rendered at all — the panel only appears when
+    there are pending owner clicks (arcade.pending_owner_actions is empty here),
+    and neither retired ask id leaks onto the page."""
     r = client.get("/arcade")
     assert r.status_code == 200
-    assert "Owner action queue" in r.text
-    assert "ASK-0010" in r.text
-    assert "ASK-0011" in r.text
-    assert "unblocks" in r.text
+    assert "Owner action queue" not in r.text
+    assert "ASK-0010" not in r.text
+    assert "ASK-0011" not in r.text

@@ -93,19 +93,20 @@ def _open_ledger_headlines() -> list[str]:
     return [b.get("what", "") for b in _open_ledger_blocks()]
 
 
-def test_real_ledger_has_the_fifteen_open_asks_each_with_a_unique_id():
-    # 9 from the 2026-07-16 id backfill + the 2 arcade launch blockers
-    # (ASK-0010/0011) + the 5 registry blocker rows (ASK-0012..0016 — the
-    # catalog / products / puddle-museum owner gates, same day), LESS
-    # ASK-0007 (order-020-pat) — SATISFIED / verified-live 2026-07-18 and
-    # moved to Decided row O, so it is no longer an open block.
+def test_real_ledger_has_the_thirteen_open_asks_each_with_a_unique_id():
+    # 9 from the 2026-07-16 id backfill + the 5 registry blocker rows
+    # (ASK-0012..0016 — the catalog / products / puddle-museum owner gates,
+    # same day), LESS ASK-0007 (order-020-pat, Decided row O), LESS the two
+    # arcade launch blockers ASK-0010 (lumen-drift release) + ASK-0011
+    # (product-forge Pages) — both SATISFIED / verified-live 2026-07-18 and
+    # moved to Decided rows P/Q, so neither is an open block any more.
     blocks = _open_ledger_blocks()
-    assert len(blocks) == 15
+    assert len(blocks) == 13
     ids = [b.get("ask_id") for b in blocks]
     assert all(
         i and re.fullmatch(r"ASK-\d{4}", i) for i in ids
     ), f"open ask without a well-formed ID: {ids}"
-    assert len(set(ids)) == 15, f"duplicated ask id in the ledger: {ids}"
+    assert len(set(ids)) == 13, f"duplicated ask id in the ledger: {ids}"
 
 
 def test_every_real_open_ask_matches_a_distinct_registry_entry():
@@ -129,13 +130,14 @@ def test_every_real_open_ask_matches_a_distinct_registry_entry():
 
 def test_real_ledger_matches_land_on_the_intended_probes():
     by_id = {askverify.match(h)["id"]: h for h in _open_ledger_headlines()}
-    # order-020-pat (ASK-0007) is absent: SATISFIED / verified-live
-    # 2026-07-18, moved to Decided row O — no longer an open ledger row.
+    # Absent because SATISFIED / verified-live 2026-07-18 and moved to
+    # Decided: order-020-pat (ASK-0007, row O), lumen-drift-release
+    # (ASK-0010, row P) and product-forge-pages (ASK-0011, row Q) — none is
+    # an open ledger row any more (their registry probes remain, unmatched).
     assert set(by_id) == {
         "q-0004", "discord-oauth", "armed-service", "botsite-database-url",
         "paypal-credentials", "botsite-gate", "bake-pat",
-        "dashboard-site-password", "lumen-drift-release",
-        "product-forge-pages", "gumroad-publish-pass",
+        "dashboard-site-password", "gumroad-publish-pass",
         "photo-packs-originals", "ultramarine-rename", "illustration-gate",
         "sinaasappel-proofread",
     }
@@ -309,26 +311,21 @@ def test_annotate_joins_the_arcade_asks_by_id_and_probes_them(monkeypatch):
     assert rollup["machine_verified"] == 2 and rollup["unmatched"] == 0
 
 
-def test_committed_arcade_registry_ledger_and_probe_registry_agree():
-    """The one-ledger-edit-flips-both-surfaces pin: each committed arcade
-    blocker's ask_id (a) resolves by exact-ID to the registry entry whose
-    probe machine-checks that very blocker, and (b) is a real row in the
-    committed ledger's Open section."""
-    ids = _arcade_blocker_ask_ids()
-    assert ids == {"lumen-drift": "ASK-0010", "games-web": "ASK-0011"}
-    expected_probe = {
-        "lumen-drift": "lumen-drift-release",
-        "games-web": "product-forge-pages",
-    }
-    for slug, ask_id in ids.items():
-        entry = askverify.match("", ask_id)
-        assert entry is not None, f"{slug}: {ask_id} hits no registry entry"
-        assert entry["id"] == expected_probe[slug]
+def test_committed_arcade_registry_carries_no_blockers_after_the_flip():
+    """Both arcade launch blockers cleared 2026-07-18: the owner published
+    lumen-drift-v1.3 (ASK-0010) and deployed games-web to Pages (ASK-0011),
+    so the committed arcade registry now carries NO blocker at all — every
+    game is reachable (mineverse live, lumen-drift download, games-web live).
+    The two probe-registry entries stay put so a regression that re-adds a
+    blocker still joins by id; but neither ask_id is an open ledger row now
+    (both moved to Decided rows P/Q)."""
+    assert _arcade_blocker_ask_ids() == {}
+    # The re-verification probes survive in the registry, still bound to the
+    # (now Decided) ask ids — a future re-open joins cleanly by exact id.
+    assert askverify.match("", "ASK-0010")["id"] == "lumen-drift-release"
+    assert askverify.match("", "ASK-0011")["id"] == "product-forge-pages"
     ledger_ids = {b.get("ask_id") for b in _open_ledger_blocks()}
-    for slug, ask_id in ids.items():
-        assert ask_id in ledger_ids, (
-            f"{slug}: {ask_id} is not an open ledger row"
-        )
+    assert "ASK-0010" not in ledger_ids and "ASK-0011" not in ledger_ids
 
 
 # --------------------------------------------------------------------------- #

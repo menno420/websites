@@ -36,7 +36,12 @@
             "OWNER_ASSIST_DAILY_CAP",
             "WRITEBACK_BRANCH",
             "WRITEBACK_BRANCH_PREFIX",
-            "WRITEBACK_DB_PATH"
+            "WRITEBACK_DB_PATH",
+            "DISCORD_CLIENT_ID",
+            "DISCORD_CLIENT_SECRET",
+            "OWNER_DISCORD_ID",
+            "OWNER_SESSION_SECRET",
+            "DISCORD_REDIRECT_URI"
           ],
           "notes": "documented set — app/railway.py SERVICES is the per-variable purpose ledger (rendered at /owner/environments)."
         },
@@ -81,6 +86,7 @@
           "variable_names": [
             "DASHBOARD_JSON_URL",
             "ARCADE_JSON_URL",
+            "RELEASES_JSON_URL",
             "CONSOLE_JSON_URL",
             "DATA_CACHE_TTL_SECONDS",
             "SUPERBOT_REPO",
