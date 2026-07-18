@@ -312,11 +312,19 @@ async def status_page(request: Request):
         {"key": k, "label": label, "href": href, "value": c.get(k, 0)}
         for k, (label, href) in count_links.items()
     ]
+    # Fleet arcade live/blocked snapshot — read from the committed arcade.json
+    # over raw (same mechanism as the bot feeds). A failed fetch degrades
+    # honestly (arcade_ok=False → the template shows "unavailable", never a
+    # faked 0 live / 0 blocked).
+    ares = await ds.fetch_arcade(refresh=_refresh(request))
     ctx.update(
         {
             "cards": cards,
             "open_bugs": ds.open_bugs(data),
             "bugs_total": len(ds.bugs(data)),
+            "arcade_ok": ares.get("ok", False),
+            "arcade_error": ares.get("error", ""),
+            "arcade": ds.arcade_counts(ares.get("data")) if ares.get("ok") else None,
         }
     )
     return templates.TemplateResponse(request, "status.html", ctx)

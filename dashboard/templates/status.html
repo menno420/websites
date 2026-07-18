@@ -22,6 +22,20 @@
     </div>
   </div>
 
+  <div class="sb-status-banner" style="--c:var(--sb-brand)">
+    <span class="sb-pulse"></span>
+    <div>
+      <strong>Arcade</strong>
+      <span class="sub">
+        {% if arcade_ok and arcade %}
+        {{ arcade.total }} game{{ '' if arcade.total == 1 else 's' }} · {{ arcade.live }} live · {{ arcade.blocked }} blocked
+        {% else %}
+        counts unavailable — arcade feed could not be fetched{% if arcade_error %} ({{ arcade_error }}){% endif %}
+        {% endif %}
+      </span>
+    </div>
+  </div>
+
   <div class="group-head"><h2>Inventory</h2></div>
   <div class="card-grid">
     {% for c in cards %}
