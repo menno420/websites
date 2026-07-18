@@ -1,20 +1,20 @@
 # websites · status
 
-updated: 2026-07-18T18:42:02Z
-phase: NAV-guard sweep landed — all four service router-introspection NAV-completeness tests are on origin/main (review PR #416, botsite+dashboard PR #418); claims dir clear; no in-progress card. Backlog is owner-gated ladder + hub-venue wiring (baton below).
-health: green — four service suites green on origin/main (1926 passed at the #418 landing), kit check --strict green, zero born-red holds (claims/ holds only README.md).
-last-shipped: NAV-completeness guards — review PR #416 (merge 0e769d5) + botsite/dashboard PR #418 (merge 13c1804), with claim cleanups #417 / #419; all terminal on origin/main.
+updated: 2026-07-18T20:05:30Z
+phase: Planning pass landed: groomed next-cycle queue (docs/plans/next-cycle-2026-07-18.md); NEXT-TASKS pruned, current-state refreshed to #421, orphaned claim cleared.
+health: green — four service suites green (1928 passed at this planning pass), kit check --strict green apart from the designed born-red hold on the in-progress planning card `claude/next-cycle-plan` (releases at the closing flip); claims/ orphan cleared.
+last-shipped: NAV-completeness guard sweep — review PR #416 + botsite/dashboard PR #418 + off-nav reachability PR #421, with claim cleanups #417/#419 and the coordinator-heartbeat true-up #420; all terminal on origin/main (HEAD 07b4bb9).
 blockers: none
 orders: acked=001-033 done=001-020,022-033 (021 open, owner-gated — the ORDER 021 owner-environments hub).
 routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` ARMED, still bound to the predecessor session (successor bridge by design); rebind rides the hub venue (this coordinator's trigger/send_later arming is classifier-denied 2026-07-18). send_later chain: none pending.
-landing: all-merged — PRs #414–#419 terminal on origin/main, 0 open coordinator PRs (draft #413 = coordinator rescue doc, close-without-merge disposition, excluded from the landing count).
-deployed: origin/main at 60c67fd · four Railway services live (control-plane-…-abb0 / botsite-…-cfd7 / dashboard-…-a91b / review-…-fc91, the superbot-websites project). O-020 owner writeback LIVE + verified; RAILWAY_API_KEY enables self-verifying/setting deployed env (docs/CAPABILITIES.md).
-claims: none active — claims/ holds only README.md.
+landing: pushed-unmerged claude/next-cycle-plan — planning pass PR #423; the born-red planning card holds it red until the closing flip; 0 other open coordinator PRs.
+deployed: origin/main at 07b4bb9 · four Railway services live (control-plane-…-abb0 / botsite-…-cfd7 / dashboard-…-a91b / review-…-fc91, the superbot-websites project). O-020 owner writeback LIVE + verified; RAILWAY_API_KEY enables self-verifying/setting deployed env (docs/CAPABILITIES.md).
+claims: nav-reachability-guard orphan cleared this pass; control/claims/next-cycle-plan.md is this pass's own in-flight claim (removed at the closing flip per claims README step 4).
 needs-owner: the 15 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## NEXT-2-TASKS baton
-1. HUB VENUE — wire `python3 review/gen_releases.py` into `.github/workflows/review-bake.yml` (daily auto-rebake of review/data/releases.json for hands-off release-drift refresh) AND rebind the failsafe cron to a live session. Both are `.github/workflows/**` / trigger changes → hub venue, not a seat PR.
-2. OWNER-GATED LADDER — the 15 ⚑ asks in docs/owner/OWNER-ACTIONS.md await owner input; SITE-CONSOLIDATION RETIREMENT (docs/plans/site-consolidation-cutover.md) is DESTRUCTIVE and awaits the owner's explicit "go". No non-gated seat-buildable increment blocks these.
+1. B6 — dashboard `/env` config-drift flags (M · seat · no gate). Cross-check `/env` usage against a committed manifest, flag referenced-but-unset / set-but-unused vars. `dashboard/app.py` `env_page` currently renders only `data_source.env_usage(data)` with no manifest cross-check. Groomed detail: docs/plans/next-cycle-2026-07-18.md §1.
+2. review `/questions` empty-state polish (S · verify-first). Confirm `/questions` renders a graceful "no questions answered yet" empty state (`questions.json` is intentionally `[]`); add one if missing. Consistent with the honest-empty design. Groomed detail: docs/plans/next-cycle-2026-07-18.md §4.
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md) — 15 open
 ASK-0007 satisfied a prior session; ASK-0002 open with the SuperBot-reuse recon note. ASK-0010 (publish lumen-drift-v1.3) is the release the ORDER 033 drift banner surfaces.
