@@ -206,7 +206,7 @@ SERVICES: list[dict[str, str]] = [
     {
         "name": "review",
         "dir": "review/",
-        "url": "https://review-production-f027.up.railway.app",
+        "url": "https://review-production-fc91.up.railway.app",
         "desc": "This site — the program explaining itself to an outside reviewer, from its own committed record.",
     },
 ]

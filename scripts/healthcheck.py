@@ -101,15 +101,16 @@ from botsite import (  # noqa: E402  (path setup must run first)
 )
 
 # (label, base URL). Endpoints checked per service: /healthz and / (both expect
-# 200 now that all four are public). The review URL is the canonical f027
-# deployment documented in docs/current-state.md + app/config.py (the fc91
-# copy is the labeled "parallel copy" in app/data/web_presence.json — not
-# probed here).
+# 200 now that all four are public). The review URL is the canonical fc91
+# deployment in the superbot-websites project (app/config.py
+# SERVICE_DEPLOY_TARGETS + app/data/web_presence.json); the f027 copy is the
+# old reliable-grace "parallel copy" (the consolidation RETIRE target) — not
+# probed here.
 SERVICES = [
     ("control-plane", "https://control-plane-production-abb0.up.railway.app"),
     ("botsite", "https://botsite-production-cfd7.up.railway.app"),
     ("dashboard", "https://dashboard-production-a91b.up.railway.app"),
-    ("review", "https://review-production-f027.up.railway.app"),
+    ("review", "https://review-production-fc91.up.railway.app"),
 ]
 ENDPOINTS = ("/healthz", "/")
 EXPECTED = 200

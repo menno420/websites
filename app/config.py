@@ -81,7 +81,7 @@ SERVICE_DEPLOY_TARGETS: dict = {
     "control-plane": None,
     "botsite": "https://botsite-production-cfd7.up.railway.app/version",
     "dashboard": "https://dashboard-production-a91b.up.railway.app/version",
-    "review": "https://review-production-f027.up.railway.app/version",
+    "review": "https://review-production-fc91.up.railway.app/version",
 }
 
 GITHUB_API_BASE = os.environ.get("GITHUB_API_BASE", "https://api.github.com").rstrip("/")
