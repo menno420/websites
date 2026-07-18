@@ -62,13 +62,28 @@ TARGET_MAX_CHARS = 300
 TEXT_MAX_CHARS = 4000
 
 ENV_TOKEN = "GITHUB_TOKEN"  # read per attempt — see module docstring
-ENV_BRANCH = "WRITEBACK_BRANCH"
+ENV_BRANCH = "WRITEBACK_BRANCH"  # the PR BASE (default main); the base main moves by
 DEFAULT_BRANCH = "main"
 ENV_DB_PATH = "WRITEBACK_DB_PATH"
 
+# Branch + auto-PR is the ONE writeback path (owner-confirmed, Q2=b): main is
+# protected by a ruleset requiring the `quality` check, so a direct contents
+# PUT to main 403/422s and contradicts the repo's main-moves-by-PR doctrine
+# (GH013) — the owner confirmed a straight-to-main PUT is not possible with the
+# PAT, so no direct-to-main escape hatch exists. Each submit commits to a fresh
+# `claude/owner-writeback-<entry-id>` branch and opens an auto-merging PR into
+# the base. The `claude/*` prefix is what the auto-merge-enabler +
+# host-automerge-extras workflows arm, and the diff is control/**-only so the CI
+# control fast-lane exempts the runtime PR from the session-card requirement.
+ENV_BRANCH_PREFIX = "WRITEBACK_BRANCH_PREFIX"
+DEFAULT_BRANCH_PREFIX = "claude/owner-writeback-"
+
 WRITEBACK_REPO = "websites"
 INBOX_PATH = "control/inbox.md"
-NOTES_PATH = "docs/owner/owner-notes.md"
+# Relocated from docs/owner/owner-notes.md into control/** so a note/complete
+# writeback PR is control/**-only and rides the CI fast lane (no session card).
+# A pointer stays at the old docs path for back-compat.
+NOTES_PATH = "control/owner-notes.md"
 
 # Header used when the notes log must be CREATED at runtime (404 on read).
 # Kept byte-identical to the committed seed file so both paths converge.
@@ -100,12 +115,26 @@ CREATE TABLE IF NOT EXISTS writeback_entries (
     path TEXT NOT NULL DEFAULT '',
     commit_sha TEXT NOT NULL DEFAULT '',
     commit_url TEXT NOT NULL DEFAULT '',
+    branch TEXT NOT NULL DEFAULT '',
+    pr_number INTEGER NOT NULL DEFAULT 0,
+    pr_url TEXT NOT NULL DEFAULT '',
     error TEXT NOT NULL DEFAULT '',
     attempts INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
 """
+
+# Columns added after the original ship (the branch+PR flow). CREATE TABLE IF
+# NOT EXISTS never adds columns to a pre-existing table, so a store carried
+# across the change needs them backfilled — cheap, idempotent, stdlib-only.
+# (The store is ephemeral by design — Railway wipes disk on redeploy — so this
+# only matters within a single container's lifetime.)
+_ADDED_COLUMNS = (
+    ("branch", "TEXT NOT NULL DEFAULT ''"),
+    ("pr_number", "INTEGER NOT NULL DEFAULT 0"),
+    ("pr_url", "TEXT NOT NULL DEFAULT ''"),
+)
 
 
 # --------------------------------------------------------------------------
@@ -121,7 +150,19 @@ def token_present() -> bool:
 
 
 def branch() -> str:
+    """The PR BASE branch (default ``main``) — the writeback PR merges INTO
+    it. Never written directly (main is ruleset-protected)."""
     return os.environ.get(ENV_BRANCH) or DEFAULT_BRANCH
+
+
+def branch_prefix() -> str:
+    return os.environ.get(ENV_BRANCH_PREFIX) or DEFAULT_BRANCH_PREFIX
+
+
+def writeback_branch_name(entry: dict) -> str:
+    """The per-submit head branch — unique via the audit entry id, and
+    prefixed so the auto-merge workflows arm it (claude/*)."""
+    return f"{branch_prefix()}{entry['id']}"
 
 
 def db_path() -> str:
@@ -133,6 +174,10 @@ def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(db_path())
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA)  # idempotent — no separate migration step
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(writeback_entries)")}
+    for name, decl in _ADDED_COLUMNS:
+        if name not in existing:
+            conn.execute(f"ALTER TABLE writeback_entries ADD COLUMN {name} {decl}")
     return conn
 
 
@@ -246,6 +291,9 @@ def render_assist_block(entry: dict, inbox_text: str) -> str:
         "BEGIN ORDER TEXT\n"
         f"{entry['text']}\n"
         "END ORDER TEXT\n"
+        "done-when: the coordinator has actioned the owner's request above (or "
+        "routed it to the right lane) and reported it in the close-out; this "
+        "ORDER's status flips new→done.\n"
     )
 
 
@@ -315,111 +363,287 @@ async def attempt_commit(entry_id: int) -> dict:
         )
         return get_entry(entry_id)  # type: ignore[return-value]
 
-    path = target_path(entry["action"])
-    ref = branch()
+    # The ONE writeback path (owner-confirmed, Q2=b): commit to a claude/*
+    # branch and open an auto-merging PR into the base. A commit is claimed
+    # only with a verified SHA — honest-degrade at every step.
+    return await _commit_branch_pr(entry, token)
 
-    # 1) Fresh read of the target file (content + blob sha for the PUT).
+
+# --- shared commit primitives ----------------------------------------------
+def _commit_message(entry: dict) -> str:
+    return (
+        f"owner writeback ({entry['action']}) via launch console [ORDER 020]"
+    )
+
+
+def _entry_marker(entry: dict) -> str:
+    """The unique per-entry string every rendered block embeds — used to make
+    a retry idempotent (never double-append when a prior attempt's commit is
+    already on the branch)."""
+    return f"console audit entry #{entry['id']}"
+
+
+def _b64(text: str) -> str:
+    return base64.b64encode(text.encode("utf-8")).decode("ascii")
+
+
+def _compose(entry: dict, old_text: str) -> str:
+    """Append-only compose: the rendered block after the file's current body."""
+    if entry["action"] == "assist":
+        block = render_assist_block(entry, old_text)
+    else:
+        block = render_note_block(entry)
+    return old_text.rstrip("\n") + "\n\n" + block
+
+
+async def _read_target(
+    path: str, ref: str, token: str
+) -> tuple[str, str, Optional[str], str]:
+    """Fresh read of the target file at ``ref``.
+
+    Returns ``(state, old_text, blob_sha, reason)``: ``state`` is ``"ok"``
+    (file read, blob_sha set), ``"create"`` (a 404 on the notes log → seed
+    with its header, no blob sha), or ``"error"`` (reason set for the queued
+    entry)."""
     read = await github.api_request(
         "GET", f"{_contents_api_path(path)}?ref={ref}", token=token
     )
-    sha: Optional[str] = None
-    old_text = ""
     if read["ok"] and isinstance(read["data"], dict) and read["data"].get("content"):
-        sha = read["data"].get("sha")
         try:
             old_text = base64.b64decode(read["data"]["content"]).decode(
                 "utf-8", "replace"
             )
         except Exception:
-            _update_entry(
-                entry_id,
-                status="queued",
-                error=f"could not decode {path} from the contents API",
-            )
-            return get_entry(entry_id)  # type: ignore[return-value]
-    elif read["status"] == 404 and path == NOTES_PATH:
+            return "error", "", None, f"could not decode {path} from the contents API"
+        return "ok", old_text, read["data"].get("sha"), ""
+    if read["status"] == 404 and path == NOTES_PATH:
         # The notes log does not exist yet — create it with its header.
-        old_text = NOTES_HEADER
-    else:
-        reason = read.get("error") or f"HTTP {read.get('status')}"
-        _update_entry(
-            entry_id,
-            status="queued",
-            error=f"could not read {path}@{ref} ({reason}) — entry stays queued",
-        )
-        return get_entry(entry_id)  # type: ignore[return-value]
-
-    # 2) Append-only compose.
-    if entry["action"] == "assist":
-        block = render_assist_block(entry, old_text)
-    else:
-        block = render_note_block(entry)
-    new_text = old_text.rstrip("\n") + "\n\n" + block
-
-    # 3) The PUT — one commit, verified by the SHA in the response.
-    body: dict[str, Any] = {
-        "message": (
-            f"owner writeback ({entry['action']}) via launch console "
-            "[ORDER 020]"
-        ),
-        "content": base64.b64encode(new_text.encode("utf-8")).decode("ascii"),
-        "branch": ref,
-    }
-    if sha:
-        body["sha"] = sha
-    put = await github.api_request(
-        "PUT", _contents_api_path(path), json_body=body, token=token
+        return "create", NOTES_HEADER, None, ""
+    reason = read.get("error") or f"HTTP {read.get('status')}"
+    return (
+        "error", "", None,
+        f"could not read {path}@{ref} ({reason}) — entry stays queued",
     )
 
-    commit_sha = ""
-    if put["ok"] and isinstance(put["data"], dict):
-        commit_sha = (put["data"].get("commit") or {}).get("sha") or ""
-    if commit_sha:
-        commit_url = (put["data"].get("commit") or {}).get("html_url") or (
-            f"https://github.com/{config.OWNER}/{WRITEBACK_REPO}"
-            f"/commit/{commit_sha}"
-        )
-        _update_entry(
-            entry_id,
-            status="committed",
-            path=path,
-            commit_sha=commit_sha,
-            commit_url=commit_url,
-            error="",
-        )
-        return get_entry(entry_id)  # type: ignore[return-value]
 
-    # NEVER claim a commit that did not land — classify the failure.
+def _extract_commit(put: dict) -> tuple[str, str]:
+    """Return ``(commit_sha, commit_url)`` from a contents-PUT response, or
+    ``("", "")`` when the response carries no verifiable SHA — the honesty
+    hinge: a commit is claimed ONLY on a real SHA."""
+    if put["ok"] and isinstance(put["data"], dict):
+        commit = put["data"].get("commit") or {}
+        commit_sha = commit.get("sha") or ""
+        if commit_sha:
+            commit_url = commit.get("html_url") or (
+                f"https://github.com/{config.OWNER}/{WRITEBACK_REPO}"
+                f"/commit/{commit_sha}"
+            )
+            return commit_sha, commit_url
+    return "", ""
+
+
+def _classify_write_failure(put: dict, ref: str) -> tuple[str, str]:
+    """Classify a rejected write (contents PUT or a git-ref POST) into an
+    honest ``(status, message)`` — never a claimed success."""
     reason = put.get("error") or f"HTTP {put.get('status')}"
     if put["status"] in (401, 403, 404):
-        # 404 on a PUT is GitHub's "token cannot see/write this" answer.
-        status, msg = "queued", (
+        # 404 on a write is GitHub's "token cannot see/write this" answer.
+        return "queued", (
             f"write rejected (HTTP {put['status']}: {reason}) — the token "
             "has no contents:write on menno420/websites; entry stays "
             "queued (mint the PAT per docs/owner/OWNER-ACTIONS.md, then "
             "retry)"
         )
-    elif put["status"] == 409:
-        status, msg = "queued", (
-            f"write conflict (HTTP 409: {reason}) — the file moved under "
+    if put["status"] == 409:
+        return "queued", (
+            f"write conflict (HTTP 409: {reason}) — the ref moved under "
             "us; retry re-reads and re-appends"
         )
-    elif put["status"] == 422:
-        status, msg = "failed", (
+    if put["status"] == 422:
+        return "failed", (
             f"write rejected as invalid (HTTP 422: {reason}) — a retry "
             "will not help without change (branch protection on "
             f"{ref!r} is one known cause)"
         )
-    elif put["ok"]:
-        status, msg = "queued", (
+    if put["ok"]:
+        return "queued", (
             "the API answered success but carried NO commit SHA — refusing "
             "to claim a commit that cannot be verified; entry stays queued"
         )
-    else:
-        status, msg = "queued", (
-            f"write failed ({reason}) — transient; entry stays queued, retry"
+    return "queued", (
+        f"write failed ({reason}) — transient; entry stays queued, retry"
+    )
+
+
+# --- branch + auto-PR (the one writeback path, Q2=b) -----------------------
+_PR_BODY = (
+    "Runtime-generated owner writeback (ORDER 020 machinery, gated "
+    "`/owner/queue`). The owner authored this on the live control-plane; the "
+    "engine committed it to this `claude/owner-writeback-*` branch and opened "
+    "this PR so it lands the ruleset-safe way — main moves by PR only.\n\n"
+    "The diff is **control/**-only**, so the CI control fast-lane grades it "
+    "green with no session card, and the `claude/*` head arms auto-merge. If "
+    "the auto-merge-enabler does not arm it, the host-automerge-extras sweep "
+    "(cron) picks it up.\n\nConsole audit entry #{id} · action: {action}."
+)
+
+
+async def _open_pr(
+    repo: str, entry: dict, head: str, base: str, token: str
+) -> dict:
+    """Open (or, on a retry, re-find) the auto-merging PR for ``head``.
+
+    Returns ``{ok, number, url}`` on success, or ``{ok: False, error}`` — the
+    caller keeps the entry queued so nothing is falsely claimed."""
+    payload = {
+        "title": _commit_message(entry),
+        "head": head,
+        "base": base,
+        "body": _PR_BODY.format(id=entry["id"], action=entry["action"]),
+        "draft": False,
+    }
+    res = await github.api_request(
+        "POST", f"/repos/{repo}/pulls", json_body=payload, token=token
+    )
+    if res["ok"] and isinstance(res["data"], dict) and res["data"].get("html_url"):
+        return {
+            "ok": True,
+            "number": res["data"].get("number") or 0,
+            "url": res["data"]["html_url"],
+        }
+    # A PR for this head may already exist (a prior attempt opened it) — 422 is
+    # GitHub's "a pull request already exists" answer; re-find it rather than
+    # claim a failure.
+    if res["status"] == 422:
+        existing = await github.api_request(
+            "GET",
+            f"/repos/{repo}/pulls?head={config.OWNER}:{head}&base={base}"
+            "&state=open",
+            token=token,
         )
-    _update_entry(entry_id, status=status, path=path, error=msg)
+        if existing["ok"] and isinstance(existing["data"], list) and existing["data"]:
+            pr0 = existing["data"][0]
+            return {
+                "ok": True,
+                "number": pr0.get("number") or 0,
+                "url": pr0.get("html_url", ""),
+            }
+    reason = res.get("error") or f"HTTP {res.get('status')}"
+    return {
+        "ok": False,
+        "error": (
+            f"the commit landed on branch {head} but opening the auto-merge "
+            f"PR failed (HTTP {res.get('status')}: {reason}) — entry stays "
+            "queued; a retry re-uses the branch and re-opens the PR"
+        ),
+    }
+
+
+async def _commit_branch_pr(entry: dict, token: str) -> dict:
+    """Default path (Q2=b): commit the append to a per-submit
+    `claude/owner-writeback-<id>` branch, then open an auto-merging PR into the
+    base. ``committed`` is claimed ONLY when the branch commit SHA is verified
+    AND the PR is open; every other outcome stays honestly ``queued``."""
+    entry_id = entry["id"]
+    path = target_path(entry["action"])
+    base = branch()
+    wb_branch = writeback_branch_name(entry)
+    repo = f"{config.OWNER}/{WRITEBACK_REPO}"
+
+    # 1) Resolve the base branch head SHA (the branch-point for the new ref).
+    ref_res = await github.api_request(
+        "GET", f"/repos/{repo}/git/ref/heads/{base}", token=token
+    )
+    base_sha = ""
+    if ref_res["ok"] and isinstance(ref_res["data"], dict):
+        base_sha = (ref_res["data"].get("object") or {}).get("sha") or ""
+    if not base_sha:
+        reason = ref_res.get("error") or f"HTTP {ref_res.get('status')}"
+        _update_entry(
+            entry_id, status="queued", branch=wb_branch,
+            error=(
+                f"could not resolve {base} head ({reason}) — entry stays "
+                "queued, retry"
+            ),
+        )
+        return get_entry(entry_id)  # type: ignore[return-value]
+
+    # 2) Ensure the writeback branch exists (create at the base head). A 422
+    #    means a prior attempt already created it — treat as OK and read the
+    #    file FROM the branch below so we never double-append.
+    create = await github.api_request(
+        "POST", f"/repos/{repo}/git/refs",
+        json_body={"ref": f"refs/heads/{wb_branch}", "sha": base_sha},
+        token=token,
+    )
+    if not create["ok"] and create["status"] != 422:
+        status, msg = _classify_write_failure(create, wb_branch)
+        _update_entry(entry_id, status=status, branch=wb_branch, error=msg)
+        return get_entry(entry_id)  # type: ignore[return-value]
+
+    # 3) Read the target ON THE BRANCH (idempotency: a prior attempt's append
+    #    shows here) and compose/commit unless it is already present.
+    state, old_text, sha, reason = await _read_target(path, wb_branch, token)
+    if state == "error":
+        _update_entry(entry_id, status="queued", branch=wb_branch, error=reason)
+        return get_entry(entry_id)  # type: ignore[return-value]
+
+    if _entry_marker(entry) in old_text:
+        # A prior attempt already committed this entry's append to the branch —
+        # do NOT double-append; verify the branch head SHA and go open the PR.
+        head_res = await github.api_request(
+            "GET", f"/repos/{repo}/git/ref/heads/{wb_branch}", token=token
+        )
+        commit_sha = ""
+        if head_res["ok"] and isinstance(head_res["data"], dict):
+            commit_sha = (head_res["data"].get("object") or {}).get("sha") or ""
+        commit_url = (
+            f"https://github.com/{config.OWNER}/{WRITEBACK_REPO}"
+            f"/commit/{commit_sha}"
+        )
+        if not commit_sha:
+            _update_entry(
+                entry_id, status="queued", path=path, branch=wb_branch,
+                error=(
+                    f"the append is on branch {wb_branch} but its commit SHA "
+                    "could not be verified — entry stays queued, retry"
+                ),
+            )
+            return get_entry(entry_id)  # type: ignore[return-value]
+    else:
+        body: dict[str, Any] = {
+            "message": _commit_message(entry),
+            "content": _b64(_compose(entry, old_text)),
+            "branch": wb_branch,
+        }
+        if sha:
+            body["sha"] = sha
+        put = await github.api_request(
+            "PUT", _contents_api_path(path), json_body=body, token=token
+        )
+        commit_sha, commit_url = _extract_commit(put)
+        if not commit_sha:
+            status, msg = _classify_write_failure(put, wb_branch)
+            _update_entry(
+                entry_id, status=status, path=path, branch=wb_branch, error=msg
+            )
+            return get_entry(entry_id)  # type: ignore[return-value]
+
+    # 4) Open (or re-find) the auto-merging PR. Only now is the writeback
+    #    'committed' — a landed branch commit whose PR is open.
+    pr = await _open_pr(repo, entry, wb_branch, base, token)
+    if not pr["ok"]:
+        _update_entry(
+            entry_id, status="queued", path=path, branch=wb_branch,
+            commit_sha=commit_sha, error=pr["error"],
+        )
+        return get_entry(entry_id)  # type: ignore[return-value]
+
+    _update_entry(
+        entry_id, status="committed", path=path, branch=wb_branch,
+        commit_sha=commit_sha, commit_url=pr["url"],
+        pr_number=pr["number"], pr_url=pr["url"], error="",
+    )
     return get_entry(entry_id)  # type: ignore[return-value]
 
 
@@ -443,7 +667,10 @@ def state_summary() -> dict:
     return {
         "token_set": token_present(),
         "token_env": ENV_TOKEN,
+        "base": branch(),
+        # Back-compat alias — the base branch the writeback PR merges into.
         "branch": branch(),
+        "branch_prefix": branch_prefix(),
         "repo": f"{config.OWNER}/{WRITEBACK_REPO}",
         "inbox_path": INBOX_PATH,
         "notes_path": NOTES_PATH,

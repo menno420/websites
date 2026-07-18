@@ -2,13 +2,6 @@
 
 > **Status:** `living-ledger`
 >
-> **MOVED (2026-07-18):** runtime owner-writeback note/complete entries now
-> land in **`control/owner-notes.md`**, not this file. The writeback was
-> routed through a branch + auto-merging PR (O-020, Q2=b, owner-confirmed),
-> and its diff must be `control/**`-only to ride the CI control fast-lane
-> (no session card) — so the target moved under `control/`. This file is kept
-> as a historical pointer; read `control/owner-notes.md` for new entries.
->
 > Append-only log written AT RUNTIME by the control-plane's gated owner
 > writeback (`/owner/queue`, ORDER 020): completion assertions, corrections,
 > and ideas the owner typed directly on the site. **Fleet sessions should
