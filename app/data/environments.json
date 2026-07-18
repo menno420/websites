@@ -85,6 +85,7 @@
           "variable_names": [
             "DASHBOARD_JSON_URL",
             "ARCADE_JSON_URL",
+            "RELEASES_JSON_URL",
             "CONSOLE_JSON_URL",
             "DATA_CACHE_TTL_SECONDS",
             "SUPERBOT_REPO",

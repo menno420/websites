@@ -130,6 +130,9 @@ def client():
     ds.prime_cache(ds.DASHBOARD_JSON_URL, DASHBOARD_FIXTURE)
     ds.prime_cache(ds.CONSOLE_JSON_URL, CONSOLE_FIXTURE)
     ds.prime_cache(ds.ARCADE_JSON_URL, ARCADE_FIXTURE)
+    # /status now also fetches review's baked release-drift mirror; prime it empty
+    # so the page never does a live fetch (no drift entries -> no drift card).
+    ds.prime_cache(ds.RELEASES_JSON_URL, {"entries": [], "drift_count": 0})
     ds.set_client(ds.make_client())  # never actually hit (cache is warm)
     with TestClient(app_module.app) as c:
         yield c
@@ -524,6 +527,7 @@ def _client_with_dashboard(data):
     ds.prime_cache(ds.DASHBOARD_JSON_URL, data)
     ds.prime_cache(ds.CONSOLE_JSON_URL, CONSOLE_FIXTURE)
     ds.prime_cache(ds.ARCADE_JSON_URL, ARCADE_FIXTURE)
+    ds.prime_cache(ds.RELEASES_JSON_URL, {"entries": [], "drift_count": 0})
     ds.set_client(ds.make_client())
     return TestClient(app_module.app)
 
