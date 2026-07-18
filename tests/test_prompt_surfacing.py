@@ -21,6 +21,7 @@ import asyncio
 import base64
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -29,6 +30,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app import (  # noqa: E402
     briefing,
+    clock,
     config,
     envhub,
     github,
@@ -362,6 +364,67 @@ def test_console_rollup_reduces_the_drift_rows(monkeypatch):
     assert any(s["state"] == "in sync" for s in other["states"])
     assert out["stale_total"] == 2
     assert out["snapshot"]["ok"] and out["snapshot"]["captured_at"]
+
+
+def test_console_rollup_flags_stale_snapshot_age(monkeypatch):
+    """A failsafe snapshot older than SNAPSHOT_STALE_HOURS exposes an age and
+    is_stale — computed against an injectable ``now`` (deterministic, no wall
+    clock). The snapshot is a manager-wake artifact that freezes when the
+    manager seat parks; the panel reads live but says how stale it is."""
+    _patch_all(monkeypatch)  # snapshot captured 2026-07-13T00:39:53Z
+    now = datetime(2026, 7, 14, 6, 39, 53, tzinfo=timezone.utc)  # +30h
+    out = asyncio.run(prompts.console_rollup(now=now))
+    snap = out["snapshot"]
+    assert snap["ok"] and snap["captured_ok"] is True
+    assert snap["is_stale"] is True
+    assert round(snap["age_hours"]) == 30
+    assert snap["age_human"] == "30h ago"
+    assert snap["stale_hours"] == prompts.SNAPSHOT_STALE_HOURS == 24
+
+
+def test_console_rollup_fresh_snapshot_not_stale(monkeypatch):
+    """A recent snapshot exposes its age but is NOT flagged stale — no
+    fabricated warning when the data is fresh."""
+    _patch_all(monkeypatch)
+    now = datetime(2026, 7, 13, 6, 39, 53, tzinfo=timezone.utc)  # +6h
+    out = asyncio.run(prompts.console_rollup(now=now))
+    snap = out["snapshot"]
+    assert snap["captured_ok"] is True
+    assert snap["is_stale"] is False
+    assert snap["age_human"] == "6h ago"
+
+
+def test_owner_console_warns_when_snapshot_stale(monkeypatch):
+    """The owner console renders the age + a >24h-stale banner attributing the
+    freeze upstream (this panel reads live). Clock pinned via app.clock."""
+    _patch_all(monkeypatch)
+    _patch_owner_siblings(monkeypatch)
+    monkeypatch.setattr(
+        clock, "NOW_OVERRIDE",
+        datetime(2026, 7, 14, 6, 39, 53, tzinfo=timezone.utc),  # 30h later
+    )
+    r = TestClient(app).get("/owner", headers=_basic())
+    assert r.status_code == 200
+    assert "captured 2026-07-13T00:39:53Z" in r.text  # raw stamp kept
+    assert "(30h ago)" in r.text
+    assert "&gt;24h stale" in r.text
+    assert "awaiting an upstream" in r.text
+    assert "reads live" in r.text
+
+
+def test_owner_console_no_warning_when_snapshot_fresh(monkeypatch):
+    """A fresh snapshot shows the age but renders NO stale banner."""
+    _patch_all(monkeypatch)
+    _patch_owner_siblings(monkeypatch)
+    monkeypatch.setattr(
+        clock, "NOW_OVERRIDE",
+        datetime(2026, 7, 13, 6, 39, 53, tzinfo=timezone.utc),  # 6h later
+    )
+    r = TestClient(app).get("/owner", headers=_basic())
+    assert r.status_code == 200
+    assert "(6h ago)" in r.text
+    assert "awaiting an upstream" not in r.text  # no stale-snapshot banner
+    assert "&gt;24h stale" not in r.text
 
 
 def test_owner_console_renders_per_seat_prompt_state(monkeypatch):
