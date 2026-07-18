@@ -91,6 +91,24 @@ def test_nav_includes_arcade(client):
     assert "Arcade" in r.text
 
 
+def test_arcade_links_back_to_games(client):
+    """A2: the /arcade catalog cross-links to the in-chat /games surface, so a
+    visitor who lands on the arcade first can reach the in-chat games — the two
+    overlapping surfaces are mutually reachable, not a one-way dead end."""
+    r = client.get("/arcade")
+    assert r.status_code == 200
+    assert 'href="/games"' in r.text
+
+
+def test_games_links_to_arcade(client):
+    """A2 (the already-shipped direction): the /games page cross-links to the
+    /arcade catalog. Both halves of the cross-link are asserted so a regression
+    on either surface is caught."""
+    r = client.get("/games")
+    assert r.status_code == 200
+    assert 'href="/arcade"' in r.text
+
+
 def test_arcade_degrades_on_missing_file(client, monkeypatch, tmp_path):
     monkeypatch.setattr(arcade, "ARCADE_JSON_PATH", tmp_path / "does-not-exist.json")
     r = client.get("/arcade")
