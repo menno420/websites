@@ -151,12 +151,14 @@
   <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:.6rem;">
     <form method="post" action="/owner/queue/actions/preview" style="flex:1 1 260px;">
       <input type="hidden" name="target" value="{{ headline }}">
+      <input type="hidden" name="uid" value="{{ it.uid }}">
       <input type="hidden" name="action" value="complete">
       <input name="text" placeholder="optional note (how/when you did it)" maxlength="4000" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;font:inherit;">
       <p><button type="submit">✓ mark complete…</button></p>
     </form>
     <form method="post" action="/owner/queue/actions/preview" style="flex:1 1 260px;">
       <input type="hidden" name="target" value="{{ headline }}">
+      <input type="hidden" name="uid" value="{{ it.uid }}">
       <input type="hidden" name="action" value="assist">
       <textarea name="text" rows="2" maxlength="4000" placeholder="what help do you need with this?" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font:inherit;"></textarea>
       <p>
@@ -166,6 +168,7 @@
     </form>
     <form method="post" action="/owner/queue/actions/preview" style="flex:1 1 260px;">
       <input type="hidden" name="target" value="{{ headline }}">
+      <input type="hidden" name="uid" value="{{ it.uid }}">
       <input type="hidden" name="action" value="note">
       <textarea name="text" rows="2" maxlength="4000" placeholder="correction / idea / note on this item…" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font:inherit;"></textarea>
       <p>
@@ -191,6 +194,7 @@
   <p class="small dim">Auto-cleared from the active queue — the underlying condition was positively re-verified as resolved. The ledger row is still the human record of the ask; mark it complete to move it.</p>
   <form method="post" action="/owner/queue/actions/preview" style="max-width:340px;">
     <input type="hidden" name="target" value="{{ headline }}">
+      <input type="hidden" name="uid" value="{{ it.uid }}">
     <input type="hidden" name="action" value="complete">
     <input name="text" placeholder="optional note (how/when you did it)" maxlength="4000" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;font:inherit;">
     <p><button type="submit">✓ mark complete…</button></p>
