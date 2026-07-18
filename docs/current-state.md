@@ -38,7 +38,7 @@ services (share code, not a process):
   `review/gen_snapshot.py`, `gen_fleet.py`, `gen_stats.py`; refreshed by
   the scheduled `review-bake` workflow). Read-only, network-free at
   runtime. Full doc: `review/README.md`. The Railway service is **LIVE** at
-  https://review-production-f027.up.railway.app (owner-created 2026-07-12 —
+  https://review-production-fc91.up.railway.app (owner-created 2026-07-12 —
   `docs/owner/OWNER-ACTIONS.md` Decided row J).
 
 **Bake pipeline reality (2026-07-13):** the scheduled `review-bake`
@@ -202,6 +202,16 @@ trued 2026-07-17 for the fresh-start cleanup.)
   fleet-manager@8724b29, substrate-kit@bf1fc80 and superbot@85a2ec0, with
   each important one executed or explicitly ledgered (owner-gated /
   superseded / deferred) with a cited reason.
+
+- **2026-07-18 duplicate-sites consolidation cutover plan**
+  (`docs/plans/site-consolidation-cutover.md`) — the owner-reviewable plan
+  to retire the `reliable-grace` website duplicates (review `f027` + the
+  `menno420/superbot` `superbot-dashboard`/`superbot-app`), KEEP the
+  `superbot-websites` estate (`abb0`/`a91b`/`cfd7`/`fc91`), and move the
+  URLs. Sequenced review → botsite → dashboard with a rollback per step;
+  destructive retirement is GATED on the owner's explicit go, and the
+  Discord `worker` bot + the Postgres DBs are never touched. Prereqs closed:
+  inventory un-inverted (#407), redirects retargeted (#406/#407).
 
 - **2026-07-12 shipped wave** (each merge verified on `main` via
   `git log`, 2026-07-12 docs truth sweep) — landed over the day, newest

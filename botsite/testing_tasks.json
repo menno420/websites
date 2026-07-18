@@ -41,7 +41,7 @@
       "id": "site-review-program-review-site",
       "type": "site-review",
       "title": "Review the program-review site",
-      "product_url": "https://review-production-f027.up.railway.app",
+      "product_url": "https://review-production-fc91.up.railway.app",
       "brief": "Read the program-review site as a skeptical outside reviewer: the process pages, growth charts, successes, the problems page, the fleet index, and the review editions feed. Look for: claims that are unclear or unsupported, charts that are hard to read, broken links, and pages that render badly on mobile.",
       "payout_usd": 15,
       "est_minutes": 45,

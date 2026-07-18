@@ -41,7 +41,7 @@ asserted.
 | Consolidation happened "on 07-11" | NUANCE — decided late 2026-07-11 (`95fc025`); registry restructure landed 2026-07-12T03:15Z (`639b0f0`). Say "decided 07-11, canonicalized early 07-12" | |
 | The 8 seats' names/repos | VERIFIED | `95fc025` + fleet-manager `projects/README.md` @ `791772f` |
 | Second Anthropic email SENT 2026-07-12 13:24Z | VERIFIED (documented) | superbot `docs/current-state.md` banner @ `0999c33` |
-| Review site live 2026-07-12 11:34Z at review-production-f027.up.railway.app | VERIFIED (documented) | email draft @ `8558179` |
+| Review site live 2026-07-12 11:34Z at review-production-fc91.up.railway.app | VERIFIED (documented) | email draft @ `8558179` |
 | gen-2 relaunch "116 PRs across 13 repos in ~6 hours, zero stuck" | UNVERIFIED here — email-draft claim; attribute to the email/fleet reviews or soften | `8558179` |
 | superbot-next 37/49 subsystems, 218/218 goldens | UNVERIFIED here — email-draft claim; attribute, don't assert | `8558179` |
 | substrate-kit v1.7 → v1.12.1 in ~3 days | UNVERIFIED here (email-draft claim); roster gen #13 shows lanes on v1.12.x and fm #114 upgraded to v1.13.0 — version numbers at least consistent | `8558179`, `10fc4f7` |
