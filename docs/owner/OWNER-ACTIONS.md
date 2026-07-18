@@ -16,7 +16,7 @@
 
 | # | Decision | What it unblocks | Notes / where it lives |
 |---|---|---|---|
-| 1 | **Dashboard `/admin` live-bot control** — arm a production control path, or keep it dry-run? | The Discord-OAuth panel that writes the live bot's control API (settings / help / cog routing / submission moderation). | Needs your direct word. As of 2026-07-11 `/admin` is a complete **dry-run** management UX (typed previews + in-memory audit; zero control-API credentials present — `docs/planning/dashboard-bot-management-readiness.md`). Arming = a **separate** service (OAuth app + control-API token, spec `docs/specs/bot-control-api-v1.md`) + deciding *where bot control lives* (websites / superbot / superbot-next). Rework-plan **Q4** / **Q-0004** (`docs/question-router.md`); three ⚑ asks below. |
+| 1 | ~~**Dashboard `/admin` live-bot control** — arm a production control path, or keep it dry-run?~~ **DECIDED 2026-07-18 (ORDER 035).** | The Discord-OAuth panel that writes the live bot's control API (settings / help / cog routing / submission moderation). | **DECIDED (Q-0004 / ASK-0001):** live bot control lives on the websites CONTROL-PLANE (`app/`) owner surface, gated by Discord OAuth reusing the existing SuperBot app; `/admin` dry-run stays the preview tier; the control-API token + a SEPARATE armed Railway service (ASK-0003) hold the armed path. The login half is built this session; ASK-0002/ASK-0003 are the remaining owner steps. See ORDER 035 (`control/inbox.md`) + Decided row R. |
 | 2 | **Botsite `/submit`** — provision a submissions Postgres + moderation mirror, or keep the stub? | The public feature/bug intake pipeline (moderated queue → GitHub-issue mirror). | Stub today: `botsite/templates/submit.html` (now shows a "Stub — not wired" badge). Needs a Postgres + mirror PAT. Rework-plan **Q5**. |
 | 3 | **Redeploy-from-browser scoped deploy hook** — yes / no? | A gated `/owner` button that triggers a Railway redeploy of a websites service from the site itself. | Would require a Railway deploy hook (scoped to `superbot-websites` only — never the ambient production IDs, see `docs/RAILWAY-SAFETY.md`). Currently deploy = merge to `main` (auto). |
 | 4 | **Custom domains** for the three sites (control-plane / botsite / dashboard). | Friendly URLs instead of `*.up.railway.app`. | Deferred to cutover. Rework-plan **Q6**. |
@@ -60,8 +60,19 @@ Actions token (fine for public repos: "17/18 repos with live stats" in
 run 29184552812) and cannot see private fleet repos, whose fleet cards
 honestly say "no data mirrored yet". Optional, not blocking.
 
+> **DECIDED 2026-07-18 (ORDER 035, `control/inbox.md`; owner delegated the
+> call to the dispatched session).** Live bot control lives on the websites
+> CONTROL-PLANE (`app/`) owner surface, gated by Discord OAuth REUSING the
+> existing fleet-side SuperBot Discord app; the dashboard `/admin` dry-run
+> panel stays the safe preview tier; the scoped control-API token + a SEPARATE
+> armed Railway service (ASK-0003) remain the armed-execution architecture,
+> stubbed until owner-gated creds exist. The non-gated login half (the Discord
+> OAuth login flow + `require_owner` gate wiring) is BUILT this session; the
+> remaining owner steps are ASK-0002 (redirect URI + env) and ASK-0003 (token +
+> armed service). Six-field ask kept verbatim below.
+
 ```markdown
-⚑ OWNER-ACTION
+⚑ OWNER-ACTION — DECIDED 2026-07-18 (ORDER 035; kept for the record)
 ID: ASK-0001
 WHAT: Answer Q-0004 — decide WHERE live bot control lives (websites / superbot / superbot-next), or explicitly keep the dashboard's control panel dry-run-only.
 WHERE: docs/question-router.md (Q-0004, open + blocking) — reply in chat or edit the "Maintainer answer" slot; the dry-run panel to judge from is live at the dashboard's /admin.
@@ -71,23 +82,39 @@ UNBLOCKS: the two asks below, plus the superbot-side v1 implementation of docs/s
 VERIFIED-NEEDED: a product/topology decision only you can make (docs/question-router.md marks it product-intent · blocking · open; ORDER 001 explicitly parked it as non-agent-executable) — no agent attempt applies.
 ```
 
+> **NARROWED 2026-07-18 (ORDER 035):** the Discord OAuth **login code now
+> exists** on the control-plane (`app/discord_auth.py` + the `require_owner`
+> gate wiring). Only the portal + env steps remain for the owner — no fresh
+> Discord app needed (REUSE the existing SuperBot app, per the DECIDED
+> ASK-0001). Remaining owner steps, exactly: **add a redirect URI to the
+> existing SuperBot Discord app and copy the client id/secret + owner Discord
+> id + session secret onto the control-plane Railway service.** Original ask
+> kept verbatim below.
+
 ```markdown
-⚑ OWNER-ACTION
+⚑ OWNER-ACTION — NARROWED 2026-07-18 (ORDER 035): login code exists; only the portal + env steps remain
 ID: ASK-0002
-WHAT: Create the Discord OAuth application for the future ARMED control panel and decide its redirect URI.
-WHERE: discord.com/developers/applications → New Application → OAuth2 (do this only after Q-0004 above names where the armed service lives).
-HOW: register the app; add redirect URI https://<armed-service-url>/auth/callback (the armed service's real URL once it exists); note the client id + client secret — they go ONLY into the armed service's Railway env (spec §9 names: the OAuth client id/secret + redirect + session-secret vars), NEVER into the dashboard service (a test forbids the literals there).
-WHY-IT-MATTERS: actor identity is the safety spine of the control API — every write carries the operator's Discord user id and the bot re-checks their permission per guild; without the OAuth app there is no actor, so no live write path should exist.
-UNBLOCKS: real sign-in on the armed panel; until then the dashboard's /admin/login honestly says "not configured" and dry-run actions are attributed to anonymous.
-VERIFIED-NEEDED: creating a Discord application requires your Discord developer account — no agent credential exists for it (same class as the Railway-mutation wall; deliberately not attempted).
+WHAT: Add a redirect URI to the existing SuperBot Discord app and copy the client id/secret + owner Discord id + session secret onto the control-plane Railway service.
+WHERE: discord.com/developers/applications → the existing SuperBot app → OAuth2 → Redirects (REUSE, do not register a fresh app — the ASK-0001 decision).
+HOW: add the redirect URI https://control-plane-production-abb0.up.railway.app/owner/auth/callback; then on the control-plane Railway service set DISCORD_CLIENT_ID + DISCORD_CLIENT_SECRET (copied from the SuperBot app), OWNER_DISCORD_ID (your Discord user id), and OWNER_SESSION_SECRET (a fresh random secret). NEVER paste these onto the dashboard service (a test forbids the control-API token literals there); the login flow reads them by name only.
+WHY-IT-MATTERS: actor identity is the safety spine — the owner session cookie is signed with OWNER_SESSION_SECRET and the callback only mints it when the returned Discord id == OWNER_DISCORD_ID. Until these are set, /owner/login honestly says "not configured" and the /owner gate falls back to SITE_PASSWORD (or stays locked with neither).
+UNBLOCKS: real Discord sign-in on the control-plane owner surface (the environments-hub remainder + the future armed panel); the code path is already wired and test-covered.
+VERIFIED-NEEDED: adding a redirect URI + pasting env vars are owner-account actions on the Discord app + Railway service — no agent credential exists for either (same class as the Railway-mutation wall; deliberately not attempted).
 ```
 
 > **Recon note (2026-07-18):** verified read-only across all four live services — NONE have Discord *login* (all `/login`+`/auth/callback` → 404; dashboard `/admin/login` → 200 static "not configured", no redirect; no service reads `DISCORD_*` OAuth client vars). What looks like it: botsite's "Add to Discord" button is a bot-*install* link (`botsite/data_source.py:33`, `ADD_TO_DISCORD_URL`) and dashboard's "Sign in with Discord" button leads to the not-configured `/admin/login` stub (`dashboard/app.py:454`). Any Discord app "the dashboard/mineverse instances already use" (`app/owner.py:312`) belongs to the mineverse game service in a different repo, not these four sites. This ask remains OPEN/unbuilt, still gated on ASK-0001/Q-0004.
 >
 > **UPDATE (2026-07-18):** the owner's "a site already has Discord login" is CONFIRMED — but it's the **SuperBot dashboard** (https://superbot-dashboard.up.railway.app), a DIFFERENT fleet repo/service, NOT any of the four websites-repo services (whose 0/4 finding above stands). A screen recording shows a full working OAuth login there (consent as menno4207, identify+guilds scopes, redirect back, panel listing 2 administered guilds). A **"SuperBot" Discord OAuth app with provisioned client creds already exists fleet-side** (active since ~Aug 2025, creds on that service's Railway env). Therefore ASK-0002's cheapest satisfaction path is likely **REUSE, not a new app**: the owner adds a redirect URI for the websites control-plane / env-hub to the existing SuperBot Discord app and pastes the same client id/secret into the websites Railway env — much smaller than registering a fresh app. **Options: (a) REUSE the existing SuperBot app [recommended], (b) register a fresh dedicated app — pending owner preference.** ASK-0002 still gated on ASK-0001/Q-0004 for O-021 regardless; no code work triggered by this.
 
+> **UNBLOCKED 2026-07-18 (ORDER 035):** ASK-0001 is DECIDED — the armed path
+> lands as a SEPARATE armed Railway service (never on the read-only control
+> plane), so this ask's substance stands unchanged. It stays owner-gated:
+> Railway service creation + scoped-token minting are owner-account mutations
+> no agent may perform. The control-plane login flow (ASK-0002) is the actor
+> identity this armed service consumes.
+
 ```markdown
-⚑ OWNER-ACTION
+⚑ OWNER-ACTION — UNBLOCKED by ORDER 035 (still owner-gated)
 ID: ASK-0003
 WHAT: Provision the scoped bot control-API token and the SEPARATE armed Railway service that will hold it.
 WHERE: railway.app → project superbot-websites → New → Service (a NEW service, per the standing "never mounted on a read-only surface" rule) + the token minted on the bot side (superbot's control-api seam).
@@ -393,6 +420,8 @@ VERIFIED-NEEDED: NOT machine-checkable — whether a human proofread happened is
 | P | **Publish the lumen-drift-v1.3 release** (was ASK-0010) | **DONE by owner — verified LIVE 2026-07-18.** The GitHub Release `lumen-drift-v1.3` is published on `menno420/gba-homebrew` (~2026-07-18 20:10Z). Independently verified: `git ls-remote --tags` reads the live tag `lumen-drift-v1.3` (SHA `e64651ce4dbb5e99f31adf370da23f31716ef849`), and the review release-drift bake now records lumen-drift `drift: false` (`drift_count` 1 → 0). `botsite/data/arcade.json` flipped (availability → `download`, url → the release page, blocker dropped) — the arcade card gains its real Download button. The direct `.gba` asset URL was not HTTP-verifiable from the session egress (github.com web/API for gba-homebrew is walled for this session; only git transport is allowed), so the guaranteed-live release page is the recorded download target. | Live git-transport tag read + release-drift bake 2026-07-18; arcade flip in `botsite/data/arcade.json`; `review/data/releases.json` `drift_count: 0`; ask text kept verbatim below. |
 
 | Q | **Configure product-forge Pages** (was ASK-0011) | **DONE by owner — verified LIVE 2026-07-18.** The owner ran product-forge's "Deploy games-web to Pages" workflow (run #3, SUCCESS, 2026-07-18 ~20:10Z). Independently verified: `https://menno420.github.io/product-forge/` returns HTTP 200 with real content (the games-web character-sheet app, not a Pages 404 placeholder). `botsite/data/arcade.json` flipped (availability → `live`, url set, blocker dropped) — the arcade card gains its real Play link. | Live HTTPS 200 + real-content read 2026-07-18; arcade flip in `botsite/data/arcade.json`; ask text kept verbatim below. |
+
+| R | **Where live bot control lives (Q-0004 / ASK-0001)** (was Open row 1 + the standing three-ask block) | **DECIDED 2026-07-18 — owner delegated the call to the dispatched session (ORDER 035).** Live bot control lives on the websites CONTROL-PLANE (`app/`) owner surface, gated by Discord OAuth REUSING the existing fleet-side SuperBot Discord app. The dashboard `/admin` dry-run panel stays the safe preview tier. The scoped control-API token + a SEPARATE armed Railway service (ASK-0003) remain the armed-execution architecture, stubbed until owner-gated creds exist. The non-gated login half — `app/discord_auth.py` (the OAuth authorization-code login flow, signed session cookie, CSRF `state` floor) + `require_owner` accepting a Discord session OR SITE_PASSWORD — is built + test-covered this session; env-unset stays fail-closed and names the opening owner action. Remaining owner steps: ASK-0002 (redirect URI + env) and ASK-0003 (token + armed service). | ORDER 035 (`control/inbox.md`, 2026-07-18); owner verbatim delegation "#4 … if you have a recomended decision, then decide"; branch `claude/discord-oauth-owner-gate`; ASK-0001 six-field ask kept verbatim above. |
 
 ### Resolved guidance — kept as six fields (Decided row N, 2026-07-13)
 

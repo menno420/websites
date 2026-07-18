@@ -101,6 +101,10 @@ NON_PAGE_GET_ROUTES: dict[str, str] = {
     "/ideas.json": "JSON twin of /ideas",
     "/journal/search.json": "JSON twin of /journal/search",
     "/owner/api/readiness.json": "gated JSON twin of the /owner board",
+    "/owner/auth/callback": (
+        "Discord OAuth callback — an auth-flow endpoint that redirects "
+        "(302 to /owner) or errors (503/400/403), never a page shell"
+    ),
 }
 
 # Mounts are file servers, not pages — exempt with reason (the #233
