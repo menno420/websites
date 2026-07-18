@@ -376,3 +376,15 @@ do: SIM-REQUEST #355 (release-drift banner doctrine for botsite arcade pages) �
 why: simplest, no runtime outbound dependency, matches the seat's own recommendation. Decide-and-flag — owner may veto.
 done-when: seat acknowledges the verdict and builds the baked-drift-banner path (or the owner vetoes).
 provenance: manager → websites verdict on SIM-REQUEST #355, 2026-07-18.
+
+## ORDER 035 · 2026-07-18T20:06:00Z · status: new
+priority: P1
+do: record the ASK-0001 / Q-0004 decision (below) and build the NON-gated half — the Discord OAuth owner login flow on the control-plane, fail-closed and test-covered; leave the armed bot-control write path stubbed pending ASK-0003.
+why: the owner delegated the Q-0004 decision to the dispatched session; the credential boundary + one Discord-authed control surface must be recorded and the login half built so ASK-0002/ASK-0003 are the only remaining owner steps.
+done-when: the decision is recorded here + in docs/owner/OWNER-ACTIONS.md (ASK-0001 DECIDED, Decided row P), app/discord_auth.py + the require_owner gate wiring are built and green, and the remaining owner steps are narrowed to ASK-0002 (redirect URI + env) and ASK-0003 (token + armed service).
+executor: Websites coordinator (dispatched session)
+provenance: owner live in the coordinator session 2026-07-18, delegating the decision — verbatim: "#4, as mentioned in the continue prompt, if you have a recomended decision, then decide"
+decision (ASK-0001 / Q-0004): Live bot control lives on the websites CONTROL-PLANE (app/) owner surface, gated by Discord OAuth REUSING the existing fleet-side SuperBot Discord application. The dashboard /admin dry-run panel stays the safe preview tier. The scoped bot control-API token + a SEPARATE armed Railway service (ASK-0003) remain the armed-execution architecture, stubbed until owner-gated creds exist.
+rationale: preserves the credential boundary — the bot control-API token never lands on a read-only surface; it stays on a separate armed service — while giving the owner one Discord-authed control surface on the control-plane, where ORDER 021's environments hub and the owner routes already live and where app/owner.py already declares Discord OAuth replaces require_owner. REUSE of the existing SuperBot Discord app is the cheapest owner path (add a redirect URI + copy client id/secret vs registering a fresh app).
+built this session: the Discord OAuth authorization-code login flow on the control-plane (fail-closed; env-unset → locked and names the opening owner action), signed session cookie, CSRF floor on state-changing routes; wired as the owner gate for the environments-hub remainder (ORDER 021) and the future armed panel. Armed execution stays stubbed pending ASK-0003.
+remaining owner steps: ASK-0002 (add a redirect URI on the existing SuperBot Discord app + copy the client id/secret/owner-id/session-secret onto the control-plane Railway env) and ASK-0003 (scoped control-API token + separate armed Railway service).

@@ -110,6 +110,11 @@ SERVICES: list[dict[str, Any]] = [
             _var("WRITEBACK_BRANCH", "owner-writeback target branch (default main)"),
             _var("WRITEBACK_BRANCH_PREFIX", "owner-writeback PR branch-name prefix (optional; default claude/owner-writeback- — the claude/* prefix is what arms the auto-merge-enabler)"),
             _var("WRITEBACK_DB_PATH", "SQLite path for the writeback audit log (default app/writeback.sqlite3 — ephemeral on Railway, stated in the UI)"),
+            _var("DISCORD_CLIENT_ID", "Discord OAuth owner login — client id, reused from the existing SuperBot Discord app (app/discord_auth.py; ASK-0002; unset → /owner/login says not-configured and the gate falls back to SITE_PASSWORD)"),
+            _var("DISCORD_CLIENT_SECRET", "Discord OAuth owner login — client secret from the SuperBot app (app/discord_auth.py; ASK-0002; name only, never a value)"),
+            _var("OWNER_DISCORD_ID", "Discord OAuth owner login — the owner's Discord user id; the callback mints a session only when the returned id matches (app/discord_auth.py; ASK-0002)"),
+            _var("OWNER_SESSION_SECRET", "Discord OAuth owner login — HMAC secret signing the owner session cookie (app/discord_auth.py; ASK-0002; name only, never a value)"),
+            _var("DISCORD_REDIRECT_URI", "Discord OAuth owner login — optional redirect-URI override; unset derives it from the request base URL + /owner/auth/callback (app/discord_auth.py; ASK-0002)"),
         ],
     },
     {

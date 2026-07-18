@@ -69,6 +69,12 @@ ENV_VARS = [
     "WRITEBACK_BRANCH",
     "WRITEBACK_BRANCH_PREFIX",
     "WRITEBACK_DB_PATH",
+    # app/ Discord OAuth owner login (app/discord_auth.py, ASK-0001 / ORDER 035)
+    "DISCORD_CLIENT_ID",
+    "DISCORD_CLIENT_SECRET",
+    "OWNER_DISCORD_ID",
+    "OWNER_SESSION_SECRET",
+    "DISCORD_REDIRECT_URI",
     # botsite/: data_source.py, testing.py, testing_store.py, testing_ai.py,
     # testing_payouts.py
     "SITE_JSON_URL",

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}owner login{% endblock %}
+{% block headright %}🔒 owner{% endblock %}
+
+{% block content %}
+{#- Auth-flow endpoint, NOT a nav page: the route passes no nav highlight key,
+    so this page stays outside the nav-manifest guard on purpose. -#}
+<div class="card" style="border-color:var(--purple);">
+  <h2>🔒 owner login — Discord</h2>
+  {% if configured %}
+  <p class="dim small">Redirecting to Discord to sign in…</p>
+  <p class="small"><a href="{{ authorize_hint }}">continue to Discord ↗</a></p>
+  {% else %}
+  <p><span class="b unknown">Discord login not configured</span></p>
+  <p class="dim small">
+    The Discord OAuth owner login flow is built and wired, but the credentials
+    it reads are not set on this service yet. Until they are, the owner area
+    falls back to the HTTP-Basic <code>SITE_PASSWORD</code> gate (or stays
+    locked if neither is configured). Two owner actions open this door:
+  </p>
+  <h3>ASK-0002 — add a redirect URI + copy the env values</h3>
+  <p class="dim small">
+    On the existing <strong>SuperBot</strong> Discord app (reuse it — no fresh
+    app needed), add the redirect URI:
+  </p>
+  <pre class="small" style="white-space:pre-wrap;overflow-x:auto;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.6rem .8rem;">{{ redirect_uri }}</pre>
+  <p class="dim small">
+    then set these variables (NAMES only shown — never paste a value here) on
+    the control-plane Railway service:
+  </p>
+  <ul class="small dim">
+    <li><code>DISCORD_CLIENT_ID</code> — from the SuperBot app</li>
+    <li><code>DISCORD_CLIENT_SECRET</code> — from the SuperBot app</li>
+    <li><code>OWNER_DISCORD_ID</code> — your Discord user id</li>
+    <li><code>OWNER_SESSION_SECRET</code> — a fresh random secret</li>
+  </ul>
+  <h3>ASK-0003 — the armed path (separate service)</h3>
+  <p class="dim small">
+    The scoped bot control-API token and its SEPARATE armed Railway service
+    stay owner-gated and stubbed — the control-API credential never lands on
+    this read surface. See <code>docs/owner/OWNER-ACTIONS.md</code> (ORDER 035).
+  </p>
+  {% endif %}
+  <p class="small" style="margin-top:.8rem;"><a href="/">← back to the board</a></p>
+</div>
+{% endblock %}
