@@ -82,6 +82,12 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
     # hardcoded. Each mirror stamps its own bake time; absence stays honest.
     fl = fleetdata.load_fleet()
     fleet_generated_at = fl["data"].get("generated_at", "") if fl["ok"] else ""
+    # Release-drift banner (ORDER 033): baked per arcade game with a source
+    # repo — the expected release tag vs. the live latest tag. Loaded on every
+    # page (like snapshot_aged) so the site-wide banner is always available;
+    # the honest empty default means no drift → no banner.
+    rel = fleetdata.load_releases()
+    release_drift_entries = [e for e in rel["entries"] if e.get("drift")]
     return {
         "request": request,
         "active": active,
@@ -98,6 +104,11 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
         "snapshot_aged": bool(deployed and git_head and deployed[:8] != git_head[:8]),
         "deployed_sha": deployed,
         "fleet_generated_at": fleet_generated_at,
+        # Release-drift banner facts (ORDER 033) — see fleetdata.load_releases.
+        "release_drift": len(release_drift_entries) > 0,
+        "release_drift_count": len(release_drift_entries),
+        "release_drift_entries": release_drift_entries,
+        "releases_generated_at": rel.get("generated_at") or "",
         "repo_url": story.REPO_URL,
         # "Room to interact", read-only: a prefilled new-issue link per page.
         "ask_url": story.ask_url(f"{active or 'site'} page"),
@@ -269,6 +280,14 @@ async def fleet_json() -> JSONResponse:
             "stats": {"ok": st["ok"], "error": st["error"], "data": st["data"]},
         }
     )
+
+
+@app.get("/releases.json")
+async def releases_json() -> JSONResponse:
+    """The baked release-drift mirror, machine-readable — same honesty as the
+    banner. Feeds ``review/data/releases.json`` (gen_releases.py) verbatim,
+    degrading to the honest empty default when no mirror is committed."""
+    return JSONResponse(fleetdata.load_releases())
 
 
 @app.get("/fleet/{repo}", response_class=HTMLResponse)
