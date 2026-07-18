@@ -369,3 +369,10 @@ do: run autonomously overnight on the owner's live directive below — work the 
 why: the owner is asleep and delegated overnight autonomy (silence = consent); the record must let a fresh seat resume from the repo alone in the morning.
 done-when: overnight work is landed and/or a veto-ready planning menu is in the repo, records honest (every PR terminal or carrying a named blocker); the owner reviews the menu in the morning.
 provenance: relayed by the Websites coordinator on a live owner directive, 2026-07-16 night (coordinator event 55f13541-dca6-49f3-ad40-d5eb92ced065).
+
+## ORDER 033 · 2026-07-18T14:51:32Z · status: new
+priority: P2
+do: SIM-REQUEST #355 (release-drift banner doctrine for botsite arcade pages) — VERDICT: **A**. Keep botsite outbound-free; bake release tags into review/data at build time (gen_*.py) and render the drift banner from the baked data.
+why: simplest, no runtime outbound dependency, matches the seat's own recommendation. Decide-and-flag — owner may veto.
+done-when: seat acknowledges the verdict and builds the baked-drift-banner path (or the owner vetoes).
+provenance: manager → websites verdict on SIM-REQUEST #355, 2026-07-18.
