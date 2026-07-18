@@ -138,6 +138,12 @@ trued 2026-07-17 for the fresh-start cleanup.)
   console-only subset for THIS repo — the `SITE_PASSWORD` `/owner` gate,
   `BAKE_PAT`, and the two unused/unwired password variables — is curated
   names-only in `docs/OWNER-STEPS.md`.
+- **O-020 owner writeback is LIVE (verified 2026-07-18).** The owner can
+  mark-complete / request-assist / note-correction-idea on the launch console
+  (`/owner/queue`); each submit commits back via an auto-merging PR
+  (branch+PR, Q2=b). Verified end-to-end: a live test note → PR #399 →
+  merged `main` `b12dcd9`. ASK-0007 is satisfied — the deployed control-plane
+  `GITHUB_TOKEN` already held `contents:write` + `pull-requests:write`.
 
 ## Recently shipped (newest first)
 
