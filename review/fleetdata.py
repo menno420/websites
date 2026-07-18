@@ -26,6 +26,17 @@ from . import listfilter
 BASE_DIR = Path(__file__).resolve().parent
 FLEET_PATH = BASE_DIR / "data" / "fleet.json"
 STATS_PATH = BASE_DIR / "data" / "stats.json"
+RELEASES_PATH = BASE_DIR / "data" / "releases.json"
+
+# The safe default a missing/corrupt releases mirror degrades to — an honest
+# empty drift set, never invented drift. Mirrors the release-drift bake's own
+# document shape (review/gen_releases.py).
+_RELEASES_DEFAULT: dict[str, Any] = {
+    "generated_at": None,
+    "note": "no release-drift mirror committed yet — run review/gen_releases.py",
+    "entries": [],
+    "drift_count": 0,
+}
 
 # The bake is scheduled daily (best-effort cron, ±hours — the capability
 # ledger's standing finding). A mirror older than this banners as stale.
@@ -142,6 +153,29 @@ def load_stats(path: Path | None = None) -> dict[str, Any]:
         return {"ok": False, "error": "stats mirror malformed (missing repos)", "data": {}}
     # ORDER 017 D: same defensive filter as load_fleet (see strip_private_stats).
     return {"ok": True, "error": "", "data": strip_private_stats(data)}
+
+
+def load_releases(path: Path | None = None) -> dict[str, Any]:
+    """The committed release-drift mirror (``data/releases.json``, baked by
+    ``gen_releases.py``) as a plain dict. A missing/corrupt/malformed file
+    degrades to the honest empty default (no entries, ``drift_count`` 0) so the
+    drift banner simply never renders — never an invented drift, never a 500.
+    Absence is the NORMAL state until the first bake commits the file."""
+    if path is None:
+        path = RELEASES_PATH
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return dict(_RELEASES_DEFAULT)
+    if not isinstance(data, dict) or not isinstance(data.get("entries"), list):
+        return dict(_RELEASES_DEFAULT)
+    entries = [e for e in data["entries"] if isinstance(e, dict)]
+    return {
+        "generated_at": data.get("generated_at"),
+        "note": data.get("note", ""),
+        "entries": entries,
+        "drift_count": sum(1 for e in entries if e.get("drift")),
+    }
 
 
 # ---------------------------------------------------------------------------

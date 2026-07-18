@@ -72,6 +72,21 @@
   </div>
 </div>
 {% endif %}
+{% if release_drift %}
+<div class="sb-wrap" style="padding-top:16px">
+  <div class="rv-drift" role="note">
+    <strong>{{ release_drift_count }} arcade game{{ "s" if release_drift_count != 1 else "" }}</strong>
+    expect{{ "" if release_drift_count != 1 else "s" }} a release that has not been published on {{ "their" if release_drift_count != 1 else "its" }} source repo:
+    <ul class="rv-drift-list">
+      {% for e in release_drift_entries %}
+      <li>{{ e.name }}: expected <span class="sb-mono">{{ e.expected_tag or "—" }}</span> vs live <span class="sb-mono">{{ e.live_tag or "none" }}</span></li>
+      {% endfor %}
+    </ul>
+    Baked from the committed arcade registry and each source repo's live tags{% if releases_generated_at %} ({{ releases_generated_at }}){% endif %}.
+    <a href="/releases.json">releases.json</a>
+  </div>
+</div>
+{% endif %}
 
 <main id="main" class="sb-view">
   {% block content %}{% endblock %}

@@ -134,6 +134,24 @@
   margin-top: var(--sb-s-3);
 }
 
+/* release-drift banner (ORDER 033) — an amber note, same weight as .rv-aged;
+   factual, not alarming (this is a review site). */
+.rv-drift {
+  background: color-mix(in srgb, var(--sb-warn, #b98a00) 12%, var(--sb-surface));
+  border: 1px solid color-mix(in srgb, var(--sb-warn, #b98a00) 45%, transparent);
+  border-radius: var(--sb-r-md);
+  padding: var(--sb-s-3) var(--sb-s-4);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-ink-2);
+  margin-top: var(--sb-s-3);
+}
+.rv-drift-list {
+  margin: var(--sb-s-2) 0;
+  padding-left: var(--sb-s-4);
+  display: grid;
+  gap: var(--sb-s-1);
+}
+
 /* small status chips */
 .rv-chip {
   display: inline-block;
