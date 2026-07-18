@@ -42,11 +42,13 @@
     ],
     "dashboard": [
       "ARCADE_JSON_URL",
+      "BOTSITE_GAMES_URL",
       "CONSOLE_JSON_URL",
       "DASHBOARD_JSON_URL",
       "DATA_CACHE_TTL_SECONDS",
       "GIT_SHA",
       "RAILWAY_GIT_COMMIT_SHA",
+      "REVIEW_REVIEWS_URL",
       "SUPERBOT_REF",
       "SUPERBOT_REPO"
     ],
