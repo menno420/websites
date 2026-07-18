@@ -80,6 +80,34 @@
     names are informational, not drift).</span>
     {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}</p>
   {% endif %}
+
+  {# Code-referenced-vs-declared NAME drift rollup (B6, app/codedrift.py): the
+     NAMES each service's runtime code reads (committed static scan,
+     app/data/env_coderefs.json) diffed against the declared SERVICES manifest.
+     Static + names only — no source scan, no network at request time. Snapshot
+     missing = UNKNOWN with the reason, never a guessed match. #}
+  <h3>code ↔ declared name drift</h3>
+  {% if env.code_drift.state == 'unknown' %}
+  <p class="small">{{ badge('unknown', 'code drift unknown') }}
+    <span class="dim">— {{ env.code_drift.reason }}; the code-referenced and
+    declared name sets cannot be compared right now, so nothing is assumed in
+    sync.</span></p>
+  {% elif env.code_drift.state == 'drift' %}
+  <p class="small">{{ badge('warn', 'config drift') }}
+    <span class="dim">—
+      {%- if env.code_drift.referenced_but_undeclared_total %} referenced-but-undeclared: {{ env.code_drift.referenced_but_undeclared_total }}{% endif %}
+      {%- if env.code_drift.referenced_but_undeclared_total and env.code_drift.declared_but_unreferenced_total %} ·{% endif %}
+      {%- if env.code_drift.declared_but_unreferenced_total %} declared-but-unreferenced: {{ env.code_drift.declared_but_unreferenced_total }}{% endif %}
+      {%- if env.code_drift.drifted_services %} — in
+      {% for n in env.code_drift.drifted_services %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      (details on each service card below){% endif %}</span></p>
+  {% else %}
+  <p class="small">{{ badge('ok', 'config in sync (' ~ env.code_drift.services_compared ~ ' services compared)') }}
+    <span class="dim">— every env var the code reads is declared, and every
+    declared var is read (platform-injected <code>PORT</code> /
+    <code>RAILWAY_*</code> / <code>GIT_SHA</code> names are informational, not
+    drift).</span></p>
+  {% endif %}
 </div>
 
 {% for svc in env.services %}
@@ -138,6 +166,35 @@
     <span class="dim small">· +{{ svc.drift.railway_provided|length }} Railway-provided
       {% for n in svc.drift.railway_provided %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
       (Railway-managed — informational, not drift)</span>
+    {% endif %}
+  </p>
+
+  {# Per-service code-vs-declared drift line (B6, app/codedrift.py) — names
+     only; platform-injected names shown quietly, never counted as drift. #}
+  <p class="small">
+    {% if svc.code_drift.state == 'unknown' %}
+    {{ badge('unknown', 'code drift unknown') }}
+    <span class="dim">— {{ svc.code_drift.reason }}</span>
+    {% elif svc.code_drift.state == 'in-sync' %}
+    {{ badge('ok', 'config in sync') }}
+    <span class="dim">— every var the code reads is declared and every declared
+      var is read ({{ svc.code_drift.referenced_count }} names read by the code)</span>
+    {% else %}
+    {{ badge('warn', 'config drift') }}
+    <span class="dim">—
+      {%- if svc.code_drift.referenced_but_undeclared %} referenced-but-undeclared:
+      {% for n in svc.code_drift.referenced_but_undeclared %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      (the code reads {{ 'it' if svc.code_drift.referenced_but_undeclared|length == 1 else 'them' }} — a deploy gets an empty value unless declared; add to <code>app/railway.py</code> SERVICES){% endif %}
+      {%- if svc.code_drift.referenced_but_undeclared and svc.code_drift.declared_but_unreferenced %} ·{% endif %}
+      {%- if svc.code_drift.declared_but_unreferenced %} declared-but-unreferenced:
+      {% for n in svc.code_drift.declared_but_unreferenced %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      (no code reads {{ 'it' if svc.code_drift.declared_but_unreferenced|length == 1 else 'them' }} — stale/unused, or drop the row from <code>app/railway.py</code>){% endif %}</span>
+    {% endif %}
+    {% if svc.code_drift.informational_referenced or svc.code_drift.informational_declared %}
+    <span class="dim small">· platform-injected (informational, not drift):
+      {% for n in svc.code_drift.informational_referenced %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+      {%- if svc.code_drift.informational_referenced and svc.code_drift.informational_declared %}, {% endif %}
+      {% for n in svc.code_drift.informational_declared %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</span>
     {% endif %}
   </p>
 </div>

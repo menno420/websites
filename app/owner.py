@@ -33,6 +33,7 @@ from . import (
     askverify,
     briefing,
     card_gating,
+    codedrift,
     config,
     envdrift,
     envhub,
@@ -286,9 +287,18 @@ async def owner_environments(request: Request, _: None = Depends(require_owner))
     live-but-undocumented chips per service + a page-level rollup, with the
     honest unknown-with-reason state whenever Railway is unreachable; never
     a fabricated match. Names only — values never exist past the client
-    boundary in app/railway.py."""
+    boundary in app/railway.py.
+
+    Code-vs-declared drift (B6, Q1=a): additionally the NAMES each service's
+    runtime code reads (statically scanned into the committed
+    app/data/env_coderefs.json) are diffed against the declared manifest
+    (app/codedrift.py) — referenced-but-undeclared / declared-but-unreferenced
+    chips per service + a page rollup, honest unknown if the snapshot is
+    missing. Static + names only: no source scan and no network at request
+    time."""
     data = await railway.overview(refresh=_refresh(request))
     envdrift.annotate(data)
+    codedrift.annotate(data)
     return templates.TemplateResponse(
         request,
         "owner_environments.html",
