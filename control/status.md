@@ -1,7 +1,7 @@
 # websites · status
 
 updated: 2026-07-18T20:05:30Z
-phase: Planning pass landed: groomed next-cycle queue (docs/plans/next-cycle-2026-07-18.md); NEXT-TASKS pruned, current-state refreshed to #421, orphaned claim cleared.
+phase: B6 dashboard /env config-drift flags landed (#427); planning queue in docs/plans/next-cycle-2026-07-18.md.
 health: green — four service suites green (1928 passed at this planning pass), kit check --strict green apart from the designed born-red hold on the in-progress planning card `claude/next-cycle-plan` (releases at the closing flip); claims/ orphan cleared.
 last-shipped: NAV-completeness guard sweep — review PR #416 + botsite/dashboard PR #418 + off-nav reachability PR #421, with claim cleanups #417/#419 and the coordinator-heartbeat true-up #420; all terminal on origin/main (HEAD 07b4bb9).
 blockers: none
@@ -13,8 +13,8 @@ claims: nav-reachability-guard orphan cleared this pass; control/claims/next-cyc
 needs-owner: the 15 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## NEXT-2-TASKS baton
-1. B6 — dashboard `/env` config-drift flags (M · seat · no gate). Cross-check `/env` usage against a committed manifest, flag referenced-but-unset / set-but-unused vars. `dashboard/app.py` `env_page` currently renders only `data_source.env_usage(data)` with no manifest cross-check. Groomed detail: docs/plans/next-cycle-2026-07-18.md §1.
-2. review `/questions` empty-state polish (S · verify-first). Confirm `/questions` renders a graceful "no questions answered yet" empty state (`questions.json` is intentionally `[]`); add one if missing. Consistent with the honest-empty design. Groomed detail: docs/plans/next-cycle-2026-07-18.md §4.
+1. review `/questions` empty-state polish (small · verify-first). Confirm `/questions` renders a graceful "no questions answered yet" empty state (`questions.json` is intentionally `[]`); add one if missing. Consistent with the honest-empty design. Groomed detail: docs/plans/next-cycle-2026-07-18.md §4.
+2. drift-banner parity sweep (small/medium · verify-first). Sweep the fleet for drift-banner parity across services.
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md) — 15 open
 ASK-0007 satisfied a prior session; ASK-0002 open with the SuperBot-reuse recon note. ASK-0010 (publish lumen-drift-v1.3) is the release the ORDER 033 drift banner surfaces.
