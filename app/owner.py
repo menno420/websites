@@ -35,6 +35,7 @@ from . import (
     card_gating,
     codedrift,
     config,
+    discord_auth,
     envdrift,
     envhub,
     fleet,
@@ -180,13 +181,28 @@ def _enforce_rate_limit(request: Request) -> None:
 
 
 def require_owner(request: Request) -> None:
-    """Dependency gating every /owner route. Raises 503 (unset) or 401 (bad)."""
-    if not config.SITE_PASSWORD:
-        # Fail closed: an unset password never means an open door. The public
-        # site is unaffected — only this gated area 503s.
+    """Dependency gating every /owner route. Accepts EITHER a valid Discord
+    owner session (the ASK-0001 login flow, app/discord_auth.py) OR the
+    existing HTTP-Basic SITE_PASSWORD. Fail-closed: 503 when NEITHER auth is
+    configured (naming the opening owner action), 401 on bad/missing creds."""
+    # Discord owner session takes precedence — a valid signed session cookie
+    # from the OAuth login flow authorizes the whole gated area without Basic.
+    if discord_auth.owner_session_id(request):
+        return
+    oauth_up = discord_auth.oauth_configured()
+    if not config.SITE_PASSWORD and not oauth_up:
+        # Fail closed: with NOTHING configured an unset password never means an
+        # open door. Name the owner action that opens the gate. The public site
+        # is unaffected — only this gated area 503s.
         raise HTTPException(
             status_code=503,
-            detail="owner area unavailable: SITE_PASSWORD is not configured",
+            detail=(
+                "owner area unavailable: no owner authentication is configured "
+                "— set SITE_PASSWORD, or complete the Discord OAuth owner login "
+                "at /owner/login (needs DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, "
+                "OWNER_DISCORD_ID, OWNER_SESSION_SECRET; ASK-0002 adds the "
+                "redirect URI on the SuperBot Discord app)"
+            ),
         )
     header = request.headers.get("authorization", "")
     supplied = ""

@@ -19,7 +19,7 @@
 > Born red; flips to `complete` only once the work is confirmed — deliberately
 > held in-progress this session.
 
-- **📊 Model:** high effort · worker session (coordinator-dispatched)
+- **📊 Model:** Opus 4.8 (family) · high · feature build
 
 **What this session is about:** the owner delegated the ASK-0001 / Q-0004
 decision to this seat: live bot control lives on the websites CONTROL-PLANE

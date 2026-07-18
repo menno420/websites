@@ -27,6 +27,7 @@ from fastapi.templating import Jinja2Templates
 from . import (
     activity,
     config,
+    discord_auth,
     environments,
     fleet,
     freshness,
@@ -78,6 +79,10 @@ app.mount(
 # The one gated area — /owner and /owner/*. Every route in THIS module stays
 # public; the gate lives entirely on the included router.
 app.include_router(owner.router)
+# Discord OAuth owner login flow (ASK-0001 / ORDER 035). Deliberately NOT under
+# the owner gate — it is the door (/owner/login, /owner/auth/callback,
+# /owner/logout), fail-closed when its env is unset.
+app.include_router(discord_auth.router)
 
 
 def _refresh(request: Request) -> bool:

@@ -444,7 +444,11 @@ REGISTRY: list[dict[str, Any]] = [
     {
         "id": "discord-oauth",
         "ask_id": "ASK-0002",
-        "signature": ("discord", "oauth"),
+        # Signature keys off "redirect" + "discord": ORDER 035 narrowed the ask
+        # (the login CODE now exists; only the redirect-URI + env paste remain)
+        # so its WHAT no longer says "oauth". "redirect" is unique to this ask,
+        # keeping the match distinct; id-matching (ASK-0002) is the primary path.
+        "signature": ("redirect", "discord"),
         "probe": None,
         "reason": (
             "Discord developer-console state is not externally observable "
