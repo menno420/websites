@@ -13,3 +13,7 @@ httpx==0.28.1
 # (testing_ai.py) — still no auth/DB-write deps here; the API key is a
 # runtime env read, never a package.
 python-multipart==0.0.32
+# Durable /submit intake (ORDER 034 / ASK-0004): PostgreSQL driver, used only
+# when DATABASE_URL is a postgres:// URL on the botsite service (lazy import).
+# Tests and local runs use SQLite (stdlib) and never load this.
+psycopg[binary]==3.3.4

@@ -58,6 +58,7 @@
             "TESTING_AI_GUIDE_CAP",
             "SITE_PASSWORD",
             "TESTING_DB_PATH",
+            "DATABASE_URL",
             "TESTING_BOUNTY_CAP_USD",
             "TESTING_AUTOPAY_ENABLED",
             "TESTING_AUTOPAY_MIN_SCORE",

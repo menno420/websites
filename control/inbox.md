@@ -376,3 +376,10 @@ do: SIM-REQUEST #355 (release-drift banner doctrine for botsite arcade pages) �
 why: simplest, no runtime outbound dependency, matches the seat's own recommendation. Decide-and-flag — owner may veto.
 done-when: seat acknowledges the verdict and builds the baked-drift-banner path (or the owner vetoes).
 provenance: manager → websites verdict on SIM-REQUEST #355, 2026-07-18.
+
+## ORDER 034 · 2026-07-18T20:08:40Z · status: new
+priority: P2
+do: provision the superbot-websites Postgres, wire botsite's public /submit intake to persist via DATABASE_URL (Postgres in prod, sqlite in CI; fail-soft when unset), set DATABASE_URL on the botsite service, live-verify. Owner line verbatim: "for #5, that's a job for you" — #5 = "Botsite database: in Railway, add Postgres and set DATABASE_URL on the botsite service (ASK-0004). Unblocks durable submissions."
+why: unblocks durable public submissions — the /submit intake cannot persist without a database (ASK-0004).
+done-when: DATABASE_URL set on botsite (botsite-production-cfd7) + /submit persists a submission and reads it back on the live service.
+provenance: owner live in coordinator chat 2026-07-18.

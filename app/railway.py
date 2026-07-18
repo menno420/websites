@@ -129,6 +129,7 @@ SERVICES: list[dict[str, Any]] = [
             _var("TESTING_AI_GUIDE_CAP", "per-claim guide-message cap, chat + screen frames (default 20)"),
             _var("SITE_PASSWORD", "gates the tester-program owner queue (HTTP Basic; unset → the queue fails closed 503)"),
             _var("TESTING_DB_PATH", "SQLite path for the tester-program store (default botsite/testing.sqlite3 — ephemeral on Railway, stated in the UI)"),
+            _var("DATABASE_URL", "Postgres/SQLite URL for the durable /submit intake store (botsite/submissions_store.py; unset → intake reports not-live — ORDER 034 / ASK-0004)"),
             _var("TESTING_BOUNTY_CAP_USD", "outstanding-bounty exposure cap (default 200)"),
             _var("TESTING_AUTOPAY_ENABLED", "auto-payout kill switch — absent/false is OFF (v1 payouts are dry-run regardless)"),
             _var("TESTING_AUTOPAY_MIN_SCORE", "AI exit-review score threshold for autopay eligibility (default 80)"),

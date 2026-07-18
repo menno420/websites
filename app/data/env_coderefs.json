@@ -23,6 +23,7 @@
     "botsite": [
       "ADD_TO_DISCORD_URL",
       "ANTHROPIC_API_KEY",
+      "DATABASE_URL",
       "GIT_SHA",
       "PAYPAL_CLIENT_ID",
       "PAYPAL_CLIENT_SECRET",
