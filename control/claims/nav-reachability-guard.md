@@ -1,1 +1,0 @@
-- `claude/nav-reachability-guard` · botsite+dashboard NAV off-nav-page reachability guard · 2026-07-18
