@@ -260,8 +260,14 @@ def test_current_files_first_superseded_demoted_last(monkeypatch):
     # bare 'session ender' label drowned among the per-seat prompts)
     assert "Universal Session-Ender" in r.text
     assert "Historical reference" in r.text
-    # the header card jump-links reach both trailing groups
-    assert 'href="#universal"' in r.text
+    # the session-ender group's descriptive header card is still present
+    assert 'id="universal"' in r.text
+    # the quick-link chip row is generated from the FLEET_WIDE list, so EVERY
+    # current fleet-wide universal gets its own chip (2026-07-18: Universal
+    # Continue was previously omitted from the intro + chip row)
+    assert "universal session-ender" in r.text
+    assert "universal continue" in r.text
+    # the chip row still reaches the Historical reference group
     assert 'href="#historical"' in r.text
 
 
