@@ -71,26 +71,32 @@ def _registry_matches_by_default(monkeypatch):
 # --------------------------------------------------------------------------- #
 
 
-def test_registry_shape_is_9_seats_x_3_plus_ender_plus_historical():
+def test_registry_shape_is_9_seats_x_3_plus_universals_plus_historical():
     assert len(prompts.SEATS) == 9
     assert len(prompts.SEAT_FILES) == 3
-    assert len(prompts.FLEET_WIDE) == 1
+    # two CURRENT fleet-wide universals: the session-ender + the continue/
+    # resume artifact (owner-directed 2026-07-18)
+    assert len(prompts.FLEET_WIDE) == 2
     assert len(prompts.HISTORICAL) == 1
-    assert prompts.TOTAL_ARTIFACTS == 29
+    assert prompts.TOTAL_ARTIFACTS == 30
     spec = prompts._artifact_spec()
-    assert len(spec) == 29
+    assert len(spec) == 30
     # per-seat paths follow the registry layout; fleet-wide ones the v3 home
     assert {"seat": "websites", "label": "coordinator prompt",
             "path": "projects/websites/coordinator-prompt.md",
             "historical": False} in spec
-    # the session-ender is CURRENT ("THIS file stays the canonical single
-    # source"); universal-startup is pinned HISTORICAL — its own header says
-    # "SUPERSEDED AS THE GENERATION SOURCE … Do not paste this file"
-    # (both verified live against fleet-manager@main, 2026-07-13)
+    # the session-ender and the continue prompt are CURRENT; universal-startup
+    # is pinned HISTORICAL — its own header says "SUPERSEDED AS THE GENERATION
+    # SOURCE … Do not paste this file" (all verified live vs fleet-manager@main)
     ender = next(
         s for s in spec if s["path"] == "docs/prompts/v3/session-ender.md"
     )
     assert ender["historical"] is False
+    cont = next(
+        s for s in spec if s["path"] == "docs/prompts/v3/universal-continue.md"
+    )
+    assert cont["historical"] is False and cont["seat"] is None
+    assert cont["label"] == "Universal Continue"
     startup = next(
         s for s in spec if s["path"] == "docs/prompts/v3/universal-startup.md"
     )
@@ -151,7 +157,7 @@ def test_overview_happy_covers_all_seats_and_fleet_wide(monkeypatch):
         return await prompts.overview()
 
     out = asyncio.run(run())
-    assert out["total"] == 29 and out["ok_count"] == 29
+    assert out["total"] == 30 and out["ok_count"] == 30
     assert out["error_count"] == 0
     assert [s["name"] for s in out["seats"]] == list(prompts.SEATS)
     for seat in out["seats"]:
@@ -166,11 +172,12 @@ def test_overview_happy_covers_all_seats_and_fleet_wide(monkeypatch):
     # separate historical list (both still fetched + counted in total)
     assert [a["path"] for a in out["fleet_wide"]] == [
         "docs/prompts/v3/session-ender.md",
+        "docs/prompts/v3/universal-continue.md",
     ]
     assert [a["path"] for a in out["historical"]] == [
         "docs/prompts/v3/universal-startup.md",
     ]
-    assert out["current_count"] == 28
+    assert out["current_count"] == 29
     assert all(a["historical"] for a in out["historical"])
     assert not any(a["historical"] for a in out["fleet_wide"])
 
@@ -213,6 +220,7 @@ def test_prompts_route_happy_renders_everything(monkeypatch):
         assert f"BODY OF projects/{seat}/instructions.md" in r.text
         assert f"BODY OF projects/{seat}/failsafe-prompt.md" in r.text
     assert "BODY OF docs/prompts/v3/session-ender.md" in r.text
+    assert "BODY OF docs/prompts/v3/universal-continue.md" in r.text
     assert "BODY OF docs/prompts/v3/universal-startup.md" in r.text
     # provenance line shown; copy affordance + freshness indicator wired
     assert "v7 · 2026-07-12 · reg copy" in r.text
@@ -321,7 +329,7 @@ def test_partial_failure_degrades_per_artifact(monkeypatch):
     assert r.status_code == 200
     # the failed cell says why; siblings still render; nothing fabricated
     assert "could not fetch" in r.text and "Not Found" in r.text
-    assert "1 of 29 artifacts could not be fetched" in r.text
+    assert "1 of 30 artifacts could not be fetched" in r.text
     assert "BODY OF projects/websites/coordinator-prompt.md" in r.text
     assert "BODY OF projects/websites/failsafe-prompt.md" not in r.text
 
@@ -340,7 +348,7 @@ def test_unreachable_upstream_is_200_banner_never_fabricated(monkeypatch):
     assert "BODY OF" not in r.text  # never fabricated
 
     out = asyncio.run(_overview_offline(monkeypatch))
-    assert out["ok_count"] == 0 and out["error_count"] == 29
+    assert out["ok_count"] == 0 and out["error_count"] == 30
     assert all(a["text"] is None for s in out["seats"] for a in s["artifacts"])
 
 
@@ -510,6 +518,38 @@ def test_drift_unknown_on_non_list_2xx_payload(monkeypatch):
     out = asyncio.run(prompts.registry_drift())
     assert out["state"] == "unknown"
     assert out["reason"] == "unexpected listing payload (HTTP 200)"
+
+
+def test_drift_non_seat_dirs_are_expected_not_added(monkeypatch):
+    """The LIVE scenario: fleet-manager's ``projects/`` holds the 9 render
+    seats PLUS the 19 non-seat directories (merged-source tombstone stubs +
+    ``_inventory``). Those 19 are pinned as :data:`app.roster.NON_SEAT_DIRS`,
+    so the chip must read this as a clean MATCH — not "+19 new in registry" —
+    while a GENUINELY new seat dir (in neither set) still flags as drift."""
+    _happy(monkeypatch)
+    # exactly the real listing: SEATS ∪ NON_SEAT_DIRS
+    _patch_registry(
+        monkeypatch,
+        names=list(prompts.SEATS) + sorted(prompts.NON_SEAT_DIRS),
+    )
+    out = asyncio.run(prompts.registry_drift())
+    assert out == {"state": "ok", "added": [], "missing": [], "reason": ""}
+
+    r = TestClient(app).get("/prompts")
+    assert r.status_code == 200
+    assert "pinned list matches registry" in r.text
+    assert "pinned list drifted" not in r.text
+
+    # a real NEW seat (bearing prompt files upstream) is in NEITHER set →
+    # still honest drift, so the owner knows to re-pin it
+    _patch_registry(
+        monkeypatch,
+        names=list(prompts.SEATS) + sorted(prompts.NON_SEAT_DIRS)
+        + ["brand-new-seat"],
+    )
+    out = asyncio.run(prompts.registry_drift())
+    assert out["state"] == "drift"
+    assert out["added"] == ["brand-new-seat"] and out["missing"] == []
 
 
 def test_drift_empty_registry_is_real_drift_not_unknown(monkeypatch):
@@ -792,13 +832,14 @@ def test_deployed_universals_current_only_not_recorded(monkeypatch):
     _patch_fleet(monkeypatch, meta=None, snapshot=_snapshot_json())
     dep = asyncio.run(prompts.overview())["deployed"]
     assert [u["label"] for u in dep["universals"]] == [
-        "Universal Session-Ender"]
+        "Universal Session-Ender", "Universal Continue"]
     for u in dep["universals"]:
         assert u["state"] == "not recorded"
         assert "no deployed record" in u["reason"]
         assert u["canonical"].startswith("v3.3 · 2026-07-12")
-    # 27 per-seat rows + the ender; the historical file is not a row
-    assert dep["total"] == 28
+    # 27 per-seat rows + the two current universals; the historical file is
+    # not a row (not a paste source)
+    assert dep["total"] == 29
 
 
 def test_deployed_rows_are_version_aware(monkeypatch):
