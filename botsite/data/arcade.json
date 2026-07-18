@@ -3,12 +3,12 @@
     "slug": "lumen-drift",
     "name": "Lumen Drift",
     "tagline": "An original Game Boy Advance game — finished, publish-safe, 100% original assets.",
-    "description": "A finished homebrew GBA ROM (v1.3) built entirely from original assets. Download the ROM from its published GitHub Release and load it into any GBA emulator to play.",
+    "description": "A finished homebrew GBA ROM (v1.3) built entirely from original assets. Download the ROM and load it into any GBA emulator to play.",
     "maturity": "playable",
     "availability": "download",
-    "url": "https://github.com/menno420/gba-homebrew/releases/tag/lumen-drift-v1.3",
+    "url": "https://github.com/menno420/gba-homebrew/releases/download/lumen-drift-v1.3/lumen-drift.gba",
     "source_repo": "menno420/gba-homebrew",
-    "status_note": "Downloadable now — the lumen-drift-v1.3 GitHub Release is published; the Download button opens its release page, where the ROM asset lives."
+    "status_note": "Downloadable now — the lumen-drift-v1.3 GitHub Release is published; the Download button fetches the ROM (lumen-drift.gba) directly from that release."
   },
   {
     "slug": "mineverse",
