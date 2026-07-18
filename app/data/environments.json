@@ -84,6 +84,8 @@
             "DATA_CACHE_TTL_SECONDS",
             "SUPERBOT_REPO",
             "SUPERBOT_REF",
+            "BOTSITE_GAMES_URL",
+            "REVIEW_REVIEWS_URL",
             "PORT"
           ],
           "notes": ""
