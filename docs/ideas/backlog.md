@@ -1961,3 +1961,18 @@
   session, and this repo already owns the pattern (review/fleetdata
   roster-parse cron). Source:
   `.sessions/2026-07-14-kit-upgrade-v1.16.0.md` 💡.
+
+- **A cross-service "no re-homed path 404s" contract test** · `captured`
+  (2026-07-18, dashboard-consolidation-redirects session 💡) — the
+  duplicate-sites cutover's safety rests on "no old inbound link 404s",
+  but today that is only spot-checked per-path (this slice fixed two
+  known re-homed dashboard paths, `/games` + `/reviews`, by hand). A
+  single committed manifest of `(old_path → new_service_url)`
+  consolidation redirects, asserted by a test that walks each old path on
+  the owning new service and confirms it 3xx's to the recorded target
+  (host matching the declared re-home), would catch the NEXT dropped
+  redirect automatically and doubles as the machine-readable source the
+  future URL-cutover plan doc needs. Worth having because the cutover
+  retires more OLD surfaces whose paths moved, and the invariant is
+  currently unenforced. Source:
+  `.sessions/2026-07-18-dashboard-consolidation-redirects.md` 💡.
