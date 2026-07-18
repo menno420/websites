@@ -1,1 +1,0 @@
-- `claude/release-drift-banner` · **ORDER 033 review release-drift banner** · review/gen_releases.py + review/fleetdata.py + review/app.py + review/templates/base.html + review/data/releases.json + review/tests/ · order 033 · 2026-07-18
