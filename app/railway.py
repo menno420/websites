@@ -154,7 +154,7 @@ SERVICES: list[dict[str, Any]] = [
             _var("SUPERBOT_REPO", "upstream repo for committed JSON (default menno420/superbot)"),
             _var("SUPERBOT_REF", "upstream ref (default main)"),
             _var("BOTSITE_GAMES_URL", "consolidation-redirect target for /games — the re-homed games surface on the botsite service (optional; default botsite-production-cfd7/games — env-overridable for cutover)"),
-            _var("REVIEW_REVIEWS_URL", "consolidation-redirect target for /reviews — the re-homed reviews surface on the review service (optional; default review-production-f027/reviews — env-overridable for cutover)"),
+            _var("REVIEW_REVIEWS_URL", "consolidation-redirect target for /reviews — the re-homed reviews surface on the review service (optional; default review-production-fc91/reviews — env-overridable for cutover)"),
             _var("PORT", "bind port (Railway injects it)"),
         ],
     },
@@ -166,7 +166,7 @@ SERVICES: list[dict[str, Any]] = [
         "package": "review/",
         "dockerfile": "review/Dockerfile",
         "requirements": "review/requirements.txt",
-        "url": "https://review-production-f027.up.railway.app",
+        "url": "https://review-production-fc91.up.railway.app",
         "self": False,
         "env_vars": [
             _var("ANTHROPIC_API_KEY", "Claude API key for the /ask live assistant (set on the service 2026-07-12, ORDER 022)"),

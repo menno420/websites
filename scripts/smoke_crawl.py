@@ -82,7 +82,7 @@ SITES = [
     ("control-plane", "https://control-plane-production-abb0.up.railway.app"),
     ("botsite", "https://botsite-production-cfd7.up.railway.app"),
     ("dashboard", "https://dashboard-production-a91b.up.railway.app"),
-    ("review", "https://review-production-f027.up.railway.app"),
+    ("review", "https://review-production-fc91.up.railway.app"),
 ]
 
 # Regex patterns for console-error text that is KNOWN noise and may be

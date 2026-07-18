@@ -23,9 +23,11 @@ from app.main import app  # noqa: E402
 
 REGISTRY = json.loads(web_presence.REGISTRY_PATH.read_text(encoding="utf-8"))
 
-# The three reliable-grace parallel copies of the websites estate — the ONLY
-# rows that may carry the duplicate label (OQ-RAILWAY-PROJECT-SPLIT parking).
-DUPLICATE_IDS = {"review-dup-fc91", "botsite-dup-cfd7", "dashboard-dup-a91b"}
+# The three old reliable-grace duplicate/superseded website surfaces (the f027
+# review copy + the menno420/superbot dashboard/botsite) — the ONLY rows that
+# may carry the duplicate label (OQ-RAILWAY-PROJECT-SPLIT parking / RETIRE
+# targets at consolidation).
+DUPLICATE_IDS = {"review-dup-f027", "botsite-dup-superbot-app", "dashboard-dup-superbot-dashboard"}
 
 # Verified 2026-07-12 seed URLs that must render as links.
 SEED_URLS = [

@@ -442,7 +442,7 @@ def test_railway_services_include_review():
     assert names == ["control-plane", "botsite", "dashboard", "review"]
     review = next(s for s in railway.SERVICES if s["name"] == "review")
     assert review["package"] == "review/"
-    assert review["url"] == "https://review-production-f027.up.railway.app"
+    assert review["url"] == "https://review-production-fc91.up.railway.app"
     assert review["self"] is False
     var_names = [v["name"] for v in review["env_vars"]]
     assert "ANTHROPIC_API_KEY" in var_names and "PORT" in var_names
@@ -453,5 +453,5 @@ def test_owner_environments_page_shows_review_service(client, monkeypatch):
     r = client.get("/owner/environments", headers=_basic())
     assert r.status_code == 200
     assert "review/" in r.text
-    assert "review-production-f027.up.railway.app" in r.text
+    assert "review-production-fc91.up.railway.app" in r.text
     assert "REVIEW_AI_MODEL" in r.text

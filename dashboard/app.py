@@ -76,8 +76,9 @@ NAV = [
 # 404ing. The targets are env-overridable so a domain rename at cutover is a
 # config change, not a code edit; the defaults are the repo's canonical NEW
 # service URLs (app/config.py SERVICE_DEPLOY_TARGETS) — botsite-…-cfd7 and the
-# review service …-f027 (NOT the …-fc91 parallel copy, which is itself retired
-# at consolidation). Same env-var-with-default idiom as data_source.py's feed
+# review service …-fc91 (NOT the …-f027 old copy in the reliable-grace project,
+# which is the RETIRE target at consolidation). Same env-var-with-default idiom
+# as data_source.py's feed
 # URLs; declared in the dashboard manifest (app/railway.py) so the env-drift
 # panel reads them in-sync.
 BOTSITE_GAMES_URL = os.environ.get(
@@ -86,7 +87,7 @@ BOTSITE_GAMES_URL = os.environ.get(
 ).strip()
 REVIEW_REVIEWS_URL = os.environ.get(
     "REVIEW_REVIEWS_URL",
-    "https://review-production-f027.up.railway.app/reviews",
+    "https://review-production-fc91.up.railway.app/reviews",
 ).strip()
 
 

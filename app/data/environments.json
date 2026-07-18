@@ -95,7 +95,7 @@
           "name": "review",
           "kind": "railway-service",
           "purpose": "the program-review site shared with Anthropic (live 2026-07-12)",
-          "url": "https://review-production-f027.up.railway.app",
+          "url": "https://review-production-fc91.up.railway.app",
           "railway_service_id": null,
           "manage_url": null,
           "variable_names": [
@@ -112,7 +112,7 @@
       "id": "reliable-grace",
       "title": "reliable-grace — live superbot fleet",
       "kind": "railway-project",
-      "purpose": "the LIVE production bot project: the real Discord worker, its Discord-OAuth control panel, parallel copies of review/botsite/dashboard, and 2× Postgres",
+      "purpose": "the LIVE production bot project: the real Discord worker, its Discord-OAuth control panel, the OLD/superseded website surfaces pending consolidation (the f027 review copy + the menno420/superbot dashboard/botsite), and 2× Postgres",
       "railway_project_id": null,
       "railway_environment_id": null,
       "console_url": "https://railway.com/dashboard",
@@ -141,26 +141,26 @@
           "notes": "hostname + ids unrecorded in this repo (see app/data/web_presence.json caveats)."
         },
         {
-          "id": "review-dup-fc91",
-          "name": "review (parallel copy)",
+          "id": "review-dup-f027",
+          "name": "review (old copy)",
           "kind": "railway-service",
-          "purpose": "parallel copy of the review site, pending consolidation",
-          "url": "https://review-production-fc91.up.railway.app",
+          "purpose": "the OLD copy of the review site (RETIRE target), pending consolidation",
+          "url": "https://review-production-f027.up.railway.app",
           "railway_service_id": null,
           "manage_url": null,
           "variable_names": [],
-          "notes": "duplicate of superbot-websites/review — parked pending OQ-RAILWAY-PROJECT-SPLIT."
+          "notes": "old duplicate of superbot-websites/review (canonical = review-production-fc91) — parked pending OQ-RAILWAY-PROJECT-SPLIT."
         },
         {
-          "id": "botsite-dup-cfd7",
-          "name": "botsite (parallel copy)",
+          "id": "botsite-dup-superbot-app",
+          "name": "botsite (old superbot-repo copy)",
           "kind": "railway-service",
-          "purpose": "parallel copy of botsite, pending consolidation",
-          "url": "https://botsite-production-cfd7.up.railway.app",
+          "purpose": "the OLD botsite (menno420/superbot code, RETIRE target), pending consolidation",
+          "url": "https://superbot-app.up.railway.app",
           "railway_service_id": null,
           "manage_url": null,
           "variable_names": [],
-          "notes": "duplicate of superbot-websites/botsite — same caveat as web_presence.json."
+          "notes": "old/superseded botsite — menno420/superbot code, superseded by superbot-websites/botsite (canonical = botsite-production-cfd7); same caveat as web_presence.json."
         },
         {
           "id": "postgres-1",
