@@ -1,0 +1,1 @@
+ - `claude/release-drift-parity` · **Release-drift parity: surface review's baked release-drift on dashboard /status + console board** · dashboard/data_source.py, dashboard/app.py, dashboard/templates/status.html, dashboard/tests/, app/main.py, app/templates/board.html, tests/ · 2026-07-18
