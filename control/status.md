@@ -1,18 +1,18 @@
 # websites · status
 
-updated: 2026-07-18T17:35:00Z
-phase: ORDER 033 build — baked release-drift banner in the review service; PR open on `claude/release-drift-banner`, born-red card holding, awaiting the completion flip.
-health: green locally — ORDER 033 PR open (claude/release-drift-banner, ORDER 033): CI pending, the born-red session card holds the merge red by design, awaiting flip; four service suites (1917 passed) + kit check --strict green locally except the designed born-red hold.
-last-shipped: prior session — ~21 PRs merged, all terminal on origin/main; ORDER 033 release-drift banner is in flight (PR open, not yet merged).
+updated: 2026-07-18T17:55:43Z
+phase: ORDER 033 landed (review release-drift banner merged via PR #414, claim cleanup #415); this session adds a router-introspection NAV-completeness guard test to the review service — PR #416 open on `claude/review-nav-guard`, born-red card holding, awaiting the completion flip.
+health: green locally — four service suites (1920 passed, 1 warning) + kit check --strict green except the DESIGNED born-red hold on this session's in-progress card (PR #416, claude/review-nav-guard). ORDER 033 terminal on origin/main.
+last-shipped: ORDER 033 review release-drift banner landed — PR #414 (merge d700938) then claim cleanup #415; both terminal on origin/main.
 blockers: none
-orders: acked=001-033 done=001-020,022-032 (021 open/owner-gated; 033 in flight — PR open, awaiting flip/merge).
+orders: acked=001-033 done=001-020,022-033 (021 open/owner-gated).
 routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` remains ARMED, still bound to the predecessor session (successor bridge kept by design).
     • This coordinator's trigger / send_later arming is classifier-denied (worker relays blocked at spawn), so the rebind-then-delete of the failsafe cron rides the hub venue.
     • send_later chain: none pending (walled).
     • Business crons: none created by this seat.
-landing: `pushed-unmerged claude/release-drift-banner` — ORDER 033 review release-drift banner (PR open, born-red card holding); daily-rebake workflow wiring deferred to the hub venue.
+landing: `pushed-unmerged claude/review-nav-guard` — review NAV-completeness guard test (PR #416 open, born-red card holding, awaiting completion flip).
 deployed: origin/main at latest · four Railway services live (control-plane-…-abb0 / botsite-…-cfd7 / dashboard-…-a91b / review-…-fc91, the superbot-websites project). O-020 owner writeback is LIVE + verified; RAILWAY_API_KEY enables self-verifying/setting deployed env (see docs/CAPABILITIES.md).
-claims: 1 active — `claude/release-drift-banner` (ORDER 033 review release-drift banner), 2026-07-18; delete at session close.
+claims: 1 active — `claude/review-nav-guard` (review NAV-completeness guard test), 2026-07-18; delete at session close.
 needs-owner: the 15 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## NEXT-2-TASKS baton
