@@ -252,6 +252,44 @@ def test_env_map_shows_names_not_values(client):
     assert "never a value" in r.text.lower() or "never a secret" in r.text.lower()
 
 
+def test_env_drift_clean_state_renders(client):
+    """The default fixture's DATABASE_URL is required with a hard (no-default)
+    read — consistent, so /env shows the honest clean state, no flags."""
+    r = client.get("/env")
+    assert 'data-drift="clean"' in r.text
+    assert "No config drift detected" in r.text
+    assert 'data-drift="flagged"' not in r.text
+
+
+def test_env_drift_flags_render(client):
+    """A feed carrying both drift shapes surfaces both flags on /env with their
+    buckets and human labels; the consistent var is not flagged."""
+    drifted = {
+        **DASHBOARD_FIXTURE,
+        "env_usage": [
+            {"name": "DATABASE_URL", "required": True, "usage_count": 1, "layers": ["utils"],
+             "usages": [{"file": "disbot/utils/db/pool.py", "line": 41, "has_default": False}]},
+            {"name": "OPTIONAL_NO_DEFAULT", "required": False, "usage_count": 1, "layers": ["core"],
+             "usages": [{"file": "disbot/core/x.py", "line": 7, "has_default": False}]},
+            {"name": "REQUIRED_ALL_DEFAULTED", "required": True, "usage_count": 1, "layers": ["core"],
+             "usages": [{"file": "disbot/core/y.py", "line": 9, "has_default": True}]},
+        ],
+    }
+    with _client_with_dashboard(drifted) as c:
+        r = c.get("/env")
+        assert 'data-drift="flagged"' in r.text
+        assert "Config drift" in r.text
+        assert 'data-drift="optional_but_undefended"' in r.text
+        assert 'data-drift="required_but_defaulted"' in r.text
+        assert "optional but no default" in r.text
+        assert "required but always defaulted" in r.text
+        assert "OPTIONAL_NO_DEFAULT" in r.text
+        assert "REQUIRED_ALL_DEFAULTED" in r.text
+        # The consistent var is NOT presented as a flagged drift item.
+        assert 'data-drift="clean"' not in r.text
+    ds.clear_cache()
+
+
 def test_settings_render(client):
     r = client.get("/settings")
     assert "daily_amount" in r.text

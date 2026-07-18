@@ -252,7 +252,13 @@ async def access_page(request: Request):
 @app.get("/env", response_class=HTMLResponse)
 async def env_page(request: Request):
     ctx = await _base_ctx(request, "env")
-    ctx.update({"env_usage": ds.env_usage(ctx["data"]), "source_url": ds.source_url})
+    ctx.update(
+        {
+            "env_usage": ds.env_usage(ctx["data"]),
+            "env_drift": ds.env_drift(ctx["data"]),
+            "source_url": ds.source_url,
+        }
+    )
     return templates.TemplateResponse(request, "env.html", ctx)
 
 
