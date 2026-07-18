@@ -1,1 +1,0 @@
-- `claude/discord-oauth-owner-gate` · Discord OAuth owner login gate on the control-plane (ASK-0001 decision) · 2026-07-18
