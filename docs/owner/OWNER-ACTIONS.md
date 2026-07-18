@@ -205,18 +205,16 @@ server-side" — `ai_ready` is true at runtime, so the key is present.
 
 ### ⚑ Ask added by ORDER 020 (2026-07-12 — owner writeback on the launch console)
 
-```markdown
-⚑ OWNER-ACTION
-ID: ASK-0007
-WHAT: Mint a fine-grained GitHub PAT with Contents read AND write scoped to menno420/websites ONLY, and paste it as GITHUB_TOKEN on the control-plane + botsite Railway services.
-WHERE: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token (Repository access: Only select repositories → menno420/websites; Permissions → Contents: Read and write); then railway.app → project superbot-websites → services control-plane and botsite → Variables → GITHUB_TOKEN.
-HOW: generate the token, copy it once, replace the GITHUB_TOKEN value on both services (the value never goes in the repo). The writeback engine reads the env at REQUEST time, so the capability lights up on the next submit/retry with no redeploy needed beyond Railway's automatic one.
-WHY-IT-MATTERS: the owner writeback console (/owner/queue, ORDER 020) currently QUEUES submissions instead of committing them — the deployed token is read-scoped, so every mark-complete / request-assistance / note is stored locally with an honest "write token not available — queued" error, and Railway's ephemeral disk loses queued entries on redeploy.
-UNBLOCKS: console writeback commits land in git — assistance requests append real ORDERs to control/inbox.md and completions/notes append to docs/owner/owner-notes.md — so the fleet actually sees and acts on what you write on the site.
-VERIFIED-NEEDED: submit a note on /owner/queue (reachable from /queue) and see a commit SHA link in the banner and audit log instead of "queued". Deliberately not attempted by agents: PAT minting is owner-held (no agent credential exists) and Railway variable mutations are policy-walled (docs/RAILWAY-SAFETY.md — same wall as the standing asks above).
-```
-
-> **Status clarification (2026-07-18):** O-020 owner-writeback CODE is fully BUILT and merged (`app/writeback.py` engine + gated `/owner/queue` complete/assist/note routes, with the auth→same-origin-CSRF→rate-limit floor and an honest SQLite degrade that reads `GITHUB_TOKEN` live, so a pasted PAT activates without redeploy). The ONLY remaining step to make owner writeback commit for real: put a **contents:write** PAT into the **Railway control-plane service's `GITHUB_TOKEN`** env, then confirm live that one owner submit returns a commit SHA (queued→committed). NOTE: this seat CANNOT verify a PAT's write scope (see CAPABILITIES 2026-07-18 proxy note); it must be verified live on Railway. OPEN DESIGN QUESTION for the owner: writeback currently targets `main` directly via the contents API (`writeback.py` `DEFAULT_BRANCH="main"`), but `main` requires the `quality` check (ruleset), so a direct PUT may be rejected — the code already supports a `WRITEBACK_BRANCH` env to route owner input to a branch + PR instead (reviewable, ruleset-safe, matches main-by-PR doctrine). Owner to choose: instant-direct-to-main (if his PAT is a ruleset bypass actor) vs branch+PR.
+**STRUCK 2026-07-18 (SATISFIED / verified-live — moved to Decided row O
+below; the six-field ask text is kept verbatim under the Decided table, per
+"do not delete, move").** Verified live 2026-07-18: O-020 owner writeback
+commits end-to-end via branch+auto-PR — live test note → PR #399 → merged
+`main` `b12dcd9`; the deployed control-plane `GITHUB_TOKEN` already has
+`contents:write` + `pull-requests:write` (no owner paste/overwrite was
+needed). ORDER 020 done-when discharged. (Supersedes the 2026-07-18 status
+clarification and its "direct-to-main vs branch+PR" open design question —
+resolved to branch+PR, Q2=b owner-confirmed, PR #398; the runtime opens the
+PR itself, which is why PR-write is also required and already present.)
 
 ### ⚑ Ask added by the 2026-07-12 records reconcile (`/owner/environments` live half — ORDER 016 follow-through)
 
@@ -386,6 +384,8 @@ VERIFIED-NEEDED: NOT machine-checkable — whether a human proofread happened is
 
 | N | **Railway env-var placeholders — resolved: will NOT be pre-created (paste real values directly)** (ORDER 026) | **Deliberately NOT created — agent decision, 2026-07-13.** Empty placeholders would falsely badge `set-live` on `/owner/environments` (the live read is names-only: `app/railway.py` `_names_only()` drops values, so envhub/envdrift cannot tell empty-but-present from configured) and would blind the missing-vs-set signal; additionally, empty values crash 3 services at import (`int("")` on the CACHE_TTL-style vars) or silently blank URL defaults. Independently, the one write probe was harness-denied before reaching Railway. Six-field guidance block below. | ORDER 026 @ `control/inbox.md` `b0e542c`; `docs/CAPABILITIES.md` append log 2026-07-13 (verbatim denial); live GraphQL names read 2026-07-13 (names only, never values) — missing per service: control-plane 11 / botsite 16 / dashboard 5 / review 2. |
 
+| O | **O-020 owner writeback PAT / GITHUB_TOKEN** (was ASK-0007) | **SATISFIED — verified LIVE 2026-07-18, no owner action needed.** O-020 owner writeback commits end-to-end via branch+auto-PR: a live `/owner/queue` test note → branch `claude/owner-writeback-1` (`0be58459`) → auto-PR **#399** → quality green → auto-merged to `main` as **`b12dcd9`**. The deployed control-plane `GITHUB_TOKEN` already carries BOTH `contents:write` AND `pull-requests:write` (the runtime opens the PR itself), so **no owner paste or overwrite was needed** — ORDER 020's done-when is discharged. The 2026-07-18 "direct-to-main vs branch+PR" design question is resolved to branch+PR (Q2=b owner-confirmed, PR #398). | Live submit→branch→PR→merge chain verified 2026-07-18 (real commit SHA `0be58459`, PR #399, merge `b12dcd9`); ask text kept verbatim below. |
+
 ### Resolved guidance — kept as six fields (Decided row N, 2026-07-13)
 
 ```markdown
@@ -447,6 +447,32 @@ WHY-IT-MATTERS: the review-bake workflow has now run TWICE and failed BOTH times
 UNBLOCKS: the self-updating review-site data loop (snapshot/fleet/stats refreshed daily via [bake] PRs that auto-merge on green); also makes the two orphan branches the failed runs pushed (bake/review-data-20260711-202653, bake/review-data-20260712-073843 — stale, safe to delete) stop accumulating.
 VERIFIED-NEEDED: the "Allow GitHub Actions to create and approve pull requests" setting is repo-console-only (Settings → Actions), owner-held; agents hold no path to it. Failure verified by event type from both runs' logs 2026-07-12 (ORDER 012); exact error string quoted above.
 ```
+
+### Satisfied ask — kept verbatim (Decided row O, satisfied by 2026-07-18)
+
+```markdown
+⚑ OWNER-ACTION — SATISFIED 2026-07-18 (Decided row O; kept for the record)
+ID: ASK-0007
+WHAT: Mint a fine-grained GitHub PAT with Contents read AND write scoped to menno420/websites ONLY, and paste it as GITHUB_TOKEN on the control-plane + botsite Railway services.
+WHERE: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token (Repository access: Only select repositories → menno420/websites; Permissions → Contents: Read and write); then railway.app → project superbot-websites → services control-plane and botsite → Variables → GITHUB_TOKEN.
+HOW: generate the token, copy it once, replace the GITHUB_TOKEN value on both services (the value never goes in the repo). The writeback engine reads the env at REQUEST time, so the capability lights up on the next submit/retry with no redeploy needed beyond Railway's automatic one.
+WHY-IT-MATTERS: the owner writeback console (/owner/queue, ORDER 020) currently QUEUES submissions instead of committing them — the deployed token is read-scoped, so every mark-complete / request-assistance / note is stored locally with an honest "write token not available — queued" error, and Railway's ephemeral disk loses queued entries on redeploy.
+UNBLOCKS: console writeback commits land in git — assistance requests append real ORDERs to control/inbox.md and completions/notes append to docs/owner/owner-notes.md — so the fleet actually sees and acts on what you write on the site.
+VERIFIED-NEEDED: submit a note on /owner/queue (reachable from /queue) and see a commit SHA link in the banner and audit log instead of "queued". Deliberately not attempted by agents: PAT minting is owner-held (no agent credential exists) and Railway variable mutations are policy-walled (docs/RAILWAY-SAFETY.md — same wall as the standing asks above).
+```
+
+> **Satisfaction note (2026-07-18):** verified live end-to-end — a real
+> `/owner/queue` note POST on the deployed control-plane committed to branch
+> `claude/owner-writeback-1` (`0be58459`), opened auto-PR **#399**, went
+> quality-green and auto-merged to `main` as **`b12dcd9`**. Crucially the
+> deployed control-plane `GITHUB_TOKEN` **already** held BOTH `contents:write`
+> AND `pull-requests:write`, so the paste/overwrite this ask asked for was
+> **not needed** — the capability was already live. The writeback now lands via
+> a branch + auto-merging PR (Q2=b owner-confirmed, PR #398), not a direct
+> Contents-API PUT to `main`, so the PR-write scope is load-bearing (the
+> runtime opens the PR itself). ASK-0008's PAT-scope half is therefore also
+> already covered on the Railway `GITHUB_TOKEN`; only its `BAKE_PAT` Actions
+> secret half remains open.
 
 ## How to use this doc
 

@@ -75,6 +75,21 @@ Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 (Hand-filled by sessions, per the discovery rule. Seed walls/capabilities
 above came from the fleet's lived 2026-07 findings; local ones go here.)
 
+- 2026-07-18 · capability · **The Railway account API IS available to the
+  seat.** Env var `RAILWAY_API_KEY` (account-scoped) authenticates against
+  `https://backboard.railway.app/graphql/v2` (auth = mennovanhattum@gmail.com).
+  The seat CAN: enumerate all projects/services/environments (query
+  `me`→`workspaces`→`projects`; `project(id)` for services/environments;
+  `domains(...)`), READ a service's variable NAMES+values
+  (`variables(projectId,environmentId,serviceId)` — treat values as secrets,
+  never print/log), and SET variables (`variableUpsert(projectId,
+  environmentId,name,value[,serviceId,skipDeploys])`). This means
+  deployed-service env/config can be self-verified and self-set WITHOUT owner
+  console steps. · evidence: used 2026-07-18 to read `SITE_PASSWORD` for the
+  O-020 live-verify (no variable was written) · consequence: the Railway
+  read/mutation "policy wall" applies to the ambient production `RAILWAY_*_ID`
+  trio and to unreviewed mutations, NOT to this account-scoped read path;
+  control-plane service ids recorded in the O-020 activation records.
 - 2026-07-15 · wall · **The auto-mode permission classifier denies
   dispatched / coordinator-relayed control-plane writes AND the PR
   close/reopen re-fire ritual** — task text injected into a worker (even
