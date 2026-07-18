@@ -10,7 +10,7 @@ routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" 
     • This coordinator's trigger / send_later arming is classifier-denied (worker relays blocked at spawn), so the rebind-then-delete of the failsafe cron rides the hub venue.
     • send_later chain: none pending (walled).
     • Business crons: none created by this seat.
-landing: `ORDER 033 review release-drift banner — PR open on claude/release-drift-banner (born-red card holding); daily-rebake workflow wiring deferred to the hub venue.`
+landing: `pushed-unmerged claude/release-drift-banner` — ORDER 033 review release-drift banner (PR open, born-red card holding); daily-rebake workflow wiring deferred to the hub venue.
 deployed: origin/main at latest · four Railway services live (control-plane-…-abb0 / botsite-…-cfd7 / dashboard-…-a91b / review-…-fc91, the superbot-websites project). O-020 owner writeback is LIVE + verified; RAILWAY_API_KEY enables self-verifying/setting deployed env (see docs/CAPABILITIES.md).
 claims: 1 active — `claude/release-drift-banner` (ORDER 033 review release-drift banner), 2026-07-18; delete at session close.
 needs-owner: the 15 ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
