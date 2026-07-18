@@ -24,6 +24,7 @@ after the dated ones, labeled honestly, never given an invented time.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Any, Optional
 
@@ -245,6 +246,52 @@ def headline(item: dict[str, Any]) -> str:
     return item.get("what") or item.get("text") or ""
 
 
+# --------------------------------------------------------------------------- #
+# Durable ask id (C15) — a stable, content-derived identifier per ask.
+#
+# The gated writeback console targets an ask when the owner marks it complete /
+# requests assistance / notes it. That identity used to be the ask's raw
+# HEADLINE TEXT (its WHAT prose) — brittle: a rewording upstream (or two asks
+# that normalize alike) could point a mark-complete at the wrong ask, or none.
+# ``ask_uid`` derives a deterministic id from STABLE identifying content, never
+# from the ask's POSITION in the ledger, so it is identical across a reorder of
+# the ledger and stable across runs:
+#
+#   * the ledger's ``ID: ASK-NNNN`` when the block carries one (``ask_id``) —
+#     so the id survives even a rewording of the ask's WHAT;
+#   * else the normalized headline (the SAME basis ``_dedup_key`` merges on),
+#     hashed — the best available stable identity for an id-less ask.
+#
+# Distinct asks get distinct ids (different basis → different digest); the same
+# ask keeps one id wherever it appears. A contentless item hashes to '' (there
+# is nothing stable to key on — the caller treats it as unresolvable).
+# --------------------------------------------------------------------------- #
+def ask_uid(item: dict[str, Any]) -> str:
+    """A durable, content-derived identifier for one owner ask (see above)."""
+    basis = item.get("ask_id") or _dedup_key(item)
+    if not basis:
+        return ""
+    digest = hashlib.sha256(basis.encode("utf-8")).hexdigest()[:12]
+    return f"ask-{digest}"
+
+
+def resolve_uid(
+    items: list[dict[str, Any]], uid: str
+) -> Optional[dict[str, Any]]:
+    """The item whose durable :func:`ask_uid` equals ``uid``, or ``None``.
+
+    Resolution is by durable content id, never by position — reordering or
+    removing other asks never changes which ask a uid points at. An unknown
+    uid returns ``None`` (the caller rejects it safely; it never falls through
+    to some other ask). An empty uid resolves to ``None``."""
+    if not uid:
+        return None
+    for it in items:
+        if ask_uid(it) == uid:
+            return it
+    return None
+
+
 # Age-section metadata for the default /queue view (list-IA, 2026-07-12):
 # stable bucket key -> (anchor slug, section label). Anchors are jump targets
 # from the page's summary header; slugs are fixed here so the header links
@@ -426,6 +473,13 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
             order.append(key)
     items = [merged[k] for k in order]
     items.sort(key=_sort_key)
+
+    # Durable content id per ask (C15) — stable across this reorder and across
+    # runs; the gated writeback console resolves its target by this id instead
+    # of by the ask's raw headline text. Additive: /queue.json carries it
+    # (contract-pinned) and every downstream consumer stays absent-safe.
+    for it in items:
+        it["uid"] = ask_uid(it)
 
     unreadable_lanes = [
         lane["lane"] for lane in fleet_data["lanes"] if lane.get("fetch_error")

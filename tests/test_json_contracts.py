@@ -47,7 +47,10 @@ QUEUE_TOP = {
 QUEUE_FILTER = {"q", "sort", "selected", "active", "shown", "total"}
 # ask_id: the stable ledger id (``ID: ASK-NNNN``, 2026-07-16) — askverify's
 # exact join key; null for legacy blocks without one.
-QUEUE_ITEM = {"what", "text", "ask_id", "fields", "sources"}
+# uid: the DURABLE content-derived ask id (C15, 2026-07-18) — ``ask-<hex>``,
+# stable across a ledger reorder; the gated writeback console resolves its
+# target ask by this id instead of by the raw headline text.
+QUEUE_ITEM = {"what", "text", "ask_id", "uid", "fields", "sources"}
 QUEUE_SOURCE = {"kind", "label", "url", "updated_iso", "age_hours", "age_human"}
 QUEUE_SUMMARY = {"total", "deduped", "lanes_with_asks", "lanes_total"}
 QUEUE_FM = {  # _fleet_manager_half minus body_html

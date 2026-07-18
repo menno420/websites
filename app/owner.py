@@ -405,6 +405,13 @@ async def _render_owner_queue(
     draft: dict | None = None,
 ) -> HTMLResponse:
     data = await owner_queue.overview(refresh=_refresh(request))
+    # Durable ask id (C15): overview() already attaches ``uid`` to every ask;
+    # this setdefault is the belt-and-braces guarantee that the per-ask
+    # writeback forms on this LIVE surface always carry a resolvable
+    # identifier (never a blank hidden field), independent of how the items
+    # were built.
+    for it in data["items"]:
+        it.setdefault("uid", owner_queue.ask_uid(it))
     # Launch preflight verdicts (2026-07-15): annotate the GATED view only —
     # the public /queue renders the exact same overview() untouched (pinned
     # byte-identical by test). Read-only probes, TTL-cached, honest-unknown.
@@ -525,14 +532,25 @@ def _sources_fully_readable(data: dict) -> bool:
     )
 
 
-async def _find_ask(target: str, refresh: bool = False) -> tuple[dict, dict | None]:
-    """The queue overview + the ask whose headline matches ``target``
-    exactly (the same identity the forms carry), or None."""
+async def _find_ask(
+    target: str, uid: str = "", refresh: bool = False
+) -> tuple[dict, dict | None]:
+    """The queue overview + the targeted ask (or None).
+
+    C15: resolution is by DURABLE content id when the form carried one — an
+    ask's ``ask_uid`` is stable across a reorder of the ledger, so the id
+    always points at the intended ask (and an unknown/stale id resolves to
+    None, never to some other ask). Only when no uid is supplied (legacy
+    forms, the general writeback) does this fall back to the old exact-headline
+    match."""
     data = await owner_queue.overview(refresh=refresh)
-    item = next(
-        (it for it in data["items"] if owner_queue.headline(it) == target),
-        None,
-    )
+    if uid:
+        item = owner_queue.resolve_uid(data["items"], uid)
+    else:
+        item = next(
+            (it for it in data["items"] if owner_queue.headline(it) == target),
+            None,
+        )
     return data, item
 
 
@@ -557,6 +575,7 @@ async def _render_queue_preview(
     action: str,
     target: str,
     text: str,
+    uid: str = "",
     banner: dict | None = None,
 ) -> HTMLResponse:
     """The stateless writeback preflight page — pure composition + reads.
@@ -652,7 +671,7 @@ async def _render_queue_preview(
         p["block"] = writeback.render_note_block(entry)
 
     if action == "complete":
-        data, item = await _find_ask(target)
+        data, item = await _find_ask(target, uid)
         if item is not None:
             # The ask's live verdict — the SAME askverify probe the gated
             # queue page runs (read-only, TTL-cached, honest-unknown).
@@ -684,7 +703,13 @@ async def _render_queue_preview(
     p["facts"] = facts
     p["confirm"] = {
         "action": f"/owner/queue/actions/{action}",
-        "fields": {"action": action, "target": target, "text": text},
+        # uid is the durable ask id (C15) — the confirm re-POSTs it so the
+        # firing route resolves the SAME ask the preview targeted, immune to a
+        # ledger reorder between preview and confirm. '' for the general
+        # writeback (no ask); the firing routes read it absent-safe.
+        "fields": {
+            "action": action, "target": target, "text": text, "uid": uid,
+        },
         "label": f"confirm — {_QUEUE_ACTION_LABELS[action]}",
         "note": (
             "re-POSTs exactly this action/target/text to the unchanged "
@@ -700,6 +725,7 @@ async def action_queue_preview(
     action: str = Form(...),
     target: str = Form(""),
     text: str = Form(""),
+    uid: str = Form(""),
     _: None = Depends(require_owner_action),
 ):
     """Stateless POST-to-preview for the three writeback actions. Stores
@@ -707,11 +733,12 @@ async def action_queue_preview(
     confirm's re-POST to the unchanged firing route."""
     target = target.strip()
     text = text.strip()
+    uid = uid.strip()
     if action not in writeback.ACTIONS:
         return await _render_owner_queue(
             request, banner={"ok": False, "text": f"unknown action {action!r}"}
         )
-    return await _render_queue_preview(request, action, target, text)
+    return await _render_queue_preview(request, action, target, text, uid)
 
 
 @router.post("/queue/actions/complete", response_class=HTMLResponse)
@@ -719,16 +746,22 @@ async def action_queue_complete(
     request: Request,
     target: str = Form(...),
     text: str = Form(""),
+    uid: str = Form(""),
     _: None = Depends(require_owner_action),
 ):
     # The one confirm-side preflight change (PR B): re-find the targeted
-    # ask by headline; POSITIVELY observed gone (every source readable,
-    # ask absent) → fail closed with nothing stored, nothing committed.
-    # Unreadable sources never fake a "gone" — the owner's assertion
-    # proceeds exactly as before (the 17 ORDER-020 tests pin that path).
+    # ask; POSITIVELY observed gone (every source readable, ask absent) →
+    # fail closed with nothing stored, nothing committed. Unreadable sources
+    # never fake a "gone" — the owner's assertion proceeds exactly as before
+    # (the 17 ORDER-020 tests pin that path). C15: the re-find resolves by the
+    # DURABLE ask id when the confirm carried one, so a ledger reorder between
+    # preview and confirm can never point the fail-closed check at the wrong
+    # ask; an unknown/stale id resolves to None (rejected safely, same as a
+    # vanished ask).
     stripped = target.strip()
+    uid = uid.strip()
     if not writeback.validate("complete", stripped, text.strip()):
-        data, item = await _find_ask(stripped)
+        data, item = await _find_ask(stripped, uid)
         if item is None and _sources_fully_readable(data):
             banner = {
                 "ok": False,
@@ -740,7 +773,8 @@ async def action_queue_complete(
                 ),
             }
             return await _render_queue_preview(
-                request, "complete", stripped, text.strip(), banner=banner
+                request, "complete", stripped, text.strip(), uid,
+                banner=banner,
             )
     return await _handle_writeback(request, "complete", target, text)
 
