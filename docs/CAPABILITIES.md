@@ -332,3 +332,14 @@ above came from the fleet's lived 2026-07 findings; local ones go here.)
   Actions-secret would also bypass it. Side-effect to clean up once fixed:
   orphan branches bake/review-data-20260711-202653 and
   bake/review-data-20260712-073843.
+- 2026-07-18 · wall · **The agent seat CANNOT exercise a GitHub PAT against
+  api.github.com.** Env exposes `GITHUB_TOKEN`/`GITHUB_PAT`/`GH_TOKEN` (all
+  authenticate as owner `menno420`), but the agent HTTPS proxy overrides the
+  Authorization header with the Claude-GitHub-App identity — PROVEN: a
+  deliberately garbage token returns identical results (`/user`→200
+  `menno420`, contents-read→403 gate message), and a no-auth call also returns
+  200. Therefore the contents:write scope of ANY deployed/runtime PAT must be
+  verified LIVE on the Railway service (make one real write and observe the
+  commit SHA), never from this seat. Non-mutating `git push --dry-run` to the
+  local git proxy (127.0.0.1) succeeds for a new branch, but that tests the
+  seat's git path, not the api.github.com contents path the runtime uses.

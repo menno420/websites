@@ -45,7 +45,7 @@ Full index (grounds + capabilities): `docs/SKILLS.md` — the source this block 
 - `any` · **Self-merge classifier**: sessions can be refused merging owner-gated PRs while their other capabilities work — and the boundary differs by session kind (a…
 - `any` · **GraphQL API quota**: tight — batch queries and prefer the REST-backed MCP tools for bulk reads.
 - `any` · **The auto-mode permission classifier denies dispatched / coordinator-relayed control-plane writes AND the PR close/reopen re-fire ritual** — task text…
-- …plus 9 more — read `docs/CAPABILITIES.md`.
+- …plus 10 more — read `docs/CAPABILITIES.md`.
 
 Full ledger (all venues, evidence, freshness): `docs/CAPABILITIES.md` — the seat-local source of truth; append findings THERE, never here.
 <!-- substrate-kit:walls-digest END -->
