@@ -98,7 +98,14 @@ above came from the fleet's lived 2026-07 findings; local ones go here.)
   `39007299-11a2-49a8-9c5c-21e17194fb3e` / review
   `511fd9eb-a389-47d7-ba66-4e42fb556e9b`, production env
   `31485ecd-b3fe-4a8f-b136-337f6f099dc2`; no Postgres service exists and
-  botsite carries no DATABASE_URL · conclusion: the 2026-07-13 Railway
+  botsite carries no DATABASE_URL **[SUPERSEDED 2026-07-19 — this "no
+  DATABASE_URL" fact was true only at 2026-07-18: botsite NOW carries a live
+  Railway Postgres `DATABASE_URL` (owner-set in the Railway UI per ORDER 034 /
+  ASK-0004), proven by a live POST /submit persisting a Postgres row; the
+  dual-backend intake shipped in PR #425 and the /testing dual backend in
+  #446. Do not re-cite "botsite carries no DATABASE_URL" as current — only the
+  agent-side Railway MUTATION wall still stands (see the 2026-07-19 entry at
+  the top of this log).]** · conclusion: the 2026-07-13 Railway
   variable-WRITE wall STILL STANDS for mutations from a dispatched session —
   only READS were superseded by the API-key path (2026-07-18 capability entry
   below) · workaround: DB creation + DATABASE_URL set require an owner Railway
