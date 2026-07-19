@@ -21,6 +21,8 @@ NON_PAGE_PATHS = {
     "/palette.json",
     "/testing/owner/export.json",
     "/submit/queue.json",
+    # Discord OAuth callback (ORDER 037) — a machine auth endpoint, not a page.
+    "/owner/auth/callback",
 }
 
 # Real HTML pages that are reachable but deliberately NOT in the top nav
@@ -34,6 +36,10 @@ PAGES_NOT_IN_NAV = {
     "/products/catalog",
     "/testing/owner",
     "/testing/",
+    # Discord owner login (ORDER 037): a real HTML page (the door), deliberately
+    # off the top nav. Unconfigured it renders an honest HTTP-200 "not
+    # configured" page — reachable, never a broken route.
+    "/owner/login",
 }
 
 NAV_PATHS = {entry[2] for entry in NAV}

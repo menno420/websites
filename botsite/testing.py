@@ -66,6 +66,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.templating import Jinja2Templates
 
 from . import data_source as ds
+from . import discord_auth
 from . import listfilter
 from . import testing_ai as ai
 from . import testing_payouts as payouts
@@ -184,17 +185,32 @@ def guard_state_change(request: Request) -> None:
 
 
 # --------------------------------------------------------------------------
-# owner auth — HTTP Basic vs SITE_PASSWORD, fail-closed (503 unset, 401 bad).
-# Mirrors app/owner.py's require_owner; re-implemented (never imported).
+# owner auth — a valid Discord owner session OR HTTP-Basic SITE_PASSWORD,
+# fail-closed when NEITHER is configured (503 unset, 401 bad). ORDER 037: one
+# Discord login across the fleet (botsite/discord_auth.py), with SITE_PASSWORD
+# kept as an OPTIONAL fallback. Mirrors app/owner.py's require_owner;
+# re-implemented (services never import each other).
 # --------------------------------------------------------------------------
 def require_owner(request: Request) -> None:
+    # Discord owner session wins first — a valid signed session cookie from the
+    # OAuth login flow (botsite/discord_auth.py) authorizes the whole gated area
+    # without Basic. ORDER 037: one Discord login across the fleet.
+    if discord_auth.owner_session_id(request):
+        return
     password = os.environ.get("SITE_PASSWORD", "")
-    if not password:
-        # Fail closed: an unset password never means an open door. The public
-        # /testing pages are unaffected — only this gated queue 503s.
+    oauth_up = discord_auth.oauth_configured()
+    if not password and not oauth_up:
+        # Fail closed: with NEITHER configured an unset password never means an
+        # open door. Name the opening owner action. Public /testing pages are
+        # unaffected — only this gated queue 503s.
         raise HTTPException(
             status_code=503,
-            detail="testing owner queue unavailable: SITE_PASSWORD is not configured",
+            detail=(
+                "testing owner queue unavailable: no owner authentication is "
+                "configured — sign in with Discord at /owner/login (needs "
+                "DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, OWNER_DISCORD_ID, "
+                "OWNER_SESSION_SECRET), or set SITE_PASSWORD as a fallback"
+            ),
         )
     header = request.headers.get("authorization", "")
     supplied = ""
@@ -204,12 +220,13 @@ def require_owner(request: Request) -> None:
             _user, _, supplied = decoded.partition(":")
         except Exception:
             supplied = ""
-    if not supplied or not secrets.compare_digest(supplied, password):
-        raise HTTPException(
-            status_code=401,
-            detail="owner authentication required",
-            headers=_UNAUTH_HEADERS,
-        )
+    if password and supplied and secrets.compare_digest(supplied, password):
+        return
+    raise HTTPException(
+        status_code=401,
+        detail="owner authentication required",
+        headers=_UNAUTH_HEADERS,
+    )
 
 
 # --------------------------------------------------------------------------
