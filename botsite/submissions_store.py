@@ -14,11 +14,15 @@ provisioning step (set DATABASE_URL) rather than a code change.
 """
 from __future__ import annotations
 
-import os
 import sqlite3
 import time
 from contextlib import closing
 from typing import Any
+
+# Shared botsite dual-backend shim — the single home for these helpers
+# (re-imported here so ``submissions_store.database_url`` /
+# ``submissions_store._is_postgres`` still resolve at this module path).
+from ._db import database_url, _is_postgres
 
 # Allowed submission kinds -- mirror the <select> in templates/submit.html.
 KINDS = ("feature", "bug")
@@ -48,18 +52,9 @@ CREATE TABLE IF NOT EXISTS submissions (
 """
 
 
-def database_url() -> str:
-    """Resolved per call so tests can monkeypatch the environment."""
-    return os.environ.get("DATABASE_URL") or ""
-
-
 def is_live() -> bool:
     """True when a durable write target is configured."""
     return bool(database_url())
-
-
-def _is_postgres(url: str) -> bool:
-    return url.startswith("postgres://") or url.startswith("postgresql://")
 
 
 def _sqlite_path(url: str) -> str:
