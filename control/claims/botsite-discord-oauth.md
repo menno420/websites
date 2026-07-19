@@ -1,0 +1,1 @@
+- `claude/botsite-discord-oauth` · ORDER 037 — extend Discord OAuth owner login to botsite's owner surfaces (/testing/owner + /submit/queue.json), SITE_PASSWORD kept as optional fallback · 2026-07-19
