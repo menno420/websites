@@ -112,18 +112,213 @@ CREATE TABLE IF NOT EXISTS payout_ledger (
 );
 """
 
+# Postgres schema — the durable production target selected when DATABASE_URL is
+# a postgres:// URL (mirrors submissions_store.py's dual schema). Translations
+# from _SCHEMA: INTEGER PRIMARY KEY AUTOINCREMENT → BIGSERIAL PRIMARY KEY, BLOB
+# → BYTEA, REAL → DOUBLE PRECISION; everything else (TEXT, INTEGER, NOT NULL,
+# DEFAULT, UNIQUE) is identical. The REFERENCES clauses are DELIBERATELY OMITTED:
+# SQLite foreign keys are OFF by default (_connect never enables the pragma), so
+# those REFERENCES are inert here — the module relies on FK-free behavior (the
+# import valve validates references in Python and its replace path DELETEs
+# tables in a non-FK-safe order). Omitting FK constraints in PG preserves that
+# identical behavior.
+_SCHEMA_PG = """
+CREATE TABLE IF NOT EXISTS claims (
+    id BIGSERIAL PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    paypal_email TEXT NOT NULL DEFAULT '',
+    token TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'claimed',
+    created_at TEXT NOT NULL,
+    UNIQUE (task_id, email)
+);
+CREATE TABLE IF NOT EXISTS submissions (
+    id BIGSERIAL PRIMARY KEY,
+    claim_id INTEGER NOT NULL,
+    answers_json TEXT NOT NULL DEFAULT '{}',
+    findings TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ai_reviews (
+    id BIGSERIAL PRIMARY KEY,
+    submission_id INTEGER NOT NULL UNIQUE,
+    status TEXT NOT NULL,
+    score INTEGER,
+    low_effort INTEGER NOT NULL DEFAULT 0,
+    summary TEXT NOT NULL DEFAULT '',
+    findings_json TEXT NOT NULL DEFAULT '[]',
+    followups_json TEXT NOT NULL DEFAULT '[]',
+    degraded_reason TEXT NOT NULL DEFAULT '',
+    calls_used INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS screenshots (
+    id BIGSERIAL PRIMARY KEY,
+    submission_id INTEGER NOT NULL,
+    filename TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    data BYTEA NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS guide_exchanges (
+    id BIGSERIAL PRIMARY KEY,
+    claim_id INTEGER NOT NULL,
+    step_index INTEGER NOT NULL DEFAULT 0,
+    step_title TEXT NOT NULL DEFAULT '',
+    message TEXT NOT NULL,
+    reply TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS payout_ledger (
+    id BIGSERIAL PRIMARY KEY,
+    claim_id INTEGER NOT NULL,
+    task_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    amount_usd DOUBLE PRECISION NOT NULL,
+    state TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+"""
+
 
 def db_path() -> str:
     """Resolve the DB path per call so tests can monkeypatch the env."""
     return os.environ.get("TESTING_DB_PATH") or str(DEFAULT_DB_PATH)
 
 
-def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path())
-    conn.row_factory = sqlite3.Row
-    conn.executescript(_SCHEMA)  # idempotent — no separate migration step
-    _ensure_step_title_column(conn)
-    return conn
+def database_url() -> str:
+    """Resolved per call so tests can monkeypatch the environment."""
+    return os.environ.get("DATABASE_URL") or ""
+
+
+def _is_postgres(url: str) -> bool:
+    return url.startswith(("postgres://", "postgresql://"))
+
+
+class _Row:
+    """A minimal stand-in for ``sqlite3.Row`` used on the Postgres path.
+
+    The store's readers rely on ALL of: keyed access ``row["col"]``,
+    positional access ``row[0]``, ``dict(row)``, tuple-unpacking
+    ``(n,) = row`` (which must yield VALUES, as sqlite3.Row does), and
+    ``.keys()``. psycopg's default tuple rows do not; this wrapper does.
+    """
+
+    __slots__ = ("_cols", "_vals", "_map")
+
+    def __init__(self, cols, vals):
+        self._cols = list(cols)
+        self._vals = list(vals)
+        self._map = {c: v for c, v in zip(self._cols, self._vals)}
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._vals[key]
+        return self._map[key]
+
+    def __iter__(self):
+        return iter(self._vals)  # unpacking yields VALUES, like sqlite3.Row
+
+    def keys(self):
+        return list(self._cols)
+
+    def __len__(self):
+        return len(self._vals)
+
+
+def _pg_row_factory(cursor):
+    """psycopg row factory returning :class:`_Row` objects."""
+    cols = [d.name for d in cursor.description] if cursor.description else []
+
+    def make(values):
+        return _Row(cols, values)
+
+    return make
+
+
+class _Conn:
+    """Unified connection wrapper over both backends.
+
+    Presents the sqlite-flavoured surface the store already uses (``execute``
+    returning a cursor, native-transaction context manager, ``close``) while
+    hiding the Postgres differences: ``?``→``%s`` placeholder translation,
+    ``RETURNING id`` for autoincrement inserts, and serial-sequence resync.
+    """
+
+    def __init__(self, raw, backend):
+        self._raw = raw
+        self.backend = backend  # "sqlite" | "postgres"
+
+    def execute(self, sql, params=()):
+        if self.backend == "postgres":
+            sql = sql.replace("?", "%s")
+        return self._raw.execute(sql, params)
+
+    def insert_id(self, sql, params=()):
+        """INSERT and return the new row's autoincrement id (both backends)."""
+        if self.backend == "postgres":
+            cur = self._raw.execute(sql.replace("?", "%s") + " RETURNING id", params)
+            return cur.fetchone()[0]
+        return self._raw.execute(sql, params).lastrowid
+
+    def resync_sequences(self, tables):
+        """After an id-preserving import, advance PG serial sequences past the
+        inserted max id. No-op for SQLite (AUTOINCREMENT self-advances)."""
+        if self.backend != "postgres":
+            return
+        for table in tables:
+            self._raw.execute(
+                f"SELECT setval(pg_get_serial_sequence('{table}', 'id'),"
+                f" COALESCE((SELECT MAX(id) FROM {table}), 1),"
+                f" (SELECT COUNT(*) FROM {table}) > 0)"
+            )
+
+    def close(self):
+        self._raw.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if self.backend == "postgres":
+            if exc_type is None:
+                self._raw.commit()
+            else:
+                self._raw.rollback()
+            return False
+        return self._raw.__exit__(exc_type, exc, tb)  # sqlite native txn CM
+
+    def __getattr__(self, name):
+        # Safety net: delegate any unused sqlite-specific attr to the raw conn.
+        return getattr(self._raw, name)
+
+
+def _create_schema_pg(raw) -> None:
+    """Create the Postgres schema (psycopg has no ``executescript``)."""
+    with raw.cursor() as cur:
+        for stmt in _SCHEMA_PG.split(";"):
+            if stmt.strip():
+                cur.execute(stmt)
+    raw.commit()
+
+
+def _connect() -> "_Conn":
+    url = database_url()
+    if _is_postgres(url):
+        import psycopg  # lazy — never imported on the SQLite path (CI/dev)
+
+        raw = psycopg.connect(url, row_factory=_pg_row_factory)
+        _create_schema_pg(raw)
+        return _Conn(raw, "postgres")
+    raw = sqlite3.connect(db_path())
+    raw.row_factory = sqlite3.Row
+    raw.executescript(_SCHEMA)  # existing idempotent path, unchanged
+    _ensure_step_title_column(raw)  # sqlite-only retrofit
+    return _Conn(raw, "sqlite")
 
 
 def _ensure_step_title_column(conn: sqlite3.Connection) -> None:
@@ -157,13 +352,13 @@ def create_claim(
     task_id: str, name: str, email: str, paypal_email: str, token: str
 ) -> dict[str, Any]:
     with closing(_connect()) as conn, conn:
-        cur = conn.execute(
+        new_id = conn.insert_id(
             "INSERT INTO claims (task_id, name, email, paypal_email, token,"
             " status, created_at) VALUES (?, ?, ?, ?, ?, 'claimed', ?)",
             (task_id, name, email, paypal_email, token, _now()),
         )
         row = conn.execute(
-            "SELECT * FROM claims WHERE id = ?", (cur.lastrowid,)
+            "SELECT * FROM claims WHERE id = ?", (new_id,)
         ).fetchone()
     return dict(row)
 
@@ -232,13 +427,13 @@ def create_submission(
     claim_id: int, answers: dict[str, Any], findings: str
 ) -> dict[str, Any]:
     with closing(_connect()) as conn, conn:
-        cur = conn.execute(
+        new_id = conn.insert_id(
             "INSERT INTO submissions (claim_id, answers_json, findings,"
             " created_at) VALUES (?, ?, ?, ?)",
             (claim_id, json.dumps(answers, ensure_ascii=False), findings, _now()),
         )
         row = conn.execute(
-            "SELECT * FROM submissions WHERE id = ?", (cur.lastrowid,)
+            "SELECT * FROM submissions WHERE id = ?", (new_id,)
         ).fetchone()
     return dict(row)
 
@@ -364,7 +559,7 @@ def add_screenshot(
     submission_id: int, filename: str, content_type: str, data: bytes
 ) -> dict[str, Any]:
     with closing(_connect()) as conn, conn:
-        cur = conn.execute(
+        new_id = conn.insert_id(
             "INSERT INTO screenshots (submission_id, filename, content_type,"
             " data, created_at) VALUES (?, ?, ?, ?, ?)",
             (submission_id, filename, content_type, data, _now()),
@@ -373,7 +568,7 @@ def add_screenshot(
             "SELECT id, submission_id, filename, content_type,"
             " LENGTH(data) AS size_bytes, created_at"
             " FROM screenshots WHERE id = ?",
-            (cur.lastrowid,),
+            (new_id,),
         ).fetchone()
     return dict(row)
 
@@ -416,13 +611,13 @@ def add_guide_exchange(
     the index points at different text and history silently re-attributes.
     Default ``''`` = no snapshot (rows persisted before the pin existed)."""
     with closing(_connect()) as conn, conn:
-        cur = conn.execute(
+        new_id = conn.insert_id(
             "INSERT INTO guide_exchanges (claim_id, step_index, step_title,"
             " message, reply, created_at) VALUES (?, ?, ?, ?, ?, ?)",
             (claim_id, step_index, step_title, message, reply, _now()),
         )
         row = conn.execute(
-            "SELECT * FROM guide_exchanges WHERE id = ?", (cur.lastrowid,)
+            "SELECT * FROM guide_exchanges WHERE id = ?", (new_id,)
         ).fetchone()
     return dict(row)
 
@@ -669,13 +864,13 @@ def add_ledger_entry(
 ) -> dict[str, Any]:
     assert state in LEDGER_STATES, state
     with closing(_connect()) as conn, conn:
-        cur = conn.execute(
+        new_id = conn.insert_id(
             "INSERT INTO payout_ledger (claim_id, task_id, email, amount_usd,"
             " state, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (claim_id, task_id, email, amount_usd, state, note, _now()),
         )
         row = conn.execute(
-            "SELECT * FROM payout_ledger WHERE id = ?", (cur.lastrowid,)
+            "SELECT * FROM payout_ledger WHERE id = ?", (new_id,)
         ).fetchone()
     return dict(row)
 
@@ -936,6 +1131,11 @@ def import_all(payload: Any, *, replace: bool = False) -> dict[str, int]:
                     f" VALUES ({', '.join('?' for _ in cols)})",
                     [row[c] for c in cols],
                 )
+        # The inserts above preserve explicit ids. SQLite AUTOINCREMENT
+        # auto-advances past them; Postgres BIGSERIAL does NOT, so the next
+        # auto id would collide — advance the serial sequences past the
+        # inserted max (no-op on SQLite).
+        conn.resync_sequences(list(_IMPORT_SPEC))
     return {table: len(rows) for table, rows in tables.items()}
 
 
