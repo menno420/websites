@@ -404,7 +404,11 @@ why: unblocks durable public submissions — the /submit intake cannot persist w
 done-when: DATABASE_URL set on botsite (botsite-production-cfd7) + /submit persists a submission and reads it back on the live service.
 provenance: owner live in coordinator chat 2026-07-18.
 
-## ORDER 037 · 2026-07-19T11:09:07Z · status: in-progress
+## ORDER 037 · 2026-07-19T11:09:07Z · status: done
+priority: P1
+do: extend the control-plane's proven Discord OAuth owner login to botsite's owner surfaces (botsite/discord_auth.py + /owner/login + /owner/auth/callback); make require_owner accept a Discord owner session OR the optional SITE_PASSWORD fallback.
+why: the owner wants ONE login across the fleet; the Discord OAuth was just proven E2E on the control-plane (#426, owner-confirmed 08:42Z).
+done-when: botsite /owner/login + /owner/auth/callback are live, require_owner accepts a Discord owner session OR SITE_PASSWORD, the tests are green, and the change is landed.
 
 **Owner (live, 2026-07-19 ~09:30Z), verbatim:** "Can't we just use te discord login for everything? Or else you can add a site password"
 
