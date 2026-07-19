@@ -1,11 +1,13 @@
 # 2026-07-19 — botsite /submit live-badge fix + ledger finalize
 
-> **Status:** `in-progress` — branch `claude/botsite-submit-live-badge`; the
-> live `/submit` form still shows a hardcoded "Stub — not wired" badge even
-> though the Postgres-backed intake is now live. Born red; flips to `complete`
-> + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/botsite-submit-live-badge`, landed as
+> **PR #441**. The live `/submit` form's hardcoded "Stub — not wired" copy is
+> now gated on `intake_live` so it disappears while the Postgres-backed intake
+> is live, and ASK-0004/ASK-0002 are finalized satisfied-with-evidence. Born
+> red; this complete flip (dropping the branch's own claim in the same commit)
+> is the deliberate LAST step.
 
-- **📊 Model:** Claude Opus 4.8 · effort: high · task-class: bugfix + ledger-finalize
+- **📊 Model:** Claude Opus 4.8 · high · runtime bugfix
 
 **Ask:** ASK-0004 / ASK-0002 · **Date:** 2026-07-19
 **Branch:** `claude/botsite-submit-live-badge`
@@ -49,6 +51,29 @@ and to gate the stale stub copy now that the intake is live.
 
 `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q` and
 `python3 bootstrap.py check --strict`.
+
+## Outcome
+
+Landed as **PR #441**. The stale `/submit` stub copy (badge + "not stored yet"
+hint + "Heads up" provisioning block) is now gated on `intake_live` from
+`submissions_store.is_live()`, so it only renders while the store is dark and a
+subtle "reviewed before publishing" note takes its place once the intake is
+live; form fields always render. Ledger finalized: ASK-0004 (botsite
+`DATABASE_URL`) and ASK-0002 (control-plane Discord login) are marked
+satisfied-with-evidence; the `docs/CAPABILITIES.md` 2026-07-19 note records that
+the env vars were set by the owner manually (agent-side Railway mutations stayed
+classifier-denied). Remaining owner step folded into ASK-0006: `SITE_PASSWORD`
+on botsite still gates the `/submit` moderation queue read-back. Heartbeat
+trued (ORDER 034 → done) and this branch's own claim dropped in the flip commit.
+
+## Live-verification note
+
+Durable write confirmed live: the owner set `DATABASE_URL` on botsite in his
+2026-07-19 Railway hub session, botsite redeployed 2026-07-19T08:27:36Z (SHA
+`f8caa036`), and a real POST `/submit` persisted a Postgres row — the form
+rendered the live acceptance, not the fail-soft "intake not live" branch. The
+user-facing badge fix shipped this session is to be re-checked on the live
+botsite once PR #441 merges and Railway redeploys (merge=deploy).
 
 ## 💡 Session idea
 

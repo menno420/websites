@@ -1,1 +1,0 @@
-- `claude/botsite-submit-live-badge` · botsite /submit form live-badge fix + ASK-0004/ASK-0002 ledger finalize · 2026-07-19
