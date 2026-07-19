@@ -1,1 +1,0 @@
-- `claude/botsite-db-shim` · botsite dual-backend shim extraction + heartbeat true + CAPABILITIES wall fix · 2026-07-19
