@@ -282,6 +282,20 @@ VERIFIED-NEEDED: the next scheduled bake's PR shows a pull_request-event `qualit
 > auto-merges). Not yet moved to Decided; the VERIFIED-NEEDED check above is
 > the remaining gate.
 
+> **SATISFIED — with evidence, 2026-07-19 (final resolution).** The
+> VERIFIED-NEEDED gate is now met end-to-end. PR #434 merged to main as
+> `403a91de` — review-bake.yml's landing step reads
+> `GH_TOKEN: ${{ secrets.BAKE_PAT || secrets.GITHUB_TOKEN }}`. A proof
+> `workflow_dispatch` (review-bake.yml run 29678801173, actor menno420 →
+> success) created bake PR #438 on `bake/review-data-20260719-075148`,
+> **authored by `menno420`** (the BAKE_PAT identity, NOT github-actions[bot]);
+> the PR received a real `pull_request`-event `quality` check and had
+> auto-merge armed (squash) — proving the PAT landing path lands nightly bakes
+> hands-off. The old-token direct push still hit GH013 and correctly fell back
+> to the PAT-PR + auto-merge path (by design). Cleanup: stale pre-fix bot bake
+> PRs #422 and #437 closed (superseded, no-limbo rule). ASK-0008 is
+> discharged.
+
 ### ⚑ Ask added 2026-07-13 (env-leads close — ORDER 027 item 4)
 
 ```markdown
