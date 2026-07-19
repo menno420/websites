@@ -32,9 +32,10 @@ from . import data_source as ds
 
 CONTRACT_FILE = Path(__file__).resolve().parent / "bot_control_contract.json"
 
-# The actor identity a wired client would put here comes from Discord OAuth.
-# OAuth is not configured on this deployment (and never will be on THIS
-# service — see the module docstring), so the actor is honestly anonymous.
+# The actor identity a wired client would put here comes from Discord OAuth
+# (ORDER 038: dashboard/discord_auth.py). This is the honest fallback used when
+# no owner session is present — a signed-in owner is attributed via
+# discord_auth.actor_for(request) instead.
 ANONYMOUS_ACTOR = {"discord_user_id": None, "display": "anonymous (OAuth not configured)"}
 
 # Actions the /admin UI can build previews for. submission.moderate is in the
@@ -226,6 +227,7 @@ class DryRunController:
         form: dict[str, str],
         data: dict[str, Any],
         *,
+        actor: dict[str, Any] | None = None,
         idempotency_key: str | None = None,
         requested_at: str | None = None,
     ) -> dict[str, Any]:
@@ -235,7 +237,10 @@ class DryRunController:
             "action": action,
             "params": params,
             "dry_run": True,
-            "actor": dict(ANONYMOUS_ACTOR),
+            # The actor a wired client would carry comes from Discord OAuth
+            # (ORDER 038: dashboard/discord_auth.actor_for). Defaults to the
+            # honest anonymous actor when no owner session is present.
+            "actor": dict(actor if actor is not None else ANONYMOUS_ACTOR),
             "idempotency_key": idempotency_key or uuid.uuid4().hex,
             "requested_at": requested_at or _utc_stamp(),
         }

@@ -41,13 +41,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import control_plane as cp
 from . import data_source as ds
+from . import discord_auth
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -106,6 +107,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="SuperBot Dashboard", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# The Discord OAuth admin login — ORDER 038 — the door for the owner gate,
+# mounted at /admin/login (+ /admin/auth/callback + /admin/logout). It owns those
+# paths; the state-changing /admin/actions/* POSTs depend on discord_auth.require_owner.
+app.include_router(discord_auth.router)
 
 
 def _refresh(request: Request) -> bool:
@@ -500,6 +506,10 @@ async def admin_overview(request: Request):
             "command_total": len(ds.all_commands(data)),
             "audit_count": len(cp.controller.entries()),
             "controller_mode": cp.controller.mode,
+            # Real OAuth state (ORDER 038): the sign-in panel reflects it, and the
+            # dry-run attribution shows who a confirmed action would be logged as.
+            "oauth_configured": discord_auth.oauth_configured(),
+            "actor": discord_auth.actor_for(request),
         }
     )
     return templates.TemplateResponse(request, "admin.html", ctx)
@@ -535,15 +545,6 @@ async def admin_help(request: Request):
     return templates.TemplateResponse(request, "admin_help.html", ctx)
 
 
-@app.get("/admin/login", response_class=HTMLResponse)
-async def admin_login(request: Request):
-    """Honest OAuth scaffold: sign-in is NOT configured on this deployment — and
-    per doctrine it never will be on this service (the armed panel is a separate
-    service; the future env-var names live in docs/specs, not in this code)."""
-    ctx = await _base_ctx(request, "admin")
-    return templates.TemplateResponse(request, "admin_login.html", ctx)
-
-
 @app.get("/admin/audit", response_class=HTMLResponse)
 async def admin_audit(request: Request):
     ctx = await _base_ctx(request, "admin")
@@ -558,13 +559,18 @@ def _rejected(request: Request, ctx: dict[str, Any], action: str, exc: cp.Action
 
 
 @app.post("/admin/actions/preview", response_class=HTMLResponse)
-async def admin_action_preview(request: Request):
-    """Step 1 of the dry-run flow: validate + show the exact request JSON."""
+async def admin_action_preview(
+    request: Request, _: None = Depends(discord_auth.require_owner)
+):
+    """Step 1 of the dry-run flow: validate + show the exact request JSON.
+    Owner-gated (ORDER 038): fail-closed via discord_auth.require_owner."""
     form = await _form_fields(request)
     ctx = await _base_ctx(request, "admin")
     action = form.get("action", "")
     try:
-        req = cp.controller.build_request(action, form, ctx["data"])
+        req = cp.controller.build_request(
+            action, form, ctx["data"], actor=discord_auth.actor_for(request)
+        )
     except cp.ActionRejected as exc:
         return _rejected(request, ctx, action, exc)
     carry = [(k, v) for k, v in form.items() if k not in ("idempotency_key", "requested_at")]
@@ -574,8 +580,11 @@ async def admin_action_preview(request: Request):
 
 
 @app.post("/admin/actions/confirm", response_class=HTMLResponse)
-async def admin_action_confirm(request: Request):
-    """Step 2: re-validate the carried fields, record the dry-run audit entry."""
+async def admin_action_confirm(
+    request: Request, _: None = Depends(discord_auth.require_owner)
+):
+    """Step 2: re-validate the carried fields, record the dry-run audit entry.
+    Owner-gated (ORDER 038): fail-closed via discord_auth.require_owner."""
     form = await _form_fields(request)
     ctx = await _base_ctx(request, "admin")
     action = form.get("action", "")
@@ -584,6 +593,7 @@ async def admin_action_confirm(request: Request):
             action,
             form,
             ctx["data"],
+            actor=discord_auth.actor_for(request),
             idempotency_key=form.get("idempotency_key") or None,
             requested_at=form.get("requested_at") or None,
         )

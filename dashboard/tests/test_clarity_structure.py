@@ -161,6 +161,7 @@ NON_PAGE_GET_ROUTES: dict[str, str] = {
     "/palette.json": "JSON design-palette feed — machine data, no page shell",
     "/games": "consolidation 302 redirect to the re-homed botsite games surface — not a page rendered here",
     "/reviews": "consolidation 302 redirect to the re-homed review-service reviews surface — not a page rendered here",
+    "/admin/auth/callback": "Discord OAuth callback (ORDER 038) — a GET seam that 302s/503s, not a rendered page",
 }
 
 MOUNT_EXEMPT: dict[str, str] = {

@@ -20,10 +20,10 @@
     <p class="sb-panel-title">Discord OAuth</p>
     <div class="kv-row" style="align-items:center; gap:14px">
       <a class="sb-btn sb-btn-primary sb-btn-sm" href="/admin/login">{{ icon("shield", 14) }} Sign in with Discord</a>
-      <span class="stub-tag">not configured on this deployment</span>
+      {% if not oauth_configured %}<span class="stub-tag">not configured on this deployment</span>{% endif %}
     </div>
     <p class="feat-desc" style="margin-top:10px">Actions below are attributed to
-      <code>anonymous (OAuth not configured)</code> in the dry-run audit log.</p>
+      <code>{{ actor.display }}</code> in the dry-run audit log.</p>
   </div>
 
   <div class="group-head"><h2>Per-server management</h2>
