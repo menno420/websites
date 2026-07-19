@@ -113,6 +113,8 @@ NON_PAGE_GET_ROUTES: dict[str, str] = {
     "/palette.json": "JSON design-palette feed — machine data, no page shell",
     "/testing/owner/export.json": "gated JSON export of the tester-program "
                                   "store — machine data, no page shell",
+    "/submit/queue.json": "gated JSON moderation-queue feed for the /submit "
+                          "intake — machine data, no page shell",
     "/testing/owner/screenshots/{shot_id}": "gated BINARY image endpoint; ids "
                                             "are runtime submission artifacts, "
                                             "not enumerable from committed data",

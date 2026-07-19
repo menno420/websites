@@ -396,3 +396,10 @@ do: UNSTICK THE AUTOMATED BAKE PR #422 — "[bake] fleet data refresh 2026-07-18
 why: the committed data mirrors (review/data/snapshot.json, fleet.json, stats.json; botsite/data/graveyard.json) go stale while the bake PR sits red; nothing in the lane's claims or the two live session PRs (#425 botsite submissions; #428 merged) covers it.
 done-when: the 2026-07-18 fleet-data refresh is on main (via #422 or a superseding green bake) and #422 is terminal (merged or closed-with-reason); the auto-supersede follow-up is built or honestly ledgered to the backlog; status acks+done 036.
 provenance: (a) fleet rail — "the manager ORDERs lane inboxes" (fleet-manager seat brief); (b) owner live directive 2026-07-18 ~21:25Z, verbatim: "keep an eye out on the projects, route some work their way if you think it's necessary". Manager routing note recorded in fleet-manager docs/fleet-triage.md, 2026-07-18 sweep entry.
+
+## ORDER 034 · 2026-07-18T20:08:40Z · status: new
+priority: P2
+do: provision the superbot-websites Postgres, wire botsite's public /submit intake to persist via DATABASE_URL (Postgres in prod, sqlite in CI; fail-soft when unset), set DATABASE_URL on the botsite service, live-verify. Owner line verbatim: "for #5, that's a job for you" — #5 = "Botsite database: in Railway, add Postgres and set DATABASE_URL on the botsite service (ASK-0004). Unblocks durable submissions."
+why: unblocks durable public submissions — the /submit intake cannot persist without a database (ASK-0004).
+done-when: DATABASE_URL set on botsite (botsite-production-cfd7) + /submit persists a submission and reads it back on the live service.
+provenance: owner live in coordinator chat 2026-07-18.

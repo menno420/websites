@@ -28,10 +28,11 @@ FIXTURE = {
 # outbound link, not a URL that must never appear.
 GAMES_WEB_URL = "https://menno420.github.io/product-forge/"
 
-# lumen-drift's published GitHub Release page — the download target since
-# 2026-07-18 (ASK-0010: the owner published lumen-drift-v1.3; availability is
-# now "download").
-LUMEN_DRIFT_URL = "https://github.com/menno420/gba-homebrew/releases/tag/lumen-drift-v1.3"
+# lumen-drift's published GitHub Release asset — the direct .gba download target
+# since 2026-07-18 (ASK-0010: the owner published lumen-drift-v1.3; availability
+# is now "download"). Repointed from the release *page* to the direct asset URL
+# once the attached .gba was confirmed (164 KB, SHA256 195a8679…babae94).
+LUMEN_DRIFT_URL = "https://github.com/menno420/gba-homebrew/releases/download/lumen-drift-v1.3/lumen-drift.gba"
 
 # mineverse's live Railway deployment (ORDER 022; cold-verified 200).
 MINEVERSE_URL = "https://web-production-97636.up.railway.app"

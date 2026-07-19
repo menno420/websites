@@ -87,6 +87,8 @@ ENV_VARS = [
     "TESTING_AI_GUIDE_CAP",
     "PAYPAL_CLIENT_ID",
     "PAYPAL_CLIENT_SECRET",
+    # botsite/submissions_store.py: durable /submit intake (ORDER 034 / ASK-0004)
+    "DATABASE_URL",
     "TESTING_AUTOPAY_ENABLED",
     "TESTING_AUTOPAY_MIN_SCORE",
     "TESTING_PAYOUT_DAILY_CAP_USD",

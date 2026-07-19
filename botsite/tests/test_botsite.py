@@ -237,8 +237,11 @@ def test_games_only_games(client):
     assert "Blackjack" in r.text
 
 
-def test_submit_stub_is_honest(client):
-    r = client.post("/submit")
+def test_submit_stub_is_honest(client, monkeypatch):
+    # With no DATABASE_URL the intake is not live: the guarded POST (same-origin)
+    # must honestly report that nothing was stored.
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    r = client.post("/submit", headers={"Origin": "http://testserver"})
     assert r.status_code == 200
     assert "not live yet" in r.text.lower() or "not yet provisioned" in r.text.lower()
 

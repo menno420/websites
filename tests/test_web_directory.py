@@ -39,6 +39,12 @@ SEED_URLS = [
     "https://dashboard-production-a91b.up.railway.app",
 ]
 
+# The two arcade games flipped live 2026-07-18 (#428): the /directory registry
+# now records real URLs for both (was pending-publish / url:null). Lumen Drift is
+# the direct .gba release asset; games-web is its live GitHub Pages deploy.
+LUMEN_DRIFT_GBA_URL = "https://github.com/menno420/gba-homebrew/releases/download/lumen-drift-v1.3/lumen-drift.gba"
+GAMES_WEB_URL = "https://menno420.github.io/product-forge/"
+
 
 def _result(url, status, ok, error=""):
     return {"ok": ok, "status": status, "data": None, "error": error,
@@ -81,11 +87,18 @@ def test_directory_renders_three_sections_with_seeds(monkeypatch):
     # project grouping (the corrected 2026-07-12 fleet inventory)
     for project in ("superbot-websites", "reliable-grace", "superbot-mineverse"):
         assert f"<h3>{project}</h3>" in r.text
-    # external seeds: venture-lab x3 + Lumen Drift + games-web, each pending
+    # external seeds: venture-lab x3 (still pending) + Lumen Drift + games-web
+    # (both flipped live 2026-07-18, #428)
     for title in ("venture-lab product 1", "venture-lab product 2",
                   "venture-lab product 3", "Lumen Drift", "games-web arcade"):
         assert title in r.text
-    assert "lumen-drift-v1.3 GitHub Release needs one owner click" in r.text
+    # the two arcade games now render their real live links, and the stale
+    # "one owner click to publish" pending blurb is gone
+    assert f'href="{LUMEN_DRIFT_GBA_URL}"' in r.text
+    assert f'href="{GAMES_WEB_URL}"' in r.text
+    assert "lumen-drift-v1.3 GitHub Release needs one owner click" not in r.text
+    # the venture-lab storefront rows are still honestly pending
+    assert "owner creates the storefront listing" in r.text
     # the registry file is named on the page (single source of truth)
     assert "app/data/web_presence.json" in r.text
 
@@ -139,9 +152,12 @@ def test_pending_publish_rows_are_never_probed(monkeypatch):
     probeable = {s["url"] for s in REGISTRY["sites"]
                  if s.get("url") and s.get("probe")}
     assert set(calls) == probeable
-    # every pending row shows "pending publish" (external seeds)
-    external = [s for s in REGISTRY["sites"] if s["section"] == "external"]
-    assert r.text.count('data-health="pending"') == len(external)
+    # every pending-publish external row shows "pending publish" (the venture-lab
+    # storefront seeds; Lumen Drift + games-web flipped live 2026-07-18, #428, so
+    # they are no longer pending)
+    pending_external = [s for s in REGISTRY["sites"]
+                        if s["section"] == "external" and s["status"] == "pending-publish"]
+    assert r.text.count('data-health="pending"') == len(pending_external)
 
 
 def test_degraded_is_not_live(monkeypatch):
