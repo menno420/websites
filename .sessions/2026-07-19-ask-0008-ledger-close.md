@@ -1,9 +1,9 @@
 # 2026-07-19 — finalize ASK-0008 ledger — BAKE_PAT landing path proven E2E
 
-> **Status:** `in-progress` — branch `claude/ask-0008-ledger-close`; flips to
-> `complete` + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/ask-0008-ledger-close`, PR #439;
+> flipped from `in-progress` as the deliberate LAST code step.
 
-- **📊 Model:** [[fill: model · effort · task-class — resolve at flip]]
+- **📊 Model:** Claude Opus family · medium · docs-only
 
 **What this session is about:** ASK-0008's remaining half — mint the `BAKE_PAT`
 secret and flip review-bake's landing `GH_TOKEN` to it — was still open on the
@@ -39,13 +39,26 @@ action (owner added the `BAKE_PAT` secret, ASK-0008).
   (superseded, no-limbo rule).
 
 - Verified: `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q`
-  — [[fill: N passed — resolve at flip]]; `python3 bootstrap.py check --strict`
-  — [[fill: verdict — resolve at flip]].
+  — **1979 passed** (exit 0); `python3 bootstrap.py check --strict` — green
+  except the DESIGNED born-red hold on this card (`[session-card-hold]` —
+  designed hold, not a defect), released at this flip. Pre-existing advisories
+  only otherwise (seat-digest-stale, orientation-headroom, a PL-004 model-line
+  note on the unrelated 2026-07-18 release-drift card) — none introduced here.
 
 ## 💡 Session idea
 
-[[fill: one genuine idea — resolve at flip]]
+**Auto-close superseded bake PRs when a newer bake lands.** The `review-bake`
+run leaves stale earlier bake PRs open (this session hand-closed #422 and #437);
+a small step that closes any open `bake/*` PR older than the one just created
+would enforce the no-limbo rule mechanically. Worth having because superseded
+bake PRs otherwise accumulate as false "open work" that every fleet scan must
+re-triage by hand. Deduped against `docs/ideas/backlog.md` + the queue-state
+NEXT list: not present; captured here on the card (no backlog write this
+session to avoid a two-writer collision).
 
 ## ⟲ Previous-session review
 
-[[fill: one line on the previous session — resolve at flip]]
+`.sessions/2026-07-18-wire-bake-pat.md` did well to land the one-line workflow
+flip with the load-bearing `|| secrets.GITHUB_TOKEN` fallback and to name the
+exact post-merge PAT-path proof as the remaining gate — this session simply
+executed that named check and closed the ledger row; nothing was missed.
