@@ -1,1 +1,0 @@
-- `status-truing-20260719` · **coordinator heartbeat truing** — true control/status.md against live GitHub (main a5fdad4, inbox→036, #434 state, failsafe cron) · 2026-07-19
