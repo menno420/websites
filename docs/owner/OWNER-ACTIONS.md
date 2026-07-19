@@ -274,6 +274,14 @@ UNBLOCKS: the nightly bake loop becomes fully hands-off (bake → PR → real pu
 VERIFIED-NEEDED: the next scheduled bake's PR shows a pull_request-event `quality` run in its checks tab and auto-merges without any intervention. PAT minting + repo-secret creation are owner-held (no agent credential exists — same wall class as the ORDER 020 ask above); the failing 405 path itself WAS attempted and captured verbatim this session (PR #270).
 ```
 
+> **Interim (2026-07-18):** the owner added the `BAKE_PAT` repo Actions secret
+> (live owner action). The workflow line is now flipped in PR #434 —
+> review-bake.yml's landing step reads `GH_TOKEN: ${{ secrets.BAKE_PAT ||
+> secrets.GITHUB_TOKEN }}` — pending merge and post-merge PAT-path proof (a
+> `workflow_dispatch` bake PR showing a pull_request-event `quality` run that
+> auto-merges). Not yet moved to Decided; the VERIFIED-NEEDED check above is
+> the remaining gate.
+
 ### ⚑ Ask added 2026-07-13 (env-leads close — ORDER 027 item 4)
 
 ```markdown
