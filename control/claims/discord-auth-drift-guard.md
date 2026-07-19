@@ -1,0 +1,1 @@
+- `claude/discord-auth-drift-guard` · scope: test-only drift guard for the 3 discord_auth.py vendored copies · 2026-07-19
