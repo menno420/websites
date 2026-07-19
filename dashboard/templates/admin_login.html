@@ -3,28 +3,49 @@
 {% block title %}Discord sign-in — control panel — SuperBot dashboard{% endblock %}
 
 {% block content %}
+{#- Auth-flow endpoint, NOT a nav page: the route passes an empty nav + no active
+    key, so this page stays outside the top nav on purpose. It renders from a
+    self-contained context (dashboard/discord_auth.py::_login_context) with safe
+    defaults for every base.html variable — no dashboard.app import. -#}
 <div class="wrap">
   <section class="sb-page-hero">
-    <span class="sb-ey"><span class="dot">·</span> control panel · sign-in · not configured</span>
-    <div class="head-row"><h1>Discord sign-in is <span class="sb-grad">not configured</span></h1></div>
-    <p class="sb-lead">This deployment has no Discord OAuth application — no client id, no secret,
-      no redirect URI. That is deliberate, not an outage.</p>
+    <span class="sb-ey"><span class="dot">·</span> control panel · sign-in</span>
+    <div class="head-row"><h1>Owner sign-in — <span class="sb-grad">Discord</span></h1></div>
+    <p class="sb-lead">One Discord login gates this dashboard's state-changing admin actions
+      (the dry-run control panel's preview + confirm). ORDER 038 — one Discord login across
+      the fleet. The read-only oversight pages stay public.</p>
   </section>
 
-  <div class="sb-lane-pending">
-    <div class="head">{{ icon("shield", 16) }}<h4>Why there is no sign-in here</h4></div>
-    <p>The armed control panel — where Discord sign-in identifies WHO is making a change so the bot
-      can re-check their permissions on every write — is designed to live in a
-      <strong>separate service</strong> from this read-only dashboard, and only after the owner decides where live
-      bot control lives (open decision Q-0004). Until then this service reads no OAuth
-      configuration at all: there is nothing to misconfigure and nothing to leak.</p>
-    <p>What the future armed service needs (an owner action: the OAuth app, its redirect URI, and
-      the env wiring) is written down in <code>docs/specs/bot-control-api-v1.md</code> and
-      <code>docs/owner/OWNER-ACTIONS.md</code> — the env-var names deliberately live in those docs,
-      not in this code.</p>
-    <p>Meanwhile every dry-run action here is honestly attributed to
-      <code>anonymous (OAuth not configured)</code>.</p>
+  {% if configured %}
+  <div class="sb-panel" style="border-color:var(--purple)">
+    <p class="sb-panel-title">{{ icon("shield", 16) }} Redirecting to Discord to sign in…</p>
+    <p class="feat-desc">Sending you to Discord to sign in.</p>
+    <p class="feat-desc"><a href="{{ authorize_hint }}">Continue to Discord ↗</a></p>
   </div>
+  {% else %}
+  <div class="sb-lane-pending">
+    <div class="head">{{ icon("shield", 16) }}<h4>Discord login not configured</h4></div>
+    <p>The Discord OAuth owner login flow is built and wired, but the credentials it reads are
+      not set on this service yet. Until they are, the admin actions stay locked (a signed-in
+      Discord owner is the only key — this service has no password fallback). One owner action
+      opens this door:</p>
+
+    <h4 style="margin-top:var(--sb-s-4)">1 — add the dashboard redirect URI</h4>
+    <p>On the existing <strong>SuperBot</strong> Discord app (reuse it — no fresh app needed),
+      add this redirect URI:</p>
+    <pre class="snippet" style="white-space:pre-wrap;overflow-x:auto">{{ redirect_uri }}</pre>
+
+    <h4 style="margin-top:var(--sb-s-4)">2 — set these vars on the dashboard Railway service</h4>
+    <p>NAMES only shown — never paste a value here. Set them on the <strong>dashboard</strong>
+      Railway service (not the control-plane or botsite):</p>
+    <ul>
+      <li><code>DISCORD_CLIENT_ID</code> — from the SuperBot app</li>
+      <li><code>DISCORD_CLIENT_SECRET</code> — from the SuperBot app</li>
+      <li><code>OWNER_DISCORD_ID</code> — your Discord user id</li>
+      <li><code>OWNER_SESSION_SECRET</code> — a fresh random secret</li>
+    </ul>
+  </div>
+  {% endif %}
 
   <div class="kv-row" style="margin-top:var(--sb-s-4)">
     <a class="sb-btn sb-btn-soft sb-btn-sm" href="/admin">{{ icon("back", 14) }} Control panel</a>

@@ -241,6 +241,22 @@ UNBLOCKS: /testing/owner review queue (approve/reject/mark-paid), the JSON expor
 VERIFIED-NEEDED: `https://botsite-production-cfd7.up.railway.app/owner/login` renders "Redirecting to Discord to sign in…" (configured) instead of the "not configured" page; after sign-in `/testing/owner` serves the queue.
 ```
 
+### ⚑ Ask added by ORDER 038 (2026-07-19 — dashboard Discord unlock, fleet login unification)
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0017
+WHAT: Turn on the fleet-wide Discord login for the dashboard admin surface (the same login now on the control-plane and botsite) — sign in with your Discord account to use the dashboard's control actions. Discord-only (dashboard has no SITE_PASSWORD).
+WHERE: (1) Discord Developer Portal → the SuperBot application → OAuth2 → Redirects; (2) railway.app → project superbot-websites → service dashboard → Variables → New Variable.
+HOW: (1) Add the redirect URI `https://dashboard-production-a91b.up.railway.app/admin/auth/callback` and Save. (2) Paste the SAME four variables already on the control-plane + botsite services (NAMES only — reuse the identical values): DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, OWNER_DISCORD_ID, OWNER_SESSION_SECRET. Save. Then sign in at `https://dashboard-production-a91b.up.railway.app/admin/login`.
+RISK: ↩️ reversible — remove the vars or the redirect URI any time; while unset the dashboard's read/oversight views stay fully public and only the two dry-run control actions (preview/confirm) are locked (503) until you sign in.
+WHY-IT-MATTERS: one Discord login across the ENTIRE fleet (control-plane + botsite + dashboard); the dashboard's control actions become real, owner-attributed instead of anonymous.
+UNBLOCKS: the dashboard's dry-run control actions (preview/confirm) with real owner attribution in the audit log.
+VERIFIED-NEEDED: `https://dashboard-production-a91b.up.railway.app/admin/login` renders "Redirecting to Discord to sign in…" (configured) instead of the not-configured page; after sign-in the control actions work and the audit log shows "owner (Discord)".
+```
+
+**Cross-reference (→ ASK-0006):** this dashboard unlock and the botsite unlock (ASK-0006) share the SAME four Discord/owner values from #426 — the Discord Developer Portal accepts multiple redirect URIs on the one SuperBot app, so both redirect URIs + both variable pastes can be done in a single Railway/Discord-hub sitting.
+
 **Durable-storage side-note (extends the standing Postgres ask above — not a
 new ask):** the tester program's claims/submissions/payout-ledger live in
 SQLite on the botsite service's **ephemeral** disk — every redeploy wipes

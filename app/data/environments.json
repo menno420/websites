@@ -98,9 +98,14 @@
             "SUPERBOT_REF",
             "BOTSITE_GAMES_URL",
             "REVIEW_REVIEWS_URL",
+            "DISCORD_CLIENT_ID",
+            "DISCORD_CLIENT_SECRET",
+            "OWNER_DISCORD_ID",
+            "OWNER_SESSION_SECRET",
+            "DISCORD_REDIRECT_URI",
             "PORT"
           ],
-          "notes": ""
+          "notes": "DISCORD_*/OWNER_* are the Discord OAuth owner login (ORDER 038, dashboard/discord_auth.py) that gates the dry-run control panel's state-changing actions — Discord-only, no SITE_PASSWORD (the read-only oversight views stay public per [D-0011]). The *_URL / *_REPO / *_REF names are the committed-JSON feed sources + consolidation-redirect targets; app/railway.py SERVICES is the per-variable purpose ledger (rendered at /owner/environments)."
         },
         {
           "id": "review",

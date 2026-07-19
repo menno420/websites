@@ -7,6 +7,7 @@ from __future__ import annotations
 import html
 import json
 import re
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +15,34 @@ from fastapi.testclient import TestClient
 from dashboard import app as app_module  # noqa: E402
 from dashboard import control_plane as cp  # noqa: E402
 from dashboard import data_source as ds  # noqa: E402
+from dashboard import discord_auth  # noqa: E402
+
+# The state-changing /admin/actions/* POSTs are owner-gated (ORDER 038). These
+# tests exercise the dry-run controller mechanics, so they sign in as the owner
+# first via _sign_in_owner (Discord seams monkeypatched — no live network).
+OWNER_ID = "123456789012345678"
+
+
+def _sign_in_owner(client, monkeypatch):
+    """Configure Discord OAuth + drive the login so ``client`` carries a valid
+    owner session cookie for the gated admin action POSTs."""
+    monkeypatch.setenv("DISCORD_CLIENT_ID", "test-client-id")
+    monkeypatch.setenv("DISCORD_CLIENT_SECRET", "test-client-secret")
+    monkeypatch.setenv("OWNER_DISCORD_ID", OWNER_ID)
+    monkeypatch.setenv("OWNER_SESSION_SECRET", "test-session-secret-please-change")
+
+    async def fake_exchange(code, redirect_uri):
+        return {"access_token": "fake-token"}
+
+    async def fake_fetch(access_token):
+        return {"id": OWNER_ID}
+
+    monkeypatch.setattr(discord_auth, "exchange_code", fake_exchange)
+    monkeypatch.setattr(discord_auth, "fetch_user", fake_fetch)
+    r = client.get("/admin/login", follow_redirects=False)
+    state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
+    cb = client.get(f"/admin/auth/callback?code=abc&state={state}", follow_redirects=False)
+    assert cb.status_code == 302 and discord_auth.SESSION_COOKIE in cb.cookies
 
 DASHBOARD_FIXTURE = {
     "meta": {
@@ -388,7 +417,8 @@ def test_every_ui_previewable_action_validates_against_contract(client):
         assert req["actor"]["display"] == "anonymous (OAuth not configured)"
 
 
-def test_preview_shows_exact_typed_contract_request(client):
+def test_preview_shows_exact_typed_contract_request(client, monkeypatch):
+    _sign_in_owner(client, monkeypatch)
     r = client.post("/admin/actions/preview", data={
         "action": "setting.write", "guild_id": GUILD,
         "domain": "economy", "key": "daily_amount", "value": "250",
@@ -402,7 +432,8 @@ def test_preview_shows_exact_typed_contract_request(client):
     assert cp.controller.entries() == []  # previewing records nothing
 
 
-def test_preview_invalid_setting_value_rejected(client):
+def test_preview_invalid_setting_value_rejected(client, monkeypatch):
+    _sign_in_owner(client, monkeypatch)
     r = client.post("/admin/actions/preview", data={
         "action": "setting.write", "guild_id": GUILD,
         "domain": "economy", "key": "shop_enabled", "value": "banana",
@@ -413,7 +444,8 @@ def test_preview_invalid_setting_value_rejected(client):
     assert cp.controller.entries() == []
 
 
-def test_preview_unknown_cog_rejected(client):
+def test_preview_unknown_cog_rejected(client, monkeypatch):
+    _sign_in_owner(client, monkeypatch)
     r = client.post("/admin/actions/preview", data={
         "action": "cog.set_enabled", "guild_id": GUILD, "cog": "NopeCog", "enabled": "true",
     })
@@ -421,7 +453,8 @@ def test_preview_unknown_cog_rejected(client):
     assert "unknown_cog" in r.text
 
 
-def test_preview_bad_guild_id_rejected(client):
+def test_preview_bad_guild_id_rejected(client, monkeypatch):
+    _sign_in_owner(client, monkeypatch)
     r = client.post("/admin/actions/preview", data={
         "action": "setting.write", "guild_id": "not-a-guild",
         "domain": "economy", "key": "daily_amount", "value": "5",
@@ -430,7 +463,8 @@ def test_preview_bad_guild_id_rejected(client):
     assert "digits" in r.text
 
 
-def test_help_appearance_requires_a_change(client):
+def test_help_appearance_requires_a_change(client, monkeypatch):
+    _sign_in_owner(client, monkeypatch)
     r = client.post("/admin/actions/preview", data={
         "action": "help.appearance.set", "guild_id": GUILD,
         "entity_type": "command", "entity": "daily",
@@ -440,7 +474,8 @@ def test_help_appearance_requires_a_change(client):
     assert "no_changes" in r.text
 
 
-def test_confirm_records_audit_entry_and_is_honest(client):
+def test_confirm_records_audit_entry_and_is_honest(client, monkeypatch):
+    _sign_in_owner(client, monkeypatch)
     r = client.post("/admin/actions/confirm", data={
         "action": "setting.write", "guild_id": GUILD,
         "domain": "economy", "key": "shop_enabled", "value": "false",
@@ -460,22 +495,36 @@ def test_confirm_records_audit_entry_and_is_honest(client):
     assert cp.contract_issue(entry["request"]) == ""
 
 
-def test_audit_page_renders_recorded_entries(client):
+def test_audit_page_renders_recorded_entries(client, monkeypatch):
+    _sign_in_owner(client, monkeypatch)
     client.post("/admin/actions/confirm", data={
         "action": "cog.set_enabled", "guild_id": GUILD, "cog": "EconomyCog", "enabled": "false",
     })
     r = client.get("/admin/audit")
     assert r.status_code == 200
     assert "cog.set_enabled" in r.text
-    assert "anonymous (OAuth not configured)" in r.text
+    # The confirmed action is attributed to the signed-in Discord owner (ORDER 038).
+    assert "owner (Discord)" in r.text
     assert "clears on restart" in r.text.lower()  # honest lifetime label
 
 
 def test_admin_login_page_is_honest(client):
+    """The unconfigured login page is honest about the state and names exactly the
+    four owner-set vars that open the door (ORDER 038) — no stale 'separate
+    service / never' doctrine, and Discord-only (no SITE_PASSWORD)."""
     r = client.get("/admin/login")
     assert r.status_code == 200
-    assert "not configured" in r.text.lower()
-    assert "separate service" in r.text.lower()
+    body = r.text
+    assert "not configured" in body.lower()
+    for var in (
+        "DISCORD_CLIENT_ID",
+        "DISCORD_CLIENT_SECRET",
+        "OWNER_DISCORD_ID",
+        "OWNER_SESSION_SECRET",
+    ):
+        assert var in body
+    assert "separate service" not in body.lower()
+    assert "SITE_PASSWORD" not in body
 
 
 def test_unknown_settings_domain_404(client):

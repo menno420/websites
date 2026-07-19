@@ -400,6 +400,28 @@ REGISTRY: list[dict[str, Any]] = [
         "signature": ("github_token", "contents"),
         "probe": probe_order020_write_pat,
     },
+    # The dashboard Discord-login unlock (ORDER 038 / ASK-0017) — the fleet
+    # login unification's dashboard leg. Signature keys off "discord" +
+    # "dashboard": its WHAT names both, and (crucially) this entry sits ABOVE
+    # BOTH botsite-gate and dashboard-site-password because the ASK-0017 WHAT
+    # also contains "botsite" ("control-plane and botsite") AND "site_password"
+    # ("Discord-only … no SITE_PASSWORD"), which would otherwise let those two
+    # rows claim it first. No other open ask carries BOTH "discord" and
+    # "dashboard", so putting this row first steals nothing (ASK-0006 has
+    # "discord" but no "dashboard"; ASK-0009 has "dashboard" but no "discord").
+    # Registered probe-less like the sibling Discord asks (ASK-0002): Discord
+    # developer-console + Railway env state is not externally observable.
+    {
+        "id": "dashboard-discord-oauth",
+        "ask_id": "ASK-0017",
+        "signature": ("discord", "dashboard"),
+        "probe": None,
+        "reason": (
+            "Discord developer-console state + the four DISCORD_*/OWNER_* "
+            "Railway variables on the dashboard service are not externally "
+            "observable — no read-only probe exists (mirrors ASK-0002)"
+        ),
+    },
     {
         "id": "botsite-gate",
         "ask_id": "ASK-0006",

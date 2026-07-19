@@ -22,6 +22,7 @@ NON_PAGE_PATHS = {
     "/palette.json",
     "/games",    # 302 redirect to the botsite games page
     "/reviews",  # 302 redirect to the review service
+    "/admin/auth/callback",  # Discord OAuth callback (ORDER 038) — a GET seam, not a page
 }
 
 # Real HTML pages that are reachable but deliberately NOT in the top nav
