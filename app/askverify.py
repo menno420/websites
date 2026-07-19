@@ -143,6 +143,51 @@ async def probe_botsite_site_password(refresh: bool = False) -> dict[str, Any]:
     )
 
 
+async def probe_botsite_submit_queue(refresh: bool = False) -> dict[str, Any]:
+    """Is SITE_PASSWORD set on the botsite service (the /submit queue view)?
+
+    Same SITE_PASSWORD variable and same fail-closed split as the /testing
+    gate above, observed through the public /submit intake's owner read-back
+    ``GET <botsite>/submit/queue.json``: 503 = unset (the "not configured"
+    state, still open), 401 = the Basic-auth challenge (the password IS set,
+    done). Any other outcome is unknown with the reason. Read-only: an
+    unauthenticated GET; no credential is sent, none exists here to send.
+    """
+    base = _botsite_base()
+    if not base:
+        return _verdict(
+            UNKNOWN,
+            "no botsite base URL recorded in config",
+            "botsite-submit-gate",
+        )
+    url = f"{base}/submit/queue.json"
+    res = await github._get(url, refresh=refresh, raw=True)
+    if res["status"] == 503:
+        return _verdict(
+            STILL_OPEN,
+            "botsite /submit/queue.json answers 503 — SITE_PASSWORD unset "
+            "(the documented 'not configured' fail-closed state)",
+            "botsite-submit-gate",
+            url,
+        )
+    if res["status"] == 401:
+        return _verdict(
+            DONE,
+            "botsite /submit/queue.json answers 401 (Basic-auth challenge) — "
+            "SITE_PASSWORD is set on the service",
+            "botsite-submit-gate",
+            url,
+        )
+    return _verdict(
+        UNKNOWN,
+        f"botsite /submit/queue.json answered HTTP {res['status']} "
+        f"{res.get('error') or ''} — neither the 503-unset nor the "
+        "401-armed signal",
+        "botsite-submit-gate",
+        url,
+    )
+
+
 async def probe_bake_pat_secret(refresh: bool = False) -> dict[str, Any]:
     """Is BAKE_PAT among the websites Actions secret NAMES?
 
@@ -399,6 +444,18 @@ REGISTRY: list[dict[str, Any]] = [
         "ask_id": "ASK-0007",
         "signature": ("github_token", "contents"),
         "probe": probe_order020_write_pat,
+    },
+    # ASK-0017 (2026-07-19) is the SAME SITE_PASSWORD-on-botsite variable as
+    # ASK-0006 below, surfaced from the public /submit intake (its owner
+    # read-back /submit/queue.json returns 503 while unset). It sits ABOVE
+    # botsite-gate so the "submit" keyword claims it first; ASK-0006's WHAT
+    # carries no "submit", so it still lands on botsite-gate. Its probe is the
+    # honest /submit/queue.json read (same 503-unset / 401-armed ladder).
+    {
+        "id": "botsite-submit-gate",
+        "ask_id": "ASK-0017",
+        "signature": ("site_password", "submit"),
+        "probe": probe_botsite_submit_queue,
     },
     {
         "id": "botsite-gate",

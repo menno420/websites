@@ -93,20 +93,26 @@ def _open_ledger_headlines() -> list[str]:
     return [b.get("what", "") for b in _open_ledger_blocks()]
 
 
-def test_real_ledger_has_the_thirteen_open_asks_each_with_a_unique_id():
+def test_real_ledger_has_the_fourteen_open_asks_each_with_a_unique_id():
     # 9 from the 2026-07-16 id backfill + the 5 registry blocker rows
     # (ASK-0012..0016 — the catalog / products / puddle-museum owner gates,
     # same day), LESS ASK-0007 (order-020-pat, Decided row O), LESS the two
     # arcade launch blockers ASK-0010 (lumen-drift release) + ASK-0011
     # (product-forge Pages) — both SATISFIED / verified-live 2026-07-18 and
-    # moved to Decided rows P/Q, so neither is an open block any more.
+    # moved to Decided rows P/Q, so neither is an open block any more; PLUS
+    # ASK-0017 (2026-07-19 — the botsite /submit moderation queue's
+    # SITE_PASSWORD gate, surfaced when the /submit intake went live). The two
+    # 2026-07-19 finalizations (ASK-0004 / ASK-0002 → satisfied-with-evidence)
+    # keep their blocks in the Open section per the ASK-0008 precedent (a
+    # satisfied-with-note ask stays a counted block until its code block is
+    # physically moved to Decided), so they still count here.
     blocks = _open_ledger_blocks()
-    assert len(blocks) == 13
+    assert len(blocks) == 14
     ids = [b.get("ask_id") for b in blocks]
     assert all(
         i and re.fullmatch(r"ASK-\d{4}", i) for i in ids
     ), f"open ask without a well-formed ID: {ids}"
-    assert len(set(ids)) == 13, f"duplicated ask id in the ledger: {ids}"
+    assert len(set(ids)) == 14, f"duplicated ask id in the ledger: {ids}"
 
 
 def test_every_real_open_ask_matches_a_distinct_registry_entry():
@@ -136,7 +142,7 @@ def test_real_ledger_matches_land_on_the_intended_probes():
     # an open ledger row any more (their registry probes remain, unmatched).
     assert set(by_id) == {
         "q-0004", "discord-oauth", "armed-service", "botsite-database-url",
-        "paypal-credentials", "botsite-gate", "bake-pat",
+        "paypal-credentials", "botsite-gate", "botsite-submit-gate", "bake-pat",
         "dashboard-site-password", "gumroad-publish-pass",
         "photo-packs-originals", "ultramarine-rename", "illustration-gate",
         "sinaasappel-proofread",
@@ -504,6 +510,39 @@ def test_botsite_probe_other_statuses_are_unknown(monkeypatch):
             monkeypatch, lambda url, s=status: _envelope(url, status=s)
         )
         v = _run(askverify.probe_botsite_site_password())
+        assert v["verdict"] == askverify.UNKNOWN, status
+        assert v["detail"]  # always says why
+
+
+# --------------------------------------------------------------------------- #
+# Probe ladders — botsite /submit moderation queue SITE_PASSWORD gate (ASK-0017)
+# --------------------------------------------------------------------------- #
+SUBMIT_QUEUE_URL = askverify._botsite_base() + "/submit/queue.json"
+
+
+def test_submit_queue_probe_503_is_still_open(monkeypatch):
+    _install_get(monkeypatch, lambda url: _envelope(url, status=503))
+    v = _run(askverify.probe_botsite_submit_queue())
+    assert v["verdict"] == askverify.STILL_OPEN
+    assert "503" in v["detail"]
+    assert v["url"] == SUBMIT_QUEUE_URL
+    assert v["probe"] == "botsite-submit-gate"
+
+
+def test_submit_queue_probe_401_is_done_detected(monkeypatch):
+    _install_get(monkeypatch, lambda url: _envelope(url, status=401))
+    v = _run(askverify.probe_botsite_submit_queue())
+    assert v["verdict"] == askverify.DONE
+    assert "ledger update pending" in v["label"]
+    assert v["css"] == "ok"
+
+
+def test_submit_queue_probe_other_statuses_are_unknown(monkeypatch):
+    for status in (0, 200, 404, 500):
+        _install_get(
+            monkeypatch, lambda url, s=status: _envelope(url, status=s)
+        )
+        v = _run(askverify.probe_botsite_submit_queue())
         assert v["verdict"] == askverify.UNKNOWN, status
         assert v["detail"]  # always says why
 

@@ -102,6 +102,17 @@ UNBLOCKS: real Discord sign-in on the control-plane owner surface (the environme
 VERIFIED-NEEDED: adding a redirect URI + pasting env vars are owner-account actions on the Discord app + Railway service — no agent credential exists for either (same class as the Railway-mutation wall; deliberately not attempted).
 ```
 
+> **SATISFIED — with evidence, 2026-07-19 (final resolution).** End-to-end
+> owner Discord login is CONFIRMED live on the control-plane **2026-07-19
+> ~08:42Z**: `/owner/login` returns **302 → `discord.com/oauth2/authorize`**
+> with `client_id=1403818430758654132` (the existing SuperBot Discord app —
+> REUSE, per the DECIDED ASK-0001), proving the redirect URI is registered and
+> the OAuth client vars are set. The env vars (`DISCORD_CLIENT_ID` /
+> `DISCORD_CLIENT_SECRET` / `OWNER_DISCORD_ID` / `OWNER_SESSION_SECRET`) were
+> set via the owner's 2026-07-19 Railway hub session; the login flow reads them
+> by name and the `/owner` gate now mints the signed owner session on a
+> matching Discord id. ASK-0002 is discharged.
+
 > **Recon note (2026-07-18):** verified read-only across all four live services — NONE have Discord *login* (all `/login`+`/auth/callback` → 404; dashboard `/admin/login` → 200 static "not configured", no redirect; no service reads `DISCORD_*` OAuth client vars). What looks like it: botsite's "Add to Discord" button is a bot-*install* link (`botsite/data_source.py:33`, `ADD_TO_DISCORD_URL`) and dashboard's "Sign in with Discord" button leads to the not-configured `/admin/login` stub (`dashboard/app.py:454`). Any Discord app "the dashboard/mineverse instances already use" (`app/owner.py:312`) belongs to the mineverse game service in a different repo, not these four sites. This ask remains OPEN/unbuilt, still gated on ASK-0001/Q-0004.
 >
 > **UPDATE (2026-07-18):** the owner's "a site already has Discord login" is CONFIRMED — but it's the **SuperBot dashboard** (https://superbot-dashboard.up.railway.app), a DIFFERENT fleet repo/service, NOT any of the four websites-repo services (whose 0/4 finding above stands). A screen recording shows a full working OAuth login there (consent as menno4207, identify+guilds scopes, redirect back, panel listing 2 administered guilds). A **"SuperBot" Discord OAuth app with provisioned client creds already exists fleet-side** (active since ~Aug 2025, creds on that service's Railway env). Therefore ASK-0002's cheapest satisfaction path is likely **REUSE, not a new app**: the owner adds a redirect URI for the websites control-plane / env-hub to the existing SuperBot Discord app and pastes the same client id/secret into the websites Railway env — much smaller than registering a fresh app. **Options: (a) REUSE the existing SuperBot app [recommended], (b) register a fresh dedicated app — pending owner preference.** ASK-0002 still gated on ASK-0001/Q-0004 for O-021 regardless; no code work triggered by this.
@@ -175,6 +186,21 @@ WHY-IT-MATTERS: the public /submit intake (feature/bug submissions with a modera
 UNBLOCKS: the submissions pipeline (rework Q5 — Open row 2 above); the moderation → GitHub-issue mirror is the follow-up build once data can persist.
 VERIFIED-NEEDED: attempted via the account API this session — classifier-walled (verbatim "Permission for this action was denied by the Claude Code auto mode classifier. Reason: Blocked by classifier."; `docs/CAPABILITIES.md` 2026-07-18 wall entry, tried twice); requires an owner UI action. Still owner-gated. Click steps first recorded in `docs/retro/self-review-2026-07-11.md` §2.
 ```
+
+> **SATISFIED — with evidence, 2026-07-19 (final resolution).** The owner set
+> `DATABASE_URL` on the botsite Railway service in his 2026-07-19 hub session;
+> it resolves to the project's `Postgres` service reference. botsite redeployed
+> **2026-07-19T08:27:36Z (SHA `f8caa036`)** and picked the variable up, and a
+> live **POST `/submit`** persisted a real Postgres row — the form rendered the
+> live acceptance ("your submission is saved and queued for moderation"), not
+> the fail-soft "intake not live" branch — so `submissions_store.is_live()` is
+> true in production. The intake is LIVE. **Remaining moderation caveat (NOT
+> part of this ask):** the owner queue `GET /submit/queue.json` additionally
+> needs `SITE_PASSWORD` set on the botsite service — currently UNSET, so the
+> queue read-back returns 503 "not configured" — to VIEW/moderate stored
+> submissions; the intake write path itself does not need it. That paste is
+> tracked as ASK-0017 below (shares the single SITE_PASSWORD paste with the
+> `/testing` queue's ASK-0006). ASK-0004 is discharged.
 
 **STRUCK 2026-07-12 (ORDER 012 reconcile — SATISFIED, moved to Decided
 row H below):** the "mint a GITHUB_TOKEN for the control-plane service"
@@ -418,6 +444,27 @@ RISK: ↩️ reversible — a proofread only ever improves the manuscript; nothi
 WHY-IT-MATTERS: a Dutch literary-historical novel (WWII, Hongerwinter — a subject Dutch readers know intimately) shipping with non-native prose errors would damage the title and the store; the packet made this the one explicit blocking quality gate.
 UNBLOCKS: the last blocking step before de-papieren-sinaasappel joins the ASK-0012 Gumroad publish pass.
 VERIFIED-NEEDED: NOT machine-checkable — whether a human proofread happened is not observable by any probe; verification is the corrections arriving (chat or console writeback) and a session updating the packet's gate note.
+```
+
+### ⚑ Ask added 2026-07-19 (botsite /submit moderation queue — surfaced when the intake went live, ASK-0004)
+
+> Now that the `/submit` intake is LIVE (ASK-0004 satisfied — the owner set
+> `DATABASE_URL`, submissions persist to Postgres), the one remaining gap is
+> that the OWNER cannot yet view/moderate what has been stored: the queue
+> read-back `GET /submit/queue.json` fails closed until `SITE_PASSWORD` is set
+> on the botsite service. This is the SAME single paste as ASK-0006 (the
+> `/testing` owner queue) — one `SITE_PASSWORD` value unblocks both surfaces.
+
+```markdown
+⚑ OWNER-ACTION
+ID: ASK-0017
+WHAT: Set SITE_PASSWORD on the botsite Railway service to enable the /submit (and /testing) owner moderation queues — currently UNSET, so GET /submit/queue.json returns 503 "not configured" and the stored submissions cannot be viewed or moderated.
+WHERE: railway.app → project superbot-websites → service botsite → Variables → New Variable.
+HOW: name SITE_PASSWORD, value = a password only you know (any username works at the Basic-auth prompt); one paste, Save. The queues then live at <botsite-url>/submit/queue.json and <botsite-url>/testing/owner. This is the same single paste as ASK-0006 (the /testing owner queue) — one value unblocks both.
+RISK: ↩️ reversible — change or delete the variable any time; while unset the queues fail closed (503) and the public /submit + /testing pages keep working (the intake write path does NOT need it).
+WHY-IT-MATTERS: the /submit intake is now live and storing real submissions in Postgres (ASK-0004), but nobody can read or moderate them until the owner queue is reachable — the stored rows sit invisible behind a 503.
+UNBLOCKS: viewing and moderating stored /submit submissions (and the /testing owner queue); the moderation → GitHub-issue mirror follow-up builds on top of a reachable queue.
+VERIFIED-NEEDED: Railway variable mutations are policy-walled/harness-denied for agents (docs/RAILWAY-SAFETY.md; docs/CAPABILITIES.md 2026-07-18/19 verbatim denials — deliberately not attempted). Verify after the paste: GET /submit/queue.json with owner Basic-auth returns 200 and lists the stored submissions instead of 503.
 ```
 
 ## 🟢 Decided / resolved

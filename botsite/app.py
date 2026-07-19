@@ -542,7 +542,7 @@ async def design(request: Request):
 async def submit_form(request: Request):
     res = await ds.fetch_site(refresh=_refresh(request))
     ctx = _base_ctx(request, "submit", res)
-    ctx.update({"submitted": False})
+    ctx.update({"submitted": False, "intake_live": submissions_store.is_live()})
     return templates.TemplateResponse(request, "submit.html", ctx)
 
 

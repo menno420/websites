@@ -120,3 +120,23 @@ def test_store_returns_none_when_not_live(monkeypatch):
     assert submissions_store.is_live() is False
     assert submissions_store.create_submission("bug", "t", "b") is None
     assert submissions_store.list_submissions() == []
+
+
+def test_submit_form_hides_stub_when_live(client):
+    r = client.get("/submit")
+    assert r.status_code == 200
+    body = r.text.lower()
+    assert "not wired" not in body
+    assert "still being provisioned" not in body
+
+
+def test_submit_form_shows_stub_when_not_live(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    for var in _SECRET_VARS:
+        monkeypatch.delenv(var, raising=False)
+    _prime()
+    with TestClient(app_module.app) as c:
+        r = c.get("/submit")
+    ds.clear_cache()
+    assert r.status_code == 200
+    assert "not wired" in r.text.lower()

@@ -58,16 +58,24 @@
     </div>
     <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
       <button class="sb-btn sb-btn-primary" type="submit">Send submission</button>
+      {% if not intake_live %}
       <span class="sb-badge sb-badge-warn" title="This form is a labeled stub — submissions are not stored or sent anywhere yet.">{{ icon("alert", 11) }} Stub — not wired</span>
+      {% else %}
+      <span class="sb-badge sb-badge-ok" title="Submissions are stored and queued for moderation before anything is published.">{{ icon("inbox", 11) }} Reviewed before publishing</span>
+      {% endif %}
     </div>
+    {% if not intake_live %}
     <p class="sb-hint" style="margin-top:8px">Submitting shows a status note — it does <strong>not</strong> store or send your message anywhere yet.</p>
+    {% endif %}
   </form>
+  {% if not intake_live %}
   <div class="sb-lane-pending" style="margin-top:8px">
     <div class="head">{{ icon("info", 16) }}<h4>Heads up</h4></div>
     <p>The moderated intake queue is still being provisioned for this site, so submitting
       currently shows a status note rather than saving. This is intentional and labeled —
       the site never fakes a successful save.</p>
   </div>
+  {% endif %}
   {% endif %}
 </div>
 {% endblock %}
