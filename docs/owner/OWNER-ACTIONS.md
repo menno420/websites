@@ -199,8 +199,8 @@ VERIFIED-NEEDED: attempted via the account API this session — classifier-walle
 > needs `SITE_PASSWORD` set on the botsite service — currently UNSET, so the
 > queue read-back returns 503 "not configured" — to VIEW/moderate stored
 > submissions; the intake write path itself does not need it. That paste is
-> tracked as ASK-0017 below (shares the single SITE_PASSWORD paste with the
-> `/testing` queue's ASK-0006). ASK-0004 is discharged.
+> the single `SITE_PASSWORD` errand tracked as ASK-0006 (the `/testing` owner
+> queue) — one value unblocks both surfaces. ASK-0004 is discharged.
 
 **STRUCK 2026-07-12 (ORDER 012 reconcile — SATISFIED, moved to Decided
 row H below):** the "mint a GITHUB_TOKEN for the control-plane service"
@@ -238,6 +238,7 @@ HOW: name SITE_PASSWORD, value = a password only you know (same pattern as the c
 RISK: ↩️ reversible — change or delete the variable any time; while unset the queue fails closed (503) and the public /testing pages keep working.
 WHY-IT-MATTERS: every tester claim and submission waits in /testing/owner for your review — without the password the queue is deliberately unreachable (503, never an open door).
 UNBLOCKS: reviewing submissions, the approve/reject/mark-paid buttons, and the JSON export backup valve (the mitigation for tester data living in SQLite on the ephemeral disk).
+Also makes the public /submit intake's owner moderation queue (/submit/queue.json) reachable — the same one paste, now that /submit persists to Postgres (ASK-0004).
 VERIFIED-NEEDED: Railway variable mutations are policy-walled for agents (docs/RAILWAY-SAFETY.md — deliberately not attempted; same wall as the asks above).
 ```
 
@@ -444,27 +445,6 @@ RISK: ↩️ reversible — a proofread only ever improves the manuscript; nothi
 WHY-IT-MATTERS: a Dutch literary-historical novel (WWII, Hongerwinter — a subject Dutch readers know intimately) shipping with non-native prose errors would damage the title and the store; the packet made this the one explicit blocking quality gate.
 UNBLOCKS: the last blocking step before de-papieren-sinaasappel joins the ASK-0012 Gumroad publish pass.
 VERIFIED-NEEDED: NOT machine-checkable — whether a human proofread happened is not observable by any probe; verification is the corrections arriving (chat or console writeback) and a session updating the packet's gate note.
-```
-
-### ⚑ Ask added 2026-07-19 (botsite /submit moderation queue — surfaced when the intake went live, ASK-0004)
-
-> Now that the `/submit` intake is LIVE (ASK-0004 satisfied — the owner set
-> `DATABASE_URL`, submissions persist to Postgres), the one remaining gap is
-> that the OWNER cannot yet view/moderate what has been stored: the queue
-> read-back `GET /submit/queue.json` fails closed until `SITE_PASSWORD` is set
-> on the botsite service. This is the SAME single paste as ASK-0006 (the
-> `/testing` owner queue) — one `SITE_PASSWORD` value unblocks both surfaces.
-
-```markdown
-⚑ OWNER-ACTION
-ID: ASK-0017
-WHAT: Set SITE_PASSWORD on the botsite Railway service to enable the /submit (and /testing) owner moderation queues — currently UNSET, so GET /submit/queue.json returns 503 "not configured" and the stored submissions cannot be viewed or moderated.
-WHERE: railway.app → project superbot-websites → service botsite → Variables → New Variable.
-HOW: name SITE_PASSWORD, value = a password only you know (any username works at the Basic-auth prompt); one paste, Save. The queues then live at <botsite-url>/submit/queue.json and <botsite-url>/testing/owner. This is the same single paste as ASK-0006 (the /testing owner queue) — one value unblocks both.
-RISK: ↩️ reversible — change or delete the variable any time; while unset the queues fail closed (503) and the public /submit + /testing pages keep working (the intake write path does NOT need it).
-WHY-IT-MATTERS: the /submit intake is now live and storing real submissions in Postgres (ASK-0004), but nobody can read or moderate them until the owner queue is reachable — the stored rows sit invisible behind a 503.
-UNBLOCKS: viewing and moderating stored /submit submissions (and the /testing owner queue); the moderation → GitHub-issue mirror follow-up builds on top of a reachable queue.
-VERIFIED-NEEDED: Railway variable mutations are policy-walled/harness-denied for agents (docs/RAILWAY-SAFETY.md; docs/CAPABILITIES.md 2026-07-18/19 verbatim denials — deliberately not attempted). Verify after the paste: GET /submit/queue.json with owner Basic-auth returns 200 and lists the stored submissions instead of 503.
 ```
 
 ## 🟢 Decided / resolved
