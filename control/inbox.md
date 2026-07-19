@@ -416,7 +416,7 @@ done-when: botsite /owner/login + /owner/auth/callback are live, require_owner a
 
 **Rationale (fm ORDER 048, reason-forward):** the owner prefers ONE login across the fleet; the Discord OAuth was just proven E2E on the control-plane (#426, owner-confirmed 08:42Z). Reusing the same SuperBot Discord app + the same four DISCORD_*/OWNER_* env var names on the botsite service means the owner's unlock is one redirect URI + one paste (see ASK update). SITE_PASSWORD becomes optional rather than removed — honoring the owner's explicit either/or.
 
-## ORDER 038 · 2026-07-19T11:44:52Z · status: in-progress
+## ORDER 038 · 2026-07-19T11:44:52Z · status: done
 priority: P1
 do: Port the Discord OAuth owner login to dashboard/'s admin surface — own callback, Discord-only, gate the admin dry-run actions fail-closed.
 why: The owner wants one Discord login across the whole fleet ("discord login for everything", 2026-07-19 ~09:30Z); control-plane (#426) and botsite (ORDER 037 / #442) already have it — dashboard's admin is still a display stub.

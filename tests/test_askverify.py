@@ -93,20 +93,22 @@ def _open_ledger_headlines() -> list[str]:
     return [b.get("what", "") for b in _open_ledger_blocks()]
 
 
-def test_real_ledger_has_the_thirteen_open_asks_each_with_a_unique_id():
+def test_real_ledger_has_the_fourteen_open_asks_each_with_a_unique_id():
     # 9 from the 2026-07-16 id backfill + the 5 registry blocker rows
     # (ASK-0012..0016 — the catalog / products / puddle-museum owner gates,
     # same day), LESS ASK-0007 (order-020-pat, Decided row O), LESS the two
     # arcade launch blockers ASK-0010 (lumen-drift release) + ASK-0011
     # (product-forge Pages) — both SATISFIED / verified-live 2026-07-18 and
-    # moved to Decided rows P/Q, so neither is an open block any more.
+    # moved to Decided rows P/Q, so neither is an open block any more; PLUS
+    # ASK-0017 (ORDER 038 — the dashboard Discord-login unlock), added
+    # 2026-07-19 as the fleet login unification's dashboard leg.
     blocks = _open_ledger_blocks()
-    assert len(blocks) == 13
+    assert len(blocks) == 14
     ids = [b.get("ask_id") for b in blocks]
     assert all(
         i and re.fullmatch(r"ASK-\d{4}", i) for i in ids
     ), f"open ask without a well-formed ID: {ids}"
-    assert len(set(ids)) == 13, f"duplicated ask id in the ledger: {ids}"
+    assert len(set(ids)) == 14, f"duplicated ask id in the ledger: {ids}"
 
 
 def test_every_real_open_ask_matches_a_distinct_registry_entry():
@@ -137,9 +139,9 @@ def test_real_ledger_matches_land_on_the_intended_probes():
     assert set(by_id) == {
         "q-0004", "discord-oauth", "armed-service", "botsite-database-url",
         "paypal-credentials", "botsite-gate", "bake-pat",
-        "dashboard-site-password", "gumroad-publish-pass",
-        "photo-packs-originals", "ultramarine-rename", "illustration-gate",
-        "sinaasappel-proofread",
+        "dashboard-discord-oauth", "dashboard-site-password",
+        "gumroad-publish-pass", "photo-packs-originals", "ultramarine-rename",
+        "illustration-gate", "sinaasappel-proofread",
     }
     # The BAKE_PAT ask still resolves to its own probe (the textually-
     # overlapping order-020 PAT ask it once had to disambiguate from is now

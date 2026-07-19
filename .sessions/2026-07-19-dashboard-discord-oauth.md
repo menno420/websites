@@ -1,14 +1,14 @@
 # 2026-07-19 — port Discord OAuth to dashboard's admin surface (ORDER 038)
 
-> **Status:** `in-progress` — branch `claude/dashboard-discord-oauth`;
-> porting the proven Discord OAuth owner login
+> **Status:** `complete` — branch `claude/dashboard-discord-oauth`, PR #443;
+> ported the proven Discord OAuth owner login
 > (`app/discord_auth.py` #426, `botsite/discord_auth.py` ORDER 037 / #442) to
 > dashboard's admin surface (`dashboard/discord_auth.py` + `/admin/login` +
 > `/admin/auth/callback`) so the fleet shares ONE login. Discord-ONLY (no
-> `SITE_PASSWORD` fallback — dashboard never had one). Born red; flips to
+> `SITE_PASSWORD` fallback — dashboard never had one). Born red; flipped to
 > `complete` as the deliberate LAST code step so merge-on-green lands the PR.
 
-- **📊 Model:** _placeholder — fill at flip._
+- **📊 Model:** Opus 4.8 (family) · effort medium–high · task-class: cross-service feature port + landing
 
 **What this session is about:** ORDER 038. The owner wants ONE Discord login
 across the whole fleet (live, 2026-07-19 ~09:30Z: "Can't we just use te discord
@@ -57,8 +57,14 @@ Four-suite (`tests/ botsite/tests dashboard/tests review/tests`) +
 
 ## 💡 Session idea
 
-_placeholder — fill at flip._
+`discord_auth.py` now lives in three near-identical copies (`app/`, `botsite/`,
+`dashboard/`) — a good candidate for a documented vendored-copy drift guard
+(the same pattern `listfilter.py` already uses) so a future fix to one service's
+copy is flagged if it isn't mirrored to the other two.
 
 ## ⟲ Previous-session review
 
-_placeholder — fill at flip._
+The prior slice was ORDER 037 (botsite Discord OAuth, PR #442) — merged and
+live-verified; this dashboard slice completes the fleet login unification the
+owner asked for ("discord login for everything"), so all three services now
+share one Discord sign-in.

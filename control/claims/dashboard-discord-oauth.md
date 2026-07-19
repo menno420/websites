@@ -1,1 +1,0 @@
-- `claude/dashboard-discord-oauth` · ORDER 038 — port Discord OAuth owner login to dashboard/'s admin surface (/admin/login + /admin/auth/callback), Discord-only, gate the dry-run admin actions fail-closed · 2026-07-19
