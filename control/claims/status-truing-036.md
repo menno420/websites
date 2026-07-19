@@ -1,1 +1,0 @@
-- `claude/status-truing-036` · control/status.md heartbeat truing (ORDER 036 discharged, landing/baton) · 2026-07-19
