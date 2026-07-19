@@ -17,6 +17,22 @@
   veto-ready menu. Source:
   `docs/planning/arcade-dashboard-menu-2026-07-16.md` (event 55f13541).
 
+- **Auto-discovering vendored-copy shared-core guard** · `captured`
+  (2026-07-19, discord-auth-drift-guard session 💡) — generalize
+  `tests/test_discord_auth_vendored.py` into a meta-test that discovers
+  same-basename modules living in multiple service dirs (the per-service
+  vendoring pattern) and, per set, asserts a declared shared-symbol core stays
+  AST-identical, so a newly vendored module gets drift coverage from one
+  registry entry instead of a bespoke hand-written guard each time. Worth
+  having because the repo keeps closing the same drift class one module at a
+  time (listfilter byte-identity guards, now discord_auth) and the next
+  vendored module ships uncovered until someone remembers to write its guard.
+  Deduped against this backlog (the `drift_report()` renderer, fast-lane
+  pin-map, env-drift, and registry-drift bullets each cover a different
+  surface — none is a generalized vendored-copy core guard) and the
+  queue-state NEXT list. Source:
+  `.sessions/2026-07-19-discord-auth-drift-guard.md` 💡.
+
 - **Shared `drift_report()` renderer — one structured join, three
   surfaces** · `captured` (2026-07-16, release-drift session 💡) — the
   healthcheck's release-drift pass (PR #365 `check_release_drift()`) and
