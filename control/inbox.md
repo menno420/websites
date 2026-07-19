@@ -403,3 +403,15 @@ do: provision the superbot-websites Postgres, wire botsite's public /submit inta
 why: unblocks durable public submissions — the /submit intake cannot persist without a database (ASK-0004).
 done-when: DATABASE_URL set on botsite (botsite-production-cfd7) + /submit persists a submission and reads it back on the live service.
 provenance: owner live in coordinator chat 2026-07-18.
+
+## ORDER 037 · 2026-07-19T11:09:07Z · status: done
+priority: P1
+do: extend the control-plane's proven Discord OAuth owner login to botsite's owner surfaces (botsite/discord_auth.py + /owner/login + /owner/auth/callback); make require_owner accept a Discord owner session OR the optional SITE_PASSWORD fallback.
+why: the owner wants ONE login across the fleet; the Discord OAuth was just proven E2E on the control-plane (#426, owner-confirmed 08:42Z).
+done-when: botsite /owner/login + /owner/auth/callback are live, require_owner accepts a Discord owner session OR SITE_PASSWORD, the tests are green, and the change is landed.
+
+**Owner (live, 2026-07-19 ~09:30Z), verbatim:** "Can't we just use te discord login for everything? Or else you can add a site password"
+
+**Decision:** Extend the control-plane's proven Discord OAuth owner login (app/discord_auth.py, PR #426) to botsite's owner surfaces — the /testing/owner review queue and the /submit/queue.json moderation gate. botsite gets its own port (botsite/discord_auth.py) with its own callback, mirroring app/'s flow (services share patterns but never import each other's packages). botsite's require_owner accepts EITHER a valid Discord owner session OR the existing HTTP-Basic SITE_PASSWORD — the owner said "or else … a site password", so both paths stay: Discord login is the unified default, SITE_PASSWORD an optional fallback. Fail-closed when neither is configured (503 naming the opening owner action). CSRF floor throughout; test-covered without live Discord.
+
+**Rationale (fm ORDER 048, reason-forward):** the owner prefers ONE login across the fleet; the Discord OAuth was just proven E2E on the control-plane (#426, owner-confirmed 08:42Z). Reusing the same SuperBot Discord app + the same four DISCORD_*/OWNER_* env var names on the botsite service means the owner's unlock is one redirect URI + one paste (see ASK update). SITE_PASSWORD becomes optional rather than removed — honoring the owner's explicit either/or.

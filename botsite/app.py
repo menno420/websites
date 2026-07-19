@@ -42,6 +42,7 @@ from . import puddle_museum as puddle_museum_registry
 from . import rubric as rubric_registry
 from . import stripe_gotchas as stripe_gotchas_registry
 from . import webhook_analyzer as webhook_analyzer_registry
+from . import discord_auth
 from . import listfilter
 from . import testing
 from . import submissions_store
@@ -84,6 +85,10 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 # Tester-recruitment program (ORDER 018): public claim/submit flow + gated
 # owner queue, all under /testing (see botsite/testing.py).
 app.include_router(testing.router)
+# Discord OAuth owner login (ORDER 037) — the door, not a gated room, so it is
+# NOT behind require_owner. It gates botsite's owner surfaces (/testing/owner,
+# /submit/queue.json) via the signed session require_owner consults first.
+app.include_router(discord_auth.router)
 
 
 def _base_ctx(request: Request, active: str, site_res: dict[str, Any]) -> dict[str, Any]:

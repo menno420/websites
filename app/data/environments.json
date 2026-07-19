@@ -62,6 +62,11 @@
             "TESTING_AI_DAILY_CAP",
             "TESTING_AI_GUIDE_CAP",
             "SITE_PASSWORD",
+            "DISCORD_CLIENT_ID",
+            "DISCORD_CLIENT_SECRET",
+            "OWNER_DISCORD_ID",
+            "OWNER_SESSION_SECRET",
+            "DISCORD_REDIRECT_URI",
             "TESTING_DB_PATH",
             "DATABASE_URL",
             "TESTING_BOUNTY_CAP_USD",
@@ -73,7 +78,7 @@
             "PAYPAL_CLIENT_SECRET",
             "PORT"
           ],
-          "notes": "ANTHROPIC_API_KEY set on the service 2026-07-12 (ORDER 022, docs/owner/OWNER-ACTIONS.md row K). TESTING_* / PAYPAL_* names are the tester-program knobs consumed by botsite/testing*.py — all optional with code defaults except the PayPal credential pair (names only; v1 payouts are dry-run)."
+          "notes": "ANTHROPIC_API_KEY set on the service 2026-07-12 (ORDER 022, docs/owner/OWNER-ACTIONS.md row K). DISCORD_*/OWNER_* are the Discord OAuth owner login (ORDER 037, botsite/discord_auth.py) — SITE_PASSWORD is now the OPTIONAL fallback. TESTING_* / PAYPAL_* names are the tester-program knobs consumed by botsite/testing*.py — all optional with code defaults except the PayPal credential pair (names only; v1 payouts are dry-run)."
         },
         {
           "id": "dashboard",

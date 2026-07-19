@@ -232,14 +232,13 @@ VERIFIED-NEEDED: PayPal business-account/app creation is owner-held (no agent cr
 ```markdown
 ⚑ OWNER-ACTION
 ID: ASK-0006
-WHAT: Set SITE_PASSWORD on the botsite Railway service so the tester-program owner queue becomes reachable.
-WHERE: railway.app → project superbot-websites → service botsite → Variables → New Variable.
-HOW: name SITE_PASSWORD, value = a password only you know (same pattern as the control-plane owner area; any username works at the Basic-auth prompt). One paste, Save. The queue then lives at <botsite-url>/testing/owner.
-RISK: ↩️ reversible — change or delete the variable any time; while unset the queue fails closed (503) and the public /testing pages keep working.
-WHY-IT-MATTERS: every tester claim and submission waits in /testing/owner for your review — without the password the queue is deliberately unreachable (503, never an open door).
-UNBLOCKS: reviewing submissions, the approve/reject/mark-paid buttons, and the JSON export backup valve (the mitigation for tester data living in SQLite on the ephemeral disk).
-Also makes the public /submit intake's owner moderation queue (/submit/queue.json) reachable — the same one paste, now that /submit persists to Postgres (ASK-0004).
-VERIFIED-NEEDED: Railway variable mutations are policy-walled for agents (docs/RAILWAY-SAFETY.md — deliberately not attempted; same wall as the asks above).
+WHAT: Unlock botsite's owner moderation queue with the fleet-wide Discord login (the same login just shipped on the control-plane, #426) — sign in with your Discord account instead of a password. Optional fallback: set SITE_PASSWORD.
+WHERE: (1) Discord Developer Portal → the SuperBot application → OAuth2 → Redirects; (2) railway.app → project superbot-websites → service botsite → Variables → New Variable.
+HOW: (1) Add the redirect URI `https://botsite-production-cfd7.up.railway.app/owner/auth/callback` and Save. (2) Paste the SAME four variables already on the control-plane service (NAMES only shown here — reuse the identical values from #426): DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, OWNER_DISCORD_ID, OWNER_SESSION_SECRET. Save. Then sign in at `https://botsite-production-cfd7.up.railway.app/owner/login`. Optional fallback path: set SITE_PASSWORD to a value only you know (any username at the Basic prompt) — the queue then also opens without Discord.
+RISK: ↩️ reversible — remove the vars or the redirect URI any time; while neither Discord nor SITE_PASSWORD is set the queue fails closed (503) and the public /testing + /submit pages keep working. SITE_PASSWORD is now optional, not required.
+WHY-IT-MATTERS: one Discord login across the whole fleet (control-plane + botsite); the tester queue and /submit moderation stop being unreachable.
+UNBLOCKS: /testing/owner review queue (approve/reject/mark-paid), the JSON export backup valve, and /submit/queue.json moderation.
+VERIFIED-NEEDED: `https://botsite-production-cfd7.up.railway.app/owner/login` renders "Redirecting to Discord to sign in…" (configured) instead of the "not configured" page; after sign-in `/testing/owner` serves the queue.
 ```
 
 **Durable-storage side-note (extends the standing Postgres ask above — not a

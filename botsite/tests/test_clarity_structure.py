@@ -115,6 +115,8 @@ NON_PAGE_GET_ROUTES: dict[str, str] = {
                                   "store — machine data, no page shell",
     "/submit/queue.json": "gated JSON moderation-queue feed for the /submit "
                           "intake — machine data, no page shell",
+    "/owner/auth/callback": "Discord OAuth callback (ORDER 037) — a machine auth "
+                            "endpoint (302/4xx/503), no page shell",
     "/testing/owner/screenshots/{shot_id}": "gated BINARY image endpoint; ids "
                                             "are runtime submission artifacts, "
                                             "not enumerable from committed data",
