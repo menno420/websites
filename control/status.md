@@ -1,7 +1,7 @@
 # websites · status
 
-updated: 2026-07-19T21:08:43Z
-phase: botsite dual-backend shim landing — PR from claude/botsite-db-shim extracts the shared SQLite⇄Postgres shim into botsite/_db.py (database_url/_is_postgres + the _Conn/_Row/_pg_row_factory plumbing relocated out of testing_store.py; both stores re-import so every public name still resolves), corrects the stale docs/CAPABILITIES.md "botsite carries no DATABASE_URL" wall (superseded 2026-07-19 — botsite now carries a live Railway Postgres DATABASE_URL, proven by /submit persistence; #425/#446), and trues this heartbeat. Behavior-identical; born-red card holds the merge until the flip.
+updated: 2026-07-20T04:22:43Z
+phase: planning pass v2 landed; queue top = submissions_store→_db._Conn shim
 health: green — four service suites green (2070 passed) + python3 bootstrap.py check --strict passes its own assertions; the only red is the by-design born-red HOLD on this session's in-progress card, released at the flip. tests/test_own_heartbeat.py 5/5.
 last-shipped: #446 — botsite /testing store SQLite→Postgres dual backend (durable tester-queue data), merged 2026-07-19; main tip d4bd00b.
 blockers: none
@@ -13,8 +13,8 @@ claims: control/claims/botsite-db-shim.md is this branch's in-flight claim, remo
 needs-owner: the ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## NEXT-2-TASKS baton
-1. Owner unlock sitting: the botsite + dashboard Discord-login vars are the last gate — 2 redirect URIs + the same 4 DISCORD_*/OWNER_* values on botsite (ASK-0006, reshaped: SITE_PASSWORD optional fallback) and dashboard (ASK-0017). Once they land, run the E2E gate verify and the first AUTHED /testing write to prove the Postgres write-through end-to-end (the durable intake is confirmed on /submit; the tester-queue path is code-complete but never yet exercised through the owner session).
-2. Shared-shim follow-up: THIS PR extracts botsite/_db.py (the single home for the botsite dual-backend shim); fold any planning refresh on top — e.g. whether submissions_store.py's per-function inline psycopg should also adopt the _Conn/_Row plumbing now that it is shared, and refresh the docs/current-state.md orientation set (near the boot-read headroom cliff).
+1. Route `submissions_store` onto `_db._Conn` (make the shim real): migrate botsite/submissions_store.py off its inline per-function psycopg.connect onto the _Conn/_Row/_pg_row_factory plumbing botsite/_db.py now exports and testing_store.py already consumes — the second copy before it drifts. Behaviour-preserving; extend botsite/tests store tests to assert dual-backend behaviour-identical (run env -u DATABASE_URL). Baton item, per docs/plans/next-cycle-2026-07-19.md slice 1.
+2. NAV reachability GET guard for app/ (slice 2): add a TestClient GET bucket over app/ page routes asserting non-5xx (documented allowed status set for gated pages), mirroring the PAGES_NOT_IN_NAV reachability guard the other three services got (#416/#418/#421) — app/ is the last service without it. Test-only, zero prod risk. Per docs/plans/next-cycle-2026-07-19.md slice 2.
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md)
 - ASK-0003 — provision the scoped control-API token + separate armed Railway service (the armed bot-control write path, stubbed).
