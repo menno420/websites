@@ -1,16 +1,16 @@
 # websites · status
 
-updated: 2026-07-20T09:05:24Z
-phase: cycle 2026-07-19 executed; the seat-buildable hardening queue drained through #459. Remaining work is owner-gated (Discord-login vars) + the product frontier.
-health: green — four service suites green + python3 bootstrap.py check --strict passes its own assertions (only advisory warnings remain, all on untouched files / non-exit-affecting). tests/test_own_heartbeat.py 5/5.
-last-shipped: #459 — docs: regenerate seat-digest render (clears stale advisory), merged 2026-07-20; main tip 098c411.
-blockers: none
-orders: acked=001-038 done=001-038 (021 closed w/ evidence #444; 037/038 done #442/#443; 036 done)
-routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` ARMED · bound to the predecessor session_012kFFGxzt9ntSDi7jkE36z3; rebind rides the hub venue (this coordinator's trigger/send_later arming is classifier-denied). send_later chain: none pending (walled).
-landing: all-merged — #448–#459 all terminal, 0 open claude/* PRs. This cycle's hardening + docs slices are fully merged to main; no drift-gate orphans.
-deployed: main 098c411 · four Railway services (control-plane / botsite / dashboard / review, superbot-websites project); Railway redeploys on merge (merge=deploy), live re-verification is the follow-up. botsite /submit is DURABLE — DATABASE_URL live, Postgres-backed intake confirmed writing (ASK-0004 satisfied). The owner moderation queue GET /submit/queue.json + /testing owner reads still 503 until the botsite Discord-login vars land (ASK-0006/0017).
+updated: 2026-07-20T18:45:58Z
+phase: FAILSAFE WAKE — heartbeat truing. Main advanced to 6971249 (#461, "ORDER 039 — fix red substrate-gate on kit v1.20.1 upgrade PR #452") since the last heartbeat, then went quiet ~5.5h. Flagging one anomaly (see blockers): PR #452 (kit upgrade, owner-opened, auto-merge armed since 06:07) is still open despite its stated blocker (#461) landing at 13:26 — over 5h with an armed, allegedly-unblocked PR not merging is a different shape than this lane's usual "waiting on an owner click" pauses. No code changes made this wake.
+health: green as of the last full run this failsafe session did (a5fdad4, several cycles back) plus every commit since landing via the normal quality-gated path; not independently re-run this wake. kit at main HEAD is still v1.17.0 (PR #452's 1.20.1 bump has not merged).
+last-shipped: #461 — control: ORDER 039 fix red substrate-gate on kit v1.20.1 upgrade PR #452, merged 2026-07-20T13:26:02Z; main tip 6971249.
+blockers: PR #452 (chore(kit): upgrade substrate-kit 1.17.0 → 1.20.1, opened by the owner) shows auto-merge armed but is still open ~12.5h after arming and ~5.5h after its cited blocking gate was reportedly fixed in #461. This failsafe session cannot inspect its CI check-run states in detail (this session's own GitHub API access is separately walled — see prior heartbeats — and GitHub's PR checks UI needs JS the read-only web fetch can't execute), so cannot tell from here whether it's still red on something new, waiting on a required review, or just needs a manual merge click. Flagging for the owner rather than guessing.
+orders: acked=001-039 done=001-039 (021 closed w/ evidence #444; 036-039 done)
+routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` — this wake fired on it, three prior wakes (14:45/16:45/18:45) tracked the same PR #452 pause. send_later pacemaker: not re-armed by this failsafe session (consistent with treating an idle-not-dead coordinator as its own lane).
+landing: pushed-unmerged claude/heartbeat-truing-20260720 — this heartbeat-truing commit only (control-only diff). PR #452 remains the one open PR fleet-wide at write.
+deployed: main 6971249 (#461) · kit v1.17.0 still deployed (PR #452's 1.20.1 not yet live); four Railway services not re-verified this wake, treat as last-known-good.
 claims: control/claims/ holds only README.md — no drift-gate orphans.
-needs-owner: the ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
+needs-owner: NEW — check PR #452 directly on GitHub (github.com/menno420/websites/pull/452): it's been armed-for-automerge since 06:07 today and its cited blocker (#461) landed at 13:26, but it's still open at 18:45 — likely just needs a look/manual merge click, but this session can't confirm why it hasn't gone through on its own. Plus the ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## NEXT-2-TASKS baton
 1. Owner sitting on ASK-0006 + ASK-0017: set the four Discord-login vars + one redirect URI on BOTH the botsite and dashboard Railway services. That unblocks owner sign-ins (/owner/login 302, /admin/login 302) → the one /testing owner write. On completion a session runs the E2E gate verification and the new askverify console chips flip to done-detected.
