@@ -76,8 +76,8 @@ Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 (Hand-filled by sessions, per the discovery rule. Seed walls/capabilities
 above came from the fleet's lived 2026-07 findings; local ones go here.)
 
-- 2026-07-18 · wall · **Railway account-key MUTATIONS are classifier-DENIED
-  at worker spawn, even under a live owner order relayed via
+- 2026-07-18 · wall · **Railway account-key MUTATIONS were classifier-DENIED
+  (2026-07-18) at worker spawn, even under a live owner order relayed via
   coordinator-context — the READ path is unaffected.** This session confirmed
   the account-scoped `RAILWAY_API_KEY` READ path is usable from a dispatched
   seat session: it enumerated the superbot-websites project's
