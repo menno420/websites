@@ -1,12 +1,11 @@
 # 2026-07-20 — committed signal-registry data file (cross-repo signal → baker → raw-URL → consumers)
 
-> **Status:** `in-progress` — branch `claude/signal-registry-data-file`; flips
-> to `complete` + PR number as the deliberate LAST code step. Born red: this
-> card's in-progress Status holds the `quality` gate red until the registry +
-> its schema/consumer-reachability test land green; the flip to `complete`
-> releases the `[session-card-hold]`.
+> **Status:** `complete` — branch `claude/signal-registry-data-file`, PR #453.
+> Born red: this card's in-progress Status held the `quality` gate red until the
+> registry + its schema/consumer-reachability test landed green; this flip to
+> `complete` is the LAST step and releases the `[session-card-hold]`.
 
-- **📊 Model:** opus-4.8 · low · data registry + test
+- **📊 Model:** opus-4.8 · low · test writing
 
 **What this session is about:** the four services now bake / mirror several
 cross-repo signals into `*/data/*.json` and re-render them on sibling surfaces —
@@ -60,10 +59,17 @@ consumers") from a flagged idea into committed data + a guard.
 - `tests/test_signal_registry.py` — schema validation + consumer-reachability
   join test over the JSON (each consumer file references its signal's mirror
   basename, generalising `test_registry_drift.py`'s registry join).
+- `control/claims/signal-registry-data-file-2026-07-20.md` — removed in this
+  flip commit so it merges away clean (no drift-gate orphan).
 - Verified (CI-equivalent, `DATABASE_URL` unset):
   `env -u DATABASE_URL python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q`
-  — <fill at flip: N passed>; `python3 bootstrap.py check --strict` —
-  <fill at flip: verdict>.
+  → **2098 passed** (exit 0; 2092 baseline + 6 new registry tests);
+  `env -u DATABASE_URL python3 -m pytest tests/test_signal_registry.py -q` →
+  **6 passed**; `python3 bootstrap.py check --strict` → exit 0, the only gating
+  item this card's born-red `[session-card-hold]` (released at this flip); the
+  remaining output is pre-existing advisories on unrelated cards (model-line on
+  the four 2026-07-19 cards, seat-digest-stale, orientation-headroom) — never
+  exit-affecting and not introduced here.
 
 ## 💡 Session idea
 
