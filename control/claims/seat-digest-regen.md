@@ -1,1 +1,0 @@
-- `claude/seat-digest-regen` · regenerate docs/seat-digest.md derived render (clears [seat-digest-stale]) · 2026-07-20

@@ -1,6 +1,6 @@
 # 2026-07-20 — regenerate the stale seat-digest render
 
-> **Status:** `in-progress` — branch `claude/seat-digest-regen`, PR #459.
+> **Status:** `complete` — branch `claude/seat-digest-regen`, PR #459.
 > `bootstrap.py check --strict` flags `[seat-digest-stale]`: the committed
 > `docs/seat-digest.md` differs from a fresh render of its sources (the skill
 > index + capability ledger), and downstream seat prompts extract those bytes.
@@ -29,7 +29,7 @@ seat-digest regen), closing out the cycle's Hygiene slice.
   (derived render, never hand-edited); re-synced to its current sources so the
   `[seat-digest-stale]` advisory clears.
 - `control/claims/seat-digest-regen.md` — work claim (deleted in the flip).
-- Verified before flip: [[fill: strict result at flip]].
+- Verified before flip: `python3 bootstrap.py check --strict` → **all checks passed** (the `[seat-digest-stale]` advisory cleared; the born-red `[session-card-hold]` released at this flip); four-suite `env -u DATABASE_URL python3 -m pytest …` → **2132 passed**.
 
 **Verify plan:** `python3 bootstrap.py check --strict` (confirm
 `[seat-digest-stale]` no longer fires and `all checks passed`); four-suite
