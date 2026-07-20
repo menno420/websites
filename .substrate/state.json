@@ -7,7 +7,7 @@
     "soft_target_sessions": 50
   },
   "graduation_proposed": false,
-  "kit_version": "1.17.0",
+  "kit_version": "1.20.1",
   "last_compaction_session": 0,
   "mode": "guided",
   "mode_history": [],
@@ -17,12 +17,12 @@
     "control/claims/README.md": "1375a91217d36c8fa0ef0af4ff5241deb0d325001a2b73dc62dc5065784138a7",
     "docs/CAPABILITIES.md": "b0b2b57311a27a1c04d76743e3ff3db1d9b50fd67b84c5ea57033645867fafdf",
     "docs/ROUTINES.md": "f4cad19e97544062a4335c565c3cfdc3111e08473adf1c96cd8608fd020983d5",
-    "docs/SKILLS.md": "4aa4807c18e3d76b4c5cb5a0db00b73807c150070a140e531380fabbdc466de8",
+    "docs/SKILLS.md": "5fa138726a50f3c5badc5d67c053db9255e224cabb13369ec6932722c6d41955",
     "docs/ai-project-workflow.md": "35932f33b9b5d3e1af227c36cafcc5299e47aaeef19cc3f82dfddb60bcc67fc9",
     "docs/helper-policy.md": "21b91ac9c09bca03e6dcf8350680513b639a47367e5373ca73ac909bc201b0c3",
     "docs/owner-profile.md": "27c5748bb6d087a9a8384723fd499b91e9b4634d635aa5bf397bf69702c67b00",
     "docs/reading-path.md": "9fc502ef075c25811d27b40ae0661e0cb726456a389e7479e7ddb5d52e7d9fc9",
-    "docs/seat-digest.md": "3bc890e6cdbff2e3cc545a98129e1d62288b8884775ee0b8df66badf5e1beb1a"
+    "docs/seat-digest.md": "21d929246b0a102b3516b57d6a331d312d690de66a510b1e742ed49a92969e93"
   },
   "project_id": "4b6a55b0bafb",
   "promotion_rights": "propose",
