@@ -1,0 +1,1 @@
+- `claude/signal-registry-data-file` · scope: committed cross-repo signal registry (name → baker → raw-URL → consumers) + schema/consumer-reachability test — `docs/signal-registry.json`, `tests/test_signal_registry.py` · 2026-07-20
