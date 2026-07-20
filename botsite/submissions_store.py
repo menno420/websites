@@ -19,15 +19,15 @@ import time
 from contextlib import closing
 from typing import Any
 
-# Shared botsite dual-backend shim — the single home for these helpers
-# (re-imported here so ``submissions_store.database_url`` /
-# ``submissions_store._is_postgres`` still resolve at this module path).
-from ._db import database_url, _is_postgres
+# Shared botsite dual-backend shim — the single home for these helpers AND the
+# generic connection plumbing (_Row / _pg_row_factory / _Conn), the same shim
+# ``testing_store`` consumes. Re-imported here so ``submissions_store.database_url``
+# / ``._is_postgres`` / ``._Row`` / ``._pg_row_factory`` / ``._Conn`` still
+# resolve at this module path.
+from ._db import database_url, _is_postgres, _Row, _pg_row_factory, _Conn
 
 # Allowed submission kinds -- mirror the <select> in templates/submit.html.
 KINDS = ("feature", "bug")
-
-_COLUMNS = ("id", "kind", "title", "body", "status", "created_at")
 
 _SCHEMA_SQLITE = """
 CREATE TABLE IF NOT EXISTS submissions (
@@ -68,6 +68,29 @@ def _now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def _connect() -> "_Conn":
+    """Open the configured backend as a unified :class:`_Conn`.
+
+    Mirrors ``testing_store._connect`` — the shared dual-backend shim — but
+    resolves the SQLite path from ``DATABASE_URL`` (``sqlite:///…`` or a bare
+    path) rather than a dedicated env knob, and creates the intake's own
+    single-table schema. psycopg is imported lazily on the Postgres path only.
+    """
+    url = database_url()
+    if _is_postgres(url):
+        import psycopg  # lazy: only imported when a Postgres URL is configured
+
+        raw = psycopg.connect(url, row_factory=_pg_row_factory)
+        with raw.cursor() as cur:
+            cur.execute(_SCHEMA_PG)  # psycopg has no executescript
+        raw.commit()
+        return _Conn(raw, "postgres")
+    raw = sqlite3.connect(_sqlite_path(url))
+    raw.row_factory = sqlite3.Row
+    raw.executescript(_SCHEMA_SQLITE)  # existing idempotent path, unchanged
+    return _Conn(raw, "sqlite")
+
+
 def create_submission(kind: str, title: str, body: str) -> dict[str, Any] | None:
     """Persist one pending submission and return the stored row.
 
@@ -75,37 +98,17 @@ def create_submission(kind: str, title: str, body: str) -> dict[str, Any] | None
     """
     if not is_live():
         return None
-    url = database_url()
-    created = _now()
-    if _is_postgres(url):
-        import psycopg  # lazy: only imported when a Postgres URL is configured
-
-        with closing(psycopg.connect(url)) as conn:
-            with conn.cursor() as cur:
-                cur.execute(_SCHEMA_PG)
-                cur.execute(
-                    "INSERT INTO submissions (kind, title, body, created_at)"
-                    " VALUES (%s, %s, %s, %s)"
-                    " RETURNING id, kind, title, body, status, created_at",
-                    (kind, title, body, created),
-                )
-                row = cur.fetchone()
-            conn.commit()
-        return dict(zip(_COLUMNS, row))
-    with closing(sqlite3.connect(_sqlite_path(url))) as conn:
-        conn.row_factory = sqlite3.Row
-        conn.executescript(_SCHEMA_SQLITE)
-        with conn:
-            cur = conn.execute(
-                "INSERT INTO submissions (kind, title, body, created_at)"
-                " VALUES (?, ?, ?, ?)",
-                (kind, title, body, created),
-            )
-            row = conn.execute(
-                "SELECT id, kind, title, body, status, created_at"
-                " FROM submissions WHERE id = ?",
-                (cur.lastrowid,),
-            ).fetchone()
+    with closing(_connect()) as conn, conn:
+        new_id = conn.insert_id(
+            "INSERT INTO submissions (kind, title, body, created_at)"
+            " VALUES (?, ?, ?, ?)",
+            (kind, title, body, _now()),
+        )
+        row = conn.execute(
+            "SELECT id, kind, title, body, status, created_at"
+            " FROM submissions WHERE id = ?",
+            (new_id,),
+        ).fetchone()
     return dict(row)
 
 
@@ -116,24 +119,7 @@ def list_submissions(limit: int = 100) -> list[dict[str, Any]]:
     """
     if not is_live():
         return []
-    url = database_url()
-    if _is_postgres(url):
-        import psycopg
-
-        with closing(psycopg.connect(url)) as conn:
-            with conn.cursor() as cur:
-                cur.execute(_SCHEMA_PG)
-                cur.execute(
-                    "SELECT id, kind, title, body, status, created_at"
-                    " FROM submissions ORDER BY id DESC LIMIT %s",
-                    (limit,),
-                )
-                rows = cur.fetchall()
-            conn.commit()
-        return [dict(zip(_COLUMNS, r)) for r in rows]
-    with closing(sqlite3.connect(_sqlite_path(url))) as conn:
-        conn.row_factory = sqlite3.Row
-        conn.executescript(_SCHEMA_SQLITE)
+    with closing(_connect()) as conn:
         rows = conn.execute(
             "SELECT id, kind, title, body, status, created_at"
             " FROM submissions ORDER BY id DESC LIMIT ?",
