@@ -1542,7 +1542,7 @@ def test_cache_skips_transient_errors(monkeypatch):
             self.statuses = list(statuses)
             self.calls = 0
 
-        async def get(self, url):
+        async def get(self, url, follow_redirects=False):
             self.calls += 1
             return FakeResp(self.statuses.pop(0))
 

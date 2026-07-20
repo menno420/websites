@@ -174,7 +174,22 @@ def _result(url: str, status: int, data: Any = None, error: str = "") -> dict:
     }
 
 
-async def _get(url: str, refresh: bool = False, raw: bool = False) -> dict:
+async def _get(
+    url: str,
+    refresh: bool = False,
+    raw: bool = False,
+    follow_redirects: bool = False,
+) -> dict:
+    """GET a URL through the TTL cache, returning the honest result envelope.
+
+    ``follow_redirects`` is opt-in per call and defaults ``False`` — the raw
+    client is SHARED with ``app/askverify.py``'s Discord-login probes, which
+    read a bare ``302`` status as the "configured" signal and would break if
+    the redirect were chased. Only the ``/directory`` liveness probe
+    (``web_presence.overview``) opts in, so a redirect-hosted download (a
+    release asset that 302s to a CDN) is health-probed to its FINAL status
+    instead of false-negativing on the 302.
+    """
     now = time.monotonic()
     if not refresh:
         hit = _cache.get(url)
@@ -183,7 +198,7 @@ async def _get(url: str, refresh: bool = False, raw: bool = False) -> dict:
             out["cached"] = True
             return out
     try:
-        resp = await get_client(raw=raw).get(url)
+        resp = await get_client(raw=raw).get(url, follow_redirects=follow_redirects)
         try:
             data = resp.json()
         except ValueError:

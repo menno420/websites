@@ -174,8 +174,8 @@
       "kind": "GitHub Release (download) / itch.io page",
       "description": "the GBA game — download release + storefront page",
       "status": "live-service",
-      "notes": "live since 2026-07-18 (#428, ASK-0010): the lumen-drift-v1.3 GitHub Release is published and the Download button fetches the ROM asset (lumen-drift.gba, 164 KB) directly. Same target botsite's arcade records (botsite/data/arcade.json). probe:false because the release-download URL 302-redirects to a CDN, which the tokenless raw probe (no follow-redirects) would misread as degraded — the download itself is live.",
-      "probe": false
+      "notes": "live since 2026-07-18 (#428, ASK-0010): the lumen-drift-v1.3 GitHub Release is published and the Download button fetches the ROM asset (lumen-drift.gba, 164 KB) directly. Same target botsite's arcade records (botsite/data/arcade.json). probe:true — the /directory probe now follows redirects (app/web_presence.py, github._get follow_redirects=True), so the release-download 302 to the CDN resolves to its final 200 instead of a false 'degraded (HTTP 302)'.",
+      "probe": true
     },
     {
       "id": "games-web",

@@ -31,7 +31,7 @@ def _res(ok=True, status=200, data=None, error=""):
 
 
 def _offline(monkeypatch):
-    async def fake_get(url, refresh=False, raw=False):
+    async def fake_get(url, refresh=False, raw=False, follow_redirects=False):
         return {"ok": False, "status": 0, "data": None, "error": "offline",
                 "fetched_at": "", "cached": False, "url": url}
 

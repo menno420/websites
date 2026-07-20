@@ -52,14 +52,14 @@ def _result(url, status, ok, error=""):
 
 
 def _probes_up(monkeypatch):
-    async def fake_get(url, refresh=False, raw=False):
+    async def fake_get(url, refresh=False, raw=False, follow_redirects=False):
         return _result(url, 200, True)
 
     monkeypatch.setattr(github, "_get", fake_get)
 
 
 def _probes_down(monkeypatch):
-    async def fake_get(url, refresh=False, raw=False):
+    async def fake_get(url, refresh=False, raw=False, follow_redirects=False):
         return _result(url, 0, False, "ConnectError: probe refused (offline test)")
 
     monkeypatch.setattr(github, "_get", fake_get)
@@ -140,7 +140,7 @@ def test_probe_failure_renders_honest_state_never_a_green_badge(monkeypatch):
 def test_pending_publish_rows_are_never_probed(monkeypatch):
     calls = []
 
-    async def fake_get(url, refresh=False, raw=False):
+    async def fake_get(url, refresh=False, raw=False, follow_redirects=False):
         calls.append(url)
         return _result(url, 200, True)
 
@@ -161,7 +161,7 @@ def test_pending_publish_rows_are_never_probed(monkeypatch):
 
 
 def test_degraded_is_not_live(monkeypatch):
-    async def fake_get(url, refresh=False, raw=False):
+    async def fake_get(url, refresh=False, raw=False, follow_redirects=False):
         return _result(url, 503, False, "Service Unavailable")
 
     monkeypatch.setattr(github, "_get", fake_get)
@@ -204,7 +204,7 @@ def test_overview_classifies_without_a_network(monkeypatch):
 def test_home_section_map_links_the_directory(monkeypatch):
     # full-offline fakes (the test_console_home pattern): the board's own
     # fan-out degrades honestly while the section map still renders
-    async def fake_get(url, refresh=False, raw=False):
+    async def fake_get(url, refresh=False, raw=False, follow_redirects=False):
         return _result(url, 0, False, "offline test")
 
     async def fake_fetch(repo, path, ref="main", refresh=False):
