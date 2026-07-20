@@ -1,6 +1,6 @@
 # 2026-07-20 — refresh current-state.md to #456 truth + trim orientation headroom
 
-> **Status:** `in-progress` — branch `claude/records-refresh`, PR #<pending>.
+> **Status:** `in-progress` — branch `claude/records-refresh`, PR #458.
 > Refreshing `docs/current-state.md` to present truth (header lagged at #421;
 > HEAD is #456), folding the 2026-07-19→20 build cycle into the ledger, trimming
 > superseded history into terse past-tense lines to open orientation headroom,

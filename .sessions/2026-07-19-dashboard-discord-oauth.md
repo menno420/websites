@@ -8,7 +8,7 @@
 > `SITE_PASSWORD` fallback — dashboard never had one). Born red; flipped to
 > `complete` as the deliberate LAST code step so merge-on-green lands the PR.
 
-- **📊 Model:** Opus 4.8 (family) · effort medium–high · task-class: cross-service feature port + landing
+- **📊 Model:** opus-4.8 · high · feature build
 
 **What this session is about:** ORDER 038. The owner wants ONE Discord login
 across the whole fleet (live, 2026-07-19 ~09:30Z: "Can't we just use te discord
