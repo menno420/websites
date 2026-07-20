@@ -1,20 +1,20 @@
 # websites · status
 
-updated: 2026-07-20T05:15:52Z
-phase: slice 3 landed — askverify Discord/submit probes; queue top = signal-registry data file (slice 4)
-health: green — four service suites green (2092 passed) + python3 bootstrap.py check --strict passes its own assertions; the only red is the by-design born-red HOLD on this session's in-progress card, released at the flip. tests/test_own_heartbeat.py 5/5.
-last-shipped: #450 — app/ NAV reachability GET guard (router-derived, all 42 top-level GET routes non-5xx), merged 2026-07-20; main tip 98b9eb1.
+updated: 2026-07-20T08:04:12Z
+phase: cycle 2026-07-19 executed: slices 1–6 all landed; queue drained to hygiene + owner-gated items
+health: green — four service suites green (2132 passed) + python3 bootstrap.py check --strict passes its own assertions (only advisory warnings remain, all on untouched files / non-exit-affecting). tests/test_own_heartbeat.py 5/5.
+last-shipped: #455 — botsite /directory .gba download probe now follows redirects (302 → CDN no longer a false-negative), merged 2026-07-20; main tip 7c3484b.
 blockers: none
 orders: acked=001-038 done=001-038 (021 closed w/ evidence #444; 037/038 done #442/#443; 036 done)
 routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` ARMED · bound to the predecessor session_012kFFGxzt9ntSDi7jkE36z3; rebind rides the hub venue (this coordinator's trigger/send_later arming is classifier-denied). send_later chain: none pending.
-landing: pushed-unmerged claude/askverify-discord-submit-probes (PR #451) — three read-only askverify probes that auto-flip owner-action chips: dashboard `/admin/login` 302 (ASK-0017), botsite `/submit` live-badge (ASK-0004), botsite `/owner/login` 302 prepended to the byte-preserved SITE_PASSWORD fallback (ASK-0006). Registry structure untouched (no new entries / signatures / ask-id rebinds); +8 unit tests. Behaviour-additive, born-red, self-lands on the complete flip. Prior PRs #434–#450 are terminal (merged/closed); this is the only open PR.
-deployed: main 98b9eb1 (#450) · four Railway services (control-plane / botsite / dashboard / review, superbot-websites project); Railway redeploys on merge (merge=deploy), live re-verification is the follow-up. botsite /submit is DURABLE — DATABASE_URL live, Postgres-backed intake confirmed writing (ASK-0004 satisfied). The owner moderation queue GET /submit/queue.json + /testing owner reads still 503 until the botsite Discord-login vars land (ASK-0006). This slice is test-only + a domain-probe change — no route/template/deployable surface changed.
-claims: control/claims/askverify-discord-submit-probes-2026-07-19.md is this branch's in-flight claim, removed in this PR's flip commit so it merges away clean (no drift-gate orphan). control/claims/ otherwise holds only README.md.
+landing: all-merged — this cycle's three slice PRs are terminal: #453 (committed signal-registry data file, slice 4), #454 (auto-discovering vendored-copy AST core guard, slice 5), #455 (/directory follow_redirects, slice 6) all merged to main. No open claude/* PRs from this cycle. #452 (kit-upgrade) is the owner's PR, still open — left as-is, it rides the hub venue.
+deployed: main 7c3484b (all six slices landed) · four Railway services (control-plane / botsite / dashboard / review, superbot-websites project); Railway redeploys on merge (merge=deploy), live re-verification is the follow-up. botsite /submit is DURABLE — DATABASE_URL live, Postgres-backed intake confirmed writing (ASK-0004 satisfied). The owner moderation queue GET /submit/queue.json + /testing owner reads still 503 until the botsite Discord-login vars land (ASK-0006).
+claims: control/claims/ holds only README.md — all three slice claims deleted in their flip commits (no drift-gate orphans).
 needs-owner: the ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## NEXT-2-TASKS baton
-1. committed signal-registry data file (slice 4): a committed registry (name → baker → raw-URL → consumers) so each drift/parity fan-out is a data edit, not a code hunt — generalising the join pattern tests/test_registry_drift.py already proves. Schema + consumer-reachability test over the JSON. Per docs/plans/next-cycle-2026-07-19.md slice 4.
-2. auto-discovering vendored-copy AST core guard (slice 5): a guard that discovers vendored copies of a core module by AST rather than a hand-maintained path list, so a new vendored copy can't silently drift from its source. Per docs/plans/next-cycle-2026-07-19.md slice 5.
+1. Refresh docs/current-state.md header (lags main by ~26+ PRs — says #421, HEAD is #455) and fold in this cycle's three new guards/registry (signal-registry data file #453, vendored-copy AST core guard #454, /directory redirect-follow probe #455); update main sha, open-PR line, and the four-suite passed count (2132). Per docs/plans/next-cycle-2026-07-19.md Hygiene.
+2. Orientation-headroom trim toward the boot-set word cliff (boot set 6909/7000 words, 91 headroom; current-state alone 6176) and clear the residual kit advisories: fix the model-line advisories on the three 2026-07-19 cards (-botsite-discord-oauth, -dashboard-discord-oauth, -submissions-store-shim) to the PL-004 `model · low|medium|high · class` form, then `python3 bootstrap.py seat-digest` regen. Per docs/plans/next-cycle-2026-07-19.md Hygiene.
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md)
 - ASK-0003 — provision the scoped control-API token + separate armed Railway service (the armed bot-control write path, stubbed).
