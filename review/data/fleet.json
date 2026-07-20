@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-19T07:51:18Z",
+  "generated_at": "2026-07-20T08:19:34Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -25,7 +25,7 @@
           "repo": "fleet-manager",
           "repo_url": "https://github.com/menno420/fleet-manager",
           "heartbeat_available": true,
-          "updated": "2026-07-19T07:40Z kit_version: 1.17.0 seat: fleet-manager (coordinator) wake: coordinator wake (fm wake 2026-07-18). Routine cutover per v3.8 doctrine (fresh failsafe armed + verified, predecessor crash-orphan failsafe deleted + verified absent), triggers-snapshot refreshed from the 20:42:05Z full export (I6 PASS), carve-out PRs [a private lane] #98 + product-forge #29 re-verified live GREEN, heartbeat recorded (PR #332). Fleet PR sweep recorded 2026-07-18T21:15Z \u2014 13 open PRs / 7 repos, detail in `docs/fleet-triage.md` \u00a7 \"2026-07-18 \u00b7 fleet PR sweep (21:05\u201321:15Z)\" (PR #334). Night-watch state \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-20T04:09Z kit_version: 1.17.0 seat: fleet-manager (coordinator) wake: coordinator wake (fm wake 2026-07-18). Routine cutover per v3.8 doctrine (fresh failsafe armed + verified, predecessor crash-orphan failsafe deleted + verified absent), triggers-snapshot refreshed from the 20:42:05Z full export (I6 PASS), carve-out PRs [a private lane] #98 + product-forge #29 re-verified live GREEN, heartbeat recorded (PR #332). Fleet PR sweep recorded 2026-07-18T21:15Z \u2014 13 open PRs / 7 repos, detail in `docs/fleet-triage.md` \u00a7 \"2026-07-18 \u00b7 fleet PR sweep (21:05\u201321:15Z)\" (PR #334). Night-watch state \u2026 [truncated for the mirror \u2014 full text at the source]",
           "reason": ""
         }
       ]
@@ -38,7 +38,7 @@
           "repo": "venture-lab",
           "repo_url": "https://github.com/menno420/venture-lab",
           "heartbeat_available": true,
-          "updated": "2026-07-19T07:32:38Z > The `control/*` manager\u2194lane message-bus remains **retired**. This file is a > neutral status pointer, not a source of truth or an order. The successor reads > [`../docs/current-state.md`](../docs/current-state.md), > [`../docs/NEXT-TASKS.md`](../docs/NEXT-TASKS.md), > [`../docs/launch/CATALOG.md`](../docs/launch/CATALOG.md), and > [`../docs/ideas/2026-07-18-next-wave-roadmap.md`](../docs/ideas/2026-07-18-next-wave-roadmap.md). **Where the tree is (neutral facts):** - `main` HEAD is `5d439bf` (PR #257). **Zero open PRs** \u2014 the queue is clear. - `python3 bootstrap.py chec \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-20T07:36:15Z > The `control/*` manager\u2194lane message-bus remains **retired**. This file is a > neutral status pointer, not a source of truth or an order. The successor reads > [`../docs/current-state.md`](../docs/current-state.md), > [`../docs/publishing/OWNER-START-HERE.md`](../docs/publishing/OWNER-START-HERE.md), > [`../docs/publishing/TRANSITION-DOSSIER.md`](../docs/publishing/TRANSITION-DOSSIER.md), > and [`../docs/launch/CATALOG.md`](../docs/launch/CATALOG.md). **Where the tree is (neutral facts):** - `main` HEAD is `d2d49ec` \u2014 the 2026-07-20 end-of-day owner-list + heartbeat + cu \u2026 [truncated for the mirror \u2014 full text at the source]",
           "reason": ""
         },
         {
@@ -72,7 +72,7 @@
           "repo": "superbot-mineverse",
           "repo_url": "https://github.com/menno420/superbot-mineverse",
           "heartbeat_available": true,
-          "updated": "2026-07-16T00:55:09Z",
+          "updated": "2026-07-20T04:56:06Z",
           "reason": ""
         }
       ]
@@ -85,7 +85,7 @@
           "repo": "superbot-next",
           "repo_url": "https://github.com/menno420/superbot-next",
           "heartbeat_available": true,
-          "updated": "2026-07-18T04:15:22Z",
+          "updated": "2026-07-20T07:30:12Z",
           "reason": ""
         },
         {
@@ -105,14 +105,14 @@
           "repo": "idea-engine",
           "repo_url": "https://github.com/menno420/idea-engine",
           "heartbeat_available": true,
-          "updated": "2026-07-19T07:39:29Z \u00b7 seat: heartbeat restamp \u2014 reconciled to round-37-COMPLETE state. Latest landed: round-37 UNRELATED-slot VERDICT 173 APPROVE (Cauchy no-averaging / failure of the LLN under infinite variance, P160 \u2192 V173, +13; sim-lab PR #247). proposal high-water P160, verdict high-water V173 (union-max, no regress). This slice appends VERDICT 173 to control/outbox.md + advances the verdict high-water ONLY \u2014 no ideas/, verifier, or sim artifacts touched. model: Claude Opus \u00b7 high \u00b7 maintenance/heartbeat",
+          "updated": "2026-07-20T07:55:20Z \u00b7 seat: round-48 VENTURE-slot P202 \u2192 V215 mirror LANDED \u2014 Condorcet's jury theorem dark side (venture-lab lane) ruled APPROVE. VERDICT 215 mirrored into control/outbox.md (block V215, status: ruled), sim-lab side landed via merge-on-green (PR #290 MERGED, squash SHA 8261cb9); verdict high-water ADVANCES to V215 (union-max, no regress), outbox verdict ledger contiguous V200 \u2192 V215. Prior round-48 FLEET-slot P201 \u2192 V214 (Graham's multiprocessing timing anomaly) landed APPROVE; round-48 VENTURE-slot PROPOSAL 202 remains sim-ready in outbox with its VERDICT 215 now RULED. Clai \u2026 [truncated for the mirror \u2014 full text at the source]",
           "reason": ""
         },
         {
           "repo": "sim-lab",
           "repo_url": "https://github.com/menno420/sim-lab",
           "heartbeat_available": true,
-          "updated": "2026-07-19T07:41:02Z (real wall-clock via date -u) \u00b7 written by a dispatched session for the coordinator seat (V173 landing slice \u2014 Cauchy no-averaging / failure of the Law of Large Numbers reproduction, PROPOSAL 160 \u2192 V173 (+13): reproduced APPROVE, disclosed compact-canonical results-dict digest 413e56925e89e34148cb9286df0f392c1a9881fc9072c7683b9f181f39ae7b5c matched EXACTLY, verifier byte-identical (blob 460d9ffea7b80339ceebb4fb4cac1bd3d983d77a, file sha256 44584333508d599d0d5d845e063480f684374c51a61be87ed913ccd1672944a8, source ideas/fleet/cauchy_no_averaging.py at idea-engine), all three \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-20T07:46:47Z \u00b7 seat: VERDICT 215 landing slice \u2014 Condorcet's jury theorem, the dark side: for competence p < 1/2 the majority-vote accuracy is DECREASING in the jury size, so the optimal below-average jury is a SINGLE voter (the exact symmetry-mirror of the classic p > 1/2 limit) (PROPOSAL 202 \u2192 V215, +13, lane venture-lab): copied verifier condorcet-jury-committee-2026-07-20.py byte-identical from idea-engine `ideas/venture-lab/` (`diff` source\u2194copy exit 0, sha256 97512e57dce05cf89e01e4da125509e879f8c2776ed214487b626600110383e5, source at PR #750 / squash 43df276) into sims/verdict-21 \u2026 [truncated for the mirror \u2014 full text at the source]",
           "reason": ""
         }
       ]
@@ -138,7 +138,7 @@
           "repo": "substrate-kit",
           "repo_url": "https://github.com/menno420/substrate-kit",
           "heartbeat_available": true,
-          "updated": "2026-07-19T07:36:42Z \u00b7 phase: IDLE \u2014 night run #455\u2013#486 all merged; buildable-now backlog REFILLED by the night-run idea groom (docs/planning/2026-07-19-night-run-idea-groom.md). The prior wake asserted \"backlog DRY\"; that was a sweep gap (the baton read only the recipe doc, not the night's ~14 ungroomed \ud83d\udca1 card ideas) \u2014 corrected this wake. > **Orders done-truth (read this first):** orders **001\u2013024 are ALL DONE** \u2014 the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and flipped `new\u2192done` manager-side only after the manager \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-20T07:45:00Z",
           "reason": ""
         }
       ]
@@ -151,7 +151,7 @@
           "repo": "websites",
           "repo_url": "https://github.com/menno420/websites",
           "heartbeat_available": true,
-          "updated": "2026-07-19T07:22:32Z",
+          "updated": "2026-07-20T08:04:12Z",
           "reason": ""
         }
       ]
@@ -203,8 +203,8 @@
       "repo_url": "https://github.com/menno420/superbot",
       "head": {
         "ok": true,
-        "sha": "df7bf8daa14b331fed37b9c28372acf04ba3fbe5",
-        "committed_at": "2026-07-19T08:48:52+02:00",
+        "sha": "bd641ade65157ca2f70ee921fc518e657052eb0c",
+        "committed_at": "2026-07-20T09:33:58+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -228,21 +228,21 @@
       "repo_url": "https://github.com/menno420/superbot-next",
       "head": {
         "ok": true,
-        "sha": "266c74981df625bbb3514d1049ff62ec37364f53",
-        "committed_at": "2026-07-19T01:36:33Z",
+        "sha": "28e63ce0dcc625b7f8e11ef410de5967c69c97e1",
+        "committed_at": "2026-07-20T07:48:00Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-18T04:15:22Z",
-          "phase": "EAP wind-down \u2014 autonomous apparatus retired; oracle port loop running per NEXT-TASKS",
-          "health": "green",
+          "updated": "2026-07-20T07:30:12Z",
+          "phase": "EAP wind-down \u2014 decision-ledger audit complete (question-router fully answered)",
+          "health": "green (3660 passed / 54 skipped, golden corpus 526/526, 7 required checks incl pip-audit)",
           "kit": "v1.17.0 \u00b7 check: green \u00b7 engaged: no",
-          "last-shipped": "#512 \u2014 Help Home-message builder port (Q-0059); pending stub help.editor_home_message_pending retired",
-          "blockers": "none",
-          "orders": "acked=001-023 done=001-023",
-          "needs-owner": "(1) disarm the residual failsafe wake triggers via the routines UI \u2014 both enabled duplicates of \"SuperBot 2.0 failsafe wake\": trig_01E86nBnXqesQTwm6WA4mSUD + trig_01UC7wiV3n5Vgs3RpSQt4gWz (no standing wake chain in the recreated Project); (2) delete 4 orphan merged branches (blocked agent-side by the GitHub 403 ref-delete wall, recorded 2026-07-17): #385 claude/energy-slice-2, #473 claude/title-equip-write, #476 claude/curation-row72, #424 claude/wp-stack-reconcile.",
+          "last-shipped": "#600 open-prs: #576 parked (owner-attended); decision-audit PR open on claude/decision-audit-2026-07-20 next-2: owner-gated prod/backup/creds provisioning \u00b7 design engines (D4/D5/R) at real consumer",
+          "blockers": "none (owner agenda trimmed to genuine owner-only remainder)",
+          "orders": "unchanged (ORDER 024 executed; task ledger = docs/NEXT-TASKS.md)",
+          "needs-owner": "broad orphan merged-branch cleanup remains blocked by the GitHub 403 ref-delete wall (owner/admin). The previously-listed owner-blocker items were resolved 2026-07-18 and are dropped here: the two named residual triggers are absent from the account registry (per docs/current-state.md:67-73) and the four named orphan merged branches are absent from origin.",
           "notes": "Help Home-message builder (Q-0059) ported behind the audited seam \u2014 migration 0056 (additive), HomeMessage read model + set_home_message write lane, editor_home_message builder panel with mandatory-preview Save gate, help.home live-wired via guarded no-op. Golden corpus \u2192 526 (help.home_message_save minted + main's mining_workshop_craft_write, reconciled as a UNION at merge over the 524 merge-base \u2014 minted_goldens 64); check_parity_depth 49/49 ported (kernel ported); run_golden_parity 50/50 subsystems ported (help subsystem already flipped, this adds goldens only). Full golden-parity gate veri \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/superbot-next/blob/main/control/status.md"
@@ -255,16 +255,20 @@
       "repo_url": "https://github.com/menno420/substrate-kit",
       "head": {
         "ok": true,
-        "sha": "0071fa86cdd9341b60dba288f1a3eb6cae9744eb",
-        "committed_at": "2026-07-19T07:46:15Z",
+        "sha": "0a0f8cbeab08673bf2f403222e4ef605e727025d",
+        "committed_at": "2026-07-20T07:44:46Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-19T07:36:42Z \u00b7 phase: IDLE \u2014 night run #455\u2013#486 all merged; buildable-now backlog REFILLED by the night-run idea groom (docs/planning/2026-07-19-night-run-idea-groom.md). The prior wake asserted \"backlog DRY\"; that was a sweep gap (the baton read only the recipe doc, not the night's ~14 ungroomed \ud83d\udca1 card ideas) \u2014 corrected this wake. > **Orders done-truth (read this first):** orders **001\u2013024 are ALL DONE** \u2014 the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and flipped `new\u2192done` manager-side only after the manager \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "kit": "v1.19.0 - No-false-walls guard enforced fleet-wide (kit ci.yml + every adopter's check --strict); folds into the next release. - Claims-only fast-lane guard on both surfaces + guard-parity meta-test fails CI on kit\u2194adopter guard drift. - Registry (docs/adopters.md): CURRENT per currency --check (12 repos); adopter rows read stale until each repo's own upgrade wave (owner-gated). - adopters-version-lag + adopters-stale + adopters-self-row-stale advisories cover the staleness axes. - Revival boot reading: CONSTITUTION.md \u2192 control/inbox.md \u2192 this file \u2192 docs/eap-closeout-walkthrough-2026-07-14.m \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "orders": "acked=001\u2013024 \u00b7 done=001\u2013024 note: \"ORDER 025\" is the `>`-quoted fm relay inside ORDER 019 item 5, not a standalone bound order (highest bound = 024). Its WORK is DONE \u2014 both cfgdiff writeups on main + linked from bench/README.md, merged via PR #340 (2026-07-13); the redundant standalone-block append that hit the classifier wall is MOOT."
+          "updated": "2026-07-20T07:45:00Z",
+          "phase": "v1.20.1 shipped + adopter-distribution wave complete (fm ORDER 048). Detector follow-ups P2+P3 (#549's card) built + landing as PR #555. Wave: gba-homebrew merged; 8 adopter upgrade PRs open in resident lanes (all red only on resident-owned content); superbot pin-only (flagged).",
+          "health": "green",
+          "kit": "v1.20.1 \u00b7 check: green (except this session's by-design born-red card HOLD) \u00b7 engaged: yes",
+          "last-shipped": "#549/#550 v1.20.1 patch (detector attachment-based clearing + release); #555 (P2/P3 hardenings) landing on green.",
+          "blockers": "none agent-side. Remaining wave completion is resident-side merge of the 8 open upgrade PRs; owner-gated \u2691 set below. The two NON-BLOCKING follow-ups recorded in #549's card, both built + mutation-pinned: - **P2 \u2014 wrapped-lookback punctuation-gated bleed.** `is_cleared`'s one-line wrapped lookback could bridge a repudiation from the previous line's trailing clause onto a wall on the current line even when that clause repudiated a DIFFERENT capability. Added a `_capability_families` gate: the lookback bridges only when the prev clause names the SAME family as the wall (or names none \u2014 a genuine \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "orders": "acked=001-024 done=001-024 note: \"ORDER 025\" is the `>`-quoted fm relay inside ORDER 019 item 5, not a standalone bound order (highest bound = 024); its work is DONE (PR #340). The inbox `status:` field is manager-owned \u2014 an order reading `status: new` while this file's `done=` covers it is DONE-and-awaiting-manager-flip, not open."
         },
         "source_url": "https://github.com/menno420/substrate-kit/blob/main/control/status.md"
       }
@@ -276,23 +280,23 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "403a91def5c315ea75623b574df60fa42cbf8cda",
-        "committed_at": "2026-07-19T09:50:00+02:00",
+        "sha": "79d57e0c0cd4efe5a2c4b6cef6e144da5f2c46b6",
+        "committed_at": "2026-07-20T08:05:35Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-19T07:22:32Z",
-          "phase": "heartbeat truing \u2014 main advanced to a5fdad4 (ORDER 034 durable /submit intake, PR #425); the prior heartbeat (2026-07-18T21:42:45Z) still described PR #426 in-flight and deployed baad569, both stale. This pass trues orders/landing/routine/deployed against live GitHub. Supersedes claude/heartbeat-truing-20260719 (9a1598c), whose one-commit fix failed tests/test_own_heartbeat.py by dropping \"ARMED\" from the routine line.",
-          "health": "green \u2014 four service suites green (1979 passed) + python3 bootstrap.py check --strict green; tests/test_own_heartbeat.py 5/5.",
-          "last-shipped": "#425 \u2014 botsite durable /submit intake via DATABASE_URL (ORDER 034), merged 2026-07-18T21:52:35Z; main tip a5fdad4.",
+          "updated": "2026-07-20T08:04:12Z",
+          "phase": "cycle 2026-07-19 executed: slices 1\u20136 all landed; queue drained to hygiene + owner-gated items",
+          "health": "green \u2014 four service suites green (2132 passed) + python3 bootstrap.py check --strict passes its own assertions (only advisory warnings remain, all on untouched files / non-exit-affecting). tests/test_own_heartbeat.py 5/5.",
+          "last-shipped": "#455 \u2014 botsite /directory .gba download probe now follows redirects (302 \u2192 CDN no longer a false-negative), merged 2026-07-20; main tip 7c3484b.",
           "blockers": "none",
-          "orders": "acked=001-036 done=001-020,022-035 (021 + 036 open \u2014 021 owner-gated; 034 done code-half via PR #425 with ASK-0004 narrowed to the one DATABASE_URL paste; 035 done via PR #426; 036 in-flight via PR #434 bake-path BAKE_PAT wiring, owner-gated on the merge click + ASK-0008 BAKE_PAT secret).",
-          "routine": "failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` \"Websites failsafe wake\" `45 */2 * * *` ARMED \u00b7 next 2026-07-19T08:45Z \u00b7 last-fired 2026-07-19T06:45Z (that fire spawned the degraded session that pushed the now-superseded claude/heartbeat-truing-20260719); bound to the predecessor session_012kFFGxzt9ntSDi7jkE36z3; rebind rides the hub venue (this coordinator's trigger/send_later arming is classifier-denied). send_later chain: none pending.",
-          "landing": "pushed-unmerged claude/status-truing-20260719 \u2014 this heartbeat-truing PR (control/** fast lane, self-lands on green). Prior coordinator PRs terminal: #414/#425/#426/#435 merged, #413/#422 closed. #434 (BAKE_PAT workflow wiring \u00b7 hub venue) OPEN but conflicting with current main (mergeable_state dirty) and held by the do-not-automerge label \u2014 needs a rebase onto a5fdad4 + the owner merge click.",
-          "deployed": "main a5fdad4 (#425) \u00b7 four Railway services (control-plane / botsite / dashboard / review, superbot-websites project); Railway redeploys on merge, live re-verification is the follow-up (merge=deploy). botsite /submit stays in-memory until DATABASE_URL lands (ASK-0004). claims: control/claims/status-truing-20260719.md is this branch's in-flight claim, deleted in the flip commit so it merges away clean (no drift-gate orphan). control/claims/ otherwise holds only README.md.",
-          "needs-owner": "the \u2691 rows in docs/owner/OWNER-ACTIONS.md (mirror below). 1. Prove the BAKE_PAT bake path once PR #434 lands (owner merge click + ASK-0008 BAKE_PAT Actions secret) \u2014 confirm the scheduled review-bake commits again \u2014 then verify the live botsite write\u2192read on /submit after DATABASE_URL lands (ASK-0004) and the owner Discord login once the OAuth env is set (ASK-0002). 2. /testing SQLite\u2192Postgres port (deferred from PR #425): bring the botsite submissions-store test coverage to Postgres parity. - ASK-0002 \u2014 add a redirect URI to the existing SuperBot Discord app + copy client id/secret/owner-id/s \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "orders": "acked=001-038 done=001-038 (021 closed w/ evidence #444; 037/038 done #442/#443; 036 done)",
+          "routine": "failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` \"Websites failsafe wake\" `45 */2 * * *` ARMED \u00b7 bound to the predecessor session_012kFFGxzt9ntSDi7jkE36z3; rebind rides the hub venue (this coordinator's trigger/send_later arming is classifier-denied). send_later chain: none pending.",
+          "landing": "all-merged \u2014 this cycle's three slice PRs are terminal: #453 (committed signal-registry data file, slice 4), #454 (auto-discovering vendored-copy AST core guard, slice 5), #455 (/directory follow_redirects, slice 6) all merged to main. No open claude/* PRs from this cycle. #452 (kit-upgrade) is the owner's PR, still open \u2014 left as-is, it rides the hub venue.",
+          "deployed": "main 7c3484b (all six slices landed) \u00b7 four Railway services (control-plane / botsite / dashboard / review, superbot-websites project); Railway redeploys on merge (merge=deploy), live re-verification is the follow-up. botsite /submit is DURABLE \u2014 DATABASE_URL live, Postgres-backed intake confirmed writing (ASK-0004 satisfied). The owner moderation queue GET /submit/queue.json + /testing owner reads still 503 until the botsite Discord-login vars land (ASK-0006). claims: control/claims/ holds only README.md \u2014 all three slice claims deleted in their flip commits (no drift-gate orphans).",
+          "needs-owner": "the \u2691 rows in docs/owner/OWNER-ACTIONS.md (mirror below). 1. Refresh docs/current-state.md header (lags main by ~26+ PRs \u2014 says #421, HEAD is #455) and fold in this cycle's three new guards/registry (signal-registry data file #453, vendored-copy AST core guard #454, /directory redirect-follow probe #455); update main sha, open-PR line, and the four-suite passed count (2132). Per docs/plans/next-cycle-2026-07-19.md Hygiene. 2. Orientation-headroom trim toward the boot-set word cliff (boot set 6909/7000 words, 91 headroom; current-state alone 6176) and clear the residual kit advisories: fix the \u2026 [truncated for the mirror \u2014 full text at the source]",
           "kit": "v1.17.0"
         },
         "source_url": "https://github.com/menno420/websites/blob/main/control/status.md"
@@ -305,8 +309,8 @@
       "repo_url": "https://github.com/menno420/trading-strategy",
       "head": {
         "ok": true,
-        "sha": "d907d01a95ceb87e4529cf645e6d28ac05b59d72",
-        "committed_at": "2026-07-18T21:18:03Z",
+        "sha": "a79171d7c7181a22aa0110e20663f00aa514651b",
+        "committed_at": "2026-07-19T18:54:22Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -326,14 +330,14 @@
       "repo_url": "https://github.com/menno420/venture-lab",
       "head": {
         "ok": true,
-        "sha": "20aa598ab267acb4cd980247643c582b2457c455",
-        "committed_at": "2026-07-19T07:39:27Z",
+        "sha": "8abb145ccd87a5d6243b4863fab0470ff4a701c2",
+        "committed_at": "2026-07-20T07:59:00Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-19T07:32:38Z > The `control/*` manager\u2194lane message-bus remains **retired**. This file is a > neutral status pointer, not a source of truth or an order. The successor reads > [`../docs/current-state.md`](../docs/current-state.md), > [`../docs/NEXT-TASKS.md`](../docs/NEXT-TASKS.md), > [`../docs/launch/CATALOG.md`](../docs/launch/CATALOG.md), and > [`../docs/ideas/2026-07-18-next-wave-roadmap.md`](../docs/ideas/2026-07-18-next-wave-roadmap.md). **Where the tree is (neutral facts):** - `main` HEAD is `5d439bf` (PR #257). **Zero open PRs** \u2014 the queue is clear. - `python3 bootstrap.py chec \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-20T07:36:15Z > The `control/*` manager\u2194lane message-bus remains **retired**. This file is a > neutral status pointer, not a source of truth or an order. The successor reads > [`../docs/current-state.md`](../docs/current-state.md), > [`../docs/publishing/OWNER-START-HERE.md`](../docs/publishing/OWNER-START-HERE.md), > [`../docs/publishing/TRANSITION-DOSSIER.md`](../docs/publishing/TRANSITION-DOSSIER.md), > and [`../docs/launch/CATALOG.md`](../docs/launch/CATALOG.md). **Where the tree is (neutral facts):** - `main` HEAD is `d2d49ec` \u2014 the 2026-07-20 end-of-day owner-list + heartbeat + cu \u2026 [truncated for the mirror \u2014 full text at the source]",
           "kit": "v1.17.0"
         },
         "source_url": "https://github.com/menno420/venture-lab/blob/main/control/status.md"
@@ -346,8 +350,8 @@
       "repo_url": "https://github.com/menno420/superbot-games",
       "head": {
         "ok": true,
-        "sha": "99cbc59507ed1502cb084c9bf603d9d933116869",
-        "committed_at": "2026-07-19T07:45:42Z",
+        "sha": "932669406dcc15ddad6684ad7f770127867afbae",
+        "committed_at": "2026-07-20T04:54:25Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -373,8 +377,8 @@
       "repo_url": "https://github.com/menno420/superbot-idle",
       "head": {
         "ok": true,
-        "sha": "d2b6d384a80887f12891c860b82ab3cd9a290c50",
-        "committed_at": "2026-07-19T07:26:39Z",
+        "sha": "31a4a3a8fdf0613dbe8bec60466f2ac9f2c823aa",
+        "committed_at": "2026-07-20T07:37:52Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -400,22 +404,20 @@
       "repo_url": "https://github.com/menno420/superbot-mineverse",
       "head": {
         "ok": true,
-        "sha": "a8373a2ab26ce8495d73a58ba92a024c5b979f08",
-        "committed_at": "2026-07-19T07:26:38Z",
+        "sha": "1b71f29e545eb91e807cebf34baeb738617e2070",
+        "committed_at": "2026-07-20T07:51:07Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-16T00:55:09Z",
-          "phase": "EAP-extension ack slice \u2014 ORDER 009 acked in control/outbox.md + this heartbeat re-stamped wholesale; control-only traffic, no product code touched.",
+          "updated": "2026-07-20T04:56:06Z",
+          "phase": "post-merge heartbeat refresh \u2014 the full fishing\u2192mining inventory bridge is now merged in games (slices 1\u20133: #180/#181/#182, Option B, all config-gated DEFAULT OFF). Heartbeat re-pointed to current main HEADs. Control-only; no product code, tests, or workflows touched.",
           "health": "green",
-          "kit": "v1.17.0 \u00b7 check: green \u00b7 engaged: yes",
-          "last-shipped": "#116 \u2014 EAP ORDER 009 ack claim (squash 141373d); the outbox ack + this heartbeat ride branch `claude/eap-ack-2`.",
-          "blockers": "none",
-          "orders": "acked=001,002,003,004,005,006,007,008,009 done=001,002,003,004,005,006,007,008",
-          "needs-owner": "unchanged \u2014 the pending clicks stay consolidated in docs/eap-closeout-walkthrough-2026-07-14.md \u00a7C (incl. OA-003), each with a bolded recommendation + VERIFY step.",
-          "notes": "RETIRED heartbeat \u2014 EAP autonomy wind-down 2026-07-17. This control/ message bus is deprecated (see the DEPRECATED banner at the end of this file); it is kept as history, not a live surface. Live status: docs/current-state.md; forward plan: docs/NEXT-TASKS.md. - mineverse `141373d` green (610 passed + 1 skipped, verified 2026-07-15 @b9ade33) - games `5db902a` green (810 passed @446a84e) - idle `25d34f1` green (1381 passed + 1 skipped @8a7275d) - **No live routines for this seat.** The failsafe cron (trig_01RwQK2cBpgvY2xc2LZPSNtQ \u00b7 `15 1-23/2 * * *`, coordinator-bound) and the pacemaker wake ch \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "kit": "v1.17.0 \u00b7 check: green (strict; pre-existing model-line advisory only) \u00b7 engaged: yes",
+          "last-shipped": "games #182 \u2014 inventory bridge slice 3: read-only V043 `value` preview verb + CLI surface (Option B); suite 940 (HEAD 9326694).",
+          "blockers": "none. (Owner-pending, NOT a blocker to agent work: the six host env vars \u2014 Discord OAuth + write/ingest secrets \u2014 remain owner-set-only; app runs read-only + anonymous over the committed sample with all unset. See docs/current-state.md \u00a7 \"Externally pending\" and docs/NEXT-TASKS.md \u00a7 \"Owner-gated go-live items\".)",
+          "notes": "neutral facts + pointers only \u2014 no orders injected (the inbox stays its writer's). Live truth: docs/current-state.md; forward plan: docs/NEXT-TASKS.md. - mineverse `d1908f4` green \u2014 647 passed + 1 skipped. Readiness + heartbeat maintained; current-state truth-stamp at HEAD (PRs #135 readiness, #136 heartbeat). - idle `967de68` green \u2014 1607 passed + 1 skipped. Readiness landed: current-state refreshed to HEAD + 23 terminal stale claims pruned (PR #174). - games `9326694` green \u2014 940 passed. Full fishing\u2192mining inventory bridge merged (Option B), all config-gated DEFAULT OFF behind `GAMES_INVENT \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/superbot-mineverse/blob/main/control/status.md"
       }
@@ -490,8 +492,8 @@
       "repo_url": "https://github.com/menno420/gba-homebrew",
       "head": {
         "ok": true,
-        "sha": "5d8b9a0bcdeab1633cbc75dbfa5a11cc24b74bb2",
-        "committed_at": "2026-07-19T07:38:44Z",
+        "sha": "3cabb72eac5bb96c6454be379118963cbcb85650",
+        "committed_at": "2026-07-20T07:32:03Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -510,8 +512,8 @@
       "repo_url": "https://github.com/menno420/product-forge",
       "head": {
         "ok": true,
-        "sha": "20be7493a7c4d96b3b61e1f2f023ed77ad015e27",
-        "committed_at": "2026-07-19T09:41:57+02:00",
+        "sha": "e3fc8440714d4b42ef6f8e86a5e30285a3016a53",
+        "committed_at": "2026-07-19T11:05:56+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -533,20 +535,20 @@
       "repo_url": "https://github.com/menno420/idea-engine",
       "head": {
         "ok": true,
-        "sha": "e35cf8ccf974ad143ad79f14ad0fc2cdc6959ded",
-        "committed_at": "2026-07-19T07:43:14Z",
+        "sha": "74267e8e6f5ee88484f9715122889a0c90ebffc3",
+        "committed_at": "2026-07-20T08:13:11Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-19T07:39:29Z \u00b7 seat: heartbeat restamp \u2014 reconciled to round-37-COMPLETE state. Latest landed: round-37 UNRELATED-slot VERDICT 173 APPROVE (Cauchy no-averaging / failure of the LLN under infinite variance, P160 \u2192 V173, +13; sim-lab PR #247). proposal high-water P160, verdict high-water V173 (union-max, no regress). This slice appends VERDICT 173 to control/outbox.md + advances the verdict high-water ONLY \u2014 no ideas/, verifier, or sim artifacts touched. model: Claude Opus \u00b7 high \u00b7 maintenance/heartbeat",
-          "phase": "ACTIVE \u2014 EAP extended through 2026-07-21 (ORDER 015); ORDER 016 + ORDER 018 overnight autonomous-run posture ACTIVE. Coordinator seat closed by owner session-ender 2026-07-17 ~16:10Z. Round-33..36 COMPLETE; round-37 COMPLETE \u2014 FLEET P157 \u2192 V170, VENTURE P158 \u2192 V171, GAME P159 \u2192 V172, UNRELATED P160 \u2192 V173 all LANDED; round-38 FLEET-slot P161 is the next pull. routines: coordinator-relayed + VERIFIED armed (routines are bound to the COORDINATOR session, not this seat) \u2014 failsafe cron trig_01MzoLVHMDuL28UPkKnbmHCm \"Ideas Lab failsafe wake\" (cron 30 1-23/2 * * *, coordinator-bound); pacemaker sen \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-20T07:55:20Z \u00b7 seat: round-48 VENTURE-slot P202 \u2192 V215 mirror LANDED \u2014 Condorcet's jury theorem dark side (venture-lab lane) ruled APPROVE. VERDICT 215 mirrored into control/outbox.md (block V215, status: ruled), sim-lab side landed via merge-on-green (PR #290 MERGED, squash SHA 8261cb9); verdict high-water ADVANCES to V215 (union-max, no regress), outbox verdict ledger contiguous V200 \u2192 V215. Prior round-48 FLEET-slot P201 \u2192 V214 (Graham's multiprocessing timing anomaly) landed APPROVE; round-48 VENTURE-slot PROPOSAL 202 remains sim-ready in outbox with its VERDICT 215 now RULED. Clai \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "phase": "ACTIVE \u2014 EAP extended through 2026-07-21 (ORDER 015); ORDER 016 + ORDER 018 overnight autonomous-run posture ACTIVE. Coordinator seat closed by owner session-ender 2026-07-17 ~16:10Z. Round-47 slots FLEET P197\u2192V210, VENTURE P198\u2192V211, GAME P199\u2192V212, UNRELATED P200\u2192V213 all LANDED; round-48 FLEET-slot PROPOSAL 201 (Graham's timing anomaly) \u2192 VERDICT 214 (+13) LANDED APPROVE; round-48 VENTURE-slot PROPOSAL 202 (Condorcet jury theorem for committees) \u2192 VERDICT 215 (+13) LANDED APPROVE (sim-lab PR #290 MERGED @ 8261cb9); next pull round-48 GAME-slot (rotation fleet\u2192venture\u2192game\u2192unrelated). routin \u2026 [truncated for the mirror \u2014 full text at the source]",
           "orders": "acked=001-018 done=001-014 \u00b7 015 acked/consumed \u00b7 016 (owner overnight autonomous-run) ACTIVE \u00b7 017 (phone-as-Bluetooth-controller plan) captured, awaits owner review (PR #481) \u00b7 018 (owner overnight continue-working) landed/acked, overnight loop posture ACTIVE.",
           "needs-owner": "ORDER-010(c) sim-lab kit upgrade v1.15.0\u2192v1.18.0 PARKED on owner in-session authorization + ASK-005/006 (await the fleet manager) \u00b7 BT-controller plan (ORDER 017, PR #481) awaits owner review (ideas/product-forge/bt-controller-plan-2026-07-17.md).",
           "kit": "v1.17.0",
           "blockers": "none.",
-          "notes": "Baton \u2014 round-37 COMPLETE: UNRELATED-slot VERDICT 173 (Cauchy no-averaging) landed; next pull is round-38 FLEET-slot PROPOSAL 161. DIGEST-POSTURE carry-forward: WHOLE-DICT / NO-SELF-FIELD / STDOUT-ONLY (the P105\u2026P159 family), P127+ TWIST \u2014 compact-canonical dict's own sha256 IS the digest, the stdout dump is pretty indent=2, floats 6 dp, no on-disk JSON. Routine ids recorded (coordinator-bound): failsafe trig_01MzoLVHMDuL28UPkKnbmHCm, pacemaker trig_01R26BEgXj5KVZkHA4Ri6AMi; old seat duplicate failsafe trig_01DQu7LbHvP8ZqC31douQTAe DELETED on owner order 2026-07-17. Stale work claims may remai \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "notes": "Baton \u2014 round-47 COMPLETE: FLEET P197\u2192V210 (#285), VENTURE P198\u2192V211 (#286), GAME P199\u2192V212 (#287), UNRELATED P200\u2192V213 all LANDED via merge-on-green. Ledger contiguous V200 \u2192 V215. round-48 FLEET-slot PROPOSAL 201 (Graham's timing anomaly) landed to outbox (#747) and ruled VERDICT 214 APPROVE (clean); round-48 VENTURE-slot PROPOSAL 202 (Condorcet jury theorem for committees) landed to outbox (sim-ready) and ruled VERDICT 215 APPROVE (sim-lab PR #290 MERGED @ 8261cb9); next pull round-48 GAME-slot, next verdict target V216. GATE-POLARITY carry-forward: gate direction is per-proposal \u2014 some gat \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/idea-engine/blob/main/control/status.md"
       }
@@ -558,21 +560,21 @@
       "repo_url": "https://github.com/menno420/sim-lab",
       "head": {
         "ok": true,
-        "sha": "fe308b6e734deb3f5661395157fb71f9897e2999",
-        "committed_at": "2026-07-19T07:42:42Z",
+        "sha": "8261cb96754134b7eaf2c08c19810612da19c929",
+        "committed_at": "2026-07-20T07:48:20Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-19T07:41:02Z (real wall-clock via date -u) \u00b7 written by a dispatched session for the coordinator seat (V173 landing slice \u2014 Cauchy no-averaging / failure of the Law of Large Numbers reproduction, PROPOSAL 160 \u2192 V173 (+13): reproduced APPROVE, disclosed compact-canonical results-dict digest 413e56925e89e34148cb9286df0f392c1a9881fc9072c7683b9f181f39ae7b5c matched EXACTLY, verifier byte-identical (blob 460d9ffea7b80339ceebb4fb4cac1bd3d983d77a, file sha256 44584333508d599d0d5d845e063480f684374c51a61be87ed913ccd1672944a8, source ideas/fleet/cauchy_no_averaging.py at idea-engine), all three \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "phase": "ACTIVE \u2014 EAP extended through 2026-07-21 (ORDER 009); verdict pipeline live. VERDICT 167 (growth-endurance dominance, P154, +13 \u2014 round-36 VENTURE slot) verified APPROVE this slice \u2014 card flipped to `complete`, releasing the born-red HOLD for merge-on-green (branch claude/verdict-167-growth-endurance, PR #241). Disclosed results-dict digest 5dccb475\u20264495bf reproduced EXACTLY (all 64 hex) across a fresh cross-invocation double-run + the script's in-process double-run assert; all three gates G1 dominance-sign \u2192 G2 relative-effect \u2192 G3 shifted-distribution robustness PASS in order, verifier exit \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "health": "green on main \u2014 `python3 bootstrap.py check --strict` exit 0 at HEAD; on the V167 branch the ONLY red before the flip was the designed born-red card hold (flipped this slice, the standing discipline) \u2014 after the flip merge-on-green lands PR #241. A red gate AFTER the flip is a real defect, not the HOLD.",
+          "updated": "2026-07-20T07:46:47Z \u00b7 seat: VERDICT 215 landing slice \u2014 Condorcet's jury theorem, the dark side: for competence p < 1/2 the majority-vote accuracy is DECREASING in the jury size, so the optimal below-average jury is a SINGLE voter (the exact symmetry-mirror of the classic p > 1/2 limit) (PROPOSAL 202 \u2192 V215, +13, lane venture-lab): copied verifier condorcet-jury-committee-2026-07-20.py byte-identical from idea-engine `ideas/venture-lab/` (`diff` source\u2194copy exit 0, sha256 97512e57dce05cf89e01e4da125509e879f8c2776ed214487b626600110383e5, source at PR #750 / squash 43df276) into sims/verdict-21 \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "phase": "ACTIVE \u2014 EAP extended through 2026-07-21 (ORDER 009); verdict pipeline live. Prior slice: VERDICT 214 (Graham's multiprocessing timing anomaly, PROPOSAL 201 \u2192 V214, +13) landed APPROVE (PR #289, born-red HOLD cleared). This slice rules VERDICT 215 (P202 Condorcet dark side) APPROVE and lands it via merge-on-green after the card flip. NON-CONTIGUITY: V137 (P124), V132 (P119), and the round-26 FLEET-slot V126 (P113) remain open/backfilled BELOW the high-water \u2014 landing V215 does NOT imply every lower verdict closed on both sides.",
+          "health": "green on main \u2014 the ONLY red before the flip is the designed born-red card HOLD (the standing discipline); after the card flips to `complete` merge-on-green lands PR #290. A red gate AFTER the flip is a real defect, not the HOLD.",
           "kit": "v1.15.0",
-          "last-shipped": "#238 (VERDICT 165, P152 Braess's paradox \u2014 clean APPROVE, first-failing-gate None) is the last MERGED verdict (prior merges #237 VERDICT 163 / #236 VERDICT 162 / #234 VERDICT 161 / #233 VERDICT 160 / #232 VERDICT 158 / #231 VERDICT 157) \u00b7 in flight this stamp: VERDICT 171 (P158 marketplace take-rate / rake hump \u2014 APPROVE, first-failing-gate null; all three gates G1 domination-sign gap_mean +0.080126 z=+592.387661 frac_dominant 1.0 \u2192 G2 relative-effect rel_mean +0.640656 z=+581.508639 (null 0.10) \u2192 G3 shifted-robustness gap_mean +0.087422 z=+1142.566654 frac_dominant 1.0 (t*\u21920.175) PASS in orde \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "last-shipped": "newest reproduced this stamp: VERDICT 215 (P202 Condorcet's jury theorem dark side \u2014 for p<\u00bd majority-vote accuracy is decreasing in the jury size, optimal jury = a single voter, APPROVE, first-failing-gate null, branch claude/verdict-215, PR #290; prior newest VERDICT 214 P201 Graham anomaly \u2014 APPROVE, PR #289). VERDICT 215 lands via merge-on-green once the card flips to `complete`; idea-engine mirror separate.",
           "blockers": "none.",
-          "orders": "acked=ORDER-001\u2026ORDER-011 done=ORDER-001\u2026ORDER-008 (terminal at close-out, see #142 \u2192 2725e4a) \u00b7 ORDER-009 (EAP extension) is the standing frame \u00b7 ORDER-010 (fleet-manager night-audit maintenance, #166 \u2192 0d87f6b, inbox-only): items (a) status re-stamp and (d) reactive verdict intake satisfied by this wake \u2014 the status is re-stamped here and item (d) reactive verdict intake is this slice's own work (P152 \u2192 V165). **ORDER-010(c) kit upgrade v1.15.0 \u2192 v1.18.0 STILL PARKED** \u2014 NOT executed by a verdict slice, carried forward for a future sim-lab session; PARKED on owner authorization + the ASK-005 \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "notes": "verdict ledger high-water advances to **V173** (P160 \u2192 V173, +13; map in docs/current-state.md \u00a7 Verdict-numbering map) \u2014 this slice lands VERDICT 173 (P160 Cauchy no-averaging / failure of the Law of Large Numbers) reproduced APPROVE at branch claude/verdict-173-cauchy-no-averaging (results-dict compact-canonical digest 413e56925e89e34148cb9286df0f392c1a9881fc9072c7683b9f181f39ae7b5c EXACT, verifier byte-identical file sha256 44584333508d599d0d5d845e063480f684374c51a61be87ed913ccd1672944a8 / git blob 460d9ffea7b80339ceebb4fb4cac1bd3d983d77a, source ideas/fleet/cauchy_no_averaging.py at idea-e \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "orders": "acked=ORDER-001\u2026ORDER-011 done=ORDER-001\u2026ORDER-008 (terminal at close-out) \u00b7 ORDER-009 (EAP extension) is the standing frame \u00b7 ORDER-010(c) kit upgrade v1.15.0 \u2192 v1.18.0 STILL PARKED \u2014 NOT executed by a verdict slice, carried forward. ORDER-011 (owner overnight autonomous-run directive) noted \u2014 this slice is exactly the backlog-continuation posture it directs (reactive verdict work, one small PR, settled state). routines: none owned/re-armed on the sim-lab side by this seat \u00b7 the coordinator failsafe cron (id `trig_01KPMLtWuAc2FaYNzuSSukgH`) is the recorded routine fact \u2014 fleet-side, coordinat \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "notes": "VERDICT 215 (PROPOSAL 202, Condorcet's jury theorem dark side, lane venture-lab) reproduced byte-exact \u2014 results-dict sha256 e37537a46ae122d030e858f1f21015b2f528ab84d567a5b13227cf1905eaf1df EXACT (all 64 hex), verifier byte-identical (`diff` source\u2194copy exit 0), source ideas/venture-lab/condorcet-jury-committee-2026-07-20.py, all three gates PASS in order: G1 STATISTICAL AGREEMENT (small |z| \u2014 the empirical majority-correct rate must SIT ON the closed form M(n,p); at p=0.60 |z|=0.0521848522, at p=0.40 |z|=0.2554090111, both within 3\u03c3; a SMALL z is the PASS) \u2192 G2 EXACTLY-TRUE (exhaustive 2^n en \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/sim-lab/blob/main/control/status.md"
       }
@@ -662,14 +664,14 @@
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "f955e3e1b6447795aeaead6fa3baf1a8e715db17",
-        "committed_at": "2026-07-19T07:39:58Z",
+        "sha": "926504ac5557fb0182ae334012820b568dc15478",
+        "committed_at": "2026-07-20T07:43:22Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-19T07:40Z kit_version: 1.17.0 seat: fleet-manager (coordinator) wake: coordinator wake (fm wake 2026-07-18). Routine cutover per v3.8 doctrine (fresh failsafe armed + verified, predecessor crash-orphan failsafe deleted + verified absent), triggers-snapshot refreshed from the 20:42:05Z full export (I6 PASS), carve-out PRs [a private lane] #98 + product-forge #29 re-verified live GREEN, heartbeat recorded (PR #332). Fleet PR sweep recorded 2026-07-18T21:15Z \u2014 13 open PRs / 7 repos, detail in `docs/fleet-triage.md` \u00a7 \"2026-07-18 \u00b7 fleet PR sweep (21:05\u201321:15Z)\" (PR #334). Night-watch state \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "updated": "2026-07-20T04:09Z kit_version: 1.17.0 seat: fleet-manager (coordinator) wake: coordinator wake (fm wake 2026-07-18). Routine cutover per v3.8 doctrine (fresh failsafe armed + verified, predecessor crash-orphan failsafe deleted + verified absent), triggers-snapshot refreshed from the 20:42:05Z full export (I6 PASS), carve-out PRs [a private lane] #98 + product-forge #29 re-verified live GREEN, heartbeat recorded (PR #332). Fleet PR sweep recorded 2026-07-18T21:15Z \u2014 13 open PRs / 7 repos, detail in `docs/fleet-triage.md` \u00a7 \"2026-07-18 \u00b7 fleet PR sweep (21:05\u201321:15Z)\" (PR #334). Night-watch state \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/fleet-manager/blob/main/control/status.md"
       }
