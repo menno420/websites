@@ -1,0 +1,1 @@
+- `claude/records-refresh` · docs/current-state.md refresh + orientation-headroom trim + 3 PL-004 model-line fixes · 2026-07-20
