@@ -1,9 +1,9 @@
 # 2026-07-19 — app/: askverify probes for Discord-login + submit-live signals
 
-> **Status:** `in-progress` — branch `claude/askverify-discord-submit-probes`.
-> Born red: this card's in-progress Status holds the `quality` gate red until
-> the new read-only probes land green; the flip to `complete` is the LAST step
-> and releases the `[session-card-hold]`.
+> **Status:** `complete` — branch `claude/askverify-discord-submit-probes`,
+> PR #451. Born red: this card's in-progress Status held the `quality` gate red
+> until the new read-only probes landed green; this flip to `complete` is the
+> LAST step and releases the `[session-card-hold]`.
 
 - **📊 Model:** opus-4.8 · medium · feature build
 
@@ -74,11 +74,65 @@ note into shipped probes.
 
 ## What was done
 
-<!-- filled at the flip -->
+- `app/askverify.py` — three read-only probes, registry structure untouched:
+  - **`probe_dashboard_discord_login`** (ASK-0017 / `dashboard-discord-oauth`)
+    — GET dashboard `/admin/login` (raw): 302 → done-detected, 200 → still-open
+    (the honest "not configured" page), else honest-unknown. The entry's
+    `probe=None` + `reason` became `probe=probe_dashboard_discord_login`
+    (dead `reason` dropped); its "no read-only probe exists (mirrors ASK-0002)"
+    comment updated to name the 302 signal.
+  - **`probe_botsite_submit_live`** (ASK-0004 / `botsite-database-url`) — GET
+    botsite `/submit` (raw): the "Reviewed before publishing" badge →
+    done-detected (intake live), the "Stub — not wired" badge → still-open,
+    neither (fetch error / unexpected body) → honest-unknown. `probe=None` +
+    `reason` → `probe=probe_botsite_submit_live` (dead `reason` dropped).
+  - **`probe_botsite_site_password`** (ASK-0006 / `botsite-gate`) — the Discord
+    PRIMARY signal PREPENDED: GET `/owner/login` (raw) 302 → done, then the
+    UNCHANGED SITE_PASSWORD `/testing/owner` fallback (401 → done / 503 →
+    still-open / else unknown). ASK-0006 is ONE ledger row covering both the
+    Discord login and the optional SITE_PASSWORD fallback, so its single
+    registry slot must observe both; this also fixes a latent false-still-open
+    when Discord is configured but SITE_PASSWORD is not.
+  - New `_dashboard_base()` resolver mirroring `_botsite_base()`
+    (`config.SERVICE_DEPLOY_TARGETS["dashboard"]`, `/version` stripped) — no
+    hardcoded URL. The signal is the status code (302 vs 200), not a Location
+    header: httpx keeps `follow_redirects=False` and `github._get` returns the
+    302 status, exactly the style the botsite-gate 503/401 probe already uses.
+- `tests/test_askverify.py` — 8 new unit tests against stubbed responses:
+  the botsite Discord-302 done path + the non-302 fall-through preserving the
+  SITE_PASSWORD 401/503 ladder; the dashboard 302/200/other ladder; the
+  `/submit` live-badge / stub-badge / unexpected-body-and-fetch-error ladder.
+  New `BOTSITE_LOGIN_URL` / `BOTSITE_SUBMIT_URL` / `DASHBOARD_LOGIN_URL`
+  constants. No existing test weakened — the registry invariant tests
+  (14 open asks, unique ids, distinct entries, unique signatures, the
+  intended-probes set) are unchanged because no registry entry, signature, or
+  ask-id binding moved.
+- `control/claims/askverify-discord-submit-probes-2026-07-19.md` — removed in
+  this flip commit so it merges away clean (no drift-gate orphan).
+- Verified (CI-equivalent, `DATABASE_URL` unset):
+  `env -u DATABASE_URL python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q`
+  → **2092 passed** (exit 0; 2084 baseline + 8 new tests);
+  `env -u DATABASE_URL python3 -m pytest tests/test_askverify.py -q` → **60
+  passed**; `python3 bootstrap.py check --strict` → the only gating red was
+  this card's born-red `[session-card-hold]`, released at this flip (the other
+  output is pre-existing model-line advisories on unrelated cards, never
+  exit-affecting).
 
 ## 💡 Session idea
 
-<!-- filled at the flip -->
+**Fold the two Discord-login probes into one parameterised `_login_probe(base,
+path, probe_id)` helper.** `probe_dashboard_discord_login` (dashboard
+`/admin/login`) and the Discord-primary half of `probe_botsite_site_password`
+(botsite `/owner/login`) are the identical 302-vs-200 shape — 302 → done, 200
+→ still-open, else honest-unknown — copied across two functions. A single
+parameterised helper would make them one owner of that ladder, so the THIRD
+fleet Discord login (the future armed control service, ASK-0003, when its URL
+exists) is a one-line registration rather than a third copy — the same
+"single owner for a repeated shape" discipline `botsite/_db.py` (#447) applied
+to the store connection logic. Contained, test-only-adjacent, reversible.
+Deduped against `docs/ideas/backlog.md` + the NEXT-2 baton (slices 4/5 are the
+signal-registry data file + the vendored-copy AST guard — unrelated): not
+present. To capture in `docs/ideas/backlog.md`.
 
 ## ⟲ Previous-session review
 

@@ -52,6 +52,9 @@ OWNER_PW = "test-owner-pw"
 LEDGER_PATH = Path(__file__).resolve().parents[1] / "docs/owner/OWNER-ACTIONS.md"
 
 BOTSITE_OWNER_URL = askverify._botsite_base() + "/testing/owner"
+BOTSITE_LOGIN_URL = askverify._botsite_base() + "/owner/login"
+BOTSITE_SUBMIT_URL = askverify._botsite_base() + "/submit"
+DASHBOARD_LOGIN_URL = askverify._dashboard_base() + "/admin/login"
 
 
 def _basic(pw: str = OWNER_PW, user: str = "owner") -> dict:
@@ -508,6 +511,135 @@ def test_botsite_probe_other_statuses_are_unknown(monkeypatch):
         v = _run(askverify.probe_botsite_site_password())
         assert v["verdict"] == askverify.UNKNOWN, status
         assert v["detail"]  # always says why
+
+
+def test_botsite_probe_owner_login_302_is_done_via_discord(monkeypatch):
+    """ASK-0006's Discord PRIMARY: /owner/login 302s to Discord's OAuth
+    authorize endpoint once the DISCORD_*/OWNER_* vars are set — the queue is
+    unlocked, done-detected, regardless of the SITE_PASSWORD fallback."""
+    def responder(url):
+        if url == BOTSITE_LOGIN_URL:
+            return _envelope(url, status=302)
+        # SITE_PASSWORD fallback would say still-open — the Discord 302 wins.
+        return _envelope(url, status=503)
+
+    _install_get(monkeypatch, responder)
+    v = _run(askverify.probe_botsite_site_password())
+    assert v["verdict"] == askverify.DONE
+    assert "ledger update pending" in v["label"]
+    assert v["url"] == BOTSITE_LOGIN_URL
+    assert "Discord" in v["detail"]
+
+
+def test_botsite_probe_login_non_302_falls_through_to_site_password(monkeypatch):
+    """When /owner/login is NOT a 302 (200 not-configured), the probe falls
+    through to the byte-preserved SITE_PASSWORD /testing/owner ladder: 401 is
+    still done, 503 still still-open — the existing behaviour is unchanged."""
+    def responder(status_owner):
+        def r(url):
+            if url == BOTSITE_LOGIN_URL:
+                return _envelope(url, status=200)  # Discord not configured
+            return _envelope(url, status=status_owner)
+        return r
+
+    _install_get(monkeypatch, responder(401))
+    assert _run(askverify.probe_botsite_site_password())["verdict"] == askverify.DONE
+    _install_get(monkeypatch, responder(503))
+    v = _run(askverify.probe_botsite_site_password())
+    assert v["verdict"] == askverify.STILL_OPEN
+    assert v["url"] == BOTSITE_OWNER_URL
+
+
+# --------------------------------------------------------------------------- #
+# Probe ladders — dashboard Discord login (/admin/login 302 vs 200)
+# --------------------------------------------------------------------------- #
+def test_dashboard_discord_login_302_is_done(monkeypatch):
+    _install_get(
+        monkeypatch,
+        lambda url: _envelope(url, status=302) if url == DASHBOARD_LOGIN_URL
+        else _envelope(url),
+    )
+    v = _run(askverify.probe_dashboard_discord_login())
+    assert v["verdict"] == askverify.DONE
+    assert "ledger update pending" in v["label"]
+    assert v["css"] == "ok"
+    assert v["url"] == DASHBOARD_LOGIN_URL
+    assert v["probe"] == "dashboard-discord-oauth"
+
+
+def test_dashboard_discord_login_200_is_still_open(monkeypatch):
+    _install_get(monkeypatch, lambda url: _envelope(url, status=200))
+    v = _run(askverify.probe_dashboard_discord_login())
+    assert v["verdict"] == askverify.STILL_OPEN
+    assert "not configured" in v["detail"]
+
+
+def test_dashboard_discord_login_other_statuses_are_unknown(monkeypatch):
+    for status in (0, 404, 500):
+        _install_get(
+            monkeypatch, lambda url, s=status: _envelope(url, status=s)
+        )
+        v = _run(askverify.probe_dashboard_discord_login())
+        assert v["verdict"] == askverify.UNKNOWN, status
+        assert v["detail"]
+
+
+# --------------------------------------------------------------------------- #
+# Probe ladders — botsite /submit live signal (body badge)
+# --------------------------------------------------------------------------- #
+_SUBMIT_LIVE_BODY = (
+    '<span class="sb-badge sb-badge-ok" title="Submissions are stored">'
+    "Reviewed before publishing</span>"
+)
+_SUBMIT_STUB_BODY = (
+    '<span class="sb-badge sb-badge-warn" title="labeled stub">'
+    "Stub — not wired</span>"
+)
+
+
+def test_submit_live_badge_is_done(monkeypatch):
+    _install_get(
+        monkeypatch,
+        lambda url: _envelope(
+            url, ok=True, status=200, error="", data=_SUBMIT_LIVE_BODY
+        ),
+    )
+    v = _run(askverify.probe_botsite_submit_live())
+    assert v["verdict"] == askverify.DONE
+    assert "ledger update pending" in v["label"]
+    assert v["url"] == BOTSITE_SUBMIT_URL
+    assert v["probe"] == "botsite-database-url"
+
+
+def test_submit_stub_badge_is_still_open(monkeypatch):
+    _install_get(
+        monkeypatch,
+        lambda url: _envelope(
+            url, ok=True, status=200, error="", data=_SUBMIT_STUB_BODY
+        ),
+    )
+    v = _run(askverify.probe_botsite_submit_live())
+    assert v["verdict"] == askverify.STILL_OPEN
+    assert "not live" in v["detail"]
+
+
+def test_submit_probe_unexpected_body_and_fetch_error_are_unknown(monkeypatch):
+    # 200 but neither badge present → honest unknown (never inferred done).
+    _install_get(
+        monkeypatch,
+        lambda url: _envelope(
+            url, ok=True, status=200, error="", data="<html>nothing</html>"
+        ),
+    )
+    assert (
+        _run(askverify.probe_botsite_submit_live())["verdict"]
+        == askverify.UNKNOWN
+    )
+    # offline / fetch failure → unknown, never a fabricated verdict.
+    _install_get(monkeypatch, lambda url: _envelope(url, status=0))
+    v = _run(askverify.probe_botsite_submit_live())
+    assert v["verdict"] == askverify.UNKNOWN
+    assert v["detail"]
 
 
 # --------------------------------------------------------------------------- #

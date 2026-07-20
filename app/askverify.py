@@ -100,20 +100,55 @@ def _botsite_base() -> str:
     return url.removesuffix("/version")
 
 
-async def probe_botsite_site_password(refresh: bool = False) -> dict[str, Any]:
-    """Is SITE_PASSWORD set on the botsite service?
+def _dashboard_base() -> str:
+    """The dashboard service base URL — same resolution as
+    :func:`_botsite_base`, off the ``config.SERVICE_DEPLOY_TARGETS`` entry the
+    deploy-drift cell already probes (its ``/version`` endpoint, suffix
+    stripped). No hardcoded host."""
+    url = config.SERVICE_DEPLOY_TARGETS.get("dashboard") or ""
+    return url.removesuffix("/version")
 
-    ``GET <botsite>/testing/owner`` unauthenticated, over the raw (tokenless)
-    client — the gate's documented fail-closed split is the signal
-    (``botsite/testing.py require_owner``): 503 = unset (still open),
-    401 = the Basic-auth challenge, so the password IS set (done). Any
-    other outcome is unknown with the reason. Read-only: the route is a
-    GET behind the gate; no credential is sent, none exists here to send.
+
+async def probe_botsite_site_password(refresh: bool = False) -> dict[str, Any]:
+    """Is the botsite owner moderation queue unlockable? (ASK-0006)
+
+    ASK-0006 is ONE ledger row covering BOTH the fleet Discord login (the
+    PRIMARY unlock) AND the optional SITE_PASSWORD fallback, so its single
+    registry slot observes both signals, read-only:
+
+    * **Discord (primary):** ``GET <botsite>/owner/login`` unauthenticated
+      over the raw client. Once the four ``DISCORD_*/OWNER_*`` vars are set
+      the door 302-redirects to Discord's OAuth authorize endpoint (the SAME
+      signal that satisfied control-plane ASK-0002); unset renders an honest
+      HTTP-200 "not configured" page (``botsite/discord_auth.py owner_login``).
+      A 302 means the queue is unlocked via Discord — ``done`` regardless of
+      the fallback below. httpx does not chase the redirect
+      (``follow_redirects=False``) and ``github._get`` returns the 302 status,
+      so the status code IS the observable — no Location header needed.
+    * **SITE_PASSWORD (fallback):** ``GET <botsite>/testing/owner`` — the
+      gate's documented fail-closed split (``botsite/testing.py
+      require_owner``): 503 = unset (still open), 401 = the Basic-auth
+      challenge, so the password IS set (done). Any other outcome is unknown
+      with the reason.
+
+    Read-only throughout: both routes are GETs; no credential is sent, none
+    exists here to send.
     """
     base = _botsite_base()
     if not base:
         return _verdict(
             UNKNOWN, "no botsite base URL recorded in config", "botsite-gate"
+        )
+    login_url = f"{base}/owner/login"
+    login = await github._get(login_url, refresh=refresh, raw=True)
+    if login["status"] == 302:
+        return _verdict(
+            DONE,
+            "botsite /owner/login answers 302 (redirect to Discord's OAuth "
+            "authorize endpoint) — the fleet Discord login is configured, so "
+            "the owner queue is unlocked",
+            "botsite-gate",
+            login_url,
         )
     url = f"{base}/testing/owner"
     res = await github._get(url, refresh=refresh, raw=True)
@@ -367,6 +402,109 @@ async def probe_product_forge_pages(refresh: bool = False) -> dict[str, Any]:
     )
 
 
+async def probe_dashboard_discord_login(
+    refresh: bool = False,
+) -> dict[str, Any]:
+    """Is the fleet Discord login configured on the dashboard? (ASK-0017)
+
+    ``GET <dashboard>/admin/login`` unauthenticated over the raw client. The
+    door 302-redirects to Discord's OAuth authorize endpoint once the four
+    ``DISCORD_*/OWNER_*`` vars are set — the SAME signal that satisfied
+    control-plane ASK-0002 (``/owner/login`` → 302 → discord.com) and unlocks
+    the botsite queue above; unset renders an honest HTTP-200 "not configured"
+    page (``dashboard/discord_auth.py admin_login``). httpx does not chase the
+    redirect (``follow_redirects=False``) and ``github._get`` returns the 302
+    status, so the status code IS the observable — 302 = done, 200 =
+    still-open, anything else an honest unknown with the reason. Read-only: a
+    GET of the public login door; no credential sent.
+    """
+    base = _dashboard_base()
+    if not base:
+        return _verdict(
+            UNKNOWN,
+            "no dashboard base URL recorded in config",
+            "dashboard-discord-oauth",
+        )
+    url = f"{base}/admin/login"
+    res = await github._get(url, refresh=refresh, raw=True)
+    if res["status"] == 302:
+        return _verdict(
+            DONE,
+            "dashboard /admin/login answers 302 (redirect to Discord's OAuth "
+            "authorize endpoint) — the fleet Discord login is configured on "
+            "the dashboard service",
+            "dashboard-discord-oauth",
+            url,
+        )
+    if res["status"] == 200:
+        return _verdict(
+            STILL_OPEN,
+            "dashboard /admin/login answers 200 (the honest 'not configured' "
+            "page) — the DISCORD_*/OWNER_* vars are not set on the dashboard "
+            "service",
+            "dashboard-discord-oauth",
+            url,
+        )
+    return _verdict(
+        UNKNOWN,
+        f"dashboard /admin/login answered HTTP {res['status']} "
+        f"{res.get('error') or ''} — neither the 302-configured nor the "
+        "200-unconfigured signal",
+        "dashboard-discord-oauth",
+        url,
+    )
+
+
+async def probe_botsite_submit_live(refresh: bool = False) -> dict[str, Any]:
+    """Is the public /submit intake live (Postgres-backed)? (ASK-0004)
+
+    ``GET <botsite>/submit`` unauthenticated over the raw client. The form
+    page renders a live-vs-stub badge off ``submissions_store.is_live()``
+    (``botsite/templates/submit.html``): the "Reviewed before publishing"
+    badge when a durable write target (DATABASE_URL) is configured, and the
+    "Stub — not wired" badge when it is not. Both are positive, mutually
+    exclusive body markers, so the read is honest both ways — present-live →
+    done, present-stub → still-open, neither (a fetch failure or an
+    unexpected body) → an honest unknown, never an inferred done. Read-only:
+    a GET of the public form; no write, no credential.
+    """
+    base = _botsite_base()
+    if not base:
+        return _verdict(
+            UNKNOWN,
+            "no botsite base URL recorded in config",
+            "botsite-database-url",
+        )
+    url = f"{base}/submit"
+    res = await github._get(url, refresh=refresh, raw=True)
+    body = res["data"] if isinstance(res["data"], str) else ""
+    if res["ok"] and "Reviewed before publishing" in body:
+        return _verdict(
+            DONE,
+            "botsite /submit renders the live 'Reviewed before publishing' "
+            "badge — the submissions intake is live (DATABASE_URL is "
+            "configured, submissions_store.is_live() true)",
+            "botsite-database-url",
+            url,
+        )
+    if res["ok"] and "Stub — not wired" in body:
+        return _verdict(
+            STILL_OPEN,
+            "botsite /submit renders the 'Stub — not wired' badge — the "
+            "intake is not live (DATABASE_URL unset)",
+            "botsite-database-url",
+            url,
+        )
+    return _verdict(
+        UNKNOWN,
+        f"botsite /submit answered HTTP {res['status']} "
+        f"{res.get('error') or ''} — neither the live nor the stub badge was "
+        "observable in the body",
+        "botsite-database-url",
+        url,
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Registry — exact stable ask IDs first, keyword signatures as the fallback.
 #
@@ -409,18 +547,14 @@ REGISTRY: list[dict[str, Any]] = [
     # rows claim it first. No other open ask carries BOTH "discord" and
     # "dashboard", so putting this row first steals nothing (ASK-0006 has
     # "discord" but no "dashboard"; ASK-0009 has "dashboard" but no "discord").
-    # Registered probe-less like the sibling Discord asks (ASK-0002): Discord
-    # developer-console + Railway env state is not externally observable.
+    # Probe: GET /admin/login — 302 to Discord's OAuth authorize endpoint once
+    # the DISCORD_*/OWNER_* vars are set (the SAME signal that satisfied
+    # control-plane ASK-0002), 200 "not configured" while unset.
     {
         "id": "dashboard-discord-oauth",
         "ask_id": "ASK-0017",
         "signature": ("discord", "dashboard"),
-        "probe": None,
-        "reason": (
-            "Discord developer-console state + the four DISCORD_*/OWNER_* "
-            "Railway variables on the dashboard service are not externally "
-            "observable — no read-only probe exists (mirrors ASK-0002)"
-        ),
+        "probe": probe_dashboard_discord_login,
     },
     {
         "id": "botsite-gate",
@@ -487,16 +621,16 @@ REGISTRY: list[dict[str, Any]] = [
             "so there is nothing external to probe"
         ),
     },
+    # Probe: GET /submit — the form renders the live "Reviewed before
+    # publishing" badge once DATABASE_URL is configured
+    # (submissions_store.is_live()), the "Stub — not wired" badge while unset.
+    # The read-only body signal replaces the old "not externally observable"
+    # note now that the intake is Postgres-live (ASK-0004 satisfied 2026-07-19).
     {
         "id": "botsite-database-url",
         "ask_id": "ASK-0004",
         "signature": ("postgresql", "botsite"),
-        "probe": None,
-        "reason": (
-            "a Railway-internal variable on the botsite service — not "
-            "externally observable (the /submit stub is a build gap, not "
-            "proof either way)"
-        ),
+        "probe": probe_botsite_submit_live,
     },
     {
         "id": "paypal-credentials",
