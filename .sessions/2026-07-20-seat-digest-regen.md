@@ -1,6 +1,6 @@
 # 2026-07-20 — regenerate the stale seat-digest render
 
-> **Status:** `in-progress` — branch `claude/seat-digest-regen`, PR #<pending>.
+> **Status:** `in-progress` — branch `claude/seat-digest-regen`, PR #459.
 > `bootstrap.py check --strict` flags `[seat-digest-stale]`: the committed
 > `docs/seat-digest.md` differs from a fresh render of its sources (the skill
 > index + capability ledger), and downstream seat prompts extract those bytes.
