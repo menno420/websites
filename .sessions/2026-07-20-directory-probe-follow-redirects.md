@@ -1,9 +1,10 @@
 # 2026-07-20 — /directory .gba download probe: follow redirects
 
-> **Status:** `in-progress` — branch `claude/directory-probe-follow-redirects`;
-> flips to `complete` + PR number as the deliberate LAST code step. Born red:
-> this card's in-progress Status holds the `quality` gate red
-> (`[session-card-hold]`) until the fix + probe test land green.
+> **Status:** `complete` — branch `claude/directory-probe-follow-redirects`,
+> PR #455. Born red: this card's in-progress Status held the `quality` gate red
+> (`[session-card-hold]`) until the fix + probe test landed green; this flip to
+> `complete` is the deliberate LAST step and releases the hold →
+> merge-on-green lands it.
 
 - **📊 Model:** opus-4.8 · low · feature build
 
@@ -45,8 +46,14 @@ coordinator-assigned build — plan slice 6, the 💡 of
   `tests/test_row_idiom.py` to accept the new `follow_redirects` kwarg overview
   now passes (mechanical signature accommodation; no behavior change).
 - Verified: `env -u DATABASE_URL python3 -m pytest tests/ botsite/tests
-  dashboard/tests review/tests -q` — <N passed>; `python3 bootstrap.py check
-  --strict` — <verdict>.
+  dashboard/tests review/tests -q` — **2132 passed** (2128 baseline + 4 new:
+  three `_get` follow-redirect contract pins + one `overview()` live-render
+  integration test). `python3 bootstrap.py check --strict` — exit 1 SOLELY on
+  this card's born-red `[session-card-hold]` (released at this flip); the rest
+  of the output is pre-existing advisories on unrelated files (seat-digest-stale,
+  orientation-headroom, seven model-line notices on the four 2026-07-19 cards,
+  the preflight-script NOTE) — none exit-affecting, none introduced here. The
+  new code + test add zero findings.
 
 ⚑ Self-initiated: no — coordinator-assigned slice 6, promoting the
 arcade-directory-sync card's 💡 (a redirect-following `/directory` download
