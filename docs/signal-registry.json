@@ -1,0 +1,85 @@
+{
+  "schema_note": "Committed signal registry: every cross-repo signal this repo bakes or mirrors into a */data/*.json file and re-renders on sibling surfaces. Each row is name -> baker -> raw-URL -> consumers, so a new drift/parity fan-out is a data edit here, not a code hunt across services. Rows are REAL and verified against the tree by tests/test_signal_registry.py: `baker` and `committed_mirror` are repo-relative paths that must exist (or null when the signal is baked in another repo / maintained by hand), every `consumers` entry is a repo-relative file that must exist AND reference the signal by its `raw_url` basename, and `raw_url` is the raw.githubusercontent.com URL consumers fetch. Generalises the arcade<->web_presence join in tests/test_registry_drift.py. Add a row (or a consumer) by PR; the test keeps every declared reference honest.",
+  "as_of": "2026-07-20",
+  "row_schema": {
+    "name": "str, unique, kebab-case signal id",
+    "description": "str, one line: what the signal carries",
+    "producer_repo": "str, owner/repo where the signal is baked/committed",
+    "baker": "str repo-relative path to the generator, or null (PR-maintained registry or cross-repo baker)",
+    "committed_mirror": "str repo-relative path to the committed JSON in THIS repo, or null when the mirror lives in producer_repo",
+    "raw_url": "str, the raw.githubusercontent.com URL consumers fetch (env-overridable consumers default to this)",
+    "consumers": "list of {path, note}: repo-relative files in THIS repo that re-render/read the signal"
+  },
+  "signals": [
+    {
+      "name": "release-drift",
+      "description": "Per-repo release-tag drift flags baked by review; re-rendered read-only on the dashboard /status card and the console board attn chip without recomputing drift.",
+      "producer_repo": "menno420/websites",
+      "baker": "review/gen_releases.py",
+      "committed_mirror": "review/data/releases.json",
+      "raw_url": "https://raw.githubusercontent.com/menno420/websites/main/review/data/releases.json",
+      "consumers": [
+        {"path": "review/app.py", "note": "native producer surface — renders releases.json site-wide in the review service"},
+        {"path": "app/releasedrift.py", "note": "control-plane board parity — fetches the mirror over github._get(raw=True), re-renders the drift flag"},
+        {"path": "dashboard/data_source.py", "note": "dashboard /status parity — RELEASES_JSON_URL fetch + release_drift() shaper"}
+      ]
+    },
+    {
+      "name": "fleet-arcade",
+      "description": "The Fleet Arcade game registry (slug, availability, url); the reachability source of truth joined against web-presence by the registry-drift guard.",
+      "producer_repo": "menno420/websites",
+      "baker": null,
+      "committed_mirror": "botsite/data/arcade.json",
+      "raw_url": "https://raw.githubusercontent.com/menno420/websites/main/botsite/data/arcade.json",
+      "consumers": [
+        {"path": "botsite/arcade.py", "note": "native loader — reads arcade.json from disk, derives is_live/has_link/link_url for the /arcade surface"},
+        {"path": "dashboard/data_source.py", "note": "dashboard arcade-counts parity — ARCADE_JSON_URL fetch of the same registry"}
+      ]
+    },
+    {
+      "name": "web-presence-directory",
+      "description": "Every web surface the estate owns (id, status, url); read at request time by the control-plane /directory and joined against fleet-arcade by the registry-drift guard.",
+      "producer_repo": "menno420/websites",
+      "baker": null,
+      "committed_mirror": "app/data/web_presence.json",
+      "raw_url": "https://raw.githubusercontent.com/menno420/websites/main/app/data/web_presence.json",
+      "consumers": [
+        {"path": "app/web_presence.py", "note": "native loader — load_registry() reads web_presence.json at request time, probes each row's liveness"},
+        {"path": "app/main.py", "note": "control-plane /directory route — renders the loaded web_presence registry"}
+      ]
+    },
+    {
+      "name": "botsite-site-feed",
+      "description": "The bot's public marketing/reference content baked in superbot; re-rendered as the botsite marketing site.",
+      "producer_repo": "menno420/superbot",
+      "baker": null,
+      "committed_mirror": null,
+      "raw_url": "https://raw.githubusercontent.com/menno420/superbot/main/botsite/data/site.json",
+      "consumers": [
+        {"path": "botsite/data_source.py", "note": "SITE_JSON_URL fetch over raw.githubusercontent.com (no token); the botsite content source"}
+      ]
+    },
+    {
+      "name": "dashboard-inventory-feed",
+      "description": "The bot's own inventory (functions/commands/settings/access/env/ideas/bugs) baked in superbot; re-rendered read-only on the developer dashboard.",
+      "producer_repo": "menno420/superbot",
+      "baker": null,
+      "committed_mirror": null,
+      "raw_url": "https://raw.githubusercontent.com/menno420/superbot/main/dashboard/data/dashboard.json",
+      "consumers": [
+        {"path": "dashboard/data_source.py", "note": "DASHBOARD_JSON_URL fetch — the dashboard inventory source"}
+      ]
+    },
+    {
+      "name": "console-board-feed",
+      "description": "The bot's public console board snapshot baked in superbot; re-rendered on the dashboard.",
+      "producer_repo": "menno420/superbot",
+      "baker": null,
+      "committed_mirror": null,
+      "raw_url": "https://raw.githubusercontent.com/menno420/superbot/main/botsite/data/console.json",
+      "consumers": [
+        {"path": "dashboard/data_source.py", "note": "CONSOLE_JSON_URL fetch — the console board source on the dashboard"}
+      ]
+    }
+  ]
+}
