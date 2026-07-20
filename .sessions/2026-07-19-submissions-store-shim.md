@@ -1,11 +1,11 @@
 # 2026-07-19 — botsite: route submissions_store onto the shared _db._Conn shim
 
-> **Status:** `in-progress` — branch `claude/submissions-store-shim`; routing
+> **Status:** `complete` — branch `claude/submissions-store-shim`; routed
 > `botsite/submissions_store.py` off its own inline per-function
 > `psycopg.connect` onto the shared `botsite/_db.py` shim (`_Conn` / `_Row` /
 > `_pg_row_factory`) that `testing_store.py` already consumes, behaviour-
-> preserving. Born red; this card holds the PR red until the deliberate flip to
-> `complete` as the LAST step.
+> preserving. Born red; this flip to `complete` is the LAST step, releasing the
+> `[session-card-hold]`.
 
 - **📊 Model:** claude-opus-4-8 · medium · feature build
 
@@ -63,6 +63,11 @@ Work-ladder rung: coordinator-assigned build — plan slice 1 of
   `_SCHEMA_PG` wellformedness.
 - `control/claims/submissions-store-shim-2026-07-19.md` — work claim for this
   branch (deleted in the flip commit so it merges away with the PR).
+- Verified (CI-equivalent, `DATABASE_URL` unset):
+  `env -u DATABASE_URL python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q`
+  → **2083 passed** (exit 0; 2070 baseline + 13 new backend pins);
+  `python3 bootstrap.py check --strict` → the only gating finding was this
+  card's born-red `[session-card-hold]`, released at this flip.
 
 **Verify plan:** four-suite
 (`env -u DATABASE_URL python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q`)
