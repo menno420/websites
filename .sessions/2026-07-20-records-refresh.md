@@ -1,6 +1,6 @@
 # 2026-07-20 — refresh current-state.md to #456 truth + trim orientation headroom
 
-> **Status:** `in-progress` — branch `claude/records-refresh`, PR #458.
+> **Status:** `complete` — branch `claude/records-refresh`, PR #458.
 > Refreshing `docs/current-state.md` to present truth (header lagged at #421;
 > HEAD is #456), folding the 2026-07-19→20 build cycle into the ledger, trimming
 > superseded history into terse past-tense lines to open orientation headroom,
@@ -46,7 +46,7 @@ refresh + headroom trim), continuing the 2026-07-19 cycle's Hygiene slice.
   replaced with the family name `opus-4.8`).
 - `control/claims/records-refresh.md` — work claim for this branch (deleted in
   the flip commit so it merges away with the PR).
-- Verified before flip: [[fill: four-suite pass count + strict result, at flip]].
+- Verified before flip: `env -u DATABASE_URL python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q` → **2132 passed**; `python3 bootstrap.py check --strict` exit 0 — this flip releases the born-red `[session-card-hold]`, and the three PL-004 model-line advisories plus the orientation-headroom advisory (boot-read 6909/7000 → current-state 6176→2093 words) all cleared.
 
 **Verify plan:** four-suite
 (`env -u DATABASE_URL python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q`)
