@@ -136,8 +136,16 @@ async def overview(refresh: bool = False) -> dict:
     rows = reg["sites"]
 
     probed = [r for r in rows if r.get("url") and r.get("probe")]
+    # follow_redirects=True: a release-download row (e.g. the Lumen Drift .gba)
+    # 302-redirects to a CDN, so probing to the FINAL status is what tells the
+    # truth — a bare 302 is a false "degraded", not a dead link. This is the
+    # ONLY github._get caller that opts in; askverify's raw-302 login signal
+    # keeps the default no-follow behavior.
     results = await asyncio.gather(
-        *[github._get(r["url"], refresh=refresh, raw=True) for r in probed]
+        *[
+            github._get(r["url"], refresh=refresh, raw=True, follow_redirects=True)
+            for r in probed
+        ]
     )
     for r, res in zip(probed, results):
         r["health"] = _classify(res)

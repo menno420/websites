@@ -26,7 +26,7 @@ LANDINGS = [c for c in nav.CATEGORIES if c["landing"]]
 
 
 def _offline(monkeypatch):
-    async def fake_get(url, refresh=False, raw=False):
+    async def fake_get(url, refresh=False, raw=False, follow_redirects=False):
         return {"ok": False, "status": 0, "data": None, "error": "offline test",
                 "fetched_at": "", "cached": False, "url": url}
 
