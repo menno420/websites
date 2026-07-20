@@ -1,9 +1,10 @@
 # 2026-07-20 — auto-discovering vendored-copy AST core guard
 
-> **Status:** `in-progress` — branch `claude/vendored-ast-core-guard`; flips to
-> `complete` + PR number as the deliberate LAST code step. This card's
-> in-progress Status holds the `quality` gate red (`[session-card-hold]`) until
-> the meta-test lands green.
+> **Status:** `complete` — branch `claude/vendored-ast-core-guard`, PR #454.
+> Born red: this card's in-progress Status held the `quality` gate red
+> (`[session-card-hold]`) until the meta-test landed green; this flip to
+> `complete` is the deliberate LAST step and releases the hold →
+> merge-on-green lands it.
 
 - **📊 Model:** opus-4.8 · medium · test writing
 
@@ -44,8 +45,21 @@ drift-guard card's 💡 from a captured backlog idea into a committed meta-test.
     vendored copy reddens this test.
 - Left the existing per-module guards in place (belt-and-suspenders); the
   meta-test now also covers the same assertions from data.
-- Verified: `env -u DATABASE_URL python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q`
-  → [[fill:pytest-count]]; `python3 bootstrap.py check --strict` → [[fill:check-verdict]].
+- Verified (CI-equivalent, `DATABASE_URL` unset):
+  `env -u DATABASE_URL python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q`
+  → **2128 passed** (exit 0; 2098 baseline + 30 new: 2 accounting/liveness + 1
+  byte-mode `listfilter` + 14 symbol-core functions + 13 symbol-core constants
+  for `discord_auth`). Bite-tested: a semantic change to `_sign` in one
+  `discord_auth.py` copy reddened exactly
+  `test_symbol_core_function_does_not_drift[discord_auth.py-_sign]` and nothing
+  else; a stray same-basename module reddened `test_no_undeclared_vendored_group`;
+  both reverted → back to green.
+  `python3 bootstrap.py check --strict` → exit 1 solely on THIS card's born-red
+  `[session-card-hold]` (released at this flip); the remaining output is
+  pre-existing advisories on unrelated cards (seat-digest-stale,
+  orientation-headroom, seven model-line notices on the four 2026-07-19 cards) —
+  never exit-affecting and not introduced here. The new test file adds zero
+  findings.
 
 ## 💡 Session idea
 

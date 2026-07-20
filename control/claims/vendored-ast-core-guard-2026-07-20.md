@@ -1,1 +1,0 @@
-- `claude/vendored-ast-core-guard` · scope: auto-discovering vendored-copy AST core meta-test — discovers same-basename modules across service dirs and asserts each declared shared-symbol core stays AST-identical (generalises the listfilter byte-identity + discord_auth #445 per-module drift guards) — `tests/test_vendored_core_guard.py` · 2026-07-20
