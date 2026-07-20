@@ -1,20 +1,20 @@
 # websites · status
 
-updated: 2026-07-20T08:04:12Z
-phase: cycle 2026-07-19 executed: slices 1–6 all landed; queue drained to hygiene + owner-gated items
-health: green — four service suites green (2132 passed) + python3 bootstrap.py check --strict passes its own assertions (only advisory warnings remain, all on untouched files / non-exit-affecting). tests/test_own_heartbeat.py 5/5.
-last-shipped: #455 — botsite /directory .gba download probe now follows redirects (302 → CDN no longer a false-negative), merged 2026-07-20; main tip 7c3484b.
+updated: 2026-07-20T09:05:24Z
+phase: cycle 2026-07-19 executed; the seat-buildable hardening queue drained through #459. Remaining work is owner-gated (Discord-login vars) + the product frontier.
+health: green — four service suites green + python3 bootstrap.py check --strict passes its own assertions (only advisory warnings remain, all on untouched files / non-exit-affecting). tests/test_own_heartbeat.py 5/5.
+last-shipped: #459 — docs: regenerate seat-digest render (clears stale advisory), merged 2026-07-20; main tip 098c411.
 blockers: none
 orders: acked=001-038 done=001-038 (021 closed w/ evidence #444; 037/038 done #442/#443; 036 done)
-routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` ARMED · bound to the predecessor session_012kFFGxzt9ntSDi7jkE36z3; rebind rides the hub venue (this coordinator's trigger/send_later arming is classifier-denied). send_later chain: none pending.
-landing: all-merged — this cycle's three slice PRs are terminal: #453 (committed signal-registry data file, slice 4), #454 (auto-discovering vendored-copy AST core guard, slice 5), #455 (/directory follow_redirects, slice 6) all merged to main. No open claude/* PRs from this cycle. #452 (kit-upgrade) is the owner's PR, still open — left as-is, it rides the hub venue.
-deployed: main 7c3484b (all six slices landed) · four Railway services (control-plane / botsite / dashboard / review, superbot-websites project); Railway redeploys on merge (merge=deploy), live re-verification is the follow-up. botsite /submit is DURABLE — DATABASE_URL live, Postgres-backed intake confirmed writing (ASK-0004 satisfied). The owner moderation queue GET /submit/queue.json + /testing owner reads still 503 until the botsite Discord-login vars land (ASK-0006).
-claims: control/claims/ holds only README.md — all three slice claims deleted in their flip commits (no drift-gate orphans).
+routine: failsafe cron `trig_01FYyvu2EytWF5NSEzLU2qLD` "Websites failsafe wake" `45 */2 * * *` ARMED · bound to the predecessor session_012kFFGxzt9ntSDi7jkE36z3; rebind rides the hub venue (this coordinator's trigger/send_later arming is classifier-denied). send_later chain: none pending (walled).
+landing: all-merged — #448–#459 all terminal, 0 open claude/* PRs. This cycle's hardening + docs slices are fully merged to main; no drift-gate orphans.
+deployed: main 098c411 · four Railway services (control-plane / botsite / dashboard / review, superbot-websites project); Railway redeploys on merge (merge=deploy), live re-verification is the follow-up. botsite /submit is DURABLE — DATABASE_URL live, Postgres-backed intake confirmed writing (ASK-0004 satisfied). The owner moderation queue GET /submit/queue.json + /testing owner reads still 503 until the botsite Discord-login vars land (ASK-0006/0017).
+claims: control/claims/ holds only README.md — no drift-gate orphans.
 needs-owner: the ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## NEXT-2-TASKS baton
-1. Refresh docs/current-state.md header (lags main by ~26+ PRs — says #421, HEAD is #455) and fold in this cycle's three new guards/registry (signal-registry data file #453, vendored-copy AST core guard #454, /directory redirect-follow probe #455); update main sha, open-PR line, and the four-suite passed count (2132). Per docs/plans/next-cycle-2026-07-19.md Hygiene.
-2. Orientation-headroom trim toward the boot-set word cliff (boot set 6909/7000 words, 91 headroom; current-state alone 6176) and clear the residual kit advisories: fix the model-line advisories on the three 2026-07-19 cards (-botsite-discord-oauth, -dashboard-discord-oauth, -submissions-store-shim) to the PL-004 `model · low|medium|high · class` form, then `python3 bootstrap.py seat-digest` regen. Per docs/plans/next-cycle-2026-07-19.md Hygiene.
+1. Owner sitting on ASK-0006 + ASK-0017: set the four Discord-login vars + one redirect URI on BOTH the botsite and dashboard Railway services. That unblocks owner sign-ins (/owner/login 302, /admin/login 302) → the one /testing owner write. On completion a session runs the E2E gate verification and the new askverify console chips flip to done-detected.
+2. Product frontier behind the owner gate: arcade catalog growth · review editions cadence · tester payouts (PayPal Payouts, ASK-0005). Honest line: the seat-buildable hardening queue is executed through #459 and the strict gate is fully clean — no seat-buildable hygiene backlog remains; the frontier is product + owner-gated items.
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md)
 - ASK-0003 — provision the scoped control-API token + separate armed Railway service (the armed bot-control write path, stubbed).
