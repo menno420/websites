@@ -1,0 +1,1 @@
+- `claude/owner-actions-panel` · S4: inline open-actions panel on /owner home · 2026-07-21
