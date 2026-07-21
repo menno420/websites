@@ -9,6 +9,20 @@
 
 ## Captured / planned (pick highest-value buildable first)
 
+- **Build-time arcade doc-baker — regenerate controls/changelog from game
+  repo docs** · `captured` (2026-07-21, arcade-richer-detail session 💡) — S6
+  hand-copied each game's controls/changelog out of its `PLAYING.md` /
+  `README.md` at build time; a small `gen_arcade_detail.py` (the review
+  `gen_*.py` reproducible-from-source pattern) could re-derive those fields
+  from the source docs and diff against `botsite/data/arcade.json`, so the
+  committed detail data can't silently drift from what the game repos document.
+  Worth having because hand-copied game docs rot the moment a game repo ships a
+  new version and nobody re-copies — a baker keeps the arcade's TRUTH bar
+  honest without manual re-transcription. Deduped against this backlog + the
+  queue-state NEXT list: not present (closest are the review edition
+  auto-drafter and the vendored-core guard — different surfaces). Source:
+  `.sessions/2026-07-21-arcade-richer-detail.md` 💡.
+
 - **Arcade + dashboard overnight proposal menu** · `captured` (2026-07-16,
   arcade-dashboard-menu session 💡) — 24 distinct veto-ready proposals across
   botsite/Fleet-Arcade and dashboard, small fixes → ambitious features, grouped
