@@ -1,5 +1,7 @@
 # Next-cycle plan — 2026-07-19
 
+> Superseded by docs/PROJECT-CLOSEOUT.md (final close, 2026-07-21) — see its Continuation section.
+
 > **Status:** `binding` (planning pass v2)
 >
 > Basis: fresh-sync recon at HEAD `7dfdca2` (#447), 2026-07-20. All orders

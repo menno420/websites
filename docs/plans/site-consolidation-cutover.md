@@ -1,5 +1,7 @@
 # Site-consolidation cutover plan — retire the website duplicates, keep the estate, move the URLs
 
+> Still open at final close — see PROJECT-CLOSEOUT.md Continuation (owner-gated).
+
 > **Status:** `plan` — owner-reviewable. **NOTHING in this document is executed
 > yet.** Every destructive step (Step 3) is GATED on the owner's explicit go
 > (the coordinator relays it). Reference-repointing (Step 1) and the optional

@@ -9,6 +9,8 @@
 
 ## 🟡 Open — waiting on the owner
 
+> Final-close reconcile 2026-07-21: 10 open asks below are current; see docs/PROJECT-CLOSEOUT.md → Continuation for resume steps.
+
 > **Ask IDs (2026-07-16):** every ⚑ ask block below carries one
 > `ID: ASK-<4 digits>` line directly under its marker. IDs are append-only —
 > assigned once, never reused, never renumbered; a new ask takes the next

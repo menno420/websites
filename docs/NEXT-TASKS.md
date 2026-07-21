@@ -12,6 +12,8 @@
 > this file is the curated top slice grouped by the four Railway services. Effort
 > **S/M/L**; risk **✅** safe · **↩️** reversible · **⚠** needs a decision/credential.
 
+> Final close: the groomed queue is drained; see docs/PROJECT-CLOSEOUT.md → Continuation for remaining threads and exact resume steps.
+
 > **Current groomed queue:** `docs/plans/next-cycle-2026-07-20.md` — the
 > HEAD-stamped (`6971249`, #461) product-frontier pass (6 value-ranked slices +
 > routed-out tail), superseding `docs/plans/next-cycle-2026-07-19.md` (the prior
