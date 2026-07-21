@@ -12,9 +12,9 @@
 > this file is the curated top slice grouped by the four Railway services. Effort
 > **S/M/L**; risk **✅** safe · **↩️** reversible · **⚠** needs a decision/credential.
 
-> **Current groomed queue:** `docs/plans/next-cycle-2026-07-19.md` — the
-> HEAD-stamped (`7dfdca2`, #447) executable frontier (6 value-ranked slices +
-> routed-out tail), superseding `docs/plans/next-cycle-2026-07-18.md` (the prior
+> **Current groomed queue:** `docs/plans/next-cycle-2026-07-20.md` — the
+> HEAD-stamped (`6971249`, #461) product-frontier pass (6 value-ranked slices +
+> routed-out tail), superseding `docs/plans/next-cycle-2026-07-19.md` (the prior
 > pass, fully executed). This file is the ranked menu; that doc is the dated
 > planning pass on top of it.
 

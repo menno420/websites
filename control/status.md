@@ -1,7 +1,7 @@
 # websites · status
 
-updated: 2026-07-20T09:05:24Z
-phase: cycle 2026-07-19 executed; the seat-buildable hardening queue drained through #459. Remaining work is owner-gated (Discord-login vars) + the product frontier.
+updated: 2026-07-20T18:00:00Z
+phase: cycle 2026-07-20 planned (docs/plans/next-cycle-2026-07-20.md); the seat-buildable hardening queue drained through #461. Remaining seat-buildable work is the product frontier (S1 edition auto-drafter top); owner-gated items (Discord-login vars) unchanged.
 health: green — four service suites green + python3 bootstrap.py check --strict passes its own assertions (only advisory warnings remain, all on untouched files / non-exit-affecting). tests/test_own_heartbeat.py 5/5.
 last-shipped: #459 — docs: regenerate seat-digest render (clears stale advisory), merged 2026-07-20; main tip 098c411.
 blockers: none
@@ -13,8 +13,8 @@ claims: control/claims/ holds only README.md — no drift-gate orphans.
 needs-owner: the ⚑ rows in docs/owner/OWNER-ACTIONS.md (mirror below).
 
 ## NEXT-2-TASKS baton
-1. Owner sitting on ASK-0006 + ASK-0017: set the four Discord-login vars + one redirect URI on BOTH the botsite and dashboard Railway services. That unblocks owner sign-ins (/owner/login 302, /admin/login 302) → the one /testing owner write. On completion a session runs the E2E gate verification and the new askverify console chips flip to done-detected.
-2. Product frontier behind the owner gate: arcade catalog growth · review editions cadence · tester payouts (PayPal Payouts, ASK-0005). Honest line: the seat-buildable hardening queue is executed through #459 and the strict gate is fully clean — no seat-buildable hygiene backlog remains; the frontier is product + owner-gated items.
+1. S1 review edition auto-drafter (per docs/plans/next-cycle-2026-07-20.md): the top seat-buildable slice. Review editions are unbuilt — only edition-001 (2026-07-11) exists, review-bake.yml bakes data mirrors but no editions — so the channel is silent, not owner-gated. Draft `review/gen_edition.py` from the committed baked mirrors following the editions.py reproducible-from-source doctrine. Queue after: S2 arcade catalog growth, S3 cross-service fleet nav strip.
+2. Owner sitting on ASK-0006 + ASK-0017: set the four Discord-login vars + one redirect URI on BOTH the botsite and dashboard Railway services. That unblocks owner sign-ins (/owner/login 302, /admin/login 302) → the one /testing owner write. On completion a session runs the E2E gate verification and the new askverify console chips flip to done-detected.
 
 ## ⚑ OWNER-ACTION mirror (canonical: docs/owner/OWNER-ACTIONS.md)
 - ASK-0003 — provision the scoped control-API token + separate armed Railway service (the armed bot-control write path, stubbed).
