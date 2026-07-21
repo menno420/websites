@@ -1,6 +1,6 @@
 # Session card — 2026-07-21 · review edition auto-drafter
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** opus-4.8 · medium · idea/feature
 - **💡 Idea:** The review site's "continuous review channel" had one edition (2026-07-11) and no generator — derive future editions from the already-baked committed data mirrors so the channel stays alive with zero owner action.

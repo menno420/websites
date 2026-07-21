@@ -1,1 +1,0 @@
-- `claude/review-edition-drafter` · S1: gen_edition.py auto-drafter + edition-002 · 2026-07-21
