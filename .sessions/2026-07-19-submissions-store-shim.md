@@ -7,7 +7,7 @@
 > preserving. Born red; this flip to `complete` is the LAST step, releasing the
 > `[session-card-hold]`.
 
-- **📊 Model:** claude-opus-4-8 · medium · feature build
+- **📊 Model:** opus-4.8 · medium · feature build
 
 **What this session is about:** `botsite/_db.py` landed in #447 as the single
 home for the botsite stores' dual-backend (SQLite⇄Postgres) plumbing —

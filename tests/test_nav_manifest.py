@@ -141,7 +141,7 @@ def _offline(monkeypatch):
     same offline seam tests/test_category_ia.py uses. Every fetch reports a
     miss; page routes must degrade honestly to a rendered page, never 5xx."""
 
-    async def fake_get(url, refresh=False, raw=False):
+    async def fake_get(url, refresh=False, raw=False, follow_redirects=False):
         return {"ok": False, "status": 0, "data": None, "error": "offline test",
                 "fetched_at": "", "cached": False, "url": url}
 
