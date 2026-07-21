@@ -11,6 +11,17 @@
     "status_note": "Downloadable now — the lumen-drift-v1.3 GitHub Release is published; the Download button fetches the ROM (lumen-drift.gba) directly from that release."
   },
   {
+    "slug": "gloamline",
+    "name": "Gloamline",
+    "tagline": "An original Nintendo DS survival game — hold a moor hamlet against the walking dead, night after night.",
+    "description": "A finished homebrew Nintendo DS ROM built entirely from original assets. You are the last lamplighter of a fenced hamlet: kite the shambling dead, place and repair barricades, and survive each night. Download the .nds ROM and load it into melonDS or DeSmuME to play.",
+    "maturity": "playable",
+    "availability": "download",
+    "url": "https://raw.githubusercontent.com/menno420/gba-homebrew/main/dist/gloamline.nds",
+    "source_repo": "menno420/gba-homebrew",
+    "status_note": "Downloadable now — the committed dist/gloamline.nds ROM (118 KB) fetches directly from the gba-homebrew repo; load it in melonDS or DeSmuME. No published GitHub Release yet, so the Download button points at the committed ROM."
+  },
+  {
     "slug": "mineverse",
     "name": "mineverse",
     "tagline": "A staged web mining-world game — the fleet's games flagship.",
