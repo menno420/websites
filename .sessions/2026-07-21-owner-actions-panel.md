@@ -1,6 +1,6 @@
 # Session card — 2026-07-21 · owner actions-now panel
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** opus-4.8 · medium · feature build
 - **💡 Idea:** The /owner home leads with the readiness board and buries the actual open-action list one click away at /owner/queue — surface a top-of-home "Your N open actions" panel from the briefing.asks data already fetched, matching the owner's "what needs me now" instinct.
