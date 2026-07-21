@@ -59,6 +59,50 @@
   </section>
   {% endif %}
 
+  {% if game.screenshots %}
+  <section class="section-sm">
+    <div class="sb-panel">
+      <h3>Screenshots</h3>
+      <div class="row" style="flex-wrap:wrap;gap:12px;margin-top:12px">
+        {% for shot in game.screenshots %}
+        <img src="{{ shot.src }}" alt="{{ shot.alt }}" loading="lazy" style="max-width:100%;border:1px solid var(--sb-line);border-radius:6px">
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if game.controls %}
+  <section class="section-sm">
+    <div class="sb-panel">
+      <h3>Controls</h3>
+      <table style="margin-top:12px;border-collapse:collapse">
+        <tbody>
+          {% for c in game.controls %}
+          <tr>
+            <td style="padding:4px 16px 4px 0;white-space:nowrap;vertical-align:top">{% if c.input %}<code>{{ c.input }}</code>{% endif %}</td>
+            <td class="sb-muted" style="padding:4px 0">{{ c.action }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if game.changelog %}
+  <section class="section-sm">
+    <div class="sb-panel">
+      <h3>Changelog</h3>
+      <ul style="margin:12px 0 0;padding-left:18px">
+        {% for entry in game.changelog %}
+        <li style="margin:6px 0"><strong>{{ entry.version or entry.date }}</strong> — {{ entry.note }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+  {% endif %}
+
   <div class="cta" style="margin:0 0 40px">
     <a class="sb-btn sb-btn-ghost" href="https://github.com/{{ game.source_repo }}" target="_blank" rel="noopener">{{ game.source_repo }} {{ icon("external", 14) }}</a>
     <a class="sb-btn sb-btn-ghost" href="/arcade">All games {{ icon("arrow", 16) }}</a>
