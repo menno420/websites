@@ -182,6 +182,13 @@ PARAM_EXPANDERS: dict[str, Callable[[TestClient], list[str]]] = {
     # the guide rides the same claim token — expanded together above, but the
     # route still needs its own registered (and non-stale) entry:
     "/testing/s/{token}/guide": lambda client: [],
+    # the submission status page needs a LIVE submissions store (DATABASE_URL)
+    # to resolve a ref to 200; this fixture intentionally leaves the intake not
+    # live (so the ref always reads not-found), so the clarity idiom for
+    # submit_status.html is walked by botsite/tests/test_submit_status.py under a
+    # live sqlite store. Registered here (as a page, not a non-page) so the
+    # classification gate stays complete and non-stale.
+    "/submit/status/{ref}": lambda client: [],
 }
 
 
