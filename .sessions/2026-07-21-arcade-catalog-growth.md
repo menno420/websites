@@ -1,6 +1,6 @@
 # Session card — 2026-07-21 · arcade catalog growth
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** opus-4.8 · medium · feature build
 - **💡 Idea:** The public arcade lists only 3 games though the fleet has shipped more — grow the catalog with verified real entries so the front door reflects the fleet, honest blocker/ask_id where an owner step genuinely gates a launch.
