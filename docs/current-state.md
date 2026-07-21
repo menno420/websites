@@ -11,6 +11,8 @@
 > work always win over this file. Read it second (right after the working
 > agreement) and keep it current as the project moves.
 
+- **Final closeout:** [docs/PROJECT-CLOSEOUT.md](PROJECT-CLOSEOUT.md) — what shipped, current live state, and how to continue.
+
 ## What this repo is
 
 The **websites** repo for the menno420 estate — one repo, multiple Railway
