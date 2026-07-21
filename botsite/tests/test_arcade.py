@@ -6,12 +6,25 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from botsite import app as app_module
 from botsite import arcade
+from botsite import arcade_probe
 from botsite import data_source as ds
+
+
+def _client_mock_200() -> httpx.Client:
+    """A network-free httpx client (MockTransport, redirects followed) that
+    answers every request 200 — the same shape arcade_probe's real client has,
+    so a probe-coverage assertion opens no socket. Mirrors the helper style in
+    test_arcade_probe.py."""
+    return httpx.Client(
+        transport=httpx.MockTransport(lambda req: httpx.Response(200)),
+        follow_redirects=True,
+    )
 
 # Minimal site.json fixture so _base_ctx/lifespan never touch the network.
 FIXTURE = {
@@ -34,6 +47,13 @@ GAMES_WEB_URL = "https://menno420.github.io/product-forge/"
 # once the attached .gba was confirmed (164 KB, SHA256 195a8679…babae94).
 LUMEN_DRIFT_URL = "https://github.com/menno420/gba-homebrew/releases/download/lumen-drift-v1.3/lumen-drift.gba"
 
+# gloamline's committed ROM in gba-homebrew — a finished original Nintendo DS
+# survival game (README: "playable NOW"; docs/PLAYING-GLOAMLINE.md). It has no
+# published GitHub Release yet, so the Download button points at the committed
+# dist/gloamline.nds over raw.githubusercontent.com (S2: cold-verified 200, a
+# 118 KB .nds ROM). availability is "download", not "live".
+GLOAMLINE_URL = "https://raw.githubusercontent.com/menno420/gba-homebrew/main/dist/gloamline.nds"
+
 # mineverse's live Railway deployment (ORDER 022; cold-verified 200).
 MINEVERSE_URL = "https://web-production-97636.up.railway.app"
 
@@ -51,7 +71,7 @@ def client():
 def test_arcade_lists_all_games_with_maturity_badges(client):
     r = client.get("/arcade")
     assert r.status_code == 200
-    for name in ("Lumen Drift", "mineverse", "games-web"):
+    for name in ("Lumen Drift", "Gloamline", "mineverse", "games-web"):
         assert name in r.text
     # maturity badges render (one playable, two beta in the committed registry)
     assert ">playable<" in r.text
@@ -203,14 +223,22 @@ def test_has_link_covers_exactly_the_linked_availabilities(tmp_path):
 
 
 def test_committed_registry_is_honest():
-    """The committed registry loads with all three games, and after the
-    2026-07-18 flip every one is reachable: mineverse live (ORDER 022),
-    games-web live (ASK-0011 Pages deploy), lumen-drift download (ASK-0010
-    published release). Each renders an outbound link with the attribution ref
-    and keeps an honest status note; none carries a blocker."""
+    """The committed registry loads with all four games, every one reachable:
+    mineverse live (ORDER 022), games-web live (ASK-0011 Pages deploy),
+    lumen-drift download (ASK-0010 published release) and gloamline download
+    (S2: committed dist/gloamline.nds, verified 200). Each renders an outbound
+    link with the attribution ref and keeps an honest status note; none carries
+    a blocker."""
     games = arcade.load_games()
-    assert [g["slug"] for g in games] == ["lumen-drift", "mineverse", "games-web"]
+    assert [g["slug"] for g in games] == ["lumen-drift", "gloamline", "mineverse", "games-web"]
     by_slug = {g["slug"]: g for g in games}
+
+    gl = by_slug["gloamline"]
+    assert gl["availability"] == "download"
+    assert gl["url"] == GLOAMLINE_URL
+    # a download game is has_link (a Download button) but NOT is_live
+    assert gl["is_live"] is False and gl["has_link"] is True
+    assert gl["link_url"] == f"{GLOAMLINE_URL}?ref=fleet-arcade"
 
     mv = by_slug["mineverse"]
     assert mv["availability"] == "live"
@@ -236,13 +264,51 @@ def test_committed_registry_is_honest():
         assert g["blocker"] is None  # no launch blockers remain
 
 
+def test_committed_registry_gloamline_is_a_verified_download(client):
+    """S2 honesty pin on the gloamline entry: it is a real gba-homebrew game
+    added as a DOWNLOAD (its committed dist/gloamline.nds ROM was cold-verified
+    HTTP 200, so no fabricated live/blocker), links into a Nintendo DS emulator,
+    and — because ``download`` is a link-bearing availability — is covered by
+    the drift probe exactly like the other reachable games, never silently
+    unprobed. No network here: the probe read is over the committed registry
+    with a MockTransport client (nothing is fetched, only WHAT WOULD be probed
+    is asserted)."""
+    gl = arcade.game_by_slug("gloamline")
+    assert gl is not None
+    assert gl["source_repo"] == "menno420/gba-homebrew"
+    assert gl["maturity"] == "playable"
+    assert gl["availability"] == "download"
+    assert gl["url"] == GLOAMLINE_URL
+    # a download is reachable (Download button) but NOT "live"; no invented blocker
+    assert gl["has_link"] is True and gl["is_live"] is False
+    assert gl["blocker"] is None
+    assert gl["status_note"]  # explains itself honestly
+
+    # the detail page renders a real Download affordance, no blocker panel
+    r = client.get("/arcade/gloamline")
+    assert r.status_code == 200
+    assert f'href="{GLOAMLINE_URL}?ref=fleet-arcade"' in r.text
+    assert "Download" in r.text
+    assert "Play now" not in r.text  # a download game is not "live"
+    assert "What's blocking launch" not in r.text
+
+    # drift-probe coverage: gloamline is a link-bearing availability, so it is
+    # among the entries the probe WOULD fetch (network-free — MockTransport).
+    with _client_mock_200() as c:
+        result = arcade_probe.probe_registry_urls(client=c)
+    probed = {row["slug"] for row in result["rows"]}
+    assert "gloamline" in probed
+    gl_row = next(row for row in result["rows"] if row["slug"] == "gloamline")
+    assert gl_row["url"] == GLOAMLINE_URL and gl_row["ok"] is True
+
+
 # --------------------------------------------------------------------------- #
 # /arcade/{slug} detail pages — per-game story + launch-blocker panels.
 # --------------------------------------------------------------------------- #
 
 def test_arcade_detail_200_per_known_slug(client):
     """Every game in the committed registry gets a working detail page."""
-    for slug, name in (("lumen-drift", "Lumen Drift"), ("mineverse", "mineverse"), ("games-web", "games-web")):
+    for slug, name in (("lumen-drift", "Lumen Drift"), ("gloamline", "Gloamline"), ("mineverse", "mineverse"), ("games-web", "games-web")):
         r = client.get(f"/arcade/{slug}")
         assert r.status_code == 200
         assert name in r.text
@@ -299,7 +365,7 @@ def test_arcade_cards_link_to_detail_pages(client):
     """Every catalog card links to its detail page."""
     r = client.get("/arcade")
     assert r.status_code == 200
-    for slug in ("lumen-drift", "mineverse", "games-web"):
+    for slug in ("lumen-drift", "gloamline", "mineverse", "games-web"):
         assert f'href="/arcade/{slug}"' in r.text
 
 
@@ -488,12 +554,12 @@ def test_arcade_catalog_no_live_verdict_leaks_to_public_page(client):
 
 
 def test_arcade_catalog_summary_strip(client):
-    """The top-of-page availability strip counts the committed registry post-flip
-    (2026-07-18): all three games reachable (mineverse + games-web live,
-    lumen-drift download), zero blocked, so no owner-click clause renders."""
+    """The top-of-page availability strip counts the committed registry: all four
+    games reachable (mineverse + games-web live; lumen-drift + gloamline
+    download), zero blocked, so no owner-click clause renders."""
     r = client.get("/arcade")
     assert r.status_code == 200
-    assert "3 live" in r.text
+    assert "4 live" in r.text
     assert "0 blocked" in r.text
     assert "owner click" not in r.text  # nothing blocked → no owner-click clause
 
@@ -501,13 +567,13 @@ def test_arcade_catalog_summary_strip(client):
 def test_games_front_door_shows_arcade_summary_strip(client):
     """The /games front door surfaces the Fleet Arcade's launch-readiness at a
     glance — the SAME live/blocked/owner-clicks summary the /arcade catalog
-    carries (reusing arcade.availability_summary over the committed registry,
-    post-flip: 3 live, 0 blocked, 0 owner clicks) — and cross-links to
+    carries (reusing arcade.availability_summary over the committed registry:
+    4 live, 0 blocked, 0 owner clicks) — and cross-links to
     /arcade."""
     r = client.get("/games")
     assert r.status_code == 200
     assert "Fleet Arcade" in r.text
-    assert "3 live" in r.text
+    assert "4 live" in r.text
     assert "0 blocked" in r.text
     assert 'href="/arcade"' in r.text
 
@@ -570,12 +636,11 @@ def test_arcade_summary_dedupes_idless_clicks_by_owner_action():
 
 
 def test_arcade_summary_over_committed_registry():
-    """The helper agrees with the committed registry read through the loader,
-    post-flip (2026-07-18): all three games reachable, none blocked, no
-    outstanding owner clicks."""
+    """The helper agrees with the committed registry read through the loader:
+    all four games reachable, none blocked, no outstanding owner clicks."""
     summary = arcade.availability_summary(arcade.load_games())
-    assert summary["total"] == 3
-    assert summary["live"] == 3
+    assert summary["total"] == 4
+    assert summary["live"] == 4
     assert summary["blocked"] == 0
     assert summary["owner_clicks"] == 0
 
