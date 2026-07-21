@@ -1,6 +1,6 @@
 # 2026-07-21 — botsite: richer arcade game detail pages (S6)
 
-> **Status:** `in-progress` — branch `claude/arcade-richer-detail`; born red,
+> **Status:** `complete` — branch `claude/arcade-richer-detail`; born red,
 > holds the `quality` gate until the optional screenshots/controls/changelog
 > sections land green. Flips to `complete` + PR number as the deliberate LAST
 > code step (coordinator handles the flip after CI).
