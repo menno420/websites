@@ -1,6 +1,6 @@
 # Review: link /releases.json from the fleet page
 
-- **Status:** in-progress
+- **Status:** complete
 - **📊 Model:** opus-4.8 · medium · feature build
 - **💡 Idea:** A data endpoint that only surfaces via a conditionally-hidden banner is effectively orphaned when the condition is false — link it next to its siblings so it's always findable, not only in an error state.
 - **⟲ Previous-session review:** The closeout (#472) and records true-up (#473) both landed clean with named-path staging + valid PL-004 class + the flip dropping its claim in-commit; same discipline here.
