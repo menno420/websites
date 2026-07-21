@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Submission status — SuperBot{% endblock %}
+
+{% block content %}
+<div class="wrap" style="max-width:var(--sb-wrap-narrow)">
+  <section class="sb-page-hero">
+    <span class="sb-ey"><span class="dot">·</span> feedback</span>
+    <div class="head-row"><h1>Submission status</h1></div>
+    <p class="sb-lead">Look up where your submission stands using the reference
+      you were given when you sent it. Only the status is shown here.</p>
+  </section>
+
+  {% if status %}
+  <div class="sb-lane-pending section-sm">
+    <div class="head">{{ icon("inbox", 16) }}<h4>Status for your submission</h4></div>
+    <p>Reference <code>{{ ref }}</code></p>
+    <p>Current status: <strong>{{ status }}</strong>. Submissions are reviewed
+      before anything is published — check back here any time using this reference.</p>
+    <span class="feed">intake: live · status looked up by reference</span>
+  </div>
+  {% else %}
+  <div class="sb-lane-pending section-sm">
+    <div class="head">{{ icon("search", 16) }}<h4>No submission found for that reference</h4></div>
+    <p>We couldn't find a submission for <code>{{ ref }}</code>. Double-check the
+      reference from your confirmation screen — it's the only way to look up a
+      submission.</p>
+    <div class="act"><a class="sb-btn sb-btn-ghost sb-btn-sm" href="/submit">{{ icon("back", 15) }} Back to the form</a></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

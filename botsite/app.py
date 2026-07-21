@@ -579,9 +579,31 @@ async def submit_post(request: Request, _: None = Depends(testing.guard_state_ch
             "intake_live": live,
             "accepted": stored is not None,
             "missing_fields": live and not (title and body),
+            "ref": (stored or {}).get("ref"),
         }
     )
     return templates.TemplateResponse(request, "submit.html", ctx)
+
+
+@app.get("/submit/status/{ref}", response_class=HTMLResponse)
+async def submit_status(request: Request, ref: str):
+    """Read-only public status lookup for a submission by its opaque ref.
+
+    Non-state-changing GET (no CSRF). The ref is the unguessable token issued on
+    /submit — the ONLY way to look up a submission, and only its status string is
+    exposed (never title/body; there is no browsable list). Honest not-found:
+    unknown ref -> 404, and we do NOT distinguish "intake not live" from "no such
+    ref" — both render the same not-found page (submission_status_by_ref returns
+    None for either), so the page never leaks whether the store is live.
+    """
+    res = await ds.fetch_site(refresh=_refresh(request))
+    status = submissions_store.submission_status_by_ref(ref)
+    ctx = _base_ctx(request, "submit", res)
+    ctx.update({"ref": ref, "status": status})
+    code = 200 if status is not None else 404
+    return templates.TemplateResponse(
+        request, "submit_status.html", ctx, status_code=code
+    )
 
 
 @app.get("/submit/queue.json")
