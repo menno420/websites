@@ -8,7 +8,20 @@
     "availability": "download",
     "url": "https://github.com/menno420/gba-homebrew/releases/download/lumen-drift-v1.3/lumen-drift.gba",
     "source_repo": "menno420/gba-homebrew",
-    "status_note": "Downloadable now — the lumen-drift-v1.3 GitHub Release is published; the Download button fetches the ROM (lumen-drift.gba) directly from that release."
+    "status_note": "Downloadable now — the lumen-drift-v1.3 GitHub Release is published; the Download button fetches the ROM (lumen-drift.gba) directly from that release.",
+    "controls": [
+      {"input": "START", "action": "Start a run (and restart after game over)"},
+      {"input": "START (during run)", "action": "Pause / resume — the whole cave freezes, surge included"},
+      {"input": "B (while paused)", "action": "Restart the run"},
+      {"input": "SELECT", "action": "Mute / unmute all sound"},
+      {"input": "A (hold)", "action": "Thrust upward against gravity"},
+      {"input": "D-pad ← →", "action": "Steer sideways"}
+    ],
+    "changelog": [
+      {"version": "v1.1", "note": "The echoes deepen — every full echo cycle, crystals come more often and the galleries tighten."},
+      {"version": "v1.2", "note": "Graze mechanic — slip past a crystal close enough to hear the whisper and part of your light comes back."},
+      {"version": "v1.3", "note": "Pause and mute added; the mote flashes hot the instant a graze pays."}
+    ]
   },
   {
     "slug": "gloamline",
@@ -19,7 +32,23 @@
     "availability": "download",
     "url": "https://raw.githubusercontent.com/menno420/gba-homebrew/main/dist/gloamline.nds",
     "source_repo": "menno420/gba-homebrew",
-    "status_note": "Downloadable now — the committed dist/gloamline.nds ROM (118 KB) fetches directly from the gba-homebrew repo; load it in melonDS or DeSmuME. No published GitHub Release yet, so the Download button points at the committed ROM."
+    "status_note": "Downloadable now — the committed dist/gloamline.nds ROM (118 KB) fetches directly from the gba-homebrew repo; load it in melonDS or DeSmuME. No published GitHub Release yet, so the Download button points at the committed ROM.",
+    "controls": [
+      {"input": "D-pad", "action": "Move, 8 directions"},
+      {"input": "A", "action": "Shove the nearest Shambler in reach"},
+      {"input": "B", "action": "Barricade: place at your feet — or repair the one in reach"},
+      {"input": "X", "action": "Chalk mark on the watch-map at your position — X again wipes it"},
+      {"input": "START", "action": "Start — retry — next night"},
+      {"input": "SELECT (title / after death)", "action": "Rematch best night (requires a record)"},
+      {"input": "SELECT (at dawn)", "action": "Scavenge the yard before next night"},
+      {"input": "Stylus", "action": "Tap the watch-map to drop or move the mark"}
+    ],
+    "changelog": [
+      {"version": "slice 8", "note": "Audio synthesis added."},
+      {"version": "slice 9", "note": "Battery saves added."},
+      {"version": "slice 10", "note": "Watch-map polish."},
+      {"version": "slice 11", "note": "Rematch (best night) added."}
+    ]
   },
   {
     "slug": "mineverse",
@@ -30,7 +59,14 @@
     "availability": "live",
     "url": "https://web-production-97636.up.railway.app",
     "source_repo": "menno420/superbot-mineverse",
-    "status_note": "Read-only demo — player sign-in launching."
+    "status_note": "Read-only demo — player sign-in launching.",
+    "changelog": [
+      {"version": "Stage 0", "note": "Walking skeleton: sample snapshot → stdlib server → static frontend (PR #2)."},
+      {"version": "Stage a", "note": "Read contract v1: versioned mining data contract, bot-side projection (PR #7)."},
+      {"version": "Stage b", "note": "Discord OAuth per-player read."},
+      {"version": "Stage c", "note": "Write contract v1 — test-guild only, via the bot's audited action endpoint (PR #13)."},
+      {"version": "Stage d", "note": "Live-prod prep, owner-flag-gated (prepared; cutover checklist included)."}
+    ]
   },
   {
     "slug": "games-web",
@@ -41,6 +77,15 @@
     "availability": "live",
     "url": "https://menno420.github.io/product-forge/",
     "source_repo": "menno420/product-forge",
-    "status_note": "Live on GitHub Pages — a phase-1 character sheet rendered over mock data."
+    "status_note": "Live on GitHub Pages — a phase-1 character sheet rendered over mock data.",
+    "controls": [
+      "Topbar character switcher — flips between the two mock characters (Durzo Coalfist, Pip Gravelton) without a reload",
+      "Hover a gear chip to see its stats in a tooltip",
+      "Keyboard focus ring on gear chips; a live region announces each character switch"
+    ],
+    "changelog": [
+      {"version": "v1.0.0", "note": "Phase 1 — mock-data mining character sheet (Durzo, Pip)."},
+      {"version": "v1.0.1", "note": "Validation tightened: stats requires at least one entry (minItems: 1); effective contract unchanged (patch bump)."}
+    ]
   }
 ]

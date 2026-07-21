@@ -83,6 +83,100 @@ def _with_ref(url: str) -> str:
     return url + ("&" if "?" in url else "?") + REF_QUERY
 
 
+# --------------------------------------------------------------------------- #
+# Optional richer-detail fields — screenshots / controls / changelog.
+# These mirror the optional ``blocker`` pattern (botsite/blockers.py): each is
+# OPTIONAL and fail-soft. A missing or malformed value normalizes to an empty
+# list, malformed entries are dropped (never fatal), and the detail template
+# hides the whole section when the list is empty. TRUTH bar: only real,
+# verifiable content the registry actually carries is ever rendered — a bad
+# field costs only its own section, never the game entry (degrade, don't
+# invent). The detail page renders them behind ``{% if game.<field> %}`` guards,
+# so a game with none renders exactly as before this slice.
+# --------------------------------------------------------------------------- #
+
+
+def normalized_screenshots(raw: Any) -> list[dict[str, str]]:
+    """A raw ``screenshots`` value as a list of ``{src, alt}`` dicts.
+
+    ``src`` is a non-empty committed asset path (e.g. under
+    ``botsite/static/...``); ``alt`` is descriptive text (``""`` when absent).
+    Fail-soft: a non-list input, or an entry that is not a dict or lacks a
+    non-empty string ``src``, is dropped — a missing/malformed value degrades
+    to ``[]`` (the template then hides the screenshots section). Never raises.
+    """
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        src = item.get("src")
+        if not isinstance(src, str) or not src.strip():
+            continue
+        alt = item.get("alt")
+        alt = alt.strip() if isinstance(alt, str) else ""
+        out.append({"src": src.strip(), "alt": alt})
+    return out
+
+
+def normalized_controls(raw: Any) -> list[dict[str, str]]:
+    """A raw ``controls`` value as a list of ``{input, action}`` dicts.
+
+    Accepts either dicts (``{"input": "A", "action": "Thrust"}``) or bare
+    strings (a plain action line, normalized to ``{"input": "", "action": s}``).
+    A dict entry needs a non-empty string ``action``; ``input`` is optional
+    (``""`` when absent). Fail-soft: a non-list input, or an entry that is
+    neither a usable string nor a dict with a non-empty ``action``, is dropped
+    — a missing/malformed value degrades to ``[]``. Never raises.
+    """
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, str]] = []
+    for item in raw:
+        if isinstance(item, str):
+            if item.strip():
+                out.append({"input": "", "action": item.strip()})
+            continue
+        if not isinstance(item, dict):
+            continue
+        action = item.get("action")
+        if not isinstance(action, str) or not action.strip():
+            continue
+        input_ = item.get("input")
+        input_ = input_.strip() if isinstance(input_, str) else ""
+        out.append({"input": input_, "action": action.strip()})
+    return out
+
+
+def normalized_changelog(raw: Any) -> list[dict[str, str]]:
+    """A raw ``changelog`` value as a list of ``{version, date, note}`` dicts.
+
+    An entry needs a non-empty string ``note`` plus at least one of a non-empty
+    ``version`` or ``date`` (the label the list renders); the missing one is
+    ``""``. Fail-soft: a non-list input, or an entry that is not a dict, lacks a
+    ``note``, or carries neither version nor date, is dropped — a
+    missing/malformed value degrades to ``[]``. Never raises.
+    """
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        note = item.get("note")
+        if not isinstance(note, str) or not note.strip():
+            continue
+        version = item.get("version")
+        version = version.strip() if isinstance(version, str) else ""
+        date = item.get("date")
+        date = date.strip() if isinstance(date, str) else ""
+        if not version and not date:
+            continue
+        out.append({"version": version, "date": date, "note": note.strip()})
+    return out
+
+
 def load_games(path: Path | None = None) -> list[dict[str, Any]]:
     """Load and validate the arcade registry from disk.
 
@@ -111,6 +205,9 @@ def load_games(path: Path | None = None) -> list[dict[str, Any]]:
         game["has_link"] = game["availability"] in LINKED_AVAILABILITIES and url is not None
         game["link_url"] = _with_ref(url) if game["has_link"] and url else None
         game["blocker"] = blockers.normalized_blocker(game.get("blocker"))
+        game["screenshots"] = normalized_screenshots(game.get("screenshots"))
+        game["controls"] = normalized_controls(game.get("controls"))
+        game["changelog"] = normalized_changelog(game.get("changelog"))
         game["detail_url"] = f"/arcade/{game['slug']}"
         games.append(game)
     return games

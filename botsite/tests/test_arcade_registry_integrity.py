@@ -226,11 +226,15 @@ def test_referenced_ask_ids_exist_in_ledger() -> None:
 # or mutates the registry.
 # --------------------------------------------------------------------------- #
 
-# Allowed top-level keys = the loader's required fields plus the three optional
-# keys ``load_games`` reads (``url``, ``status_note``, ``blocker``). Derived from
-# ``arcade._REQUIRED`` so a new required field moves the allow-set automatically;
-# a new OPTIONAL field is the one line a future schema change must add here.
-_ALLOWED_ARCADE_KEYS = frozenset(arcade._REQUIRED) | {"url", "status_note", "blocker"}
+# Allowed top-level keys = the loader's required fields plus the optional keys
+# ``load_games`` reads (``url``, ``status_note``, ``blocker``, and the S6
+# richer-detail trio ``screenshots`` / ``controls`` / ``changelog``). Derived
+# from ``arcade._REQUIRED`` so a new required field moves the allow-set
+# automatically; a new OPTIONAL field is the one line a future schema change
+# must add here.
+_ALLOWED_ARCADE_KEYS = frozenset(arcade._REQUIRED) | {
+    "url", "status_note", "blocker", "screenshots", "controls", "changelog",
+}
 # The blocker object's own keys (shape validated in depth by the
 # ``normalized_blocker`` guards above; this just rejects typo'd sub-keys).
 _ALLOWED_BLOCKER_KEYS = frozenset({"owner_action", "unblocks", "ask_id"})
