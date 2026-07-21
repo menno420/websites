@@ -99,6 +99,47 @@
   </div>
 </div>
 
+{# Actions-now panel (S4): the owner's open actions surfaced INLINE at the top
+   of the home, from the SAME briefing.asks read (askcov) the "N of M
+   machine-verified" chip above already composed in owner_board's gather — no
+   new fetch, no extra round-trip. Leads with "what needs me now"; the full
+   queue with its writeback forms stays one click away at /owner/queue. Honest
+   states: unknown-with-reason when the ledger was unreadable, an explicit
+   empty state when nothing is open — never a fabricated all-clear. #}
+<div class="card" id="actions-now" style="border-color:var(--purple);">
+  <h2>⚑ actions now <span class="dim small">— your open owner-actions, surfaced from the briefing</span></h2>
+  <p class="dim small">What needs you right now, reused from the same owner-actions read as the
+    verdicts chip above — so this costs no extra fetch. The full queue (mark complete, request
+    assistance, add a note) is one click away at <a href="/owner/queue">/owner/queue</a>.</p>
+  {% if askcov.state != 'ok' %}
+  <p class="small"><span class="b unknown" title="{{ askcov.reason }}">open actions: unknown</span>
+    <span class="dim">— {{ askcov.reason or 'the owner-actions ledger was not readable' }};
+      nothing is assumed clear · <a href="/owner/queue">owner queue</a></span></p>
+  {% elif askcov.count == 0 %}
+  <p class="small"><span class="b ok">Nothing needs you right now</span>
+    <span class="dim">— no open owner-actions in the ledger · <a href="/owner/queue">owner queue</a></span></p>
+  {% else %}
+  <p class="small"><span class="b warn">Your {{ askcov.count }} open action{{ 's' if askcov.count != 1 }}</span>
+    <span class="dim">— newest first{% if askcov.count > askcov.top|length %}; top {{ askcov.top|length }} shown{% endif %} ·
+      <a href="/owner/queue">act on the full queue →</a></span></p>
+  <table class="small">
+    <tr><th>open action</th><th>verdict</th><th>where</th></tr>
+    {% for a in askcov.top %}
+    <tr>
+      <td>{{ a.what }}</td>
+      <td>{% if a.verify %}<span class="b {{ a.verify.css }}" title="{{ a.verify.detail }}">{{ a.verify.label }}</span>
+        {% else %}<span class="dim">—</span>{% endif %}</td>
+      <td class="dim">{{ a.where or '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if askcov.count > askcov.top|length %}
+  <p class="dim small">+{{ askcov.count - askcov.top|length }} more open on the
+    <a href="/owner/queue">owner queue</a>.</p>
+  {% endif %}
+  {% endif %}
+</div>
+
 {# Fleet prompt state (ORDER 041 remainder): one row per roster seat —
    deployed vs canonical (the Custom-Instructions version line), stale
    count across the seat's 3 artifacts, worst state, history deep link.
