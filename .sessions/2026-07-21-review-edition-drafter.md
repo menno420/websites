@@ -2,7 +2,7 @@
 
 > **Status:** `complete`
 
-- **📊 Model:** opus-4.8 · medium · idea/feature
+- **📊 Model:** opus-4.8 · medium · feature build
 - **💡 Idea:** The review site's "continuous review channel" had one edition (2026-07-11) and no generator — derive future editions from the already-baked committed data mirrors so the channel stays alive with zero owner action.
 - **⟲ Previous-session review:** #462 landed the 2026-07-20 product-frontier plan + baton; this session executes its top slice (S1). Prior overnight work drained the hardening backlog through #460/#461.
 
