@@ -920,9 +920,9 @@
   create branches and PRs (proven by run 29202721928 → PR #194 auto-merged);
   a final workflow step deleting its own merged/superseded
   `bake/review-data-*` branches (plus the two 2026-07-11/12 orphans) would
-  remove the owner errand entirely. Worth having because branch deletion is
-  403-walled for agent sessions (`docs/CAPABILITIES.md`) — the workflow is
-  the one actor that can keep its own house clean.
+  remove the owner errand entirely. Worth having because branch deletion was
+  403-walled for agent sessions (2026-07-09, `docs/CAPABILITIES.md`) — the
+  workflow is the one actor that can keep its own house clean.
 
 - **Pin open tester-task `product_url` hosts to the healthcheck `SERVICES`
   table** · `captured` (2026-07-12, tester-task URL guard session 💡) — the
