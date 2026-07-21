@@ -1,0 +1,1 @@
+- `claude/review-releases-link` · review: link /releases.json from /fleet (findability) · 2026-07-21
