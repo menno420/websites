@@ -96,6 +96,14 @@
   <div class="sb-wrap-wide sb-footer-in">
     <span>Program review — the record explaining itself.</span>
     <span class="sb-muted">Every number derived from the repo's committed history; every claim linked to its evidence.</span>
+    {#- Fleet strip: cross-service nav. URLs vendored per service (NO cross-service
+        import) — hardcoded railway URLs until the deferred custom-domain call. -#}
+    <nav class="sb-fleet sb-muted" aria-label="SuperBot fleet">Fleet:
+      <a href="https://control-plane-production-abb0.up.railway.app">Control</a> ·
+      <a href="https://botsite-production-cfd7.up.railway.app">Bots</a> ·
+      <a href="https://dashboard-production-a91b.up.railway.app">Dashboard</a> ·
+      <a href="https://review-production-fc91.up.railway.app" aria-current="page">Review</a>
+    </nav>
     <span class="right">
       {% if generated_at %}<span class="sb-muted">data last refreshed {{ generated_at }}</span>{% endif %}
       {% if git_head %}<a href="{{ repo_url }}/commit/{{ git_head }}" target="_blank" rel="noopener">snapshot @ {{ git_head[:8] }}</a>{% endif %}

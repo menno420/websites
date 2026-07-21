@@ -76,6 +76,14 @@
   <div class="sb-wrap-wide sb-footer-in">
     <span>SuperBot — public reference site.</span>
     <span class="sb-muted">Data from superbot <code>site.json</code>, read-only.</span>
+    {#- Fleet strip: cross-service nav. URLs vendored per service (NO cross-service
+        import) — hardcoded railway URLs until the deferred custom-domain call. -#}
+    <nav class="sb-fleet sb-muted" aria-label="SuperBot fleet">Fleet:
+      <a href="https://control-plane-production-abb0.up.railway.app">Control</a> ·
+      <a href="https://botsite-production-cfd7.up.railway.app" aria-current="page">Bots</a> ·
+      <a href="https://dashboard-production-a91b.up.railway.app">Dashboard</a> ·
+      <a href="https://review-production-fc91.up.railway.app">Review</a>
+    </nav>
     <span class="right">
       {% if build.commit %}<a href="https://github.com/menno420/superbot/commit/{{ build.commit }}" target="_blank" rel="noopener" title="{{ build.subject }}">build {{ build.commit[:8] }}</a>{% endif %}
       <a href="/status">status</a>
