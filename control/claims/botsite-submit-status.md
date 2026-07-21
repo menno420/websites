@@ -1,1 +1,0 @@
-- `claude/botsite-submit-status` · botsite submitter status lookup — opaque ref on /submit + read-only GET /submit/status/{ref} (S5) · botsite/submissions_store.py, botsite/app.py, botsite/templates · 2026-07-21

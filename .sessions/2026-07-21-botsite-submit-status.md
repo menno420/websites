@@ -1,6 +1,6 @@
 # 2026-07-21 — botsite/: submitter status lookup (opaque ref + GET /submit/status/{ref})
 
-> **Status:** `in-progress` — branch `claude/botsite-submit-status`; born red,
+> **Status:** `complete` — branch `claude/botsite-submit-status`; born red,
 > this in-progress Status holds the `quality` gate until the slice lands green,
 > and the flip to `complete` + PR number is the deliberate LAST code step.
 
