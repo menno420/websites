@@ -1,5 +1,7 @@
 # Next-cycle plan — 2026-07-18
 
+> Superseded by docs/PROJECT-CLOSEOUT.md (final close, 2026-07-21) — see its Continuation section.
+
 > **Status:** `plan` — planning pass at HEAD `07b4bb9` (#421). Re-groom when new owner intent or hub capacity lands.
 
 ## Context

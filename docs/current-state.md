@@ -1,8 +1,8 @@
 # websites — Current State
 
-> **Status:** `living-ledger` — last updated 2026-07-20.
-> main `79d57e0` (#456); open PRs: **none**; last full four-suite run
-> **2132** (2026-07-20); kit v1.17.0. The Claude Code Projects EAP **session
+> **Status:** `living-ledger` — last updated 2026-07-21.
+> main `ea1f2a1` (#472); open PRs: **none**; last full four-suite run
+> **2185** (2026-07-21); kit v1.20.1. The Claude Code Projects EAP **session
 > surface** winds down ~**2026-07-21** (extended per inbox ORDER 031); the
 > **repo + all four Railway services stay live and writable** and the owner
 > continues via normal chat afterward — no repo freeze, no deadline.
@@ -12,6 +12,7 @@
 > agreement) and keep it current as the project moves.
 
 - **Final closeout:** [docs/PROJECT-CLOSEOUT.md](PROJECT-CLOSEOUT.md) — what shipped, current live state, and how to continue.
+- **2026-07-20 product-frontier cycle (S1–S6) — all landed + live:** #463 review edition drafter, #464 arcade catalog growth, #466 cross-service fleet nav strip, #467 owner actions-now panel, #469 submitter status lookup, #470 arcade game detail pages, plus #471 heartbeat truing. `docs/PROJECT-CLOSEOUT.md` above is the final closeout for the full picture.
 
 ## What this repo is
 

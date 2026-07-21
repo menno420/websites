@@ -1,5 +1,7 @@
 # Next cycle — 2026-07-20 (product frontier)
 
+> Superseded by docs/PROJECT-CLOSEOUT.md (final close, 2026-07-21) — see its Continuation section.
+
 > **Status:** `plan`
 >
 > Successor to docs/plans/next-cycle-2026-07-19.md (executed: hardening/hygiene
