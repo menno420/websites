@@ -1,6 +1,6 @@
 # Session card — 2026-07-21 · cross-service fleet nav strip
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** opus-4.8 · medium · feature build
 - **💡 Idea:** The four services never link to each other — add a small footer fleet strip so a visitor can move control-plane ↔ botsite ↔ dashboard ↔ review. URLs hardcoded until the deferred custom-domain call.
