@@ -1,1 +1,0 @@
-- `claude/project-closeout` · docs/PROJECT-CLOSEOUT.md + current-state pointer (final close) · 2026-07-21

@@ -1,6 +1,6 @@
 # Project closeout doc
 
-- **Status:** in-progress
+- **Status:** complete
 - **📊 Model:** opus-4.8 · high · docs-only
 - **💡 Idea:** A single closeout doc that serves two cold readers at once — the owner (what exists, how to use it, what's still on him) and a fresh Claude session (boot route, verify commands, landing gotchas) — beats scattering that knowledge across records.
 - **⟲ Previous-session review:** S5 (#469, submitter status lookup) landed clean with the born-red protocol; the four-marker card + valid PL-004 class + named-path staging kept the flip green first try. Carrying that discipline here.
