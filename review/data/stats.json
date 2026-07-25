@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-07-24T07:43:19Z",
+  "generated_at": "2026-07-25T07:30:31Z",
   "auth": "token",
   "note": "Two REST calls per repo, fail-soft; a repo the API would not serve carries its exact reason. total_prs counts every PR ever opened; open_issues_and_prs is GitHub's combined open count.",
   "repos": {
     "superbot": {
       "ok": true,
-      "pushed_at": "2026-07-24T06:45:20Z",
+      "pushed_at": "2026-07-25T07:00:49Z",
       "created_at": "2025-08-10T21:39:44Z",
       "description": "The best bot ever made",
       "open_issues_and_prs": 8,
       "default_branch": "main",
-      "total_prs": 2147
+      "total_prs": 2158
     },
     "superbot-next": {
       "ok": true,
@@ -32,12 +32,12 @@
     },
     "websites": {
       "ok": true,
-      "pushed_at": "2026-07-23T07:48:30Z",
+      "pushed_at": "2026-07-24T07:44:50Z",
       "created_at": "2026-07-09T00:41:59Z",
       "description": "the websites for managing the projects and bot",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 477
+      "total_prs": 478
     },
     "trading-strategy": {
       "ok": true,
@@ -95,12 +95,12 @@
     },
     "product-forge": {
       "ok": true,
-      "pushed_at": "2026-07-24T05:56:43Z",
+      "pushed_at": "2026-07-24T19:58:32Z",
       "created_at": "2026-07-10T18:08:37Z",
       "description": "home to all the homeless projects",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 36
+      "total_prs": 48
     },
     "idea-engine": {
       "ok": true,
@@ -149,12 +149,12 @@
     },
     "fleet-manager": {
       "ok": true,
-      "pushed_at": "2026-07-24T07:13:27Z",
+      "pushed_at": "2026-07-25T06:57:55Z",
       "created_at": "2026-07-09T16:56:41Z",
       "description": "The working memory of the manager Project",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 480
+      "total_prs": 503
     }
   }
 }
