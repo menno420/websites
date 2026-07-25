@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-24T07:42:54Z",
+  "generated_at": "2026-07-25T07:30:03Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -203,8 +203,8 @@
       "repo_url": "https://github.com/menno420/superbot",
       "head": {
         "ok": true,
-        "sha": "c005b1d9737dea3dfb4cb1610d0671b628f4c848",
-        "committed_at": "2026-07-24T08:45:19+02:00",
+        "sha": "cdc255d98e04e039f289cbf14f385308566d2e5c",
+        "committed_at": "2026-07-25T09:00:47+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -270,8 +270,8 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "1f7fba9ceb0df08f13e3323ed3738474cc9c08d0",
-        "committed_at": "2026-07-23T07:48:29Z",
+        "sha": "6960299e4231a0e9b122c9b4f7918daf27431e89",
+        "committed_at": "2026-07-24T07:44:49Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -498,16 +498,16 @@
       "repo_url": "https://github.com/menno420/product-forge",
       "head": {
         "ok": true,
-        "sha": "cfdfa02685aca2aabdd4ec854f4c6a28662bcd59",
-        "committed_at": "2026-07-24T07:56:33+02:00",
+        "sha": "81b65bdea62231910c2222b4037d5b26a1699a1c",
+        "committed_at": "2026-07-24T21:58:20+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-24T05:53:39Z",
-          "phase": "phone-controller Slice 6 SHIPPED \u2014 custom layout editor, analog sticks + gyro, turbo/haptics, dim/immersive, per-host memory, stale-pairing warning (v0.6.0) lane: builder (phone-controller) \u00b7 owner-live session 2026-07-23",
-          "health": "green **Slice 6 SHIPPED (same conversation):** the research gap plan, implemented \u2014 custom layout editor (drag/resize/assign any action, per-button turbo 10 Hz, saved layouts in the picker) \u00b7 Analog-sticks pad (descriptor rev: right stick = Z/RZ; deadzone setting) \u00b7 gyro\u2192right-stick toggle \u00b7 haptics toggle \u00b7 Dim + Full-screen modes \u00b7 per-host layout memory + silent auto-reconnect \u00b7 stale-pairing warning (per-bond descriptor hash \u2014 the owner's touchpad incident, field-confirmed fixed by re-pair mid-slice) \u00b7 keyboard F-row \u00b7 measured input-path latency stat in Settings. v0.6.0 (re-pair required \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-07-24T19:20:27Z",
+          "phase": "phone-controller Slice 17 SHIPPED \u2014 editor discard + customize-a-preset + fine size sliders (v0.17.0) lane: builder (phone-controller) \u00b7 owner-live session 2026-07-23",
+          "health": "green **Slice 17 in progress (2026-07-24):** owner editor UX \u2014 no easy discard; wants preset editing + fine size slider. Adding Cancel/Discard editor button (no pre-save for new), Width/Height live sliders (buttons + widgets), NDS template + New-from-preset picker. Card: `.sessions/2026-07-24-phone-controller-slice17-editor-discard-sliders.md`. **Slice 16 SHIPPED (2026-07-24):** owner Mario Kart bug \u2014 couldn't press A + steer at once. Cause: SlidePadRouter on the pad root + consuming child widgets blocked other pointers (mFirstTouchTarget). Fix: per-button consuming touch (shared holdTouch pat \u2026 [truncated for the mirror \u2014 full text at the source]",
           "orders": "acked=001,002,003,004 done=001,002,003,004 \u00b7 Slice 4 = owner-live directive 2026-07-23 (no inbox ORDER number; supersedes the 2026-07-11 archive-ready posture per fleet precedence \u2014 live instruction outranks stored close-out). \u2691 OWNER-ACTION (OA-004, open) \u2014 **playtest the controller on real hardware** (the one step CI cannot prove; ~5 min, two Android devices): 1. Install the APK (Releases page, or the CI-run artifact) on the controller phone. 2. Open it \u2192 grant Nearby devices \u2192 status shows the capability verdict. 3. Tap Discoverable \u2192 pair from the target device \u2192 \"Connected \u2014 controller is \u2026 [truncated for the mirror \u2014 full text at the source]",
           "notes": "phone-controller is the lane's active product (beta \u2014 usable controller, hardware playtest pending, OA-004). games-web state unchanged (Pages pending OA-003)."
         },
@@ -644,8 +644,8 @@
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "e0c2c6140d7516bbad08b80eea423381790011e4",
-        "committed_at": "2026-07-24T07:13:25Z",
+        "sha": "06363ad2613f6356406fad961ebf74786c99afa8",
+        "committed_at": "2026-07-25T06:57:53Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
