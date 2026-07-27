@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-07-26T07:47:35Z",
+  "generated_at": "2026-07-27T08:49:35Z",
   "registry": {
     "ok": true,
     "reason": "",
     "url": "https://github.com/menno420/fleet-manager/blob/main/scripts/gen_roster.py",
-    "total_seats": 24,
-    "repo_seats": 17,
+    "total_seats": 25,
+    "repo_seats": 18,
     "registry_only_seats": [
       "retro-games coordinator (no repo)",
       "game-lab (no repo)",
@@ -203,8 +203,8 @@
       "repo_url": "https://github.com/menno420/superbot",
       "head": {
         "ok": true,
-        "sha": "640a8b7dba3c9f5c04a6a9e120645a2990ca4af1",
-        "committed_at": "2026-07-26T08:54:24+02:00",
+        "sha": "32ccfeea7f2f82ad3c4c00d548c8630e2346cece",
+        "committed_at": "2026-07-27T09:52:13+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -270,8 +270,8 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "31c93b394139113edf234821e9dc02f6724ccde4",
-        "committed_at": "2026-07-25T07:31:55Z",
+        "sha": "18bbaccc4f500cf75e8e044c63e7771703b7fa46",
+        "committed_at": "2026-07-26T07:49:50Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -638,14 +638,28 @@
       }
     },
     {
+      "lane": "shiftlife",
+      "repo": "shiftlife",
+      "disposition": "live",
+      "repo_url": "https://github.com/menno420/shiftlife",
+      "head": {
+        "ok": false,
+        "reason": "unreadable over git transport (fatal: repository 'https://github.com/menno420/shiftlife/' not found)"
+      },
+      "heartbeat": {
+        "available": false,
+        "reason": "HTTP 404 \u2014 no control/status.md on main (or repo not public)"
+      }
+    },
+    {
       "lane": "fleet-manager (this repo)",
       "repo": "fleet-manager",
       "disposition": "live",
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "b6bf24d9060a21b1b82700eb9d2d8265419228c3",
-        "committed_at": "2026-07-26T07:14:03Z",
+        "sha": "cbde05fca76a704ea332751e6e467d2400e45a76",
+        "committed_at": "2026-07-27T08:04:22Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
