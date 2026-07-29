@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-28T07:56:22Z",
+  "generated_at": "2026-07-29T08:00:52Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -203,8 +203,8 @@
       "repo_url": "https://github.com/menno420/superbot",
       "head": {
         "ok": true,
-        "sha": "7008e9d27617ed6acce5a9bc06deefd4b3c2f469",
-        "committed_at": "2026-07-28T08:45:38+02:00",
+        "sha": "05ade37491de2641c356c46571cf4741f1dfff57",
+        "committed_at": "2026-07-29T08:49:21+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -270,8 +270,8 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "20180ba581caa1b953d799d5819342f92b66d9cb",
-        "committed_at": "2026-07-27T08:51:15Z",
+        "sha": "40bdc58b6fed164c380f5cae2bc63fd6cb4e0b39",
+        "committed_at": "2026-07-28T07:57:59Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -658,8 +658,8 @@
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "7b5ba4e6b683c1e9a4a346d957282dfc8bdb9122",
-        "committed_at": "2026-07-28T07:19:59Z",
+        "sha": "044653760d37d9b5830707639cff5c01b9486035",
+        "committed_at": "2026-07-29T07:24:05Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
