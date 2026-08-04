@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-03T08:44:00Z",
+  "generated_at": "2026-08-04T07:56:54Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -25,7 +25,7 @@
           "repo": "fleet-manager",
           "repo_url": "https://github.com/menno420/fleet-manager",
           "heartbeat_available": true,
-          "updated": "2026-07-21T20:35Z kit_version: 1.17.0 seat: fleet-manager (coordinator) \u2014 CLOSED note: seat final close (PR #427). Read docs/PROJECT-CLOSEOUT.md first. --- - **This close: PR #427** (`claude/fm-seat-close`) \u2014 the final closeout (docs/PROJECT-CLOSEOUT.md + records true-up + this heartbeat); born-red by design, **lands on the card flip that is this PR's last commit** (merge-on- green / direct merge). - **All prior seat PRs are terminal.** The close-period run (#332 boot 2026-07-18 \u2192 #425 final-closer registry landing) all MERGED, with one exception: **#419 (12:21Z records cycle) CLOSED-supersede \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-08-03T21:29:58Z kit_version: 1.17.0 seat: fleet-manager (coordinator) \u2014 CLOSED note: seat final close (PR #427). Read docs/PROJECT-CLOSEOUT.md first. --- - **This close: PR #427** (`claude/fm-seat-close`) \u2014 the final closeout (docs/PROJECT-CLOSEOUT.md + records true-up + this heartbeat); born-red by design, **lands on the card flip that is this PR's last commit** (merge-on- green / direct merge). - **All prior seat PRs are terminal.** The close-period run (#332 boot 2026-07-18 \u2192 #425 final-closer registry landing) all MERGED, with one exception: **#419 (12:21Z records cycle) CLOSED-supers \u2026 [truncated for the mirror \u2014 full text at the source]",
           "reason": ""
         }
       ]
@@ -203,8 +203,8 @@
       "repo_url": "https://github.com/menno420/superbot",
       "head": {
         "ok": true,
-        "sha": "40d21af0289a896f5810e47d7eab71a2410734c7",
-        "committed_at": "2026-08-03T09:51:00+02:00",
+        "sha": "8d988a69adaaf50c5a195a28a82c5467cfb166cc",
+        "committed_at": "2026-08-04T08:45:50+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -247,8 +247,8 @@
       "repo_url": "https://github.com/menno420/substrate-kit",
       "head": {
         "ok": true,
-        "sha": "617f34bf2a8cd38ba83c8f7ccba996186ed1cb77",
-        "committed_at": "2026-07-21T18:24:21Z",
+        "sha": "91db9e999ff406e02527c7efb7aa45da303866bf",
+        "committed_at": "2026-08-03T20:42:13Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -270,8 +270,8 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "a220075def3238fca8381de0529c87d996da3cd0",
-        "committed_at": "2026-08-02T07:43:28Z",
+        "sha": "c0d614ee52f6ef6f17a81f67b5f268db753d89a7",
+        "committed_at": "2026-08-03T08:47:01Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -658,14 +658,14 @@
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "05ad0f9c51322554f14de0af407d8d421cc7dc01",
-        "committed_at": "2026-08-03T08:01:36Z",
+        "sha": "6d9bb599a79d43527af18333943d9977ec2b1d1f",
+        "committed_at": "2026-08-04T07:33:18Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-21T20:35Z kit_version: 1.17.0 seat: fleet-manager (coordinator) \u2014 CLOSED note: seat final close (PR #427). Read docs/PROJECT-CLOSEOUT.md first. --- - **This close: PR #427** (`claude/fm-seat-close`) \u2014 the final closeout (docs/PROJECT-CLOSEOUT.md + records true-up + this heartbeat); born-red by design, **lands on the card flip that is this PR's last commit** (merge-on- green / direct merge). - **All prior seat PRs are terminal.** The close-period run (#332 boot 2026-07-18 \u2192 #425 final-closer registry landing) all MERGED, with one exception: **#419 (12:21Z records cycle) CLOSED-supersede \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "updated": "2026-08-03T21:29:58Z kit_version: 1.17.0 seat: fleet-manager (coordinator) \u2014 CLOSED note: seat final close (PR #427). Read docs/PROJECT-CLOSEOUT.md first. --- - **This close: PR #427** (`claude/fm-seat-close`) \u2014 the final closeout (docs/PROJECT-CLOSEOUT.md + records true-up + this heartbeat); born-red by design, **lands on the card flip that is this PR's last commit** (merge-on- green / direct merge). - **All prior seat PRs are terminal.** The close-period run (#332 boot 2026-07-18 \u2192 #425 final-closer registry landing) all MERGED, with one exception: **#419 (12:21Z records cycle) CLOSED-supers \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/fleet-manager/blob/main/control/status.md"
       }

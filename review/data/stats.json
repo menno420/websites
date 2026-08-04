@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-08-03T08:44:39Z",
+  "generated_at": "2026-08-04T07:57:15Z",
   "auth": "token",
   "note": "Two REST calls per repo, fail-soft; a repo the API would not serve carries its exact reason. total_prs counts every PR ever opened; open_issues_and_prs is GitHub's combined open count.",
   "repos": {
     "superbot": {
       "ok": true,
-      "pushed_at": "2026-08-03T07:51:01Z",
+      "pushed_at": "2026-08-04T06:45:51Z",
       "created_at": "2025-08-10T21:39:44Z",
       "description": "The best bot ever made",
       "open_issues_and_prs": 9,
       "default_branch": "main",
-      "total_prs": 2242
+      "total_prs": 2254
     },
     "superbot-next": {
       "ok": true,
@@ -23,21 +23,21 @@
     },
     "substrate-kit": {
       "ok": true,
-      "pushed_at": "2026-08-01T18:19:23Z",
+      "pushed_at": "2026-08-03T20:42:14Z",
       "created_at": "2026-07-07T21:39:56Z",
       "description": "AI self improvement system in progress",
       "open_issues_and_prs": 2,
       "default_branch": "main",
-      "total_prs": 560
+      "total_prs": 563
     },
     "websites": {
       "ok": true,
-      "pushed_at": "2026-08-02T07:43:29Z",
+      "pushed_at": "2026-08-03T08:47:03Z",
       "created_at": "2026-07-09T00:41:59Z",
       "description": "the websites for managing the projects and bot",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 487
+      "total_prs": 488
     },
     "trading-strategy": {
       "ok": true,
@@ -153,12 +153,12 @@
     },
     "fleet-manager": {
       "ok": true,
-      "pushed_at": "2026-08-03T08:01:40Z",
+      "pushed_at": "2026-08-04T07:33:19Z",
       "created_at": "2026-07-09T16:56:41Z",
       "description": "The working memory of the manager Project",
       "open_issues_and_prs": 0,
       "default_branch": "main",
-      "total_prs": 686
+      "total_prs": 710
     }
   }
 }
