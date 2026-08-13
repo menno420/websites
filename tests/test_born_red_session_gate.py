@@ -147,10 +147,12 @@ def test_config_names_kit_v1(tmp_path):
     1.15.0 -> 1.16.0 by the 2026-07-14 v1.16.0 distribution upgrade, then
     1.16.0 -> 1.17.0 by the 2026-07-14 v1.17.0 distribution upgrade, then
     1.17.0 -> 1.20.1 by the 2026-07-20 v1.20.1 distribution upgrade (fm ORDER
-    048, PR #452). Keep this an EXACT pin on purpose: an upgrade must
+    048, PR #452), then
+    1.20.1 -> 1.21.0 by the 2026-08-13 v1.21.0 distribution upgrade (phase 3,
+    PR #499). Keep this an EXACT pin on purpose: an upgrade must
     consciously move it, and a silent re-vendor without recording
     `kit_version` reddens here.
     """
     cfg = json.loads(CONFIG.read_text())
-    assert cfg.get("kit_version") == "1.20.1"
+    assert cfg.get("kit_version") == "1.21.0"
     assert "status_in_progress" in BOOTSTRAP.read_text()
