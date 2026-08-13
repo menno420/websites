@@ -14,4 +14,4 @@ deployed: main 371a640 · four Railway services (control-plane / botsite / dashb
 ⚑ needs-owner: the ⚑ rows in docs/owner/OWNER-ACTIONS.md (canonical list there; unchanged at close).
 notes: PR terminal ledger — #472 merged ea1f2a1 (closeout doc) · #473 merged c890fd3 (records true-up) · #474 merged 371a640 (review findability) · #465 closed without merge (superseded bake) · all prior seat PRs #414–#463+ terminal per the closeout doc; 0 open. Final facts: suite 2185 passed; bootstrap check --strict all-passed; four services /healthz 200. Successor: read docs/PROJECT-CLOSEOUT.md first.
 
-kit: v1.20.1
+kit: v1.21.0
