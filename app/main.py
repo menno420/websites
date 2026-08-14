@@ -95,6 +95,17 @@ async def healthz():
     return {"ok": True, "cache_entries": github.cache_size()}
 
 
+@app.get("/robots.txt")
+async def robots_txt() -> Response:
+    """Crawler policy: an operations surface, not indexable content.
+
+    Added 2026-08-14 (fleet-manager #861/#863): Meta-range crawlers were
+    measured pulling the ~620 KB /orders page in volume — most of the
+    estate's Railway egress was this service serving bots.
+    """
+    return Response(content="User-agent: *\nDisallow: /\n", media_type="text/plain")
+
+
 @app.get("/version")
 async def version():
     """The commit this service is running (deployed SHA). Unauthenticated,

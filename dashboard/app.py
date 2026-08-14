@@ -42,7 +42,13 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    Response,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -147,6 +153,13 @@ async def _base_ctx(request: Request, active: str) -> dict[str, Any]:
 async def healthz() -> dict[str, Any]:
     """Liveness probe (Railway). Unauthenticated, no network dependency."""
     return {"status": "ok", "service": "dashboard"}
+
+
+@app.get("/robots.txt")
+async def robots_txt() -> Response:
+    """Crawler policy: a read-only ops dashboard, not indexable content
+    (2026-08-14, fleet-manager #861/#863 — crawler egress reduction)."""
+    return Response(content="User-agent: *\nDisallow: /\n", media_type="text/plain")
 
 
 def _version_info() -> dict[str, Any]:

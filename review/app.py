@@ -124,6 +124,13 @@ async def healthz() -> dict[str, Any]:
     return {"status": "ok", "service": "review"}
 
 
+@app.get("/robots.txt")
+async def robots_txt() -> Response:
+    """Crawler policy: the program-review site's audience is human reviewers,
+    not crawlers (2026-08-14, fleet-manager #861/#863 — egress reduction)."""
+    return Response(content="User-agent: *\nDisallow: /\n", media_type="text/plain")
+
+
 @app.get("/version")
 async def version() -> dict[str, Any]:
     """Deployed SHA — ``RAILWAY_GIT_COMMIT_SHA`` (primary) -> ``GIT_SHA``
