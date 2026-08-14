@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-13T06:50:36Z",
+  "generated_at": "2026-08-14T06:47:45Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -138,7 +138,7 @@
           "repo": "substrate-kit",
           "repo_url": "https://github.com/menno420/substrate-kit",
           "heartbeat_available": true,
-          "updated": "2026-07-21T18:22:07Z",
+          "updated": "2026-08-13T12:42:00Z",
           "reason": ""
         }
       ]
@@ -203,8 +203,8 @@
       "repo_url": "https://github.com/menno420/superbot",
       "head": {
         "ok": true,
-        "sha": "03565343a4372fc9f5fa5180527bd92b049c29a0",
-        "committed_at": "2026-08-13T07:53:35+02:00",
+        "sha": "946dab987953dee63a43d0f31f747f007598723d",
+        "committed_at": "2026-08-14T07:51:30+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -228,8 +228,8 @@
       "repo_url": "https://github.com/menno420/superbot-next",
       "head": {
         "ok": true,
-        "sha": "704aba39cdb8669baab233051938c92753af1c52",
-        "committed_at": "2026-08-05T23:05:48Z",
+        "sha": "d5f66dc27768d49b2755f368c6a2d0ecca66a1af",
+        "committed_at": "2026-08-13T15:21:11Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -247,18 +247,18 @@
       "repo_url": "https://github.com/menno420/substrate-kit",
       "head": {
         "ok": true,
-        "sha": "584d02c5d1ebd54aaa21d9bc169ca0aa2f55c3ff",
-        "committed_at": "2026-08-08T09:43:06+02:00",
+        "sha": "f4581d89c868dee772a79a6d9b9f9dabbb06165d",
+        "committed_at": "2026-08-14T06:01:17Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-21T18:22:07Z",
-          "phase": "SEAT CLOSED. The Self Improvement seat is closed as of 2026-07-21. Full handover: docs/PROJECT-CLOSEOUT.md.",
+          "updated": "2026-08-13T12:42:00Z",
+          "phase": "SEAT CLOSED. The Self Improvement seat is closed as of 2026-07-21; releases are cut by owner-directed sessions. Full handover: docs/PROJECT-CLOSEOUT.md.",
           "health": "green",
-          "kit": "v1.20.2 \u00b7 check: green \u00b7 engaged: no",
-          "last-shipped": "v1.20.2 (tag \u2192 commit 4712ebf) via PRs #558\u2013#561 (all merged). The durable record of this run \u2014 what the kit is, what shipped (all cited), current true state, continuation items, and an owner walkthrough \u2014 is **docs/PROJECT-CLOSEOUT.md**. Read that first. - This closeout PR (branch `claude/project-closeout`) \u2014 will be merged on green. - #552 = parked for owner ratification (`do-not-automerge`, owner's lane). - All other PRs from this run reached a terminal state (merged or closed). Routines: wipe executed by coordinator \u2014 see docs/PROJECT-CLOSEOUT.md."
+          "kit": "v1.21.0 \u00b7 check: green \u00b7 engaged: no",
+          "last-shipped": "v1.21.0 (tag \u2192 commit 0021adc) via PR #581 \u2014 release record: bump PR #581 merged @ 0021adc \u00b7 release run 31699815412 \u00b7 tag v1.21.0 @ 0021adc \u00b7 sha256 8807a00e0e7f14f61f37f2afb48bcb38e4b7247b10741761ff99630bf9cc7356 (downloaded asset = release.json = .sha256 asset = committed dist @ bump SHA, four-way \u2714) \u00b7 adopters: fleet-manager fm #853 (in flight this session); remaining ~11-repo wave owner-called, one upgrade-distribution run each. prior-shipped: v1.20.2 (tag \u2192 commit 4712ebf) via PRs #558\u2013#561 (all merged). The durable record of this run \u2014 what the kit is, what shipped (all cited), current \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/substrate-kit/blob/main/control/status.md"
       }
@@ -270,8 +270,8 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "096f1f88e617b797ccbedf33dd5692201fbc18d8",
-        "committed_at": "2026-08-12T06:49:31Z",
+        "sha": "882378abd98542b7a5f37a47d41de574c69b897e",
+        "committed_at": "2026-08-13T18:46:46Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -288,7 +288,7 @@
           "deployed": "main 371a640 \u00b7 four Railway services (control-plane / botsite / dashboard / review, superbot-websites project); four /healthz 200 verified at close.",
           "needs-owner": "the \u2691 rows in docs/owner/OWNER-ACTIONS.md (canonical list there; unchanged at close).",
           "notes": "PR terminal ledger \u2014 #472 merged ea1f2a1 (closeout doc) \u00b7 #473 merged c890fd3 (records true-up) \u00b7 #474 merged 371a640 (review findability) \u00b7 #465 closed without merge (superseded bake) \u00b7 all prior seat PRs #414\u2013#463+ terminal per the closeout doc; 0 open. Final facts: suite 2185 passed; bootstrap check --strict all-passed; four services /healthz 200. Successor: read docs/PROJECT-CLOSEOUT.md first.",
-          "kit": "v1.20.1"
+          "kit": "v1.21.0"
         },
         "source_url": "https://github.com/menno420/websites/blob/main/control/status.md"
       }
@@ -321,15 +321,15 @@
       "repo_url": "https://github.com/menno420/venture-lab",
       "head": {
         "ok": true,
-        "sha": "1ebe81d0eb895d9c20cc9f6d9017766cde89090a",
-        "committed_at": "2026-07-21T20:13:22Z",
+        "sha": "a7220b1d348a7045acda828c52e47f51ee2844c8",
+        "committed_at": "2026-08-13T18:58:29Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
           "updated": "2026-07-21T20:04:35Z > The `control/*` manager\u2194lane message-bus remains **retired**. This file is a > neutral status pointer, not a source of truth or an order. This is the final > closeout heartbeat before the 2026-07-21 read-only cutoff. **Cutover read (start here):** - Project closeout \u2014 the single durable read of what shipped, the true current state, continuation threads, and the owner walkthrough: [`../docs/PROJECT-CLOSEOUT.md`](../docs/PROJECT-CLOSEOUT.md). - Living ledger: [`../docs/current-state.md`](../docs/current-state.md). - Owner start page: [`../docs/publishing/OWNER-START-HERE.m \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "kit": "v1.20.1"
+          "kit": "v1.21.0"
         },
         "source_url": "https://github.com/menno420/venture-lab/blob/main/control/status.md"
       }
@@ -395,8 +395,8 @@
       "repo_url": "https://github.com/menno420/superbot-mineverse",
       "head": {
         "ok": true,
-        "sha": "f158df6121a96d105c706e280223940fea803e13",
-        "committed_at": "2026-07-21T18:45:29Z",
+        "sha": "9f8047f9e0f46e5fb93565d9c653b6135d11baf2",
+        "committed_at": "2026-08-13T19:20:20Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -478,15 +478,15 @@
       "repo_url": "https://github.com/menno420/gba-homebrew",
       "head": {
         "ok": true,
-        "sha": "8d50a3756ebb4d46aa25cf86da0c956b2dbc07cd",
-        "committed_at": "2026-07-21T18:07:22Z",
+        "sha": "7a4977bb06fcb87ca72950f97f26c43a991c001b",
+        "committed_at": "2026-08-14T07:58:15+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
           "updated": "2026-07-21T18:02:09Z (`date -u`; final content stamp before the closeout flip). This is the **terminal heartbeat** for the gba-homebrew Track-A lane: the autonomous development period ends 2026-07-22T00:00Z, after which the working environment is gone and only committed state survives. This file is a wholesale final stamp \u2014 earlier working sections are folded into the pointers below.",
-          "kit": "v1.20.1 - **The durable handoff is [`docs/PROJECT-CLOSEOUT.md`](../docs/PROJECT-CLOSEOUT.md)** \u2014 public-facing, written for a reader with zero session context (the owner, or a fresh future seat). It carries: what shipped (with PR/commit cites), the true state verified live at HEAD `3377319`, continuation threads in priority order with exact resume steps, a plain-language owner walkthrough with a clickable link per artifact, and a fresh-session boot guide. Read that first; this file is only the terminal status stamp. - Living state ledger: [`docs/current-state.md`](../docs/current-state.md) (cl \u2026 [truncated for the mirror \u2014 full text at the source]"
+          "kit": "v1.21.0 - **The durable handoff is [`docs/PROJECT-CLOSEOUT.md`](../docs/PROJECT-CLOSEOUT.md)** \u2014 public-facing, written for a reader with zero session context (the owner, or a fresh future seat). It carries: what shipped (with PR/commit cites), the true state verified live at HEAD `3377319`, continuation threads in priority order with exact resume steps, a plain-language owner walkthrough with a clickable link per artifact, and a fresh-session boot guide. Read that first; this file is only the terminal status stamp. - Living state ledger: [`docs/current-state.md`](../docs/current-state.md) (cl \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
         "source_url": "https://github.com/menno420/gba-homebrew/blob/main/control/status.md"
       }
@@ -521,8 +521,8 @@
       "repo_url": "https://github.com/menno420/idea-engine",
       "head": {
         "ok": true,
-        "sha": "c69d85a5dfc8e1f63bfadffa74fd8cb660f96350",
-        "committed_at": "2026-07-21T17:20:56Z",
+        "sha": "320acabd9317465eedc2da4cdd5692a74bda382f",
+        "committed_at": "2026-08-13T19:17:55Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -532,7 +532,7 @@
           "phase": "ACTIVE \u2014 EAP extended through 2026-07-21 (ORDER 015); ORDER 016 + ORDER 018 overnight autonomous-run posture ACTIVE. UNRELATED VERDICT 273 (Wilson's theorem \u2014 for every integer n \u2265 2, (n\u22121)! \u2261 \u22121 (mod n) IFF n is prime; the factorial residue is n\u22121 on primes and 0 on composite n>4, sole exception n=4 residue 2) ruled APPROVE this slice via independent adjudication of the landed P260 (sim-ready) \u2014 verifier ideas/fleet/verify_260_wilsons_theorem.py (file sha256 bac228b1bd774d8a5866ae76f3581488b648151caa40ef988f26f6afc59ee609, diff copy-vs-original exit 0, unmodified) + digest 938969bc60f733cea8c \u2026 [truncated for the mirror \u2014 full text at the source]",
           "orders": "acked=001-019 done=001-014 \u00b7 015 acked/consumed \u00b7 016 (owner overnight autonomous-run) ACTIVE \u00b7 017 (phone-as-Bluetooth-controller plan) captured, awaits owner review (PR #481) \u00b7 018 (owner overnight continue-working) ACTIVE \u00b7 019 (substrate-kit v1.20.1 upgrade PR #740 gate fix) landed (#785 @ e6934f4).",
           "needs-owner": "none \u2014 run closing; the prior EAP-era ask is withdrawn at closeout (see docs/PROJECT-CLOSEOUT.md for the final state and continuation).",
-          "kit": "v1.20.1",
+          "kit": "v1.21.0",
           "blockers": "none.",
           "notes": "This slice = independent adjudication of the landed PROPOSAL 261 (`## PROPOSAL 261`, sim-ready on main via PR #896) \u2192 VERDICT 274 APPROVE (fleet / probabilistic streaming slot; Morris approximate counting: a base-2 Morris counter C starts at 0, increments C:=C+1 iff u<2^(\u2212C) for u~Uniform(0,1), and after n increments N\u0302=2^C\u22121 is EXACTLY unbiased E[N\u0302]=n with EXACT variance Var[N\u0302]=n(n\u22121)/2). GENUINE independent re-verification: the moments were re-derived firsthand by an independent from-scratch rational-DP oracle (fractions.Fraction only, no reuse of the verifier's functions) that builds the \u2026 [truncated for the mirror \u2014 full text at the source]"
         },
@@ -658,8 +658,8 @@
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "51703ca2e2d3daea19be87ee724e06e560160ae1",
-        "committed_at": "2026-08-12T22:17:00Z",
+        "sha": "108b4527366f1e9bf0e4491d5cafcbaa87d1bc5e",
+        "committed_at": "2026-08-14T06:04:18Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
