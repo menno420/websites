@@ -19,6 +19,7 @@ NON_PAGE_PATHS = {
     "/healthz",
     "/version",
     "/favicon.ico",
+    "/robots.txt",
     "/palette.json",
     "/games",    # 302 redirect to the botsite games page
     "/reviews",  # 302 redirect to the review service
