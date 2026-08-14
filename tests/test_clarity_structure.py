@@ -89,6 +89,7 @@ NON_PAGE_GET_ROUTES: dict[str, str] = {
     "/healthz": "JSON health probe (Railway healthcheck) — no page shell",
     "/version": "JSON deployed-sha endpoint — machine twin, no page shell",
     "/favicon.ico": "the site icon at the browser-probed path — a file, not a page",
+    "/robots.txt": "plain-text crawler policy (Disallow-all; egress reduction, fm #861/#863) — a file, not a page",
     "/api/readiness.json": "JSON twin of the / board",
     "/activity.json": "JSON twin of /activity",
     "/activity.xml": "Atom feed twin of /activity — XML, not HTML",

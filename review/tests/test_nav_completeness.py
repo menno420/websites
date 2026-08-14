@@ -16,6 +16,7 @@ NON_PAGE_PATHS = {
     "/healthz",
     "/version",
     "/favicon.ico",
+    "/robots.txt",
     "/story.json",
     "/fleet.json",
     "/releases.json",
