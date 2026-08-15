@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-14T06:47:45Z",
+  "generated_at": "2026-08-15T05:45:18Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -203,8 +203,8 @@
       "repo_url": "https://github.com/menno420/superbot",
       "head": {
         "ok": true,
-        "sha": "946dab987953dee63a43d0f31f747f007598723d",
-        "committed_at": "2026-08-14T07:51:30+02:00",
+        "sha": "cae8f245f62f3ba9ce1cb8c5cc5f7285ebb732f7",
+        "committed_at": "2026-08-14T14:34:56+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -247,8 +247,8 @@
       "repo_url": "https://github.com/menno420/substrate-kit",
       "head": {
         "ok": true,
-        "sha": "f4581d89c868dee772a79a6d9b9f9dabbb06165d",
-        "committed_at": "2026-08-14T06:01:17Z",
+        "sha": "8ae419971eddec1b401a54c18daa19aecce38a1d",
+        "committed_at": "2026-08-14T10:28:00Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -270,8 +270,8 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "882378abd98542b7a5f37a47d41de574c69b897e",
-        "committed_at": "2026-08-13T18:46:46Z",
+        "sha": "e3bcad49323556604ef06703bf8e3c2fae368906",
+        "committed_at": "2026-08-14T12:45:25Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -300,8 +300,8 @@
       "repo_url": "https://github.com/menno420/trading-strategy",
       "head": {
         "ok": true,
-        "sha": "a4f8f8fa828948b7858cf607d9008137c14b07f5",
-        "committed_at": "2026-07-21T20:01:43Z",
+        "sha": "b5eba03032261156e2a95963f2c0596672a630c5",
+        "committed_at": "2026-08-14T10:21:56Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -309,7 +309,7 @@
         "fields": {
           "updated": "2026-07-17T12:08:00Z heartbeat: coordinator seat close-out \u2014 neutral control-lane record; session records + W29 grading no-op + grading-cron disposition + parked weekly-grading.yml carried forward as verified facts (docs/control only, RESEARCH-ONLY) closeout_stamp: coordinator seat close-out stamped 2026-07-17T12:08:00Z (date -u) \u2014 repo alone is sufficient for a fresh seat main_sha: e3fc99e32ecc4dfa1d71bf955fd964c34189fac9 prs: PR #139 OPEN + READY (claude/coordinator-closeout-heartbeat \u2192 main; coordinator close-out heartbeat) \u2014 born-red card flipped complete this commit, releasing the born-re \u2026 [truncated for the mirror \u2014 full text at the source]",
           "orders": "inbox tops at ORDER 017 (owner overnight order); ORDERs 001\u2013016 consumed. This close-out session serves no new order \u2014 it records the coordinator seat close-out over verified facts. control/inbox.md byte-untouched. trigger_failsafe: trig_01GeQiMM3nHMQTyuLMsWj7q3 \u00b7 cron 45 1-23/2 * * * \u00b7 session-bound to the archived 2026-07-15 coordinator session \u2014 delivery into a live seat unverified post-archive (carried verbatim) trigger_grading: trig_01BsYsMABu2vfH4d2MzuSLs6 \u00b7 cron 0 9 * * 5 \u00b7 next 2026-07-17T09:08Z per the committed record \u2192 bound to ARCHIVED session \u2192 did NOT fire; in-session grade_paper \u2026 [truncated for the mirror \u2014 full text at the source]",
-          "kit": "v1.17.0 fresh_seat_pointer: a new seat picks up from control/inbox.md (ORDERs 001\u2013017), docs/current-state.md, CONSTITUTION.md, planning/2026-07-17-overnight-menu.md \u2014 repo alone is sufficient"
+          "kit": "v1.20.2 fresh_seat_pointer: a new seat picks up from control/inbox.md (ORDERs 001\u2013017), docs/current-state.md, CONSTITUTION.md, planning/2026-07-17-overnight-menu.md \u2014 repo alone is sufficient"
         },
         "source_url": "https://github.com/menno420/trading-strategy/blob/main/control/status.md"
       }
@@ -498,16 +498,16 @@
       "repo_url": "https://github.com/menno420/product-forge",
       "head": {
         "ok": true,
-        "sha": "81b65bdea62231910c2222b4037d5b26a1699a1c",
-        "committed_at": "2026-07-24T21:58:20+02:00",
+        "sha": "3c462a6011757c03f4bfe6e18e5a50b58d98204a",
+        "committed_at": "2026-08-15T07:08:49+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-07-24T19:20:27Z",
-          "phase": "phone-controller Slice 17 SHIPPED \u2014 editor discard + customize-a-preset + fine size sliders (v0.17.0) lane: builder (phone-controller) \u00b7 owner-live session 2026-07-23",
-          "health": "green **Slice 17 in progress (2026-07-24):** owner editor UX \u2014 no easy discard; wants preset editing + fine size slider. Adding Cancel/Discard editor button (no pre-save for new), Width/Height live sliders (buttons + widgets), NDS template + New-from-preset picker. Card: `.sessions/2026-07-24-phone-controller-slice17-editor-discard-sliders.md`. **Slice 16 SHIPPED (2026-07-24):** owner Mario Kart bug \u2014 couldn't press A + steer at once. Cause: SlidePadRouter on the pad root + consuming child widgets blocked other pointers (mFirstTouchTarget). Fix: per-button consuming touch (shared holdTouch pat \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-08-15T05:06:49Z",
+          "phase": "phone-controller Slice 19 SHIPPED \u2014 PS2 (DualShock) preset (v0.19.0) lane: builder (phone-controller) \u00b7 owner-live session 2026-08-14 (hub-attached, Slice-4 precedent)",
+          "health": "green **Slice 19 SHIPPED (PR #50):** owner ask: a PS2 preset. DualShock-2 starter template (diamond glyphs + colors, D-pad, both sticks, four shoulders, Start/Select); no descriptor change (L2/R2 already bits 8/9; L3/R3 deliberately out \u2014 re-pair cost). Card: `.sessions/2026-08-15-phone-controller-slice19-ps2-preset.md`. **Slice 18 SHIPPED (2026-08-14, PR #49):** owner ask: make the app more customizable. Per-widget behavior config (stick deadzone/invert-Y, D-pad 4/8-way, touchpad speed+pen \u2014 also fixes custom touchpads ignoring global sensitivity/invert), long-press alternate actions, fine po \u2026 [truncated for the mirror \u2014 full text at the source]",
           "orders": "acked=001,002,003,004 done=001,002,003,004 \u00b7 Slice 4 = owner-live directive 2026-07-23 (no inbox ORDER number; supersedes the 2026-07-11 archive-ready posture per fleet precedence \u2014 live instruction outranks stored close-out). \u2691 OWNER-ACTION (OA-004, open) \u2014 **playtest the controller on real hardware** (the one step CI cannot prove; ~5 min, two Android devices): 1. Install the APK (Releases page, or the CI-run artifact) on the controller phone. 2. Open it \u2192 grant Nearby devices \u2192 status shows the capability verdict. 3. Tap Discoverable \u2192 pair from the target device \u2192 \"Connected \u2014 controller is \u2026 [truncated for the mirror \u2014 full text at the source]",
           "notes": "phone-controller is the lane's active product (beta \u2014 usable controller, hardware playtest pending, OA-004). games-web state unchanged (Pages pending OA-003)."
         },
@@ -546,8 +546,8 @@
       "repo_url": "https://github.com/menno420/sim-lab",
       "head": {
         "ok": true,
-        "sha": "753ddb3e9fa4677536969c1f2dbf1687ed395075",
-        "committed_at": "2026-07-21T16:34:03Z",
+        "sha": "f54ec219aff6fe47e631958762a7e9ba06e67658",
+        "committed_at": "2026-08-14T12:09:37+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -658,8 +658,8 @@
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "108b4527366f1e9bf0e4491d5cafcbaa87d1bc5e",
-        "committed_at": "2026-08-14T06:04:18Z",
+        "sha": "196d5823f58cca630f378b5fcdff815043e0e4ee",
+        "committed_at": "2026-08-14T13:03:48Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
