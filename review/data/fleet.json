@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-15T05:45:18Z",
+  "generated_at": "2026-08-16T05:48:00Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -270,8 +270,8 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "e3bcad49323556604ef06703bf8e3c2fae368906",
-        "committed_at": "2026-08-14T12:45:25Z",
+        "sha": "962237c3d2cae538b38cf07c3bca6e8a8104405e",
+        "committed_at": "2026-08-15T05:47:12Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -658,8 +658,8 @@
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "196d5823f58cca630f378b5fcdff815043e0e4ee",
-        "committed_at": "2026-08-14T13:03:48Z",
+        "sha": "766207ce1d39c610cac535663b8f11120b170296",
+        "committed_at": "2026-08-15T09:26:16Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
