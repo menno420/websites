@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-16T05:48:00Z",
+  "generated_at": "2026-08-17T05:54:11Z",
   "registry": {
     "ok": true,
     "reason": "",
@@ -270,8 +270,8 @@
       "repo_url": "https://github.com/menno420/websites",
       "head": {
         "ok": true,
-        "sha": "962237c3d2cae538b38cf07c3bca6e8a8104405e",
-        "committed_at": "2026-08-15T05:47:12Z",
+        "sha": "0f9fc228912bb9e1c2a49f83e78e2ef72c44fd19",
+        "committed_at": "2026-08-16T05:49:58Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
@@ -498,16 +498,16 @@
       "repo_url": "https://github.com/menno420/product-forge",
       "head": {
         "ok": true,
-        "sha": "3c462a6011757c03f4bfe6e18e5a50b58d98204a",
-        "committed_at": "2026-08-15T07:08:49+02:00",
+        "sha": "d5a412f144c80d957869abf1996cd23c933acf99",
+        "committed_at": "2026-08-16T09:38:52+02:00",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
         "available": true,
         "fields": {
-          "updated": "2026-08-15T05:06:49Z",
-          "phase": "phone-controller Slice 19 SHIPPED \u2014 PS2 (DualShock) preset (v0.19.0) lane: builder (phone-controller) \u00b7 owner-live session 2026-08-14 (hub-attached, Slice-4 precedent)",
-          "health": "green **Slice 19 SHIPPED (PR #50):** owner ask: a PS2 preset. DualShock-2 starter template (diamond glyphs + colors, D-pad, both sticks, four shoulders, Start/Select); no descriptor change (L2/R2 already bits 8/9; L3/R3 deliberately out \u2014 re-pair cost). Card: `.sessions/2026-08-15-phone-controller-slice19-ps2-preset.md`. **Slice 18 SHIPPED (2026-08-14, PR #49):** owner ask: make the app more customizable. Per-widget behavior config (stick deadzone/invert-Y, D-pad 4/8-way, touchpad speed+pen \u2014 also fixes custom touchpads ignoring global sensitivity/invert), long-press alternate actions, fine po \u2026 [truncated for the mirror \u2014 full text at the source]",
+          "updated": "2026-08-16T07:36:28Z",
+          "phase": "phone-controller Slice 20 SHIPPED \u2014 PS2 pad in the layout spinner (v0.20.0) lane: builder (phone-controller) \u00b7 owner-live session 2026-08-14 (hub-attached, Slice-4 precedent)",
+          "health": "green **Slice 20 SHIPPED (PR #51):** owner screenshot: PS2 not visible in the layout spinner (Slice 19 made it a New-layout template only). Fix: \"PS2 pad\" as a directly selectable spinner row rendered from the template (key class `t:`), after NDS. Card: `.sessions/2026-08-16-phone-controller-slice20-ps2-spinner.md`. **Slice 19 SHIPPED (PR #50):** owner ask: a PS2 preset. DualShock-2 starter template (diamond glyphs + colors, D-pad, both sticks, four shoulders, Start/Select); no descriptor change (L2/R2 already bits 8/9; L3/R3 deliberately out \u2014 re-pair cost). Card: `.sessions/2026-08-15-phone- \u2026 [truncated for the mirror \u2014 full text at the source]",
           "orders": "acked=001,002,003,004 done=001,002,003,004 \u00b7 Slice 4 = owner-live directive 2026-07-23 (no inbox ORDER number; supersedes the 2026-07-11 archive-ready posture per fleet precedence \u2014 live instruction outranks stored close-out). \u2691 OWNER-ACTION (OA-004, open) \u2014 **playtest the controller on real hardware** (the one step CI cannot prove; ~5 min, two Android devices): 1. Install the APK (Releases page, or the CI-run artifact) on the controller phone. 2. Open it \u2192 grant Nearby devices \u2192 status shows the capability verdict. 3. Tap Discoverable \u2192 pair from the target device \u2192 \"Connected \u2014 controller is \u2026 [truncated for the mirror \u2014 full text at the source]",
           "notes": "phone-controller is the lane's active product (beta \u2014 usable controller, hardware playtest pending, OA-004). games-web state unchanged (Pages pending OA-003)."
         },
@@ -658,8 +658,8 @@
       "repo_url": "https://github.com/menno420/fleet-manager",
       "head": {
         "ok": true,
-        "sha": "766207ce1d39c610cac535663b8f11120b170296",
-        "committed_at": "2026-08-15T09:26:16Z",
+        "sha": "0f8a72876239f75dd6ed43fac32c3b5a839e7789",
+        "committed_at": "2026-08-16T08:15:18Z",
         "source": "anonymous git transport (ls-remote + depth-1 fetch)"
       },
       "heartbeat": {
