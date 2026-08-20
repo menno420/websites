@@ -1,11 +1,13 @@
 # 2026-08-20 — review site: static-export mechanism (slice 3a — exporter + Pages workflow + bake-schedule retirement)
 
-> **Status:** `in-progress` — branch `claude/review-static-export`. Born red;
-> flips `complete` only after review at the exact head. Second PR of the
-> fleet-manager keep-bot-only worklist execution (slice 3 lands in two small
-> steps: 3a this mechanism, 3b the nav cutover once Pages actually serves —
-> so no site ever links a dead URL and the service deletes only after the
-> replacement venue is verified serving).
+> **Status:** `complete` — branch `claude/review-static-export`, PR #509.
+> This flip releases the born-red hold under the two-round cap (R1 6/6 +
+> R2 3/3 conceded and fixed; reviewed heads `f8af9a6` and `b43ba53`; the
+> R2-fix commit `16bdfaa` lands dispositioned, stated not inferred — the
+> kit #581 precedent). The flip commit changes only this card's close-out
+> text (the session-close exemption, taken and named). Second PR of the
+> keep-bot-only execution: 3a this mechanism; 3b the nav cutover follows
+> once Pages actually serves.
 
 - **📊 Model:** fable-5 · high · mechanical refactor
 
@@ -73,7 +75,11 @@ Railway service + project were deleted this session), `serviceDelete` of
   un-prefixed root-relative URLs, static notices rendered.
 - Codex round 1: **6 findings, 6 [conceded] and fixed** (commit `b43ba53`) —
   bake-push suppression, form actions, GIT_SHA, static filters, static /ask,
-  dotted-segment paths. Round 2 on the exact head before the flip.
+  dotted-segment paths. Round 2 at `b43ba53`: **3 findings, 3 [conceded]
+  and fixed** (commit `16bdfaa`) — export-anchor banner for frozen relative
+  ages · per-page `noindex, nofollow` (a project site cannot claim the
+  origin-root robots.txt) · `build_only` drift classification. Suites after
+  R2: **1499 passed**; 19 exporter pins.
 
 ## Session idea
 
