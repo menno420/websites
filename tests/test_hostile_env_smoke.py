@@ -106,6 +106,9 @@ ENV_VARS = [
     # review/: ai.py (GITHUB_TOKEN in review/gen_stats.py is baker-only)
     "REVIEW_AI_LOG_SALT",
     "REVIEW_AI_MODEL",
+    # review/app.py _base_ctx: static-export render mode (gen_static.py sets
+    # it; a hostile value must degrade to the LIVE render, never crash)
+    "REVIEW_STATIC_EXPORT",
 ]
 
 POISON_MODES = {

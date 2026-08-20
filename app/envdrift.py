@@ -49,6 +49,7 @@ DRIFT_UNKNOWN = "unknown"
 # Per-variable live states (the "live (Railway)?" column).
 VAR_SET_LIVE = "set-live"
 VAR_MISSING_LIVE = "missing-live"
+VAR_BUILD_ONLY = "build-only"  # declared for the CODE drift check; set by a build/export process, never on Railway — informational, never missing
 VAR_RUNTIME_INJECTED = "runtime-injected"
 VAR_UNKNOWN = "unknown"
 
@@ -126,7 +127,9 @@ def annotate(data: dict[str, Any]) -> None:
             # (PR #216's absent-service rule).
             missing = []
             for var in svc["env_vars"]:
-                if var["name"] in RUNTIME_INJECTED:
+                if var.get("build_only"):
+                    var["live_state"] = VAR_BUILD_ONLY
+                elif var["name"] in RUNTIME_INJECTED:
                     var["live_state"] = VAR_RUNTIME_INJECTED
                 else:
                     var["live_state"] = VAR_MISSING_LIVE
@@ -161,7 +164,12 @@ def annotate(data: dict[str, Any]) -> None:
         missing = []
         for var in svc["env_vars"]:
             name = var["name"]
-            if name in live_names:
+            if var.get("build_only"):
+                # Set live too? Fine — but its absence is the DESIGNED state.
+                var["live_state"] = (
+                    VAR_SET_LIVE if name in live_names else VAR_BUILD_ONLY
+                )
+            elif name in live_names:
                 var["live_state"] = VAR_SET_LIVE
             elif name in RUNTIME_INJECTED:
                 var["live_state"] = VAR_RUNTIME_INJECTED

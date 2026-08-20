@@ -31,6 +31,7 @@ Deploy: a new Railway service in ``superbot-websites`` (Root Directory =
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -112,6 +113,17 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
         "repo_url": story.REPO_URL,
         # "Room to interact", read-only: a prefilled new-issue link per page.
         "ask_url": story.ask_url(f"{active or 'site'} page"),
+        # Static-export mode (review/gen_static.py sets REVIEW_STATIC_EXPORT):
+        # templates drop the interactive surfaces that need the live process —
+        # the list-filter GET forms/links (server-side query rendering) and
+        # the /ask/api widget — and say so, instead of shipping controls that
+        # silently no-op on GitHub Pages. Read per-request for testability.
+        "static_export": os.environ.get("REVIEW_STATIC_EXPORT", "") == "1",
+        # The anchor the static banner shows: every relative age on an
+        # exported page is measured from this moment (Codex #509 round 2).
+        "static_built_at": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%MZ"
+        ),
     }
 
 

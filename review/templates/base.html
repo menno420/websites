@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Program Review — how an owner + agent fleet ships{% endblock %}</title>
 <meta name="description" content="{% block description %}An honest, evidence-linked account of how this owner + Claude-agent program runs: process, growth, successes, and problems.{% endblock %}">
+{% if static_export %}
+{#- Static export: the committed robots.txt cannot govern a project-site
+    path (crawlers read only the origin root), so the Disallow-all policy
+    travels as the standards-equivalent per-page directive instead
+    (Codex #509 round 2). -#}
+<meta name="robots" content="noindex, nofollow">
+{% endif %}
 {# Set the theme before first paint to avoid a flash (ds.js persists the choice). #}
 <script>
   (function () {
@@ -61,14 +68,27 @@
   </div>
 </div>
 {% endif %}
+{% if static_export %}
+{#- Every relative age below ("17h ago", stale chips) froze at export time —
+    on a static page they would silently drift into falsehood. Anchor them
+    all in one visible place (Codex #509 round 2). -#}
+<div class="sb-wrap" style="padding-top:16px">
+  <div class="rv-aged" role="note">
+    Static export built <span class="sb-mono">{{ static_built_at }}</span> —
+    every relative age and stale marker on this page is measured from that
+    moment, not from now. Absolute timestamps beside them stay exact.
+  </div>
+</div>
+{% endif %}
 {% if snapshot_aged %}
 <div class="sb-wrap" style="padding-top:16px">
   <div class="rv-aged" role="note">
     Numbers on this site were baked at commit
     <a href="{{ repo_url }}/commit/{{ git_head }}" target="_blank" rel="noopener" class="sb-mono">{{ git_head[:8] }}</a>
-    ({{ generated_at }}); the repo has moved since (this deployment runs
+    ({{ generated_at }}); the repo has moved since (this build renders
     <span class="sb-mono">{{ deployed_sha[:8] }}</span>). Honest staleness beats silent aging —
-    a scheduled bake refreshes the data files daily.
+    a review-bake dispatch refreshes the data files on demand (the daily
+    schedule retired 2026-08-20 with the move to a static export).
   </div>
 </div>
 {% endif %}

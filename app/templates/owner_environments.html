@@ -134,6 +134,7 @@
         {% if var.live_state == 'set-live' %}{{ badge('ok', 'set live') }}
         {% elif var.live_state == 'missing-live' %}{{ badge('warn', 'missing live') }}
         {% elif var.live_state == 'runtime-injected' %}<span class="dim small" title="Railway injects this into the runtime — not expected in the variables tab; never counted as drift">runtime-injected</span>
+        {% elif var.live_state == 'build-only' %}<span class="dim small" title="set by a build/export process (never on the Railway service) — declared for the code-drift check; its absence live is the designed state, never counted as drift">build-only</span>
         {% else %}{{ badge('unknown', 'unknown') }}{% endif %}
       </td>
       <td class="small"><a href="{{ var.manage.url }}">{{ var.manage.label }} →</a></td>

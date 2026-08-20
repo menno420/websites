@@ -79,8 +79,20 @@ def manage_link(name: str) -> dict[str, str]:
     return {"label": label, "url": url}
 
 
-def _var(name: str, purpose: str) -> dict[str, Any]:
-    return {"name": name, "purpose": purpose, "manage": manage_link(name)}
+def _var(
+    name: str, purpose: str, *, build_only: bool = False
+) -> dict[str, Any]:
+    """One declared service variable. ``build_only`` marks a name the CODE
+    reads but which is set only by a build/export process, never on the
+    Railway service — the code-vs-declared drift check counts it declared,
+    while the live-completeness check classifies it ``build-only`` instead
+    of ``missing-live`` (Codex #509 round 2)."""
+    return {
+        "name": name,
+        "purpose": purpose,
+        "manage": manage_link(name),
+        "build_only": build_only,
+    }
 
 
 # Committed per-service facts. Hand-kept like config.REPOS — the source of
@@ -189,6 +201,7 @@ SERVICES: list[dict[str, Any]] = [
             _var("ANTHROPIC_API_KEY", "Claude API key for the /ask live assistant (set on the service 2026-07-12, ORDER 022)"),
             _var("REVIEW_AI_MODEL", "assistant model override (default pinned in review/ai.py)"),
             _var("REVIEW_AI_LOG_SALT", "salt for the assistant's hashed rate-limit keys (random per boot when unset)"),
+            _var("REVIEW_STATIC_EXPORT", "static-export render mode — set by review/gen_static.py's process, never on Railway (templates drop the live-only surfaces)", build_only=True),
             _var("PORT", "bind port (Railway injects it)"),
         ],
     },

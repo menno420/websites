@@ -1,0 +1,90 @@
+name: review-pages
+
+# Build + deploy the review site's STATIC export to GitHub Pages
+# (https://menno420.github.io/websites/). The program-review audience
+# concluded 2026-07-21; the site is server-rendered entirely from committed
+# data, so its 24/7 Railway service retires in favour of this export
+# (fleet-manager docs/planning/2026-08-20-railway-keep-bot-only-worklist.md
+# slice 3; the decisions ledger carries the entry). `review/gen_static.py`
+# walks every GET route offline through the TestClient and fails the job on
+# any non-200 — a partial tree never deploys as if whole.
+#
+# Trigger: workflow_dispatch (the export is a point-in-time record) + push
+# to main filtered on review/**. No cron — the review-bake schedule retires
+# with the Railway service; a stale-by-design historical record does not
+# need a daily bake.
+#
+# THE PUSH TRIGGER'S REAL COVERAGE, measured 2026-08-20: this repo's
+# landings are auto-merges/bot pushes, and GitHub fires no push-event
+# workflows for those (the runs list on main shows ZERO push-event runs —
+# schedule/dispatch only; same GITHUB_TOKEN-suppression class as the
+# fm roster-regen deadlock and the curious-research Pages silence). So the
+# push trigger serves only a human web-UI merge; every other refresh is an
+# explicit dispatch — review-bake dispatches this workflow itself after its
+# direct-push landing, and a bake that lands via PR + auto-merge needs a
+# one-click workflow_dispatch here afterwards (Codex #509 round 1).
+#
+# The Pages site itself was created 2026-08-20 over the direct-PAT REST path
+# (POST /repos/{o}/{r}/pages, build_type "workflow" → 201) — the earlier
+# capability note that Pages sites cannot be created agent-side was measured
+# on a WORKFLOW token only; the admin PAT path works.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "review/**"
+      - ".github/workflows/review-pages.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: review-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install review runtime deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r review/requirements.txt
+
+      - name: Export the static tree (fails on any non-200 route)
+        env:
+          # The app's snapshot-aging banner compares the rendering commit to
+          # the snapshot's git_head; it reads RAILWAY_GIT_COMMIT_SHA or
+          # GIT_SHA, and Actions provides neither — without this the banner
+          # could never fire on a static build (Codex #509 round 1).
+          GIT_SHA: ${{ github.sha }}
+        run: python3 review/gen_static.py --out _site --base-path /websites --site-url https://menno420.github.io/websites
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

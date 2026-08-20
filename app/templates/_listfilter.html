@@ -5,6 +5,16 @@
     the rest of the state), every pill/sort/chip is a plain GET link. All
     text renders through autoescape — never |safe anything here. -#}
 <div class="card lf">
+  {% if static_export %}
+  {#- Static export (gen_static.py): filtering/search/sort are server-side
+      query rendering — a static tree serves one fixed page per route, so the
+      controls would silently show the unfiltered default. Honest note
+      instead; the full list renders below. -#}
+  <p class="small lf-row"><span class="dim">filters:</span>
+    showing all {{ lf.total }} items — filtering, search and sorting retired
+    with the live service (static export 2026-08-20; the full unfiltered list
+    is on this page).</p>
+  {% else %}
   {% if lf.has_search %}
   <form class="searchbox" method="get" action="{{ lf.path }}" role="search">
     {%- for name, value in lf.form_fields %}
@@ -47,5 +57,6 @@
   {% if lf.active and lf.shown == 0 %}
   <p class="dim">no items match the active filters — an empty result, not an error.
     <a href="{{ lf.clear_url }}">clear filters</a></p>
+  {% endif %}
   {% endif %}
 </div>
