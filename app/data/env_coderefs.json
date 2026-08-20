@@ -74,7 +74,8 @@
       "GIT_SHA",
       "RAILWAY_GIT_COMMIT_SHA",
       "REVIEW_AI_LOG_SALT",
-      "REVIEW_AI_MODEL"
+      "REVIEW_AI_MODEL",
+      "REVIEW_STATIC_EXPORT"
     ]
   }
 }

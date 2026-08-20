@@ -119,9 +119,10 @@
             "ANTHROPIC_API_KEY",
             "REVIEW_AI_MODEL",
             "REVIEW_AI_LOG_SALT",
+            "REVIEW_STATIC_EXPORT",
             "PORT"
           ],
-          "notes": "service created by the owner in the Railway console — its service id is not recorded in this repo yet (project-level link until it is)."
+          "notes": "service created by the owner in the Railway console — its service id is not recorded in this repo yet (project-level link until it is). REVIEW_STATIC_EXPORT is the gen_static.py render-mode flag (set by the exporter process, never on Railway) — declared here so the code-vs-declared drift check stays in-sync."
         }
       ]
     },

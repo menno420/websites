@@ -189,6 +189,7 @@ SERVICES: list[dict[str, Any]] = [
             _var("ANTHROPIC_API_KEY", "Claude API key for the /ask live assistant (set on the service 2026-07-12, ORDER 022)"),
             _var("REVIEW_AI_MODEL", "assistant model override (default pinned in review/ai.py)"),
             _var("REVIEW_AI_LOG_SALT", "salt for the assistant's hashed rate-limit keys (random per boot when unset)"),
+            _var("REVIEW_STATIC_EXPORT", "static-export render mode — set by review/gen_static.py's process, never on Railway (templates drop the live-only surfaces)"),
             _var("PORT", "bind port (Railway injects it)"),
         ],
     },

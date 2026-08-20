@@ -21,6 +21,20 @@
 <section class="sb-section">
   <div class="sb-wrap-narrow">
 
+    {% if static_export %}
+    {#- Static export (gen_static.py): the /ask/api endpoint retired with the
+        Railway service — a live-looking widget here would fetch against the
+        Pages origin and fail. Say what happened; the seeded evidence-backed
+        answers below are the surviving surface. -#}
+    <div class="sb-card" role="note" id="ai-static-notice">
+      <strong>The live assistant retired with this site's server</strong>
+      (static export, 2026-08-20 — the websites repo's decisions ledger
+      carries the entry). Its <span class="sb-mono">/ask/api</span> endpoint
+      no longer exists anywhere, so the Ask/Review widget is gone rather than
+      left looking functional. The seeded evidence-backed answers below
+      remain, verbatim, and every one still cites its committed source.
+    </div>
+    {% else %}
     {% if not ai_ready %}
     <div class="sb-error" role="status" id="ai-status-banner">
       <div>
@@ -75,6 +89,7 @@
         (timestamp, mode, question; IPs only as salted hashes) to feed the Q&amp;A page.
       </p>
     </div>
+    {% endif %}
 
     <h2 style="margin-top:32px">Seeded answers — instant, consistent, key-free</h2>
     <p class="sb-muted">
@@ -120,6 +135,7 @@
   @media (max-width: 640px) { .rv-ai-actions { align-items: flex-start; flex-direction: column; } }
 </style>
 
+{% if not static_export %}
 <script>
 (function () {
   "use strict";
@@ -251,4 +267,5 @@
   });
 })();
 </script>
+{% endif %}
 {% endblock %}

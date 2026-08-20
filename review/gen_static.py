@@ -44,6 +44,7 @@ page route answers — a partial export must never deploy as if whole.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import sys
@@ -67,11 +68,13 @@ SKIP_ROUTES = {
     "route only re-serves that file for browser probes",
 }
 
-# href="/x" or src="/x" — but never href="//host" (protocol-relative) and
-# never full URLs. Double-quoted attributes only: Jinja templates and the
-# rendered tree use double quotes throughout (the smoke-crawl extractor
-# leans on the same fact).
-_ROOT_REL_RE = re.compile(r'\b(href|src)="/(?!/)')
+# href="/x", src="/x" or form action="/x" — but never href="//host"
+# (protocol-relative) and never full URLs. Double-quoted attributes only:
+# Jinja templates and the rendered tree use double quotes throughout (the
+# smoke-crawl extractor leans on the same fact). `action` is in the set
+# because the list-filter partial renders GET search forms — un-rewritten,
+# a Pages submit would land outside /websites and 404 (Codex #509 round 1).
+_ROOT_REL_RE = re.compile(r'\b(href|src|action)="/(?!/)')
 
 
 def _iter_get_routes(router):
@@ -109,11 +112,19 @@ def export_urls() -> list[str]:
     return urls
 
 
+# Non-HTML routes written as literal files — an EXPLICIT suffix set, never a
+# "contains a dot" heuristic: the committed fleet carries the lane
+# `codetool-lab-opus4.8`, whose page route would otherwise export as a bare
+# FILE instead of a directory index (Codex #509 round 1 — the artifact was
+# sitting in the first export).
+FILE_SUFFIXES = (".json", ".xml", ".txt")
+
+
 def out_path(url: str, out_dir: Path) -> Path:
     rel = url.lstrip("/")
     if url == "/":
         return out_dir / "index.html"
-    if "." in rel.rsplit("/", 1)[-1]:
+    if rel.endswith(FILE_SUFFIXES):
         return out_dir / rel
     return out_dir / rel / "index.html"
 
@@ -134,6 +145,10 @@ def rewrite_urls(
 
 
 def export(out_dir: Path, base_path: str, site_url: str) -> int:
+    # Static mode: templates drop the interactive surfaces (list-filter
+    # forms/links, the /ask widget) and say so — read per request by
+    # review/app.py _base_ctx, so setting it here binds every render below.
+    os.environ["REVIEW_STATIC_EXPORT"] = "1"
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)

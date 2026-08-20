@@ -10,9 +10,19 @@ name: review-pages
 # any non-200 — a partial tree never deploys as if whole.
 #
 # Trigger: workflow_dispatch (the export is a point-in-time record) + push
-# to main filtered on review/** so a future content edit republishes without
-# a schedule. No cron — the review-bake schedule retires with the Railway
-# service; a stale-by-design historical record does not need a daily bake.
+# to main filtered on review/**. No cron — the review-bake schedule retires
+# with the Railway service; a stale-by-design historical record does not
+# need a daily bake.
+#
+# THE PUSH TRIGGER'S REAL COVERAGE, measured 2026-08-20: this repo's
+# landings are auto-merges/bot pushes, and GitHub fires no push-event
+# workflows for those (the runs list on main shows ZERO push-event runs —
+# schedule/dispatch only; same GITHUB_TOKEN-suppression class as the
+# fm roster-regen deadlock and the curious-research Pages silence). So the
+# push trigger serves only a human web-UI merge; every other refresh is an
+# explicit dispatch — review-bake dispatches this workflow itself after its
+# direct-push landing, and a bake that lands via PR + auto-merge needs a
+# one-click workflow_dispatch here afterwards (Codex #509 round 1).
 #
 # The Pages site itself was created 2026-08-20 over the direct-PAT REST path
 # (POST /repos/{o}/{r}/pages, build_type "workflow" → 201) — the earlier
@@ -54,6 +64,12 @@ jobs:
           python3 -m pip install -r review/requirements.txt
 
       - name: Export the static tree (fails on any non-200 route)
+        env:
+          # The app's snapshot-aging banner compares the rendering commit to
+          # the snapshot's git_head; it reads RAILWAY_GIT_COMMIT_SHA or
+          # GIT_SHA, and Actions provides neither — without this the banner
+          # could never fire on a static build (Codex #509 round 1).
+          GIT_SHA: ${{ github.sha }}
         run: python3 review/gen_static.py --out _site --base-path /websites --site-url https://menno420.github.io/websites
 
       - name: Upload Pages artifact

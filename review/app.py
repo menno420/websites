@@ -112,6 +112,12 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
         "repo_url": story.REPO_URL,
         # "Room to interact", read-only: a prefilled new-issue link per page.
         "ask_url": story.ask_url(f"{active or 'site'} page"),
+        # Static-export mode (review/gen_static.py sets REVIEW_STATIC_EXPORT):
+        # templates drop the interactive surfaces that need the live process —
+        # the list-filter GET forms/links (server-side query rendering) and
+        # the /ask/api widget — and say so, instead of shipping controls that
+        # silently no-op on GitHub Pages. Read per-request for testability.
+        "static_export": os.environ.get("REVIEW_STATIC_EXPORT", "") == "1",
     }
 
 

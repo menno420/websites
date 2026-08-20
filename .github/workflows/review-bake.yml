@@ -136,6 +136,14 @@ jobs:
                      -m "Scheduled review-bake: regenerated committed data mirrors (review/data snapshot, fleet, stats; botsite/data graveyard). Data-only diff; no session card by design (see .github/workflows/review-bake.yml)."
           if git push origin HEAD:main; then
             echo "pushed directly to main."
+            # A GITHUB_TOKEN push fires no push-triggered workflows (GitHub
+            # suppression — the class that deadlocked fm's roster-regen and
+            # silenced curious-research's Pages), so review-pages.yml would
+            # never republish the freshly baked data. Dispatch it explicitly;
+            # an API-created run is not suppressed (the quality.yml dispatch
+            # below is this file's own precedent). Codex #509 round 1.
+            gh workflow run review-pages.yml --ref main \
+              || echo "review-pages dispatch refused — republish by hand (workflow_dispatch); the baked data itself is safely on main."
             exit 0
           fi
           echo "direct push rejected (ruleset) — landing via PR + auto-merge."
