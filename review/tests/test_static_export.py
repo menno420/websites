@@ -161,3 +161,58 @@ def test_live_ask_keeps_the_widget(live_client):
     assert r.status_code == 200
     assert 'id="ai-widget"' in r.text
     assert 'id="ai-static-notice"' not in r.text
+
+
+# --------------------------------------------------------------------------- #
+# Round-2 pins (Codex #509): frozen-age anchor banner, robots meta, and the
+# build-only drift classification.
+# --------------------------------------------------------------------------- #
+def test_static_pages_carry_the_export_anchor_banner(static_client):
+    """Relative ages freeze at export — the banner anchors every one of them
+    to the build moment so a weeks-old deploy never silently claims '17h
+    ago' relative to now."""
+    r = static_client.get("/fleet")
+    assert "Static export built" in r.text
+    assert 'name="robots" content="noindex, nofollow"' in r.text
+
+
+def test_live_pages_carry_neither_anchor_nor_robots_meta(live_client):
+    r = live_client.get("/fleet")
+    assert "Static export built" not in r.text
+    assert 'name="robots"' not in r.text
+
+
+def test_build_only_var_never_reads_missing_live():
+    """app/envdrift.annotate classifies a build_only declared var as
+    'build-only' (informational), never 'missing-live' — whether the live
+    service exists or not (Codex #509 round 2)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from app import envdrift
+
+    def fresh(name, build_only=False):
+        return {
+            "services": [
+                {
+                    "name": "review",
+                    "env_vars": [
+                        {"name": name, "purpose": "t", "build_only": build_only}
+                    ],
+                }
+            ],
+            "live": {
+                "state": "ok",
+                "services": [{"name": "review", "variable_names": []}],
+            },
+        }
+
+    data = fresh("REVIEW_STATIC_EXPORT", build_only=True)
+    envdrift.annotate(data)
+    svc = data["services"][0]
+    assert svc["env_vars"][0]["live_state"] == "build-only"
+    assert svc["drift"]["missing_live"] == []
+
+    control = fresh("REVIEW_AI_MODEL")
+    envdrift.annotate(control)
+    csvc = control["services"][0]
+    assert csvc["env_vars"][0]["live_state"] == "missing-live"
+    assert csvc["drift"]["missing_live"] == ["REVIEW_AI_MODEL"]
