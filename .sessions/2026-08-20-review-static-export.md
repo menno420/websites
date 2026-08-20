@@ -47,11 +47,33 @@ Railway service + project were deleted this session), `serviceDelete` of
 
 ## Shipped
 
-- (filled at close)
+- `review/gen_static.py` (35 routes, exit-1-on-partial, explicit
+  FILE_SUFFIXES mapping, href/src/**action** base-path rewrite + feed
+  absolute-URL move, sets `REVIEW_STATIC_EXPORT`) ·
+  `.github/workflows/review-pages.yml` (dispatch + review/** push;
+  `GIT_SHA` into the export; the push trigger's REAL coverage documented —
+  measured: zero push-event runs exist on main, so auto-merged landings
+  never fire it) · `review-bake.yml` schedule retired + post-direct-push
+  `gh workflow run review-pages.yml` (the GITHUB_TOKEN-suppression class).
+- Static render mode: `_listfilter.html` (mirrored byte-identical to app/ +
+  botsite per the vendored-copy guards) and `ask.html` drop the live-only
+  surfaces with honest retirement notes; `base.html` aging-banner wording
+  updated for on-demand refresh; seeded answers survive.
+- `review/tests/test_static_export.py` (14 pins, both directions) + env-guard
+  updates (coderefs snapshot, hostile-env poison list, railway.py +
+  environments.json declarations). Decisions ledger D-0037.
 
 ## Verify
 
-- (filled at close)
+- Suites: tests/ + review/tests + dashboard/tests = **1496 passed, 0
+  failed** (botsite's 171 local fails reproduce identically on the clean
+  tree — the known venv-vs-CI drift; CI's pinned env is green on main).
+- Exporter run four times across two venvs; final tree: 35 routes,
+  `fleet/codetool-lab-opus4.8/index.html` a directory index, zero
+  un-prefixed root-relative URLs, static notices rendered.
+- Codex round 1: **6 findings, 6 [conceded] and fixed** (commit `b43ba53`) —
+  bake-push suppression, form actions, GIT_SHA, static filters, static /ask,
+  dotted-segment paths. Round 2 on the exact head before the flip.
 
 ## Session idea
 
