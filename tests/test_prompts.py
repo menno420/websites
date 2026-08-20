@@ -31,6 +31,11 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app import config, github, prompts  # noqa: E402
 from app.main import app  # noqa: E402
 
+# The D-0036 in-place owner gate on /orders + /prompts is not this module's
+# subject — content pins predate it. The gate's own tests:
+# test_owner_security.py + test_clarity_structure.py (never use this fixture).
+pytestmark = pytest.mark.usefixtures("ungate_seat_era_pages")
+
 
 def _res(ok=True, status=200, data=None, error="", cached=False):
     return {"ok": ok, "status": status, "data": data, "error": error,

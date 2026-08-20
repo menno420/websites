@@ -107,6 +107,15 @@ LINK_TIMEOUT_MS = 15_000
 # docs/current-state.md "Stability baseline").
 SKIP_PATH_PREFIXES = ("/owner",)
 
+# EXACT paths gated IN PLACE behind the owner overlay (D-0036, 2026-08-20):
+# the seat-era heavy routes answer the tiny 401 challenge anonymously by
+# design — documented contract, not rot. Exact match on purpose: /prompts is
+# gated while /prompts/history/{seat} stays public, so a prefix would
+# over-skip. Registry: app/nav.py items carrying `"gated": True` (+ the
+# /orders.json twin, which the nav manifest does not carry); mirrored here
+# because this script stays standalone (no app import on the CI runner).
+SKIP_EXACT_PATHS = ("/orders", "/orders.json", "/prompts")
+
 # Same-site URLs with these extensions are real link targets (status-checked
 # in pass 3) but are never rendered as browser pages: a raw JSON/XML view has
 # no rendering layer to smoke-test, and Chromium's built-in viewer requests
@@ -150,6 +159,8 @@ def _same_site(url: str, base: str) -> bool:
 
 def _skippable(url: str) -> bool:
     path = urlsplit(url).path or "/"
+    if path in SKIP_EXACT_PATHS:
+        return True
     return any(path == p or path.startswith(p + "/") for p in SKIP_PATH_PREFIXES)
 
 

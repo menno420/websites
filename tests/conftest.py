@@ -52,3 +52,21 @@ def _pin_ambient_tokens():
     mp.delenv("RAILWAY_TOKEN", raising=False)
     yield
     mp.undo()
+
+
+@pytest.fixture()
+def ungate_seat_era_pages():
+    """Disable ONLY the D-0036 in-place owner gate (`require_owner_page`) so
+    content suites keep pinning the /orders + /prompts page bodies without
+    per-call auth plumbing (~45 call sites across ten modules predate the
+    gate). Opt-in via ``pytestmark = pytest.mark.usefixtures(...)`` — never
+    autouse, so the gate itself stays exercised where it is the subject:
+    tests/test_owner_security.py and tests/test_clarity_structure.py never
+    use this fixture, and the /owner area's own gate is untouched (distinct
+    callable, see app/owner.py `require_owner_page`)."""
+    from app import owner
+    from app.main import app as _app
+
+    _app.dependency_overrides[owner.require_owner_page] = lambda: None
+    yield
+    _app.dependency_overrides.pop(owner.require_owner_page, None)

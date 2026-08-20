@@ -1,11 +1,15 @@
 """Control-plane site: readiness board + journal browser.
 
-Public: every route defined here serves without credentials. The board's one
-non-public datum, the GitHub Actions secret *names*, is masked to a count (see
-readiness.py). The single gated corner is the `/owner` area (app/owner.py,
-HTTP Basic on `SITE_PASSWORD`) which un-masks that detail and exposes privileged
-actions; it never affects the public routes below. /healthz is the Railway
-healthcheck.
+Public: every route defined here serves without credentials, EXCEPT the three
+seat-era heavy routes gated in place behind the [D-0012] owner overlay —
+`/orders`, `/orders.json`, `/prompts` (D-0036: Meta-range crawlers were
+measured DoS-ing the service by enumerating the faceted ~600 KB `/orders`
+page; robots.txt is measured ignored). The board's one non-public datum, the
+GitHub Actions secret *names*, is masked to a count (see readiness.py). The
+gated corner is the `/owner` area (app/owner.py, HTTP Basic on
+`SITE_PASSWORD` or the Discord owner session) which un-masks that detail and
+exposes privileged actions; the public routes below stay credential-free.
+/healthz is the Railway healthcheck.
 """
 
 from __future__ import annotations
@@ -14,7 +18,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
@@ -588,7 +592,11 @@ async def project_detail(request: Request, package: str):
     )
 
 
-@app.get("/prompts", response_class=HTMLResponse)
+@app.get(
+    "/prompts",
+    response_class=HTMLResponse,
+    dependencies=[Depends(owner.require_owner_page)],
+)
 async def prompts_page(request: Request):
     """ORDER 014: the fleet prompt library — every registry paste artifact
     (seats x coordinator/instructions/failsafe + the fleet-wide
@@ -596,7 +604,11 @@ async def prompts_page(request: Request):
     the raw-content read-only pattern (TTL-cached). Current paste sources
     first; files superseded by their own header render demoted under
     Historical reference (owner order 2026-07-13). Per-artifact honest
-    degradation on fetch failure — never a 500, never fabricated content."""
+    degradation on fetch failure — never a 500, never fabricated content.
+
+    Gated in place (D-0036): 513 KB of seat-era RECORD content — the
+    third-largest render on the service, behind only /orders and its JSON
+    twin. Per-seat history pages (17 KB, bounded) stay public."""
     data = await prompts.overview(refresh=_refresh(request))
     return templates.TemplateResponse(
         request, "prompts.html", {"p": data, "active": "prompts"}
@@ -649,12 +661,20 @@ async def reviews_json(request: Request):
     return JSONResponse(payload)
 
 
-@app.get("/orders", response_class=HTMLResponse)
+@app.get(
+    "/orders",
+    response_class=HTMLResponse,
+    dependencies=[Depends(owner.require_owner_page)],
+)
 async def orders_page(request: Request):
     """Fleet orders: every repo's control/inbox.md ORDER blocks
     cross-referenced against its own heartbeat done=/claimed-by lines (the
     protocol keeps inbox orders 'new' forever — execution truth lives in the
-    status files). Honest absences/banners/unknowns; always 200."""
+    status files). Honest absences/banners/unknowns; 200 once authed.
+
+    Gated in place (D-0036): a ~600 KB seat-era RECORD page whose faceted
+    filter links gave crawlers an unbounded URL space — Meta-range crawlers
+    were measured DoS-ing the service on it. Unauthenticated → tiny 401."""
     data = await orders.overview(refresh=_refresh(request))
     # ORDER 019: the /queue filter widget, reused verbatim (same module, same
     # partial). Orders filter as a FLAT list (each stamped with its card's
@@ -676,10 +696,11 @@ async def orders_page(request: Request):
     )
 
 
-@app.get("/orders.json")
+@app.get("/orders.json", dependencies=[Depends(owner.require_owner_page)])
 async def orders_json(request: Request):
     """JSON variant of /orders — parsed orders + states, minus rendered
-    order-body HTML (an HTML-view concern; the /fleet.json precedent)."""
+    order-body HTML (an HTML-view concern; the /fleet.json precedent).
+    Gated in place with its HTML twin (D-0036; 775 KB rendered)."""
     data = await orders.overview(refresh=_refresh(request))
     payload = dict(data)
     payload["cards"] = [

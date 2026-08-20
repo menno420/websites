@@ -300,11 +300,11 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/projects` | public | fleet-manager `projects/` Project-package registry — seats-first dispatch index (HTML) — [D-0030] |
 | `/projects.json` | public | same registry as JSON (rendered meta HTML stripped; packages carry `stub` + `detail_url`) |
 | `/projects/{package}` | public | per-seat dispatch screen — full role-file contents copy-ready + dispatch checklist (HTML; unknown package → 404) |
-| `/prompts` | public | fleet prompt library — 29 fleet-manager registry artifacts, CURRENT per-seat files primary + superseded universal-startup demoted to Historical reference, drift row + supersession warnings (HTML) — ORDER 014 + ORDER 024 (#267) |
+| `/prompts` | **gated in place** | fleet prompt library — 29 fleet-manager registry artifacts, CURRENT per-seat files primary + superseded universal-startup demoted to Historical reference, drift row + supersession warnings (HTML) — ORDER 014 + ORDER 024 (#267); gated in place 2026-08-20 (decisions ledger): 513 KB seat-era RECORD, same URL behind the owner gate (anonymous → tiny 401) |
 | `/reviews` | public | fleet post-merge review-queue ledger + findings links (HTML) — [D-0031] |
 | `/reviews.json` | public | same ledger as JSON (rendered HTML stripped) |
-| `/orders` | public | every repo's inbox ORDERs × heartbeat done= cross-reference (HTML) — [D-0032] |
-| `/orders.json` | public | same orders view as JSON (rendered body HTML stripped) |
+| `/orders` | **gated in place** | every repo's inbox ORDERs × heartbeat done= cross-reference (HTML) — [D-0032]; gated in place 2026-08-20 (decisions ledger): the ~608 KB faceted seat-era page Meta-range crawlers were measured DoS-ing — same URL behind the owner gate (anonymous → tiny 401) |
+| `/orders.json` | **gated in place** | same orders view as JSON (rendered body HTML stripped) — gated in place with its HTML twin (775 KB; decisions ledger, 2026-08-20) |
 | `/activity` | public | cross-repo PR activity timeline (HTML; `?repo=` per-lane filter) — [D-0020] |
 | `/activity.json` | public | same timeline as JSON |
 | `/activity.xml` | public | same timeline as a subscribable Atom 1.0 feed (`application/atom+xml`) — [D-0025] |
@@ -368,7 +368,11 @@ is public data, so `/version` is public like `/healthz`.
 
 ## Public site + gated `/owner` area
 
-The **public site** (every route except `/owner*`) serves without credentials.
+The **public site** (every route except `/owner*` and the three seat-era
+routes gated **in place** — `/orders`, `/orders.json`, `/prompts`; the
+2026-08-20 crawler-DoS decision in `docs/decisions.md` — same gate, same
+URLs, tiny 401 to anonymous callers) serves without
+credentials.
 It is derived almost entirely from **public** repo data. The one datum that is
 not public — the GitHub Actions **secret names** (obtainable only with an
 admin-scope token) — is **masked to a count** (`N secret(s)`) on the public

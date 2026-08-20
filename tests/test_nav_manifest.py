@@ -135,6 +135,12 @@ GATED_STATUS_OVERRIDES = {
     "/owner/login": {200},
 }
 
+# Public-path routes gated IN PLACE behind the same `require_owner` gate
+# (D-0036): same documented gate statuses as the /owner pages. Derived from
+# the nav manifest's item-level registry, plus the /orders.json twin the
+# manifest does not carry.
+GATED_IN_PLACE_PATHS = nav.gated_in_place_hrefs() | {"/orders.json"}
+
 
 def _offline(monkeypatch):
     """Stub app.github so the reachability GETs never touch the network — the
@@ -204,7 +210,7 @@ def test_every_top_level_get_route_is_reachable(monkeypatch):
                     f"of {sorted(allowed)} — this owner-prefixed path is "
                     "documented as a public page that renders before the gate"
                 )
-            elif path.startswith("/owner"):
+            elif path.startswith("/owner") or path in GATED_IN_PLACE_PATHS:
                 # Behind require_owner: 503 (unconfigured — the CI default) is a
                 # documented fail-closed status, so these are checked for exact
                 # gate membership rather than the plain non-5xx floor below.
