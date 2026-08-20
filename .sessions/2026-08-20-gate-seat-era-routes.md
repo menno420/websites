@@ -1,7 +1,9 @@
 # 2026-08-20 — gate the seat-era heavy routes behind the owner overlay (crawler DoS fix)
 
-> **Status:** `in-progress` — branch `claude/gate-seat-era-routes`. Born red;
-> flips `complete` only after review at the exact head and the landing checks.
+> **Status:** `complete` — branch `claude/gate-seat-era-routes`, PR #508. This
+> flip releases the born-red hold; the reviewed head is `74c4015` and the flip
+> commit changes only this card's close-out text (the session-close exemption,
+> taken and named).
 
 - **📊 Model:** fable-5 · high · mechanical refactor
 
@@ -38,13 +40,37 @@ links stay. `/`, page roots, and every other public route unchanged.
 
 ## Shipped
 
-- (filled at close)
+- `app/owner.py` `require_owner_page` — the [D-0012] gate as a distinct named
+  dependency; `app/main.py` applies it to `/orders`, `/orders.json`,
+  `/prompts` (gate runs before the route body — an anonymous hit never costs
+  a render).
+- `app/nav.py`: 🔒 labels + item-level `"gated": True`;
+  `nav.gated_in_place_hrefs()` as the single registry the walks read.
+- `scripts/smoke_crawl.py` exact-path skips; clarity walk authenticates the
+  set + pins anonymous 401 < 2 KB; category-IA/nav-manifest reachability
+  allow the documented gate statuses; `test_owner_security.py` gains
+  real-dependency gate tests; ten content modules opt into the scoped
+  `ungate_seat_era_pages` fixture (conftest).
+- Docs: `site.md` route table + auth section (decision referenced by name —
+  the id stamps at one home), `current-state.md` gated-corner lines +
+  shipped entry, `decisions.md` **[D-0036]**.
 
 ## Verify
 
-- (filled at close: pytest suites, `bootstrap.py check --strict` real exit
-  code, post-deploy external probes — healthz < 1 s, `/orders` public response
-  tiny)
+- Control-plane suite **1074 passed** (from 1022 + 42 gate-shaped failures).
+  dashboard 130 · review 276 passed. botsite's 171 local failures reproduce
+  **identically on the clean tree** — venv-vs-CI dependency drift,
+  pre-existing (CI's pinned env merged today's #507 bake green on the same
+  botsite tree; CI is the authority).
+- `python3 bootstrap.py check --strict --require-session-log --session-log
+  <this card>` → exit 1 on exactly the designed born-red hold
+  (`HOLD (by design)`), nothing else; flips green with this commit.
+- Codex: reviewed the exact head `74c4015` — **0 findings, 0 inline
+  comments** (*"Didn't find any major issues"*), verified via
+  `/pulls/508/comments` (not the summary alone).
+- Post-merge external probes (recorded in the fm execution records): healthz
+  < 1 s repeatedly; anonymous `/orders` tiny 401; owner Basic login serves
+  the page at the same URL.
 
 ## Session idea
 
