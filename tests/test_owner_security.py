@@ -171,3 +171,47 @@ def test_rejected_requests_do_not_consume_rate_budget(client):
         headers={**_basic(), "Origin": SAME_ORIGIN},
     )
     assert r.status_code == 200
+
+
+# ── D-0036: the seat-era heavy routes gated IN PLACE (crawler-DoS fix) ────────
+# /orders, /orders.json and /prompts carry `require_owner_page` — the same
+# [D-0012] gate at their ORIGINAL public paths. These tests exercise the REAL
+# dependency (this module never uses the `ungate_seat_era_pages` fixture).
+
+GATED_IN_PLACE = ("/orders", "/orders.json", "/prompts")
+
+
+@pytest.mark.parametrize("path", GATED_IN_PLACE)
+def test_gated_in_place_route_401s_anonymously(client, path):
+    """No credentials → the tiny 401 challenge, never a render."""
+    r = client.get(path)
+    assert r.status_code == 401
+    assert r.headers.get("www-authenticate", "").lower().startswith("basic")
+    assert len(r.content) < 2048, "the whole point is a TINY public response"
+
+
+@pytest.mark.parametrize("path", GATED_IN_PLACE)
+def test_gated_in_place_route_serves_with_basic_auth(client, path):
+    """The owner's existing password opens the same URL in place."""
+    r = client.get(path, headers=_basic())
+    assert r.status_code == 200
+
+
+@pytest.mark.parametrize("path", GATED_IN_PLACE)
+def test_gated_in_place_route_fails_closed_unconfigured(monkeypatch, path):
+    """With NEITHER auth configured the gate 503s (fail-closed, exactly like
+    /owner) — an unset password never means an open door."""
+    monkeypatch.setattr(config, "SITE_PASSWORD", "")
+
+    async def fake_get(url, refresh=False, raw=False):
+        return {"ok": False, "status": 0, "data": None, "error": "offline",
+                "fetched_at": "", "cached": False, "url": url}
+
+    monkeypatch.setattr(github, "_get", fake_get)
+    with TestClient(app) as c:
+        assert c.get(path).status_code == 503
+
+
+def test_wrong_password_never_opens_a_gated_in_place_route(client):
+    r = client.get("/orders", headers=_basic(pw="wrong-pw"))
+    assert r.status_code == 401

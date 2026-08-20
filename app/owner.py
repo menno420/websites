@@ -245,6 +245,19 @@ def require_owner_action(request: Request) -> None:
     _enforce_rate_limit(request)
 
 
+def require_owner_page(request: Request) -> None:
+    """The [D-0012] gate applied IN PLACE to seat-era heavy public-path routes
+    (`/orders`, `/orders.json`, `/prompts` — D-0036, crawler-DoS fix): same
+    auth, same fail-closed behaviour, same URLs the owner already deep-links.
+
+    A distinct callable (not `require_owner` itself) so content tests can
+    override exactly this gate via `app.dependency_overrides` without
+    un-gating the /owner area, and so the gated-in-place route set stays
+    grep-able. The gate runs BEFORE the route body — an unauthenticated
+    crawler hit costs the tiny 401 challenge, never a render."""
+    require_owner(request)
+
+
 def _refresh(request: Request) -> bool:
     return request.query_params.get("refresh") in ("1", "true", "yes")
 

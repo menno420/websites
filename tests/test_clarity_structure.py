@@ -54,7 +54,7 @@ from fastapi.routing import APIRoute  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from starlette.routing import Mount  # noqa: E402
 
-from app import config, envhub, github, roster  # noqa: E402
+from app import config, envhub, github, nav, roster  # noqa: E402
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -113,6 +113,12 @@ NON_PAGE_GET_ROUTES: dict[str, str] = {
 MOUNT_EXEMPT: dict[str, str] = {
     "/static": "static asset mount (auto-refresh JS etc.) — files, not pages",
 }
+
+# Public-path pages gated IN PLACE behind the owner overlay (D-0036): walked
+# authenticated exactly like the /owner pages, and held to the same idiom.
+# Derived from the nav manifest's item-level `"gated": True` registry so this
+# suite cannot drift from the IA's own record of what is gated.
+GATED_IN_PLACE: set[str] = nav.gated_in_place_hrefs()
 
 
 def _projects_urls() -> list[str]:
@@ -306,7 +312,8 @@ def test_every_html_page_carries_headline_and_lede(client):
     problems: list[str] = []
     urls = html_page_urls()
     for url in urls:
-        headers = _basic() if url.startswith("/owner") else {}
+        gated = url.startswith("/owner") or url in GATED_IN_PLACE
+        headers = _basic() if gated else {}
         r = client.get(url, headers=headers)
         assert r.status_code == 200, f"GET {url} → {r.status_code}"
         problems.extend(assert_page_meets_bar(url, r.text))
@@ -322,6 +329,22 @@ def test_owner_pages_stay_gated_without_credentials(client):
     gate never silently starts asserting the idiom on a 401 body."""
     r = client.get("/owner")
     assert r.status_code == 401
+
+
+def test_gated_in_place_pages_stay_gated_without_credentials(client):
+    """Same guard for the D-0036 in-place set: every nav-registered gated
+    href (plus the /orders.json twin) answers the tiny 401 challenge to an
+    anonymous caller — if one starts answering 200, the walk above would be
+    silently asserting the idiom on an un-gated page and the crawler-DoS fix
+    would have regressed."""
+    assert GATED_IN_PLACE, "nav registers no gated-in-place items — stale suite"
+    for url in sorted(GATED_IN_PLACE | {"/orders.json"}):
+        r = client.get(url)
+        assert r.status_code == 401, f"GET {url} → {r.status_code}, want 401"
+        assert len(r.content) < 2048, (
+            f"anonymous {url} answered {len(r.content)} bytes — the point of "
+            "the gate is a TINY public response"
+        )
 
 
 def test_unknown_path_answers_the_documented_json_404(client):

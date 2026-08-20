@@ -96,10 +96,16 @@ CATEGORIES: list[dict[str, Any]] = [
                 "action": {"label": "open queue", "href": "/queue"},
             },
             {
+                # Gated IN PLACE behind the [D-0012] owner overlay (D-0036):
+                # same URL, tiny 401 to anonymous callers. `"gated": True` at
+                # item level is the machine-readable registry the reachability
+                # and smoke walks read — a future in-place gate adds the flag
+                # here, not a new allowlist.
                 "key": "orders",
-                "label": "orders",
+                "label": "orders 🔒",
                 "href": "/orders",
-                "desc": "orders ledger — what was commanded, acked, done per lane",
+                "desc": "orders ledger — what was commanded, acked, done per lane (owner-gated)",
+                "gated": True,
                 "action": {"label": "open orders", "href": "/orders"},
             },
             {
@@ -170,13 +176,15 @@ CATEGORIES: list[dict[str, Any]] = [
                 "action": {"label": "open dispatch", "href": "/projects"},
             },
             {
+                # Gated in place (D-0036) — see the orders item note.
                 "key": "prompts",
-                "label": "prompts",
+                "label": "prompts 🔒",
                 "href": "/prompts",
                 "desc": (
                     "THE prompt home — universal + every per-seat paste "
-                    "artifact, one library"
+                    "artifact, one library (owner-gated)"
                 ),
+                "gated": True,
                 "action": {"label": "browse prompts", "href": "/prompts"},
             },
             {
@@ -315,6 +323,20 @@ def category_for(active: Optional[str]) -> Optional[str]:
         if any(it["key"] == active for it in cat["items"]):
             return cat["key"]
     return None
+
+
+def gated_in_place_hrefs() -> set[str]:
+    """Hrefs of items gated IN PLACE behind the owner overlay (D-0036) —
+    public-path URLs that answer the tiny 401 challenge anonymously while
+    keeping their address. The single registry the reachability and clarity
+    walks read; `scripts/smoke_crawl.py` mirrors it (standalone script, no
+    app import) in its SKIP_EXACT_PATHS."""
+    return {
+        it["href"]
+        for cat in CATEGORIES
+        for it in cat["items"]
+        if it.get("gated")
+    }
 
 
 def all_hrefs() -> list[str]:

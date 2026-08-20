@@ -55,7 +55,9 @@ All FOUR services are **public** — the Basic-auth gate was dropped from
 control-plane + dashboard ([D-0011]); botsite and review were always public.
 The gated corners are the control-plane `/owner` area and dashboard `/admin`,
 both via the fleet Discord login (`SITE_PASSWORD` remains an optional
-control-plane/botsite fallback).
+control-plane/botsite fallback) — plus, since 2026-08-20, the three seat-era
+heavy control-plane routes gated IN PLACE at their public paths ([D-0036],
+crawler-DoS fix): `/orders`, `/orders.json`, `/prompts`.
 
 Deployment: `docs/deployment.md` + each service's doc.
 
@@ -65,8 +67,10 @@ Deployment: `docs/deployment.md` + each service's doc.
   https://control-plane-production-abb0.up.railway.app (Railway project
   `superbot-websites`, service `control-plane`, deployed from `main`).
   **Public — no auth** on the main site; the board's Actions-secrets cell is
-  masked to a count. The gated corners are the `/owner` area ([D-0012]) and
-  dashboard `/admin`, both reachable via the fleet Discord login.
+  masked to a count. The gated corners are the `/owner` area ([D-0012]), the
+  three seat-era routes gated in place ([D-0036]: `/orders`, `/orders.json`,
+  `/prompts` — tiny 401 to anonymous callers) and
+  dashboard `/admin`, all reachable via the fleet Discord login.
 - App: FastAPI + Jinja2 + httpx, server-rendered, no build step; data / cache
   model per `docs/site.md`. Routes: `/` board, `/journal/…` browser,
   `/api/readiness.json`, `/healthz`, `/version`.
@@ -120,6 +124,21 @@ Deployment: `docs/deployment.md` + each service's doc.
   (ASK-0009). Names-only curation: `docs/OWNER-STEPS.md`.
 
 ## Recently shipped (newest first)
+
+- **2026-08-20 — the crawler DoS on control-plane ended at the route layer
+  ([D-0036], PR this session):** `/orders` (~608 KB faceted seat-era page),
+  `/orders.json` (775 KB) and `/prompts` (513 KB) now answer anonymous
+  callers with the tiny [D-0012] 401 challenge at their unchanged URLs.
+  Measured trigger: Meta-range crawlers (robots.txt ignored — 0 fetches in
+  3,001 requests) enumerating `/orders`' filter permutations at 5,001
+  requests/40 min, by execution time saturating the service (2,001-request
+  sample: 100 % ends in HTTP 499) with external `/healthz` timing out
+  3×30 s. Route-scoped on purpose — never an IP-range 403
+  (`facebookexternalhit` shares Meta's ranges and powers link unfurls).
+  Registries updated: nav 🔒 + `gated` flags, clarity/reachability walks,
+  smoke-crawl exact-path skips, owner-security gate tests; suite 1074
+  passed. Direction: fleet-manager
+  `docs/planning/2026-08-20-railway-keep-bot-only-worklist.md` slice 1.
 
 - **2026-07-19 → 20 build cycle — fleet login, durable stores, arcade,
   guards** (all terminal on `main`, HEAD `79d57e0`; suite **2132 passed** at

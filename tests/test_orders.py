@@ -20,6 +20,13 @@ from app import github, orders  # noqa: E402
 NOW = datetime(2026, 7, 11, 9, 0, 0, tzinfo=timezone.utc)
 from app.main import app  # noqa: E402
 
+# The D-0036 in-place owner gate on /orders + /prompts is not this module's
+# subject — content pins predate it. The gate's own tests:
+# test_owner_security.py + test_clarity_structure.py (never use this fixture).
+import pytest  # noqa: E402
+
+pytestmark = pytest.mark.usefixtures("ungate_seat_era_pages")
+
 
 def _res(ok=True, status=200, data=None, error=""):
     return {"ok": ok, "status": status, "data": data, "error": error,

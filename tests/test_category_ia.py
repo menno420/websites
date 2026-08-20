@@ -106,13 +106,16 @@ def test_landing_pages_degrade_honestly_offline(monkeypatch):
 @pytest.mark.parametrize("href", nav.all_hrefs())
 def test_every_manifest_route_responds(monkeypatch, href):
     """Reachability over the whole manifest: no dead links in the IA. Gated
-    owner pages answer their gate (401/503 without credentials), never 404;
-    public pages answer 200."""
+    owner pages — and the D-0036 items gated IN PLACE at their public paths
+    (nav.gated_in_place_hrefs()) — answer their gate (401/503 without
+    credentials), never 404; public pages answer 200."""
     _offline(monkeypatch)
     with TestClient(app) as c:
         r = c.get(href)
     assert r.status_code != 404, href
-    if not href.startswith("/owner"):
+    if href.startswith("/owner") or href in nav.gated_in_place_hrefs():
+        assert r.status_code in (401, 503), href
+    else:
         assert r.status_code == 200, href
 
 
