@@ -69,9 +69,14 @@ name: review-bake
 # `git add -A`), the job has no secret beyond the repo-scoped Actions token,
 # and a bake that produces no diff exits quietly.
 
+# SCHEDULE RETIRED 2026-08-20 (fleet-manager keep-bot-only worklist slice 3,
+# sb #2446 pattern — schedule out, workflow_dispatch kept): the review site
+# is now a static GitHub Pages export (review/gen_static.py +
+# review-pages.yml) of committed data, and its Railway service retires with
+# this change — a daily bake against a retired audience's historical record
+# was ~365 no-op runs/year. Dispatch by hand to refresh the committed
+# mirrors; review-pages.yml republishes on any review/** push to main.
 on:
-  schedule:
-    - cron: "23 5 * * *"
   workflow_dispatch:
 
 permissions:

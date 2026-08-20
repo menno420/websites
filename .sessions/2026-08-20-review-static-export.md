@@ -1,0 +1,62 @@
+# 2026-08-20 — review site: static-export mechanism (slice 3a — exporter + Pages workflow + bake-schedule retirement)
+
+> **Status:** `in-progress` — branch `claude/review-static-export`. Born red;
+> flips `complete` only after review at the exact head. Second PR of the
+> fleet-manager keep-bot-only worklist execution (slice 3 lands in two small
+> steps: 3a this mechanism, 3b the nav cutover once Pages actually serves —
+> so no site ever links a dead URL and the service deletes only after the
+> replacement venue is verified serving).
+
+- **📊 Model:** fable-5 · high · mechanical refactor
+
+## previous-session review
+
+The previous card (2026-08-20, gate-seat-era-routes, PR #508) closed clean
+the same hour: merged `74410ff`, live-verified (healthz 5×200 < 0.62 s;
+anonymous `/orders` 42 B; owner Basic 200 at 620,461 B — the exact audited
+page size). Nothing it recorded contradicts this tree.
+
+## Why
+
+The program-review audience concluded 2026-07-21; the review service is a
+24/7 Railway process server-rendering committed data (`review/data/**` +
+committed editions — 20 GET routes, zero POST page routes). The owner's
+2026-08-20 keep-criterion (*"only things actually related to the bot"*)
+retires it after a static export (worklist § 2, decided § 3.3). The Pages
+preflight ran this session: `GET /repos/menno420/websites/pages` → 404, then
+`POST` (build_type `workflow`) → **201** over the direct PAT — the measured
+2026-08-07 wall was a WORKFLOW token failing to create; the admin-PAT path
+works. Venue: https://menno420.github.io/websites/.
+
+## Scope (this PR)
+
+- `review/gen_static.py` — walks every GET route offline (TestClient; the
+  clarity suite's own expanders), writes the tree, rewrites root-relative
+  URLs for the `/websites` base path + feed absolute URLs, exits 1 on any
+  non-200 (a partial tree never deploys as whole).
+- `.github/workflows/review-pages.yml` — build + deploy on
+  `workflow_dispatch` and review/** pushes to main; no cron.
+- `review-bake.yml` schedule retired (cron out, `workflow_dispatch` kept —
+  sb #2446 pattern, note in header).
+- Decision entry D-0037 (the whole slice-3 mechanism + the named losses).
+
+NOT this PR (3b, after Pages verified serving): fleet-nav repoints ×4,
+`web_presence.json` rows (review → Pages URL; mineverse row out — its
+Railway service + project were deleted this session), `serviceDelete` of
+`review` (id `511fd9eb…`), current-state truth update.
+
+## Shipped
+
+- (filled at close)
+
+## Verify
+
+- (filled at close)
+
+## Session idea
+
+- 💡 The live review service carries a working `ANTHROPIC_API_KEY` — the
+  `/ask/api` POST (the on-site AI assistant) is a functional path that DIES
+  with the static export; the seeded evidence-backed answers survive as
+  static content and the exported page renders the honest degraded state.
+  Named in D-0037 and flagged to the owner rather than silently dropped.
