@@ -249,12 +249,27 @@ def test_service_absent_from_successful_read_is_drift(client, monkeypatch):
     """The live read SUCCEEDED but a documented service is not in it → the
     service is not created yet: honest drift (all documented names missing
     live), never unknown."""
+    # dashboard as the example: review can no longer play this role — it is
+    # RETIRED (2026-08-20), so its absence from the live read is the designed
+    # state, not drift (see test_retired_service_absent_is_ok below).
     maps = _full_live_maps()
-    del maps["review"]
+    del maps["dashboard"]
     r = _page(client, monkeypatch, maps)
     assert "service not found in the live project" in r.text
-    assert "ANTHROPIC_API_KEY" in r.text  # named as missing live
+    assert "DISCORD_CLIENT_ID" in r.text  # a dashboard var, named as missing live
     assert "name drift" in r.text
+
+
+def test_retired_service_absent_is_ok(client, monkeypatch):
+    """A RETIRED service (review → its GitHub Pages static export,
+    2026-08-20) absent from a successful live read is the DESIGNED state:
+    the retired note renders, its vars go informational, and no drift is
+    charged."""
+    maps = _full_live_maps()
+    maps.pop("review", None)
+    r = _page(client, monkeypatch, maps)
+    assert "retired: 2026-08-20" in r.text
+    assert "service not found in the live project" not in r.text
 
 
 def test_undocumented_live_service_is_drift(client, monkeypatch):

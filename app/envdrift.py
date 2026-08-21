@@ -49,7 +49,9 @@ DRIFT_UNKNOWN = "unknown"
 # Per-variable live states (the "live (Railway)?" column).
 VAR_SET_LIVE = "set-live"
 VAR_MISSING_LIVE = "missing-live"
-VAR_BUILD_ONLY = "build-only"  # declared for the CODE drift check; set by a build/export process, never on Railway — informational, never missing
+VAR_BUILD_ONLY = "build-only"
+VAR_RETIRED = "retired"  # declared on a retired service — no live Railway state exists to compare against
+DRIFT_RETIRED = "retired"  # service-level: absent from the live project BY DESIGN  # declared for the CODE drift check; set by a build/export process, never on Railway — informational, never missing
 VAR_RUNTIME_INJECTED = "runtime-injected"
 VAR_UNKNOWN = "unknown"
 
@@ -120,6 +122,26 @@ def annotate(data: dict[str, Any]) -> None:
     for svc in services:
         documented = [var["name"] for var in svc["env_vars"]]
         lsvc = by_live_name.get(svc["name"])
+
+        if lsvc is None and svc.get("retired"):
+            # A retired service (e.g. review → its GitHub Pages static
+            # export, 2026-08-20): the live list SHOULD come back without
+            # it — that is the designed state, never drift. Vars render
+            # informational; the note carries the retirement.
+            for var in svc["env_vars"]:
+                var["live_state"] = (
+                    VAR_BUILD_ONLY if var.get("build_only") else VAR_RETIRED
+                )
+            svc["drift"] = {
+                "state": DRIFT_RETIRED,
+                "reason": "",
+                "missing_live": [],
+                "undocumented": [],
+                "railway_provided": [],
+                "note": f"retired: {svc['retired']}",
+            }
+            compared += 1
+            continue
 
         if lsvc is None:
             # The authoritative live service list came back WITHOUT this

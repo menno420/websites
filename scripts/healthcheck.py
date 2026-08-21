@@ -110,7 +110,9 @@ SERVICES = [
     ("control-plane", "https://control-plane-production-abb0.up.railway.app"),
     ("botsite", "https://botsite-production-cfd7.up.railway.app"),
     ("dashboard", "https://dashboard-production-a91b.up.railway.app"),
-    ("review", "https://review-production-fc91.up.railway.app"),
+    # review retired 2026-08-20: a GitHub Pages static export with no
+    # /healthz process — this checker probes RAILWAY services only; the
+    # Pages site keeps rendering-layer coverage in scripts/smoke_crawl.py.
 ]
 ENDPOINTS = ("/healthz", "/")
 EXPECTED = 200

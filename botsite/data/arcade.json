@@ -10,17 +10,44 @@
     "source_repo": "menno420/gba-homebrew",
     "status_note": "Downloadable now — the lumen-drift-v1.3 GitHub Release is published; the Download button fetches the ROM (lumen-drift.gba) directly from that release.",
     "controls": [
-      {"input": "START", "action": "Start a run (and restart after game over)"},
-      {"input": "START (during run)", "action": "Pause / resume — the whole cave freezes, surge included"},
-      {"input": "B (while paused)", "action": "Restart the run"},
-      {"input": "SELECT", "action": "Mute / unmute all sound"},
-      {"input": "A (hold)", "action": "Thrust upward against gravity"},
-      {"input": "D-pad ← →", "action": "Steer sideways"}
+      {
+        "input": "START",
+        "action": "Start a run (and restart after game over)"
+      },
+      {
+        "input": "START (during run)",
+        "action": "Pause / resume — the whole cave freezes, surge included"
+      },
+      {
+        "input": "B (while paused)",
+        "action": "Restart the run"
+      },
+      {
+        "input": "SELECT",
+        "action": "Mute / unmute all sound"
+      },
+      {
+        "input": "A (hold)",
+        "action": "Thrust upward against gravity"
+      },
+      {
+        "input": "D-pad ← →",
+        "action": "Steer sideways"
+      }
     ],
     "changelog": [
-      {"version": "v1.1", "note": "The echoes deepen — every full echo cycle, crystals come more often and the galleries tighten."},
-      {"version": "v1.2", "note": "Graze mechanic — slip past a crystal close enough to hear the whisper and part of your light comes back."},
-      {"version": "v1.3", "note": "Pause and mute added; the mote flashes hot the instant a graze pays."}
+      {
+        "version": "v1.1",
+        "note": "The echoes deepen — every full echo cycle, crystals come more often and the galleries tighten."
+      },
+      {
+        "version": "v1.2",
+        "note": "Graze mechanic — slip past a crystal close enough to hear the whisper and part of your light comes back."
+      },
+      {
+        "version": "v1.3",
+        "note": "Pause and mute added; the mote flashes hot the instant a graze pays."
+      }
     ]
   },
   {
@@ -34,38 +61,89 @@
     "source_repo": "menno420/gba-homebrew",
     "status_note": "Downloadable now — the committed dist/gloamline.nds ROM (118 KB) fetches directly from the gba-homebrew repo; load it in melonDS or DeSmuME. No published GitHub Release yet, so the Download button points at the committed ROM.",
     "controls": [
-      {"input": "D-pad", "action": "Move, 8 directions"},
-      {"input": "A", "action": "Shove the nearest Shambler in reach"},
-      {"input": "B", "action": "Barricade: place at your feet — or repair the one in reach"},
-      {"input": "X", "action": "Chalk mark on the watch-map at your position — X again wipes it"},
-      {"input": "START", "action": "Start — retry — next night"},
-      {"input": "SELECT (title / after death)", "action": "Rematch best night (requires a record)"},
-      {"input": "SELECT (at dawn)", "action": "Scavenge the yard before next night"},
-      {"input": "Stylus", "action": "Tap the watch-map to drop or move the mark"}
+      {
+        "input": "D-pad",
+        "action": "Move, 8 directions"
+      },
+      {
+        "input": "A",
+        "action": "Shove the nearest Shambler in reach"
+      },
+      {
+        "input": "B",
+        "action": "Barricade: place at your feet — or repair the one in reach"
+      },
+      {
+        "input": "X",
+        "action": "Chalk mark on the watch-map at your position — X again wipes it"
+      },
+      {
+        "input": "START",
+        "action": "Start — retry — next night"
+      },
+      {
+        "input": "SELECT (title / after death)",
+        "action": "Rematch best night (requires a record)"
+      },
+      {
+        "input": "SELECT (at dawn)",
+        "action": "Scavenge the yard before next night"
+      },
+      {
+        "input": "Stylus",
+        "action": "Tap the watch-map to drop or move the mark"
+      }
     ],
     "changelog": [
-      {"version": "slice 8", "note": "Audio synthesis added."},
-      {"version": "slice 9", "note": "Battery saves added."},
-      {"version": "slice 10", "note": "Watch-map polish."},
-      {"version": "slice 11", "note": "Rematch (best night) added."}
+      {
+        "version": "slice 8",
+        "note": "Audio synthesis added."
+      },
+      {
+        "version": "slice 9",
+        "note": "Battery saves added."
+      },
+      {
+        "version": "slice 10",
+        "note": "Watch-map polish."
+      },
+      {
+        "version": "slice 11",
+        "note": "Rematch (best night) added."
+      }
     ]
   },
   {
     "slug": "mineverse",
     "name": "mineverse",
     "tagline": "A staged web mining-world game — the fleet's games flagship.",
-    "description": "A staged web game with stages 0, a, b and c complete. It now serves live as a read-only view over the superbot mining economy; player sign-in is launching next.",
+    "description": "A staged web game with stages 0, a, b and c complete. Its Railway deployment retired 2026-08-20 under the keep-bot-only consolidation; the source repo stays, and the game returns if a deploy does.",
     "maturity": "beta",
-    "availability": "live",
-    "url": "https://web-production-97636.up.railway.app",
+    "availability": "unavailable",
+    "url": null,
     "source_repo": "menno420/superbot-mineverse",
-    "status_note": "Read-only demo — player sign-in launching.",
+    "status_note": "Deployment retired 2026-08-20 (keep-bot-only consolidation) — source repo intact.",
     "changelog": [
-      {"version": "Stage 0", "note": "Walking skeleton: sample snapshot → stdlib server → static frontend (PR #2)."},
-      {"version": "Stage a", "note": "Read contract v1: versioned mining data contract, bot-side projection (PR #7)."},
-      {"version": "Stage b", "note": "Discord OAuth per-player read."},
-      {"version": "Stage c", "note": "Write contract v1 — test-guild only, via the bot's audited action endpoint (PR #13)."},
-      {"version": "Stage d", "note": "Live-prod prep, owner-flag-gated (prepared; cutover checklist included)."}
+      {
+        "version": "Stage 0",
+        "note": "Walking skeleton: sample snapshot → stdlib server → static frontend (PR #2)."
+      },
+      {
+        "version": "Stage a",
+        "note": "Read contract v1: versioned mining data contract, bot-side projection (PR #7)."
+      },
+      {
+        "version": "Stage b",
+        "note": "Discord OAuth per-player read."
+      },
+      {
+        "version": "Stage c",
+        "note": "Write contract v1 — test-guild only, via the bot's audited action endpoint (PR #13)."
+      },
+      {
+        "version": "Stage d",
+        "note": "Live-prod prep, owner-flag-gated (prepared; cutover checklist included)."
+      }
     ]
   },
   {
@@ -84,8 +162,14 @@
       "Keyboard focus ring on gear chips; a live region announces each character switch"
     ],
     "changelog": [
-      {"version": "v1.0.0", "note": "Phase 1 — mock-data mining character sheet (Durzo, Pip)."},
-      {"version": "v1.0.1", "note": "Validation tightened: stats requires at least one entry (minItems: 1); effective contract unchanged (patch bump)."}
+      {
+        "version": "v1.0.0",
+        "note": "Phase 1 — mock-data mining character sheet (Durzo, Pip)."
+      },
+      {
+        "version": "v1.0.1",
+        "note": "Validation tightened: stats requires at least one entry (minItems: 1); effective contract unchanged (patch bump)."
+      }
     ]
   }
 ]

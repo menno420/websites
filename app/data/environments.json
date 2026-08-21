@@ -110,9 +110,9 @@
         {
           "id": "review",
           "name": "review",
-          "kind": "railway-service",
-          "purpose": "the program-review site shared with Anthropic (live 2026-07-12)",
-          "url": "https://review-production-fc91.up.railway.app",
+          "kind": "GitHub Pages static export (review/)",
+          "purpose": "the program-review record — static export since 2026-08-20",
+          "url": "https://menno420.github.io/websites/",
           "railway_service_id": null,
           "manage_url": null,
           "variable_names": [
@@ -122,7 +122,7 @@
             "REVIEW_STATIC_EXPORT",
             "PORT"
           ],
-          "notes": "service created by the owner in the Railway console — its service id is not recorded in this repo yet (project-level link until it is). REVIEW_STATIC_EXPORT is the gen_static.py render-mode flag (set by the exporter process, never on Railway) — declared here so the code-vs-declared drift check stays in-sync."
+          "notes": "static export on GitHub Pages (websites decisions ledger, 2026-08-20); the Railway review service is deleted. Republish via the review-pages workflow."
         }
       ]
     },
@@ -157,17 +157,6 @@
           "manage_url": null,
           "variable_names": [],
           "notes": "hostname + ids unrecorded in this repo (see app/data/web_presence.json caveats)."
-        },
-        {
-          "id": "review-dup-f027",
-          "name": "review (old copy)",
-          "kind": "railway-service",
-          "purpose": "the OLD copy of the review site (RETIRE target), pending consolidation",
-          "url": "https://review-production-f027.up.railway.app",
-          "railway_service_id": null,
-          "manage_url": null,
-          "variable_names": [],
-          "notes": "old duplicate of superbot-websites/review (canonical = review-production-fc91) — parked pending OQ-RAILWAY-PROJECT-SPLIT."
         },
         {
           "id": "botsite-dup-superbot-app",

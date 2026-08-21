@@ -54,8 +54,9 @@ LUMEN_DRIFT_URL = "https://github.com/menno420/gba-homebrew/releases/download/lu
 # 118 KB .nds ROM). availability is "download", not "live".
 GLOAMLINE_URL = "https://raw.githubusercontent.com/menno420/gba-homebrew/main/dist/gloamline.nds"
 
-# mineverse's live Railway deployment (ORDER 022; cold-verified 200).
-MINEVERSE_URL = "https://web-production-97636.up.railway.app"
+# mineverse's OLD Railway deployment — deleted 2026-08-20 (keep-bot-only
+# consolidation). Kept as a pin that the dead URL never re-enters the page.
+MINEVERSE_OLD_URL = "https://web-production-97636.up.railway.app"
 
 
 @pytest.fixture()
@@ -96,13 +97,14 @@ def test_arcade_all_committed_games_are_reachable_after_the_flip(client):
     assert "pending" not in r.text.lower()
 
 
-def test_arcade_mineverse_live_link(client):
-    """mineverse is live (ORDER 022): the card renders a playable link to the
-    Railway deployment with the attribution ref appended."""
+def test_arcade_mineverse_retired_no_dead_link(client):
+    """mineverse's deployment retired 2026-08-20 (keep-bot-only
+    consolidation): the card must NOT link the deleted Railway URL — the
+    no-dead-links rail — and its honest status note renders instead."""
     r = client.get("/arcade")
     assert r.status_code == 200
-    assert f'href="{MINEVERSE_URL}?ref=fleet-arcade"' in r.text
-    assert "Play now" in r.text
+    assert MINEVERSE_OLD_URL not in r.text
+    assert "Deployment retired 2026-08-20" in r.text
 
 
 def test_arcade_source_repo_links(client):
@@ -223,12 +225,12 @@ def test_has_link_covers_exactly_the_linked_availabilities(tmp_path):
 
 
 def test_committed_registry_is_honest():
-    """The committed registry loads with all four games, every one reachable:
-    mineverse live (ORDER 022), games-web live (ASK-0011 Pages deploy),
-    lumen-drift download (ASK-0010 published release) and gloamline download
-    (S2: committed dist/gloamline.nds, verified 200). Each renders an outbound
-    link with the attribution ref and keeps an honest status note; none carries
-    a blocker."""
+    """The committed registry loads with all four games, honestly labeled:
+    games-web live (ASK-0011 Pages deploy), lumen-drift + gloamline download
+    (published release / committed dist), and mineverse UNAVAILABLE — its
+    deployment retired 2026-08-20 (keep-bot-only consolidation), source repo
+    intact. Linked games carry the attribution ref; none carries a
+    blocker."""
     games = arcade.load_games()
     assert [g["slug"] for g in games] == ["lumen-drift", "gloamline", "mineverse", "games-web"]
     by_slug = {g["slug"]: g for g in games}
@@ -241,10 +243,10 @@ def test_committed_registry_is_honest():
     assert gl["link_url"] == f"{GLOAMLINE_URL}?ref=fleet-arcade"
 
     mv = by_slug["mineverse"]
-    assert mv["availability"] == "live"
-    assert mv["url"] == MINEVERSE_URL
-    assert mv["is_live"] is True and mv["has_link"] is True
-    assert mv["link_url"] == f"{MINEVERSE_URL}?ref=fleet-arcade"
+    assert mv["availability"] == "unavailable"
+    assert mv["url"] is None
+    assert mv["is_live"] is False and mv["has_link"] is False
+    assert mv["link_url"] is None
 
     gw = by_slug["games-web"]
     assert gw["availability"] == "live"
@@ -349,16 +351,15 @@ def test_arcade_detail_games_web_play_affordance(client):
     assert "The owner click:" not in r.text
 
 
-def test_arcade_detail_mineverse_play_affordance(client):
-    """The available game's detail page carries the same honest play link the
-    catalog offers (attribution ref included) — and no blocker panel."""
+def test_arcade_detail_mineverse_retired(client):
+    """The retired game's detail page: no dead play link (the Railway URL is
+    deleted), the honest retirement note shown, the source repo still
+    linked."""
     r = client.get("/arcade/mineverse")
     assert r.status_code == 200
-    assert f'href="{MINEVERSE_URL}?ref=fleet-arcade"' in r.text
-    assert "Play now" in r.text
-    assert "blocking launch" not in r.text
-    # its honest status note still shows (read-only demo)
-    assert "Read-only demo" in r.text
+    assert MINEVERSE_OLD_URL not in r.text
+    assert "Deployment retired 2026-08-20" in r.text
+    assert "menno420/superbot-mineverse" in r.text
 
 
 def test_arcade_cards_link_to_detail_pages(client):
@@ -419,20 +420,21 @@ def test_loader_missing_blocker_is_none(tmp_path):
 def test_game_by_slug_returns_enriched_entry_or_none():
     game = arcade.game_by_slug("mineverse")
     assert game is not None
-    assert game["is_live"] is True
+    assert game["is_live"] is False  # deployment retired 2026-08-20
     assert game["detail_url"] == "/arcade/mineverse"
     assert arcade.game_by_slug("no-such-game") is None
 
 
 def test_committed_registry_carries_no_blockers_after_the_flip():
-    """Schema guard on the committed registry post-flip (2026-07-18): both
-    arcade launch blockers cleared (ASK-0010 lumen-drift release + ASK-0011
-    games-web Pages), so NO game carries a blocker now — every game is
-    reachable. Detail URLs still derive from slugs."""
+    """Schema guard on the committed registry post-flip (2026-07-18), updated
+    2026-08-20: no game carries a blocker; every game is reachable EXCEPT
+    mineverse, whose deployment retired under the keep-bot-only
+    consolidation (unavailable by design, no owner click pending). Detail
+    URLs still derive from slugs."""
     by_slug = {g["slug"]: g for g in arcade.load_games()}
     for slug, g in by_slug.items():
         assert g["blocker"] is None, slug
-        assert g["has_link"] is True, slug  # every game is reachable
+        assert g["has_link"] is (slug != "mineverse"), slug
         assert g["detail_url"] == f"/arcade/{slug}"
 
 
@@ -554,27 +556,28 @@ def test_arcade_catalog_no_live_verdict_leaks_to_public_page(client):
 
 
 def test_arcade_catalog_summary_strip(client):
-    """The top-of-page availability strip counts the committed registry: all four
-    games reachable (mineverse + games-web live; lumen-drift + gloamline
-    download), zero blocked, so no owner-click clause renders."""
+    """The top-of-page availability strip counts the committed registry:
+    three games reachable (games-web live; lumen-drift + gloamline
+    download), mineverse unavailable since its 2026-08-20 deployment
+    retirement — and no owner-click clause (its blocker is None)."""
     r = client.get("/arcade")
     assert r.status_code == 200
-    assert "4 live" in r.text
-    assert "0 blocked" in r.text
-    assert "owner click" not in r.text  # nothing blocked → no owner-click clause
+    assert "3 live" in r.text
+    assert "1 blocked" in r.text
+    assert "owner click" not in r.text  # no blocker recorded → no owner-click clause
 
 
 def test_games_front_door_shows_arcade_summary_strip(client):
     """The /games front door surfaces the Fleet Arcade's launch-readiness at a
     glance — the SAME live/blocked/owner-clicks summary the /arcade catalog
-    carries (reusing arcade.availability_summary over the committed registry:
-    4 live, 0 blocked, 0 owner clicks) — and cross-links to
-    /arcade."""
+    carries (arcade.availability_summary over the committed registry:
+    3 live, 1 blocked since mineverse's 2026-08-20 retirement, 0 owner
+    clicks) — and cross-links to /arcade."""
     r = client.get("/games")
     assert r.status_code == 200
     assert "Fleet Arcade" in r.text
-    assert "4 live" in r.text
-    assert "0 blocked" in r.text
+    assert "3 live" in r.text
+    assert "1 blocked" in r.text
     assert 'href="/arcade"' in r.text
 
 
@@ -637,11 +640,12 @@ def test_arcade_summary_dedupes_idless_clicks_by_owner_action():
 
 def test_arcade_summary_over_committed_registry():
     """The helper agrees with the committed registry read through the loader:
-    all four games reachable, none blocked, no outstanding owner clicks."""
+    three games reachable, mineverse unavailable (2026-08-20 retirement), no
+    outstanding owner clicks."""
     summary = arcade.availability_summary(arcade.load_games())
     assert summary["total"] == 4
-    assert summary["live"] == 4
-    assert summary["blocked"] == 0
+    assert summary["live"] == 3
+    assert summary["blocked"] == 1
     assert summary["owner_clicks"] == 0
 
 

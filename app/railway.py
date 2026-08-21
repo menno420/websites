@@ -191,12 +191,19 @@ SERVICES: list[dict[str, Any]] = [
         # Was omitted while the review service had no Railway deployment;
         # the owner created + verified it live 2026-07-12
         # (docs/owner/OWNER-ACTIONS.md row J) — ORDER 021 adds the row.
+        # RETIRED 2026-08-20 (keep-bot-only consolidation, decisions
+        # ledger): the Railway service is deleted; the site is a GitHub
+        # Pages static export. The entry stays because review/ CODE still
+        # exists and reads these env names — the code-vs-declared drift
+        # check documents them — while `retired` tells the live-side
+        # checks that NO Railway service is expected.
         "name": "review",
         "package": "review/",
         "dockerfile": "review/Dockerfile",
         "requirements": "review/requirements.txt",
-        "url": "https://review-production-fc91.up.railway.app",
+        "url": "https://menno420.github.io/websites/",
         "self": False,
+        "retired": "2026-08-20 — GitHub Pages static export; no Railway service expected",
         "env_vars": [
             _var("ANTHROPIC_API_KEY", "Claude API key for the /ask live assistant (set on the service 2026-07-12, ORDER 022)"),
             _var("REVIEW_AI_MODEL", "assistant model override (default pinned in review/ai.py)"),

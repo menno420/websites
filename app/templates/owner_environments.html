@@ -151,6 +151,9 @@
     {% elif svc.drift.state == 'ok' %}
     {{ badge('ok', 'no name drift') }}
     <span class="dim">— documented and live names match</span>
+    {% elif svc.drift.state == 'retired' %}
+    {{ badge('ok', 'retired') }}
+    <span class="dim">— {{ svc.drift.note }} (absence from the live project is the designed state)</span>
     {% else %}
     {{ badge('warn', 'name drift') }}
     <span class="dim">—
