@@ -1,11 +1,11 @@
 # 2026-08-20 — review cutover: every surface repoints to the Pages export (slice 3b)
 
-> **Status:** `in-progress` — branch `claude/review-cutover-pages`. Born red;
-> flips `complete` only after review at the exact head. Third PR of the
-> keep-bot-only execution: 3a (#509) landed the mechanism and the first
-> Pages deploy is VERIFIED SERVING (six route classes probed 200, banner +
-> noindex live); this PR moves every consumer off the doomed Railway URL;
-> the `serviceDelete` itself happens only after this lands.
+> **Status:** `complete` — branch `claude/review-cutover-pages`, PR #510.
+> Third PR of the keep-bot-only execution: 3a (#509) landed the mechanism
+> and the first Pages deploy is VERIFIED SERVING (six route classes probed
+> 200, banner + noindex live); this PR moves every consumer off the doomed
+> Railway URL; the `serviceDelete` itself happens only after this lands and
+> is recorded on the fleet-manager execution card.
 
 - **📊 Model:** fable-5 · high · mechanical refactor
 
@@ -49,11 +49,41 @@ mineverse deployment, repointed or honestly retired:
 
 ## Shipped
 
-- (filled at close)
+- The Scope above, plus what the two Codex rounds added under the cap:
+  **R1 8/8 [conceded]** (dashboard `/reviews` default → the Pages reviews
+  index (P1 — the fc91 URL is deleted); envhub static-venue accounting —
+  review's 5 documented names leave the comparable universe as
+  `LIVE_STATIC`/`static_count` instead of inflating missing/unknown;
+  envdrift `services_retired` out of `services_compared` so the ok rollup
+  text stays true; mineverse group + the two 08-14 dup rows dropped from
+  both registries with `DUPLICATE_IDS` now the empty contract set;
+  reliable-grace postgres row trued; story.py + botsite testing task →
+  Pages URL) and **R2 5/5 [conceded]** (P1: the hardcoded fleet-strip
+  self-link exported as `/websites/websites/` in ALL 30 HTML files — link
+  now root-relative AND the host-root rewrite idempotent, pinned; static
+  venue no longer generates Railway setup in the manifest — explicit
+  `manage_url` → the review-pages workflow, `<STATIC-VENUE-NOTHING-TO-SET>`
+  placeholder; `retired` var-state template branch; retired-but-present =
+  lifecycle drift, tested; reliable-grace group purpose trued).
+- Test-isolation hardening bundled with the R2 commit: the six
+  envhub-family files gained the autouse `owner.reset_rate_limits()`
+  fixture their nine test_owner_* siblings carry (the latent cross-file
+  429 recorded under Session idea).
 
 ## Verify
 
-- (filled at close)
+- Suites at the final head: tests/ **1077** · review/tests **296** ·
+  dashboard/tests **130** · botsite arcade **65** — all green, real exit
+  codes (separate un-piped runs).
+- Exporter re-run after each fix round: exit **0**, 35 routes; the R2
+  re-export greps **zero** `websites/websites` occurrences (was 30 files)
+  and the self-link exports as `href="/websites/"`.
+- Local `python3 bootstrap.py check --strict` exit 1 with the ONLY red the
+  designed born-red card hold (this flip releases it); CI `quality` on the
+  pre-flip heads red on the same single step (job log verbatim: "Designed
+  hold — not a CI failure to investigate"), every prior step green.
+- Codex reviewed the exact heads `88efd7e` (R1) and `6364d4a` (R2);
+  dispositions posted on the PR; two-round cap reached.
 
 ## Session idea
 
