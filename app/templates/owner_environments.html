@@ -72,13 +72,15 @@
       {%- if env.drift.undocumented_services %} · live service{{ 's' if env.drift.undocumented_services|length != 1 }} the repo does not document:
       {% for n in env.drift.undocumented_services %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
       — add {{ 'it' if env.drift.undocumented_services|length == 1 else 'them' }} to <code>app/railway.py</code> SERVICES{% endif %}</span>
-    {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}</p>
+    {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}
+    {% if env.drift.services_retired %}<span class="b ok" title="absent from the live project BY DESIGN — see the service card">+{{ env.drift.services_retired }} retired</span>{% endif %}</p>
   {% else %}
   <p class="small">{{ badge('ok', 'no name drift (' ~ env.drift.services_compared ~ ' services compared)') }}
     <span class="dim">— every documented variable name is set live and no
     undocumented live name exists (Railway-provided <code>RAILWAY_*</code>
     names are informational, not drift).</span>
-    {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}</p>
+    {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}
+    {% if env.drift.services_retired %}<span class="b ok" title="absent from the live project BY DESIGN — see the service card">+{{ env.drift.services_retired }} retired</span>{% endif %}</p>
   {% endif %}
 
   {# Code-referenced-vs-declared NAME drift rollup (B6, app/codedrift.py): the

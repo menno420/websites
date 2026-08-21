@@ -36,10 +36,12 @@ from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
 
+# superbot-mineverse left this tuple 2026-08-20: its Railway service AND
+# project were deleted in the keep-bot-only consolidation (fleet-manager
+# worklist slice 2), so the registry no longer carries the group.
 GROUP_IDS = (
     "superbot-websites",
     "reliable-grace",
-    "superbot-mineverse",
     "github-actions",
     "claude-cloud",
 )

@@ -58,6 +58,7 @@
         {%- set st = svc.live.by_name.get(row.name) if svc.live else none -%}
         {% if st == 'set-live' %}<span class="b ok">set live</span>
         {% elif st == 'missing-live' %}<span class="b bad">missing live</span>
+        {% elif st == 'static-venue' %}<span class="b ok" title="static export — no Railway service by design">static venue</span>
         {% else %}<span class="b unknown">unknown</span>{% endif %}
       </td>
     </tr>

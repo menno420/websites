@@ -94,7 +94,9 @@ BOTSITE_GAMES_URL = os.environ.get(
 ).strip()
 REVIEW_REVIEWS_URL = os.environ.get(
     "REVIEW_REVIEWS_URL",
-    "https://review-production-fc91.up.railway.app/reviews",
+    # The review record's Pages home (static export since 2026-08-20; the
+    # old fc91 Railway service is deleted — Codex #510 round 1, P1).
+    "https://menno420.github.io/websites/reviews/",
 ).strip()
 
 

@@ -178,7 +178,7 @@ SERVICES: list[dict[str, Any]] = [
             _var("SUPERBOT_REPO", "upstream repo for committed JSON (default menno420/superbot)"),
             _var("SUPERBOT_REF", "upstream ref (default main)"),
             _var("BOTSITE_GAMES_URL", "consolidation-redirect target for /games — the re-homed games surface on the botsite service (optional; default botsite-production-cfd7/games — env-overridable for cutover)"),
-            _var("REVIEW_REVIEWS_URL", "consolidation-redirect target for /reviews — the re-homed reviews surface on the review service (optional; default review-production-fc91/reviews — env-overridable for cutover)"),
+            _var("REVIEW_REVIEWS_URL", "consolidation-redirect target for /reviews — the re-homed reviews surface (optional; default menno420.github.io/websites/reviews/ since the 2026-08-20 static-export cutover — env-overridable)"),
             _var("DISCORD_CLIENT_ID", "Discord OAuth owner login — client id, reused from the existing SuperBot Discord app (dashboard/discord_auth.py; ORDER 038; unset → /admin/login says not-configured and the admin actions stay locked — Discord-only, no SITE_PASSWORD)"),
             _var("DISCORD_CLIENT_SECRET", "Discord OAuth owner login — client secret from the SuperBot app (dashboard/discord_auth.py; ORDER 038; name only, never a value)"),
             _var("OWNER_DISCORD_ID", "Discord OAuth owner login — the owner's Discord user id; the callback mints a session only when the returned id matches (dashboard/discord_auth.py; ORDER 038)"),

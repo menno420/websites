@@ -221,8 +221,9 @@ def test_root_is_public_no_auth(client):
 # --- consolidation redirects (/games, /reviews) --------------------------
 # The OLD dashboard served /games and /reviews; on this NEW dashboard that
 # content was deliberately RE-HOMED (games -> botsite service, reviews ->
-# review service), so those paths would 404. The routes 302-forward to the
-# re-homed surfaces so inbound links survive the duplicate-sites cutover.
+# the review GitHub Pages static export since 2026-08-20), so those paths
+# would 404. The routes 302-forward to the re-homed surfaces so inbound
+# links survive the cutovers.
 def test_games_redirects_to_botsite(client):
     r = client.get("/games", follow_redirects=False)
     assert r.status_code == 302
@@ -230,11 +231,15 @@ def test_games_redirects_to_botsite(client):
     assert "botsite" in loc and loc.endswith("/games")
 
 
-def test_reviews_redirects_to_review_service(client):
+def test_reviews_redirects_to_review_static_export(client):
+    # Since 2026-08-20 the review record lives on its GitHub Pages static
+    # export (the Railway review service retired with the keep-bot-only
+    # cutover); the default target is the Pages reviews index.
     r = client.get("/reviews", follow_redirects=False)
     assert r.status_code == 302
-    loc = r.headers["location"]
-    assert "review" in loc and loc.endswith("/reviews")
+    assert (
+        r.headers["location"] == "https://menno420.github.io/websites/reviews/"
+    )
 
 
 def test_redirect_targets_are_env_overridable(client, monkeypatch):

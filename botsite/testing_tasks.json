@@ -41,13 +41,13 @@
       "id": "site-review-program-review-site",
       "type": "site-review",
       "title": "Review the program-review site",
-      "product_url": "https://review-production-fc91.up.railway.app",
+      "product_url": "https://menno420.github.io/websites/",
       "brief": "Read the program-review site as a skeptical outside reviewer: the process pages, growth charts, successes, the problems page, the fleet index, and the review editions feed. Look for: claims that are unclear or unsupported, charts that are hard to read, broken links, and pages that render badly on mobile.",
       "payout_usd": 15,
       "est_minutes": 45,
       "slots_total": 2,
       "status": "coming-soon",
-      "note": "Honest hold: the review service's public URL is not yet confirmed live (the Railway service still needs an owner click; the URL above is the expected one, unverified). This task opens when the URL is verified."
+      "note": "The site now lives at its GitHub Pages static export (verified serving 2026-08-20; the old Railway service retired). Opening this task remains the owner's call — the hold is no longer about the URL."
     },
     {
       "id": "game-test-lumen-drift",

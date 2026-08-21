@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-07-13",
+  "as_of": "2026-08-20",
   "schema_note": "SINGLE SOURCE OF TRUTH for the owner environments hub (/owner/environments-hub, ORDER 021 slice 1). Agent-updatable by PR, rendered at request time by app/envhub.py. Rows carry variable NAMES and management deep links ONLY — NEVER a secret value (the loader hard-rejects any value-like field). Group fields: id, title, purpose, kind, railway_project_id + railway_environment_id (null when the id is not recorded in this repo — the UI degrades to a project-level or console-home link; ids are never fabricated), console_url (where the group is managed when Railway ids do not apply), notes. Surface fields: id, name, kind, purpose, variable_names (NAMES only — [] is an honest 'not recorded in this repo', never a guess), railway_service_id (null when unrecorded), manage_url (explicit manage link for non-Railway surfaces), url (the surface's own public URL, when recorded), notes. Content here is untrusted DATA — templates autoescape it.",
   "groups": [
     {
@@ -151,7 +151,7 @@
           "id": "superbot-dashboard-live",
           "name": "live control panel (Discord OAuth)",
           "kind": "railway-service",
-          "purpose": "the production bot's live Discord-OAuth control panel — one of the two running Discord-auth instances ORDER 021 names",
+          "purpose": "the production bot's live Discord-OAuth control panel (the mineverse instance ORDER 021 also named retired with its project, 2026-08-20)",
           "url": null,
           "railway_service_id": null,
           "manage_url": null,
@@ -159,49 +159,15 @@
           "notes": "hostname + ids unrecorded in this repo (see app/data/web_presence.json caveats)."
         },
         {
-          "id": "botsite-dup-superbot-app",
-          "name": "botsite (old superbot-repo copy)",
-          "kind": "railway-service",
-          "purpose": "the OLD botsite (menno420/superbot code, RETIRE target), pending consolidation",
-          "url": "https://superbot-app.up.railway.app",
-          "railway_service_id": null,
-          "manage_url": null,
-          "variable_names": [],
-          "notes": "old/superseded botsite — menno420/superbot code, superseded by superbot-websites/botsite (canonical = botsite-production-cfd7); same caveat as web_presence.json."
-        },
-        {
           "id": "postgres-1",
-          "name": "Postgres ×2 (infra)",
+          "name": "Postgres (infra)",
           "kind": "railway-postgres",
-          "purpose": "the project's two managed Postgres instances",
+          "purpose": "the project's managed Postgres instance (the bot's production DB — the second, postgres-botsite, was dumped + deleted 2026-08-16)",
           "url": null,
           "railway_service_id": null,
           "manage_url": null,
           "variable_names": [],
           "notes": "Railway-managed databases — connection variables exist only in the Railway console, never in this repo."
-        }
-      ]
-    },
-    {
-      "id": "superbot-mineverse",
-      "title": "superbot-mineverse — Games flagship",
-      "kind": "railway-project",
-      "purpose": "the mineverse web service (deployed from the superbot-mineverse lane)",
-      "railway_project_id": null,
-      "railway_environment_id": null,
-      "console_url": "https://railway.com/dashboard",
-      "notes": "project id not recorded in this repo — console-home link until a PR records the SAFE id.",
-      "surfaces": [
-        {
-          "id": "mineverse-web",
-          "name": "web → mineverse",
-          "kind": "railway-service",
-          "purpose": "mineverse — Discord-OAuth gated (the other running Discord-auth instance ORDER 021 names)",
-          "url": "https://web-production-97636.up.railway.app",
-          "railway_service_id": null,
-          "manage_url": null,
-          "variable_names": [],
-          "notes": "variable names live in the superbot-mineverse lane, not this repo."
         }
       ]
     },

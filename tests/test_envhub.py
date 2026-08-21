@@ -70,10 +70,15 @@ def client(monkeypatch):
 def test_registry_loads_and_has_expected_groups():
     reg = envhub.load_registry()
     ids = [g["id"] for g in reg["groups"]]
-    # The ORDER 021 verified inventory: all five project groups present.
-    for expected in ("superbot-websites", "reliable-grace", "superbot-mineverse",
+    # The ORDER 021 verified inventory, minus superbot-mineverse: its
+    # Railway service AND project were deleted 2026-08-20 (keep-bot-only
+    # consolidation slice 2), so the registry dropped the group.
+    for expected in ("superbot-websites", "reliable-grace",
                      "github-actions", "claude-cloud"):
         assert expected in ids, f"group {expected} missing from the registry"
+    assert "superbot-mineverse" not in ids, (
+        "the mineverse group documents a deleted project — it must not return"
+    )
     # Every group/surface carries the required fields (load_registry raised
     # otherwise); spot-check the estate group covers all four services.
     estate = next(g for g in reg["groups"] if g["id"] == "superbot-websites")
@@ -212,9 +217,11 @@ def test_hub_renders_all_groups_without_token(client):
     r = client.get("/owner/environments-hub", headers=_basic())
     assert r.status_code == 200
     for title_bit in ("superbot-websites", "reliable-grace",
-                      "superbot-mineverse", "GitHub Actions secrets",
+                      "GitHub Actions secrets",
                       "claude.ai cloud environments"):
         assert title_bit in r.text, f"group {title_bit!r} missing"
+    # deleted 2026-08-20 with its Railway project — must not render.
+    assert "superbot-mineverse" not in r.text
     # committed variable names render; live degradation is honest.
     assert "SITE_PASSWORD" in r.text and "ANTHROPIC_API_KEY" in r.text
     assert "RAILWAY_TOKEN is not set" in r.text

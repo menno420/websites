@@ -466,6 +466,7 @@ def manifest(group_id: str) -> dict[str, Any] | None:
 LIVE_SET = "set-live"
 LIVE_MISSING = "missing-live"
 LIVE_UNKNOWN = "unknown"
+LIVE_STATIC = "static-venue"  # the surface is a static export (no Railway service by design) — never compared, never missing
 
 # The one group the project-scoped RAILWAY_TOKEN can see (its own scope pins
 # it — docs/RAILWAY-SAFETY.md). Every other group's live truth is unknowable
@@ -501,10 +502,37 @@ def annotate_completeness(
     """
     group = manifest_data["group"]
     services = manifest_data["services"]
-    total = sum(len(svc["schema"]) for svc in services)
+
+    def _is_static(svc: dict[str, Any]) -> bool:
+        # A non-Railway venue (review -> its GitHub Pages static export,
+        # 2026-08-20): its documented names are the CODE's reads, preserved
+        # for the drift checks — there is no live Railway state to compare,
+        # so they leave the comparable universe entirely instead of
+        # inflating unknown/missing counts (Codex #510 round 1).
+        return "railway-service" not in (svc["surface"].get("kind") or "")
+
+    static_count = sum(len(svc["schema"]) for svc in services if _is_static(svc))
+    total = sum(
+        len(svc["schema"]) for svc in services if not _is_static(svc)
+    )
+
+    def _mark_static(svc: dict[str, Any]) -> None:
+        svc["live"] = {
+            "known": True,
+            "note": (
+                f"static venue ({svc['surface'].get('kind', '')}) — no live "
+                "Railway variables expected; the documented names are the "
+                "CODE's reads, preserved for the drift checks"
+            ),
+            "by_name": {row["name"]: LIVE_STATIC for row in svc["schema"]},
+            "set_count": 0,
+        }
 
     def _all_unknown(reason: str, state: str) -> None:
         for svc in services:
+            if _is_static(svc):
+                _mark_static(svc)
+                continue
             svc["live"] = {
                 "known": False,
                 "note": "",
@@ -519,6 +547,7 @@ def annotate_completeness(
             "known_total": 0,
             "unknown_count": total,
             "total": total,
+            "static_count": static_count,
         }
 
     if live is None:
@@ -546,6 +575,9 @@ def annotate_completeness(
     known_total = 0
     for svc in services:
         rows = svc["schema"]
+        if _is_static(svc):
+            _mark_static(svc)
+            continue
         lsvc = by_service.get(svc["surface"]["name"])
         if lsvc is None:
             # The authoritative live service list came back without this
@@ -603,6 +635,7 @@ def annotate_completeness(
         "known_total": known_total,
         "unknown_count": total - known_total,
         "total": total,
+        "static_count": static_count,
         "fetched_at": live.get("fetched_at", ""),
         "cached": bool(live.get("cached")),
         "project_name": live.get("project_name", ""),

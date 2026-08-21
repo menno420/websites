@@ -115,6 +115,7 @@ def annotate(data: dict[str, Any]) -> None:
     by_live_name = {s.get("name"): s for s in live.get("services", [])}
     compared = 0
     unknown = 0
+    retired_count = 0
     drifted: list[str] = []
     missing_total = 0
     undocumented_total = 0
@@ -140,7 +141,10 @@ def annotate(data: dict[str, Any]) -> None:
                 "railway_provided": [],
                 "note": f"retired: {svc['retired']}",
             }
-            compared += 1
+            # Deliberately NOT counted in `compared`: the rollup's ok text
+            # claims every compared service's variables are set live, which
+            # is false-by-design for a retired one (Codex #510 round 1).
+            retired_count += 1
             continue
 
         if lsvc is None:
@@ -240,6 +244,7 @@ def annotate(data: dict[str, Any]) -> None:
         "live_state": "ok",
         "services_compared": compared,
         "services_unknown": unknown,
+        "services_retired": retired_count,
         "drifted_services": drifted,
         "missing_live_total": missing_total,
         "undocumented_total": undocumented_total,

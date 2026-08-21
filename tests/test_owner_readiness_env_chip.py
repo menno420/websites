@@ -128,7 +128,8 @@ def _fake_graphql(names_by_service_id: dict[str, list[str]],
 
 
 def _all_set_live(monkeypatch):
-    """Token set + mocked live read where every committed name is set."""
+    """Token set + mocked live read where every committed name on the three
+    Railway services is set (review has no Railway service — static venue)."""
     monkeypatch.setattr(config, "RAILWAY_TOKEN", "test-project-token")
     monkeypatch.setattr(
         railway,
@@ -137,19 +138,19 @@ def _all_set_live(monkeypatch):
             {
                 f"s{i}": _committed_names(sid)
                 for i, sid in enumerate(
-                    ("control-plane", "botsite", "dashboard", "review"), start=1
+                    ("control-plane", "botsite", "dashboard"), start=1
                 )
             },
-            [("s1", "control-plane"), ("s2", "botsite"),
-             ("s3", "dashboard"), ("s4", "review")],
+            [("s1", "control-plane"), ("s2", "botsite"), ("s3", "dashboard")],
         ),
     )
 
 
 def _partial_live(monkeypatch):
     """Token set + mocked live read: control-plane fully set, botsite
-    partially set, dashboard fully set, review ABSENT from the live project
-    (not created yet) — same mix as the hub group-chip tests."""
+    partially set, dashboard fully set. review is a static venue (no
+    Railway service by design) and never enters the counts — same mix as
+    the hub group-chip tests."""
     monkeypatch.setattr(config, "RAILWAY_TOKEN", "test-project-token")
     monkeypatch.setattr(
         railway,
