@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, envhub, github, railway  # noqa: E402
+from app import config, envhub, github, owner, railway  # noqa: E402
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -54,6 +54,18 @@ UNKNOWN_BADGE = '<span class="b unknown">unknown</span>'
 def _basic(pw: str = OWNER_PW, user: str = "owner") -> dict:
     token = base64.b64encode(f"{user}:{pw}".encode()).decode()
     return {"Authorization": f"Basic {token}"}
+
+
+@pytest.fixture(autouse=True)
+def _reset_owner_throttle():
+    """Cross-file isolation: these tests hammer the /owner gate with bad or
+    missing creds, and the failed-auth throttle (10/60s sliding window,
+    module-level in app/owner.py) leaks across files run back-to-back — a
+    hand-picked pytest subset 429'd a later file's 401 pin. Same autouse
+    reset the test_owner_* siblings carry."""
+    owner.reset_rate_limits()
+    yield
+    owner.reset_rate_limits()
 
 
 @pytest.fixture(autouse=True)
@@ -91,11 +103,18 @@ def _committed_names(surface_id: str) -> list[str]:
 
 
 def _estate_total() -> int:
-    """All documented names across the four surfaces — derived from the
-    registry so these pins track badge logic, not the inventory's size."""
+    """The COMPARABLE universe — names on railway-service surfaces only,
+    derived from the registry so these pins track badge logic, not the
+    inventory's size. review is a static venue since the 2026-08-20 cutover
+    (GitHub Pages export): its documented names stay in the registry for
+    the drift checks but leave every live X/Y count (envhub._is_static)."""
     reg = envhub.load_registry()
     estate = next(g for g in reg["groups"] if g["id"] == "superbot-websites")
-    return sum(len(s["variable_names"]) for s in estate["surfaces"])
+    return sum(
+        len(s["variable_names"])
+        for s in estate["surfaces"]
+        if "railway-service" in s["kind"]
+    )
 
 
 def _fake_graphql(names_by_service_id: dict[str, list[str]],
@@ -143,17 +162,18 @@ def _fake_graphql(names_by_service_id: dict[str, list[str]],
 
 def _mixed_live(monkeypatch):
     """Token set + mocked live read: control-plane fully set, botsite
-    partially set (plus a live-only extra name), dashboard fully set,
-    review ABSENT from the live project (not created yet)."""
+    partially set (plus a live-only extra name), dashboard fully set.
+    review is a static venue (no Railway service by design) and never
+    enters the set/missing counts."""
     monkeypatch.setattr(config, "RAILWAY_TOKEN", "test-project-token")
     monkeypatch.setattr(
         railway,
         "_graphql",
         _fake_graphql(
             names_by_service_id={
-                "s1": _committed_names("control-plane"),          # all 10 set
-                "s2": ["SITE_JSON_URL", "PORT", "EXTRA_LIVE_ONLY"],  # 2 of 5
-                "s3": _committed_names("dashboard"),               # all 6 set
+                "s1": _committed_names("control-plane"),             # all set
+                "s2": ["SITE_JSON_URL", "PORT", "EXTRA_LIVE_ONLY"],  # 2 set
+                "s3": _committed_names("dashboard"),                 # all set
             },
             service_nodes=[
                 ("s1", "control-plane"), ("s2", "botsite"), ("s3", "dashboard"),
@@ -183,7 +203,7 @@ def test_all_names_present_renders_all_set_live(client, monkeypatch):
     all_names = {
         f"s{i}": _committed_names(sid)
         for i, sid in enumerate(
-            ("control-plane", "botsite", "dashboard", "review"), start=1
+            ("control-plane", "botsite", "dashboard"), start=1
         )
     }
     monkeypatch.setattr(
@@ -191,16 +211,18 @@ def test_all_names_present_renders_all_set_live(client, monkeypatch):
         "_graphql",
         _fake_graphql(
             all_names,
-            [("s1", "control-plane"), ("s2", "botsite"),
-             ("s3", "dashboard"), ("s4", "review")],
+            [("s1", "control-plane"), ("s2", "botsite"), ("s3", "dashboard")],
         ),
     )
     r = client.get(MANIFEST_URL, headers=_basic())
     assert r.status_code == 200
     total = sum(len(v) for v in all_names.values())
+    assert total == _estate_total()  # the mock covers the whole universe
     assert r.text.count(SET_BADGE) == total
     assert MISSING_BADGE not in r.text
     assert f"{total}/{total} set live" in r.text
+    # review's rows badge static-venue — never set/missing/unknown.
+    assert r.text.count(">static venue</span>") == len(_committed_names("review"))
 
 
 def test_mixed_present_absent_and_missing_service(client, monkeypatch):
@@ -214,14 +236,12 @@ def test_mixed_present_absent_and_missing_service(client, monkeypatch):
         + len(_committed_names("dashboard"))
     )
     assert r.text.count(SET_BADGE) == set_count
-    # botsite's remaining names missing + ALL review names (not created yet).
-    missing_count = (
-        len(_committed_names("botsite")) - 2 + len(_committed_names("review"))
-    )
+    # botsite's remaining names missing; review's names badge static-venue,
+    # never missing (no Railway service by design).
+    missing_count = len(_committed_names("botsite")) - 2
     assert r.text.count(MISSING_BADGE) == missing_count
     assert f"{set_count}/{_estate_total()} set live" in r.text
-    # the absent service carries the honest not-created-yet note.
-    assert "not created yet" in r.text
+    assert r.text.count(">static venue</span>") == len(_committed_names("review"))
     # live-only extra names are the hub's business, not a schema row here.
     assert "EXTRA_LIVE_ONLY" not in r.text
 
@@ -254,8 +274,7 @@ def test_out_of_scope_group_stays_unknown_never_assumed(client, monkeypatch):
     # A perfectly healthy live read must not paint OTHER groups green/red —
     # the project-scoped token sees superbot-websites only.
     _mixed_live(monkeypatch)
-    for gid in ("reliable-grace", "github-actions", "claude-cloud",
-                "superbot-mineverse"):
+    for gid in ("reliable-grace", "github-actions", "claude-cloud"):
         r = client.get(
             f"/owner/environments-hub/manifest/{gid}", headers=_basic()
         )
@@ -291,14 +310,19 @@ def test_annotate_rows_set_and_missing_per_name():
     assert cp["live"]["by_name"]["SITE_PASSWORD"] == envhub.LIVE_SET
     assert cp["live"]["by_name"]["RAILWAY_TOKEN"] == envhub.LIVE_MISSING
     assert cp["live"]["set_count"] == 2
-    # botsite/dashboard/review absent from the live read → missing, known.
+    # botsite/dashboard absent from the live read → missing, known.
+    botsite = next(s for s in m["services"] if s["surface"]["id"] == "botsite")
+    assert set(botsite["live"]["by_name"].values()) == {envhub.LIVE_MISSING}
+    assert "not created yet" in botsite["live"]["note"]
+    # review is a static venue: badged so, outside every count.
     review = next(s for s in m["services"] if s["surface"]["id"] == "review")
-    assert set(review["live"]["by_name"].values()) == {envhub.LIVE_MISSING}
-    assert "not created yet" in review["live"]["note"]
+    assert set(review["live"]["by_name"].values()) == {envhub.LIVE_STATIC}
+    assert "static venue" in review["live"]["note"]
     assert m["completeness"]["comparable"] is True
     assert m["completeness"]["set_count"] == 2
     assert m["completeness"]["total"] == _estate_total()
     assert m["completeness"]["unknown_count"] == 0
+    assert m["completeness"]["static_count"] == len(_committed_names("review"))
 
 
 def test_annotate_per_service_error_stays_unknown():
@@ -323,11 +347,15 @@ def test_annotate_per_service_error_stays_unknown():
 def test_annotate_no_live_truth_means_all_unknown(live):
     m = _manifest_with(live)
     for svc in m["services"]:
+        if svc["surface"]["id"] == "review":  # static venue, even here
+            assert set(svc["live"]["by_name"].values()) == {envhub.LIVE_STATIC}
+            continue
         assert set(svc["live"]["by_name"].values()) <= {envhub.LIVE_UNKNOWN}
     c = m["completeness"]
     assert c["comparable"] is False
     assert c["set_count"] == 0 and c["known_total"] == 0
     assert c["unknown_count"] == c["total"] == _estate_total()
+    assert c["static_count"] == len(_committed_names("review"))
 
 
 def test_annotate_other_group_unknown_even_on_healthy_read():

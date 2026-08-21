@@ -36,10 +36,10 @@ from app import envhub, railway  # noqa: E402
 from botsite import testing_ai  # noqa: E402
 
 # The envhub registry group that mirrors railway.SERVICES. The registry's
-# other groups (reliable-grace, superbot-mineverse, github-actions,
-# claude-cloud) document OTHER estates whose variable names deliberately
-# live elsewhere — they have no SERVICES counterpart and are out of scope
-# by construction, not exemption.
+# other groups (reliable-grace, github-actions, claude-cloud) document
+# OTHER estates whose variable names deliberately live elsewhere — they
+# have no SERVICES counterpart and are out of scope by construction, not
+# exemption.
 GROUP_ID = "superbot-websites"
 
 # Declared exceptions — (service, variable_name) pairs allowed to appear in

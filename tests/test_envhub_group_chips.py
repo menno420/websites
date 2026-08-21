@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, envhub, github, railway  # noqa: E402
+from app import config, envhub, github, owner, railway  # noqa: E402
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -55,6 +55,18 @@ def _amber_chip(x: int, y: int) -> str:
 def _basic(pw: str = OWNER_PW, user: str = "owner") -> dict:
     token = base64.b64encode(f"{user}:{pw}".encode()).decode()
     return {"Authorization": f"Basic {token}"}
+
+
+@pytest.fixture(autouse=True)
+def _reset_owner_throttle():
+    """Cross-file isolation: these tests hammer the /owner gate with bad or
+    missing creds, and the failed-auth throttle (10/60s sliding window,
+    module-level in app/owner.py) leaks across files run back-to-back — a
+    hand-picked pytest subset 429'd a later file's 401 pin. Same autouse
+    reset the test_owner_* siblings carry."""
+    owner.reset_rate_limits()
+    yield
+    owner.reset_rate_limits()
 
 
 @pytest.fixture(autouse=True)
@@ -92,9 +104,17 @@ def _committed_names(surface_id: str) -> list[str]:
 
 
 def _estate_total() -> int:
+    """The COMPARABLE universe: names on railway-service surfaces only.
+    review is a static venue since the 2026-08-20 cutover (GitHub Pages
+    export) — its documented names stay in the registry for the drift
+    checks but leave every live X/Y count (envhub._is_static)."""
     reg = envhub.load_registry()
     estate = next(g for g in reg["groups"] if g["id"] == "superbot-websites")
-    return sum(len(s["variable_names"]) for s in estate["surfaces"])
+    return sum(
+        len(s["variable_names"])
+        for s in estate["surfaces"]
+        if "railway-service" in s["kind"]
+    )
 
 
 def _group_count() -> int:
@@ -157,7 +177,8 @@ def _fake_graphql(names_by_service_id: dict[str, list[str]],
 
 
 def _all_set_live(monkeypatch):
-    """Token set + mocked live read where every committed name is set."""
+    """Token set + mocked live read where every committed name on the three
+    Railway services is set (review has no Railway service — static venue)."""
     monkeypatch.setattr(config, "RAILWAY_TOKEN", "test-project-token")
     monkeypatch.setattr(
         railway,
@@ -166,19 +187,19 @@ def _all_set_live(monkeypatch):
             {
                 f"s{i}": _committed_names(sid)
                 for i, sid in enumerate(
-                    ("control-plane", "botsite", "dashboard", "review"), start=1
+                    ("control-plane", "botsite", "dashboard"), start=1
                 )
             },
-            [("s1", "control-plane"), ("s2", "botsite"),
-             ("s3", "dashboard"), ("s4", "review")],
+            [("s1", "control-plane"), ("s2", "botsite"), ("s3", "dashboard")],
         ),
     )
 
 
 def _partial_live(monkeypatch):
     """Token set + mocked live read: control-plane fully set, botsite
-    partially set, dashboard fully set, review ABSENT from the live project
-    (not created yet) — same mix as the manifest completeness tests."""
+    partially set, dashboard fully set. review is a static venue (no
+    Railway service by design) and never enters the counts — same mix as
+    the manifest completeness tests."""
     monkeypatch.setattr(config, "RAILWAY_TOKEN", "test-project-token")
     monkeypatch.setattr(
         railway,
@@ -221,8 +242,8 @@ def test_partial_group_renders_amber_chip(client, monkeypatch):
     _partial_live(monkeypatch)
     r = client.get(HUB_URL, headers=_basic())
     assert r.status_code == 200
-    # control-plane + dashboard fully set, botsite 2 set —
-    # review's absence from a SUCCESSFUL read is honest missing, not unknown.
+    # control-plane + dashboard fully set, botsite 2 set — review is a
+    # static venue, outside the X/Y universe entirely (never missing).
     assert _amber_chip(_partial_set_total(), _estate_total()) in r.text
     assert _green_chip(_estate_total(), _estate_total()) not in r.text
 
@@ -291,6 +312,8 @@ def test_group_summary_counts_set_vs_expected():
     assert cs["set_count"] == 2
     assert cs["total"] == _estate_total()
     assert cs["unknown_count"] == 0  # absent services are missing, known
+    # review's documented names sit outside the comparable universe.
+    assert cs["static_count"] == len(_committed_names("review"))
 
 
 def test_group_summary_per_service_error_counts_unknown_with_reason():

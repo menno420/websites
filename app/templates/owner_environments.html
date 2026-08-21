@@ -72,13 +72,15 @@
       {%- if env.drift.undocumented_services %} · live service{{ 's' if env.drift.undocumented_services|length != 1 }} the repo does not document:
       {% for n in env.drift.undocumented_services %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
       — add {{ 'it' if env.drift.undocumented_services|length == 1 else 'them' }} to <code>app/railway.py</code> SERVICES{% endif %}</span>
-    {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}</p>
+    {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}
+    {% if env.drift.services_retired %}<span class="b ok" title="absent from the live project BY DESIGN — see the service card">+{{ env.drift.services_retired }} retired</span>{% endif %}</p>
   {% else %}
   <p class="small">{{ badge('ok', 'no name drift (' ~ env.drift.services_compared ~ ' services compared)') }}
     <span class="dim">— every documented variable name is set live and no
     undocumented live name exists (Railway-provided <code>RAILWAY_*</code>
     names are informational, not drift).</span>
-    {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}</p>
+    {% if env.drift.services_unknown %}<span class="b unknown" title="{{ env.drift.reason }}">+{{ env.drift.services_unknown }} service{{ 's' if env.drift.services_unknown != 1 }} unknown</span>{% endif %}
+    {% if env.drift.services_retired %}<span class="b ok" title="absent from the live project BY DESIGN — see the service card">+{{ env.drift.services_retired }} retired</span>{% endif %}</p>
   {% endif %}
 
   {# Code-referenced-vs-declared NAME drift rollup (B6, app/codedrift.py): the
@@ -135,6 +137,7 @@
         {% elif var.live_state == 'missing-live' %}{{ badge('warn', 'missing live') }}
         {% elif var.live_state == 'runtime-injected' %}<span class="dim small" title="Railway injects this into the runtime — not expected in the variables tab; never counted as drift">runtime-injected</span>
         {% elif var.live_state == 'build-only' %}<span class="dim small" title="set by a build/export process (never on the Railway service) — declared for the code-drift check; its absence live is the designed state, never counted as drift">build-only</span>
+        {% elif var.live_state == 'retired' %}<span class="dim small" title="declared on a retired service — no live Railway state exists to compare against; the name is the CODE's read, kept for the drift checks">retired</span>
         {% else %}{{ badge('unknown', 'unknown') }}{% endif %}
       </td>
       <td class="small"><a href="{{ var.manage.url }}">{{ var.manage.label }} →</a></td>
@@ -151,6 +154,9 @@
     {% elif svc.drift.state == 'ok' %}
     {{ badge('ok', 'no name drift') }}
     <span class="dim">— documented and live names match</span>
+    {% elif svc.drift.state == 'retired' %}
+    {{ badge('ok', 'retired') }}
+    <span class="dim">— {{ svc.drift.note }} (absence from the live project is the designed state)</span>
     {% else %}
     {{ badge('warn', 'name drift') }}
     <span class="dim">—

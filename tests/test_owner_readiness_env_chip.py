@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, envhub, github, railway  # noqa: E402
+from app import config, envhub, github, owner, railway  # noqa: E402
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -43,6 +43,18 @@ UNKNOWN_TEXT = "environments: live status unknown"
 def _basic(pw: str = OWNER_PW, user: str = "owner") -> dict:
     token = base64.b64encode(f"{user}:{pw}".encode()).decode()
     return {"Authorization": f"Basic {token}"}
+
+
+@pytest.fixture(autouse=True)
+def _reset_owner_throttle():
+    """Cross-file isolation: these tests hammer the /owner gate with bad or
+    missing creds, and the failed-auth throttle (10/60s sliding window,
+    module-level in app/owner.py) leaks across files run back-to-back — a
+    hand-picked pytest subset 429'd a later file's 401 pin. Same autouse
+    reset the test_owner_* siblings carry."""
+    owner.reset_rate_limits()
+    yield
+    owner.reset_rate_limits()
 
 
 @pytest.fixture(autouse=True)
@@ -128,7 +140,8 @@ def _fake_graphql(names_by_service_id: dict[str, list[str]],
 
 
 def _all_set_live(monkeypatch):
-    """Token set + mocked live read where every committed name is set."""
+    """Token set + mocked live read where every committed name on the three
+    Railway services is set (review has no Railway service — static venue)."""
     monkeypatch.setattr(config, "RAILWAY_TOKEN", "test-project-token")
     monkeypatch.setattr(
         railway,
@@ -137,19 +150,19 @@ def _all_set_live(monkeypatch):
             {
                 f"s{i}": _committed_names(sid)
                 for i, sid in enumerate(
-                    ("control-plane", "botsite", "dashboard", "review"), start=1
+                    ("control-plane", "botsite", "dashboard"), start=1
                 )
             },
-            [("s1", "control-plane"), ("s2", "botsite"),
-             ("s3", "dashboard"), ("s4", "review")],
+            [("s1", "control-plane"), ("s2", "botsite"), ("s3", "dashboard")],
         ),
     )
 
 
 def _partial_live(monkeypatch):
     """Token set + mocked live read: control-plane fully set, botsite
-    partially set, dashboard fully set, review ABSENT from the live project
-    (not created yet) — same mix as the hub group-chip tests."""
+    partially set, dashboard fully set. review is a static venue (no
+    Railway service by design) and never enters the counts — same mix as
+    the hub group-chip tests."""
     monkeypatch.setattr(config, "RAILWAY_TOKEN", "test-project-token")
     monkeypatch.setattr(
         railway,

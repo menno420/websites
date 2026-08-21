@@ -49,7 +49,9 @@ DRIFT_UNKNOWN = "unknown"
 # Per-variable live states (the "live (Railway)?" column).
 VAR_SET_LIVE = "set-live"
 VAR_MISSING_LIVE = "missing-live"
-VAR_BUILD_ONLY = "build-only"  # declared for the CODE drift check; set by a build/export process, never on Railway — informational, never missing
+VAR_BUILD_ONLY = "build-only"  # set by a build/export process, never on Railway — informational, never missing
+VAR_RETIRED = "retired"  # declared on a retired service — no live Railway state exists to compare against
+DRIFT_RETIRED = "retired"  # service-level: absent from the live project BY DESIGN
 VAR_RUNTIME_INJECTED = "runtime-injected"
 VAR_UNKNOWN = "unknown"
 
@@ -113,6 +115,7 @@ def annotate(data: dict[str, Any]) -> None:
     by_live_name = {s.get("name"): s for s in live.get("services", [])}
     compared = 0
     unknown = 0
+    retired_count = 0
     drifted: list[str] = []
     missing_total = 0
     undocumented_total = 0
@@ -120,6 +123,62 @@ def annotate(data: dict[str, Any]) -> None:
     for svc in services:
         documented = [var["name"] for var in svc["env_vars"]]
         lsvc = by_live_name.get(svc["name"])
+
+        if svc.get("retired") and lsvc is not None and not lsvc.get("error"):
+            # LIFECYCLE drift: the registry says this service's absence is
+            # the designed state, yet a successful live read still carries
+            # it (the cutover's delete never happened, or the service was
+            # recreated). Rendering it as a healthy deployment would hide
+            # exactly the state the retirement marker exists to end
+            # (Codex #510 round 2).
+            live_names = set(lsvc.get("variable_names", []))
+            for var in svc["env_vars"]:
+                if var["name"] in live_names:
+                    var["live_state"] = VAR_SET_LIVE
+                elif var.get("build_only"):
+                    var["live_state"] = VAR_BUILD_ONLY
+                else:
+                    var["live_state"] = VAR_RETIRED
+            svc["drift"] = {
+                "state": DRIFT_DRIFT,
+                "reason": "",
+                "missing_live": [],
+                "undocumented": [],
+                "railway_provided": [],
+                "note": (
+                    f"retired ({svc['retired']}) but STILL PRESENT in the "
+                    "live project — lifecycle drift: absence is the designed "
+                    "state, so delete the service (or drop the retired "
+                    "marker in app/railway.py if the retirement was "
+                    "reversed)"
+                ),
+            }
+            compared += 1
+            drifted.append(svc["name"])
+            continue
+
+        if lsvc is None and svc.get("retired"):
+            # A retired service (e.g. review → its GitHub Pages static
+            # export, 2026-08-20): the live list SHOULD come back without
+            # it — that is the designed state, never drift. Vars render
+            # informational; the note carries the retirement.
+            for var in svc["env_vars"]:
+                var["live_state"] = (
+                    VAR_BUILD_ONLY if var.get("build_only") else VAR_RETIRED
+                )
+            svc["drift"] = {
+                "state": DRIFT_RETIRED,
+                "reason": "",
+                "missing_live": [],
+                "undocumented": [],
+                "railway_provided": [],
+                "note": f"retired: {svc['retired']}",
+            }
+            # Deliberately NOT counted in `compared`: the rollup's ok text
+            # claims every compared service's variables are set live, which
+            # is false-by-design for a retired one (Codex #510 round 1).
+            retired_count += 1
+            continue
 
         if lsvc is None:
             # The authoritative live service list came back WITHOUT this
@@ -218,6 +277,7 @@ def annotate(data: dict[str, Any]) -> None:
         "live_state": "ok",
         "services_compared": compared,
         "services_unknown": unknown,
+        "services_retired": retired_count,
         "drifted_services": drifted,
         "missing_live_total": missing_total,
         "undocumented_total": undocumented_total,

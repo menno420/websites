@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, envhub, github, listfilter, railway  # noqa: E402
+from app import config, envhub, github, owner, listfilter, railway  # noqa: E402
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -36,6 +36,18 @@ OWNER_PW = "test-owner-pw"
 def _basic(pw: str = OWNER_PW, user: str = "owner") -> dict:
     token = base64.b64encode(f"{user}:{pw}".encode()).decode()
     return {"Authorization": f"Basic {token}"}
+
+
+@pytest.fixture(autouse=True)
+def _reset_owner_throttle():
+    """Cross-file isolation: these tests hammer the /owner gate with bad or
+    missing creds, and the failed-auth throttle (10/60s sliding window,
+    module-level in app/owner.py) leaks across files run back-to-back — a
+    hand-picked pytest subset 429'd a later file's 401 pin. Same autouse
+    reset the test_owner_* siblings carry."""
+    owner.reset_rate_limits()
+    yield
+    owner.reset_rate_limits()
 
 
 @pytest.fixture(autouse=True)
@@ -70,10 +82,15 @@ def client(monkeypatch):
 def test_registry_loads_and_has_expected_groups():
     reg = envhub.load_registry()
     ids = [g["id"] for g in reg["groups"]]
-    # The ORDER 021 verified inventory: all five project groups present.
-    for expected in ("superbot-websites", "reliable-grace", "superbot-mineverse",
+    # The ORDER 021 verified inventory, minus superbot-mineverse: its
+    # Railway service AND project were deleted 2026-08-20 (keep-bot-only
+    # consolidation slice 2), so the registry dropped the group.
+    for expected in ("superbot-websites", "reliable-grace",
                      "github-actions", "claude-cloud"):
         assert expected in ids, f"group {expected} missing from the registry"
+    assert "superbot-mineverse" not in ids, (
+        "the mineverse group documents a deleted project — it must not return"
+    )
     # Every group/surface carries the required fields (load_registry raised
     # otherwise); spot-check the estate group covers all four services.
     estate = next(g for g in reg["groups"] if g["id"] == "superbot-websites")
@@ -169,9 +186,20 @@ def test_manage_link_full_deep_link_when_all_ids_recorded():
 def test_manage_link_degrades_to_project_then_console():
     reg = envhub.load_registry()
     estate = next(g for g in reg["groups"] if g["id"] == "superbot-websites")
-    # review: no service id recorded → project-level link, not an invented id.
+    # review is a static venue (2026-08-20): its explicit manage_url — the
+    # republish workflow — WINS over the group's Railway project link
+    # (Codex #510 round 2).
     review = next(s for s in estate["surfaces"] if s["id"] == "review")
     assert envhub.manage_link(estate, review)["url"] == (
+        "https://github.com/menno420/websites/actions/workflows/review-pages.yml"
+    )
+    # a RAILWAY surface with no recorded service id degrades to the
+    # project-level link, never an invented id (synthetic — the registry no
+    # longer carries such a surface in this group).
+    synthetic = {"id": "x", "name": "x", "kind": "railway-service",
+                 "purpose": "", "variable_names": [],
+                 "railway_service_id": None}
+    assert envhub.manage_link(estate, synthetic)["url"] == (
         "https://railway.com/project/70198ece-cbc0-484e-86d9-f8a1eca4f045"
     )
     # reliable-grace: no ids at all (production, by design) → console home.
@@ -212,9 +240,11 @@ def test_hub_renders_all_groups_without_token(client):
     r = client.get("/owner/environments-hub", headers=_basic())
     assert r.status_code == 200
     for title_bit in ("superbot-websites", "reliable-grace",
-                      "superbot-mineverse", "GitHub Actions secrets",
+                      "GitHub Actions secrets",
                       "claude.ai cloud environments"):
         assert title_bit in r.text, f"group {title_bit!r} missing"
+    # deleted 2026-08-20 with its Railway project — must not render.
+    assert "superbot-mineverse" not in r.text
     # committed variable names render; live degradation is honest.
     assert "SITE_PASSWORD" in r.text and "ANTHROPIC_API_KEY" in r.text
     assert "RAILWAY_TOKEN is not set" in r.text
@@ -226,6 +256,12 @@ def test_hub_renders_all_groups_without_token(client):
     ) in r.text
     # unrecorded production ids degrade to the console home, never fabricated.
     assert envhub.CONSOLE_HOME in r.text
+    # the static review surface manages at its republish workflow — never a
+    # Railway link inherited from the group (Codex #510 round 2).
+    assert (
+        "https://github.com/menno420/websites/actions/workflows/review-pages.yml"
+        in r.text
+    )
     # per-repo GitHub secrets manage links.
     assert "https://github.com/menno420/websites/settings/secrets/actions" in r.text
     assert "https://github.com/menno420/fleet-manager/settings/secrets/actions" in r.text
@@ -438,11 +474,14 @@ def test_old_pages_are_labeled_sub_views(client, monkeypatch):
 
 
 def test_railway_services_include_review():
+    """review stays listed (its code's env names are documented here) but is
+    RETIRED — Pages URL, retired marker set (2026-08-20)."""
     names = [svc["name"] for svc in railway.SERVICES]
     assert names == ["control-plane", "botsite", "dashboard", "review"]
     review = next(s for s in railway.SERVICES if s["name"] == "review")
     assert review["package"] == "review/"
-    assert review["url"] == "https://review-production-fc91.up.railway.app"
+    assert review["url"] == "https://menno420.github.io/websites/"
+    assert review.get("retired")
     assert review["self"] is False
     var_names = [v["name"] for v in review["env_vars"]]
     assert "ANTHROPIC_API_KEY" in var_names and "PORT" in var_names
@@ -453,5 +492,5 @@ def test_owner_environments_page_shows_review_service(client, monkeypatch):
     r = client.get("/owner/environments", headers=_basic())
     assert r.status_code == 200
     assert "review/" in r.text
-    assert "review-production-fc91.up.railway.app" in r.text
+    assert "menno420.github.io/websites" in r.text
     assert "REVIEW_AI_MODEL" in r.text

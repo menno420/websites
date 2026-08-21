@@ -23,18 +23,20 @@ from app.main import app  # noqa: E402
 
 REGISTRY = json.loads(web_presence.REGISTRY_PATH.read_text(encoding="utf-8"))
 
-# The three old reliable-grace duplicate/superseded website surfaces (the f027
-# review copy + the menno420/superbot dashboard/botsite) — the ONLY rows that
-# may carry the duplicate label (OQ-RAILWAY-PROJECT-SPLIT parking / RETIRE
-# targets at consolidation).
-DUPLICATE_IDS = {"review-dup-f027", "botsite-dup-superbot-app", "dashboard-dup-superbot-dashboard"}
+# Empty since 2026-08-20: the last duplicate rows (the f027 review copy +
+# the menno420/superbot dashboard/botsite parallels) documented Railway
+# services deleted 2026-08-14/20, so the keep-bot-only cutover dropped them
+# from the registry. The set stays as the contract pin — a future row may
+# carry the duplicate label only by being added here in the same PR.
+DUPLICATE_IDS: set[str] = set()
 
-# Verified 2026-07-12 seed URLs that must render as links.
+# Seed URLs that must render as links — updated 2026-08-20 with the
+# keep-bot-only cutover: review is the GitHub Pages static export, and the
+# mineverse + duplicate-review rows left the registry with their deleted
+# Railway services.
 SEED_URLS = [
-    "https://review-production-f027.up.railway.app",
-    "https://web-production-97636.up.railway.app",
+    "https://menno420.github.io/websites/",
     "https://control-plane-production-abb0.up.railway.app",
-    "https://review-production-fc91.up.railway.app",
     "https://botsite-production-cfd7.up.railway.app",
     "https://dashboard-production-a91b.up.railway.app",
 ]
@@ -85,7 +87,7 @@ def test_directory_renders_three_sections_with_seeds(monkeypatch):
     assert "superbot live control panel" in r.text
     assert "no URL recorded" in r.text
     # project grouping (the corrected 2026-07-12 fleet inventory)
-    for project in ("superbot-websites", "reliable-grace", "superbot-mineverse"):
+    for project in ("superbot-websites", "reliable-grace"):
         assert f"<h3>{project}</h3>" in r.text
     # external seeds: venture-lab x3 (still pending) + Lumen Drift + games-web
     # (both flipped live 2026-07-18, #428)
@@ -104,14 +106,15 @@ def test_directory_renders_three_sections_with_seeds(monkeypatch):
 
 
 def test_duplicates_carry_the_duplicate_label(monkeypatch):
+    """Since 2026-08-20 no duplicate rows remain (their Railway services
+    were deleted); the label machinery stays pinned to the (empty) set so
+    a reintroduced duplicate must declare itself in DUPLICATE_IDS."""
     _probes_up(monkeypatch)
     with TestClient(app) as c:
         r = c.get("/directory")
     assert r.status_code == 200
-    # exactly the three reliable-grace copies badge as duplicates
     assert r.text.count('data-status="duplicate"') == len(DUPLICATE_IDS)
-    assert "duplicate (pending consolidation)" in r.text
-    assert "OQ-RAILWAY-PROJECT-SPLIT" in r.text
+    assert "duplicate (pending consolidation)" not in r.text
 
 
 def test_probe_success_shows_live_with_as_of(monkeypatch):

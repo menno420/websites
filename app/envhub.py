@@ -129,7 +129,15 @@ def manage_link(group: dict[str, Any], surface: dict[str, Any]) -> dict[str, str
     """The manage-here deep link for one surface, degrading honestly:
     full Railway variables deep link (all three ids recorded) → project-level
     Railway link → the surface's explicit ``manage_url`` → the group's
-    ``console_url`` → the Railway console home. Never a fabricated id."""
+    ``console_url`` → the Railway console home. Never a fabricated id.
+
+    A NON-Railway surface with an explicit ``manage_url`` (review → its
+    GitHub Pages export, republished by a CI workflow) takes that link
+    FIRST — its parent group's Railway ids are the siblings' home, not its
+    management target (Codex #510 round 2)."""
+    kind = surface.get("kind") or ""
+    if "railway" not in kind and surface.get("manage_url"):
+        return {"label": "manage", "url": surface["manage_url"]}
     project_id = group.get("railway_project_id")
     environment_id = group.get("railway_environment_id")
     service_id = surface.get("railway_service_id")
@@ -299,6 +307,10 @@ BOUNDARY_NOTICE = (
 
 
 def placeholder_for(kind: str) -> str:
+    # A static venue has NOTHING to set at any console — the placeholder
+    # says so instead of inventing an owner errand (Codex #510 round 2).
+    if "static export" in kind:
+        return "<STATIC-VENUE-NOTHING-TO-SET>"
     return PLACEHOLDER_BY_KIND.get(kind, DEFAULT_PLACEHOLDER)
 
 
@@ -342,6 +354,23 @@ def _surface_commands(group: dict[str, Any], surface: dict[str, Any]) -> list[st
                 "them by PR (app/data/environments.json) before "
                 "provisioning; never guess."
             )
+    elif "static export" in kind:
+        # A static venue (review → its GitHub Pages export, 2026-08-20):
+        # nothing to provision, nowhere to set a variable. The documented
+        # names are the CODE's env reads, kept for the drift checks — the
+        # pairs below are informational, never console commands
+        # (Codex #510 round 2).
+        lines.append(
+            f"# static venue — served at {surface.get('url') or manage['url']}; "
+            f"republish via {manage['url']} (CI bakes + deploys the export "
+            "on merge). Nothing to provision, no variables to set."
+        )
+        if names:
+            lines.append(
+                "# documented names = the CODE's env reads (drift checks "
+                "only; never set in a console):"
+            )
+            lines.extend(f"# {name}={ph}" for name in names)
     elif kind == "railway-postgres":
         lines.append(
             "# Railway-managed database — add it from the Railway console; "
@@ -466,6 +495,7 @@ def manifest(group_id: str) -> dict[str, Any] | None:
 LIVE_SET = "set-live"
 LIVE_MISSING = "missing-live"
 LIVE_UNKNOWN = "unknown"
+LIVE_STATIC = "static-venue"  # the surface is a static export (no Railway service by design) — never compared, never missing
 
 # The one group the project-scoped RAILWAY_TOKEN can see (its own scope pins
 # it — docs/RAILWAY-SAFETY.md). Every other group's live truth is unknowable
@@ -501,10 +531,37 @@ def annotate_completeness(
     """
     group = manifest_data["group"]
     services = manifest_data["services"]
-    total = sum(len(svc["schema"]) for svc in services)
+
+    def _is_static(svc: dict[str, Any]) -> bool:
+        # A non-Railway venue (review -> its GitHub Pages static export,
+        # 2026-08-20): its documented names are the CODE's reads, preserved
+        # for the drift checks — there is no live Railway state to compare,
+        # so they leave the comparable universe entirely instead of
+        # inflating unknown/missing counts (Codex #510 round 1).
+        return "railway-service" not in (svc["surface"].get("kind") or "")
+
+    static_count = sum(len(svc["schema"]) for svc in services if _is_static(svc))
+    total = sum(
+        len(svc["schema"]) for svc in services if not _is_static(svc)
+    )
+
+    def _mark_static(svc: dict[str, Any]) -> None:
+        svc["live"] = {
+            "known": True,
+            "note": (
+                f"static venue ({svc['surface'].get('kind', '')}) — no live "
+                "Railway variables expected; the documented names are the "
+                "CODE's reads, preserved for the drift checks"
+            ),
+            "by_name": {row["name"]: LIVE_STATIC for row in svc["schema"]},
+            "set_count": 0,
+        }
 
     def _all_unknown(reason: str, state: str) -> None:
         for svc in services:
+            if _is_static(svc):
+                _mark_static(svc)
+                continue
             svc["live"] = {
                 "known": False,
                 "note": "",
@@ -519,6 +576,7 @@ def annotate_completeness(
             "known_total": 0,
             "unknown_count": total,
             "total": total,
+            "static_count": static_count,
         }
 
     if live is None:
@@ -546,6 +604,9 @@ def annotate_completeness(
     known_total = 0
     for svc in services:
         rows = svc["schema"]
+        if _is_static(svc):
+            _mark_static(svc)
+            continue
         lsvc = by_service.get(svc["surface"]["name"])
         if lsvc is None:
             # The authoritative live service list came back without this
@@ -603,6 +664,7 @@ def annotate_completeness(
         "known_total": known_total,
         "unknown_count": total - known_total,
         "total": total,
+        "static_count": static_count,
         "fetched_at": live.get("fetched_at", ""),
         "cached": bool(live.get("cached")),
         "project_name": live.get("project_name", ""),

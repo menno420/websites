@@ -18,7 +18,7 @@ FLEET_HREFS = [
     "https://control-plane-production-abb0.up.railway.app",
     "https://botsite-production-cfd7.up.railway.app",
     "https://dashboard-production-a91b.up.railway.app",
-    "https://review-production-fc91.up.railway.app",
+    "https://menno420.github.io/websites/",
 ]
 
 

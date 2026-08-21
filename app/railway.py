@@ -178,7 +178,7 @@ SERVICES: list[dict[str, Any]] = [
             _var("SUPERBOT_REPO", "upstream repo for committed JSON (default menno420/superbot)"),
             _var("SUPERBOT_REF", "upstream ref (default main)"),
             _var("BOTSITE_GAMES_URL", "consolidation-redirect target for /games — the re-homed games surface on the botsite service (optional; default botsite-production-cfd7/games — env-overridable for cutover)"),
-            _var("REVIEW_REVIEWS_URL", "consolidation-redirect target for /reviews — the re-homed reviews surface on the review service (optional; default review-production-fc91/reviews — env-overridable for cutover)"),
+            _var("REVIEW_REVIEWS_URL", "consolidation-redirect target for /reviews — the re-homed reviews surface (optional; default menno420.github.io/websites/reviews/ since the 2026-08-20 static-export cutover — env-overridable)"),
             _var("DISCORD_CLIENT_ID", "Discord OAuth owner login — client id, reused from the existing SuperBot Discord app (dashboard/discord_auth.py; ORDER 038; unset → /admin/login says not-configured and the admin actions stay locked — Discord-only, no SITE_PASSWORD)"),
             _var("DISCORD_CLIENT_SECRET", "Discord OAuth owner login — client secret from the SuperBot app (dashboard/discord_auth.py; ORDER 038; name only, never a value)"),
             _var("OWNER_DISCORD_ID", "Discord OAuth owner login — the owner's Discord user id; the callback mints a session only when the returned id matches (dashboard/discord_auth.py; ORDER 038)"),
@@ -191,12 +191,19 @@ SERVICES: list[dict[str, Any]] = [
         # Was omitted while the review service had no Railway deployment;
         # the owner created + verified it live 2026-07-12
         # (docs/owner/OWNER-ACTIONS.md row J) — ORDER 021 adds the row.
+        # RETIRED 2026-08-20 (keep-bot-only consolidation, decisions
+        # ledger): the Railway service is deleted; the site is a GitHub
+        # Pages static export. The entry stays because review/ CODE still
+        # exists and reads these env names — the code-vs-declared drift
+        # check documents them — while `retired` tells the live-side
+        # checks that NO Railway service is expected.
         "name": "review",
         "package": "review/",
         "dockerfile": "review/Dockerfile",
         "requirements": "review/requirements.txt",
-        "url": "https://review-production-fc91.up.railway.app",
+        "url": "https://menno420.github.io/websites/",
         "self": False,
+        "retired": "2026-08-20 — GitHub Pages static export; no Railway service expected",
         "env_vars": [
             _var("ANTHROPIC_API_KEY", "Claude API key for the /ask live assistant (set on the service 2026-07-12, ORDER 022)"),
             _var("REVIEW_AI_MODEL", "assistant model override (default pinned in review/ai.py)"),

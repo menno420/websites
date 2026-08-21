@@ -82,7 +82,9 @@ SITES = [
     ("control-plane", "https://control-plane-production-abb0.up.railway.app"),
     ("botsite", "https://botsite-production-cfd7.up.railway.app"),
     ("dashboard", "https://dashboard-production-a91b.up.railway.app"),
-    ("review", "https://review-production-fc91.up.railway.app"),
+    # review is the GitHub Pages static export since 2026-08-20 — same
+    # rendering-layer checks, new home (its Railway service is deleted).
+    ("review", "https://menno420.github.io/websites"),
 ]
 
 # Regex patterns for console-error text that is KNOWN noise and may be

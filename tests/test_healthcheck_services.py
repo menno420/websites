@@ -1,12 +1,11 @@
 """Pin for the scripts/healthcheck.py SERVICES table (2026-07-13).
 
-The review service went LIVE 2026-07-12 (owner-created; documented in
-docs/current-state.md + app/config.py) but the healthcheck SERVICES table
-was never extended — a coverage gap found by a prior session. This pin
-keeps the table honest: all four services present, each with its canonical
-superbot-websites production URL (review = the fc91 deployment; the f027
-copy is the old reliable-grace "parallel copy" — the consolidation RETIRE
-target — and is deliberately NOT probed).
+The review service went LIVE 2026-07-12 and RETIRED 2026-08-20 into a
+GitHub Pages static export (keep-bot-only consolidation; websites decisions
+ledger) — this checker probes RAILWAY services only, so the table now
+carries the three that remain, each with its canonical superbot-websites
+production URL. The static review record keeps rendering-layer coverage in
+scripts/smoke_crawl.py instead.
 
 Offline: these assert the committed table only — no network.
 """
@@ -28,22 +27,20 @@ EXPECTED_SERVICES = {
     "control-plane": "https://control-plane-production-abb0.up.railway.app",
     "botsite": "https://botsite-production-cfd7.up.railway.app",
     "dashboard": "https://dashboard-production-a91b.up.railway.app",
-    "review": "https://review-production-fc91.up.railway.app",
 }
 
 
-def test_services_table_covers_all_four_services():
+def test_services_table_covers_the_three_railway_services():
     assert dict(healthcheck.SERVICES) == EXPECTED_SERVICES
 
 
-def test_review_service_probes_canonical_fc91_url():
-    """The review entry must point at the canonical fc91 deployment in the
-    superbot-websites project (app/config.py SERVICE_DEPLOY_TARGETS +
-    app/data/web_presence.json), never the old f027 reliable-grace copy (the
-    consolidation RETIRE target)."""
+def test_review_railway_urls_never_return():
+    """review retired to GitHub Pages 2026-08-20 — neither its old canonical
+    fc91 URL nor the long-deleted f027 copy may re-enter this table (a
+    re-added entry would probe a deleted service red every 6 hours)."""
     urls = dict(healthcheck.SERVICES)
-    assert urls["review"] == "https://review-production-fc91.up.railway.app"
-    assert all("f027" not in base for base in urls.values())
+    assert "review" not in urls
+    assert all("fc91" not in base and "f027" not in base for base in urls.values())
 
 
 def test_service_base_urls_have_no_trailing_slash():

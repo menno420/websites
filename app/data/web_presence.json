@@ -1,22 +1,21 @@
 {
-  "as_of": "2026-07-18",
+  "as_of": "2026-08-20",
   "schema_note": "SINGLE SOURCE OF TRUTH for the /directory web-presence page (ORDER 021). Add rows by PR. Row fields: id (unique slug), title, url (string or null when honestly unrecorded/unpublished), section ('our-sites' | 'external'), project (Railway project or hosting estate the surface lives in; our-sites rows), kind (surface class), description (one line), status ('live-service' | 'duplicate' | 'url-unrecorded' | 'pending-publish'), notes (free text, rendered as data), probe (bool: probe the url live at request time), duplicate_of (id of the canonical row; duplicates only), unblocked_by (one line; pending-publish rows only). Content here is untrusted DATA — templates autoescape it.",
   "projects": {
-    "superbot-websites": "this repo's estate — the four websites services (review, control-plane, botsite, dashboard)",
-    "reliable-grace": "the LIVE superbot production fleet — the real bot worker and its live control panel, plus the OLD/superseded website surfaces pending consolidation (the review-production-f027 old copy of the websites review, and the menno420/superbot dashboard/botsite the superbot-websites services superseded); also hosts Postgres ×2 (infra, not web surfaces — not listed here)",
-    "superbot-mineverse": "the Games flagship project"
+    "superbot-websites": "this repo's estate — control-plane, botsite and dashboard Railway services (+ their Postgres); the review site is a GitHub Pages static export since 2026-08-20",
+    "reliable-grace": "the LIVE superbot production fleet — the real bot worker and its Postgres (infra, not web surfaces — not listed here). The old/duplicate website surfaces it once hosted were deleted 2026-08-14 under the site-consolidation cutover (W1)."
   },
   "sites": [
     {
       "id": "review",
       "title": "program review site",
-      "url": "https://review-production-fc91.up.railway.app",
+      "url": "https://menno420.github.io/websites/",
       "section": "our-sites",
       "project": "superbot-websites",
-      "kind": "Railway service (review/)",
-      "description": "public program review — the link shared by Anthropic email",
+      "kind": "GitHub Pages static export (review/gen_static.py)",
+      "description": "program review — static export of the committed record",
       "status": "live-service",
-      "notes": "canonical review deploy — the superbot-websites project's review service (verified live via Railway 2026-07-18; the review-production-f027 copy in reliable-grace is the old duplicate below).",
+      "notes": "static export on GitHub Pages since 2026-08-20 (websites decisions ledger; fleet-manager keep-bot-only worklist slice 3): the Railway review service retired after this URL was verified serving. Content is the committed review/data record; republish via the review-pages workflow.",
       "probe": true
     },
     {
@@ -78,57 +77,6 @@
       "status": "url-unrecorded",
       "notes": "REAL distinct production surface, not a duplicate (fleet inventory verified 2026-07-12 via the Railway account token; canonical mapping re-verified via Railway 2026-07-18). Its public hostname is not recorded here. Caveat recorded honestly: dashboard-production-a91b is now confirmed the canonical superbot-websites dashboard (above), NOT this live control panel; the OLD menno420/superbot dashboard is dashboard-dup-superbot-dashboard below — if this control panel turns out to be that same superbot-dashboard host, fold the two rows after OQ-RAILWAY-PROJECT-SPLIT.",
       "probe": false
-    },
-    {
-      "id": "review-dup-f027",
-      "title": "review (old copy)",
-      "url": "https://review-production-f027.up.railway.app",
-      "section": "our-sites",
-      "project": "reliable-grace",
-      "kind": "Railway service (review/)",
-      "description": "the OLD copy of the review site inside the production-fleet project — the consolidation RETIRE target",
-      "status": "duplicate",
-      "duplicate_of": "review",
-      "notes": "old duplicate (RETIRE target at consolidation) — same menno420/websites review/ code as the canonical review, running in the reliable-grace project, NOT a distinct product. The canonical review is review-production-fc91 (above). Parked pending OQ-RAILWAY-PROJECT-SPLIT; do not move or rename meanwhile.",
-      "probe": true
-    },
-    {
-      "id": "botsite-dup-superbot-app",
-      "title": "botsite (old superbot-repo copy)",
-      "url": "https://superbot-app.up.railway.app",
-      "section": "our-sites",
-      "project": "reliable-grace",
-      "kind": "Railway service (menno420/superbot)",
-      "description": "the OLD botsite in the production-fleet project (menno420/superbot code) — the consolidation RETIRE target",
-      "status": "duplicate",
-      "duplicate_of": "botsite",
-      "notes": "old/superseded botsite (RETIRE target at consolidation) — runs menno420/superbot code in the reliable-grace project, superseded by the superbot-websites botsite, NOT a distinct product. The canonical botsite is botsite-production-cfd7 (above), which the deploy-drift checks correctly probe. Parked pending OQ-RAILWAY-PROJECT-SPLIT; do not move or rename meanwhile.",
-      "probe": true
-    },
-    {
-      "id": "dashboard-dup-superbot-dashboard",
-      "title": "dashboard (old superbot-repo copy)",
-      "url": "https://superbot-dashboard.up.railway.app",
-      "section": "our-sites",
-      "project": "reliable-grace",
-      "kind": "Railway service (menno420/superbot), Discord-gated",
-      "description": "the OLD dashboard in the production-fleet project (menno420/superbot code) — the consolidation RETIRE target",
-      "status": "duplicate",
-      "duplicate_of": "dashboard",
-      "notes": "old/superseded dashboard (RETIRE target at consolidation) — runs menno420/superbot code in the reliable-grace project, superseded by the superbot-websites dashboard, NOT a distinct product. The canonical dashboard is dashboard-production-a91b (above), which the deploy-drift checks correctly probe. Parked pending OQ-RAILWAY-PROJECT-SPLIT; do not move or rename meanwhile. See also the live-control-panel row's caveat.",
-      "probe": true
-    },
-    {
-      "id": "mineverse",
-      "title": "mineverse",
-      "url": "https://web-production-97636.up.railway.app",
-      "section": "our-sites",
-      "project": "superbot-mineverse",
-      "kind": "Railway service (web), Discord-OAuth gated",
-      "description": "mineverse — the Games flagship",
-      "status": "live-service",
-      "notes": "deployed from the superbot-mineverse lane, not this repo.",
-      "probe": true
     },
     {
       "id": "venture-lab-product-1",

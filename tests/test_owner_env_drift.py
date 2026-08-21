@@ -109,11 +109,16 @@ def _fake_graphql(varmaps: dict[str, dict], service_names: list[str] | None = No
 
 
 def _full_live_maps(**overrides: dict) -> dict[str, dict]:
-    """Live maps exactly matching every documented service's names (PORT
-    excluded — Railway injects it at runtime, per the module's exemption),
-    plus a Railway-provided name that must never count as drift."""
+    """Live maps exactly matching every documented, NON-RETIRED service's
+    names (PORT excluded — Railway injects it at runtime, per the module's
+    exemption), plus a Railway-provided name that must never count as
+    drift. Retired services are omitted because that IS the designed live
+    state — a retired service present live is lifecycle drift (its own
+    test below adds one back via ``overrides``)."""
     maps: dict[str, dict] = {}
     for svc in railway.SERVICES:
+        if svc.get("retired"):
+            continue
         maps[svc["name"]] = {
             name: _SENTINEL_VALUE
             for name in _documented(svc["name"])
@@ -249,12 +254,42 @@ def test_service_absent_from_successful_read_is_drift(client, monkeypatch):
     """The live read SUCCEEDED but a documented service is not in it → the
     service is not created yet: honest drift (all documented names missing
     live), never unknown."""
+    # dashboard as the example: review can no longer play this role — it is
+    # RETIRED (2026-08-20), so its absence from the live read is the designed
+    # state, not drift (see test_retired_service_absent_is_ok below).
     maps = _full_live_maps()
-    del maps["review"]
+    del maps["dashboard"]
     r = _page(client, monkeypatch, maps)
     assert "service not found in the live project" in r.text
-    assert "ANTHROPIC_API_KEY" in r.text  # named as missing live
+    assert "DISCORD_CLIENT_ID" in r.text  # a dashboard var, named as missing live
     assert "name drift" in r.text
+
+
+def test_retired_service_absent_is_ok(client, monkeypatch):
+    """A RETIRED service (review → its GitHub Pages static export,
+    2026-08-20) absent from a successful live read is the DESIGNED state:
+    the retired note renders, its vars go informational, and no drift is
+    charged."""
+    maps = _full_live_maps()
+    maps.pop("review", None)  # already omitted by the helper; defensive
+    r = _page(client, monkeypatch, maps)
+    assert "retired: 2026-08-20" in r.text
+    assert "service not found in the live project" not in r.text
+
+
+def test_retired_service_present_live_is_lifecycle_drift(client, monkeypatch):
+    """A RETIRED service STILL PRESENT in a successful live read is
+    lifecycle drift — the cutover's delete never happened or the service
+    was recreated; it must never render as a healthy deployment
+    (Codex #510 round 2)."""
+    maps = _full_live_maps(review={"ANTHROPIC_API_KEY": _SENTINEL_VALUE})
+    r = _page(client, monkeypatch, maps)
+    assert "STILL PRESENT in the live" in r.text
+    assert "lifecycle drift" in r.text
+    # charged as real drift, not the benign retired state...
+    assert '<span class="b warn">name drift</span>' in r.text
+    # ...and never the retired-ok line for this service.
+    assert "absence from the live project is the designed state" not in r.text
 
 
 def test_undocumented_live_service_is_drift(client, monkeypatch):

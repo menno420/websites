@@ -122,7 +122,11 @@
       <a href="https://control-plane-production-abb0.up.railway.app">Control</a> ·
       <a href="https://botsite-production-cfd7.up.railway.app">Bots</a> ·
       <a href="https://dashboard-production-a91b.up.railway.app">Dashboard</a> ·
-      <a href="https://review-production-fc91.up.railway.app" aria-current="page">Review</a>
+      {#- Self-link stays ROOT-RELATIVE: the exporter's base-path pass
+          rewrites it exactly once; a hardcoded absolute Pages URL was
+          double-prefixed to /websites/websites/ by the host-root→site-url
+          feed rewrite (Codex #510 round 2, P1). -#}
+      <a href="/" aria-current="page">Review</a>
     </nav>
     <span class="right">
       {% if generated_at %}<span class="sb-muted">data last refreshed {{ generated_at }}</span>{% endif %}

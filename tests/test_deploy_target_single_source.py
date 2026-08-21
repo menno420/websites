@@ -80,10 +80,17 @@ def test_every_non_none_target_is_a_version_url():
 
 
 def test_deploy_targets_and_railway_services_cover_same_names():
-    """The two hardcoded lists must describe the same set of services."""
-    assert set(config.SERVICE_DEPLOY_TARGETS) == set(_services_by_name()), (
-        "SERVICE_DEPLOY_TARGETS and railway.SERVICES describe different service "
-        "sets — one was edited without the other"
+    """The two hardcoded lists must describe the same set of services —
+    minus retired ones: a retired service (review → its GitHub Pages static
+    export, 2026-08-20) keeps its railway.SERVICES entry for the env-name
+    documentation, but has no process whose /version the deploy-state cell
+    could poll."""
+    active = {
+        name for name, svc in _services_by_name().items() if not svc.get("retired")
+    }
+    assert set(config.SERVICE_DEPLOY_TARGETS) == active, (
+        "SERVICE_DEPLOY_TARGETS and railway.SERVICES (non-retired) describe "
+        "different service sets — one was edited without the other"
     )
 
 

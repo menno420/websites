@@ -168,9 +168,10 @@ def test_deploy_state_in_sync_when_deployed_equals_head(monkeypatch):
     assert ds["head_short"] == "abc12345"
     assert ds["all_in_sync"] is True and ds["any_drift"] is False
     states = {s["service"]: s["state"] for s in ds["services"]}
+    # review left this cell 2026-08-20 — retired to a GitHub Pages static
+    # export with no /version process to poll (config.SERVICE_DEPLOY_TARGETS).
     assert states == {
         "control-plane": "in_sync", "botsite": "in_sync", "dashboard": "in_sync",
-        "review": "in_sync",
     }
 
 
