@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, envhub, github  # noqa: E402
+from app import config, envhub, github, owner  # noqa: E402
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -50,6 +50,18 @@ GROUP_IDS = (
 def _basic(pw: str = OWNER_PW, user: str = "owner") -> dict:
     token = base64.b64encode(f"{user}:{pw}".encode()).decode()
     return {"Authorization": f"Basic {token}"}
+
+
+@pytest.fixture(autouse=True)
+def _reset_owner_throttle():
+    """Cross-file isolation: these tests hammer the /owner gate with bad or
+    missing creds, and the failed-auth throttle (10/60s sliding window,
+    module-level in app/owner.py) leaks across files run back-to-back — a
+    hand-picked pytest subset 429'd a later file's 401 pin. Same autouse
+    reset the test_owner_* siblings carry."""
+    owner.reset_rate_limits()
+    yield
+    owner.reset_rate_limits()
 
 
 @pytest.fixture()
@@ -184,6 +196,25 @@ def test_estate_manifest_uses_railway_console_placeholder(client):
             raise AssertionError(
                 f"{name}= not followed by a placeholder at {match.start()}"
             )
+
+
+def test_static_venue_gets_no_railway_setup():
+    """The review surface is a GitHub Pages static export (2026-08-20): its
+    plan section must not generate Railway service-creation or variable-set
+    commands, must not point its manage link at Railway, and its
+    placeholder says there is nothing to set (Codex #510 round 2)."""
+    m = envhub.manifest("superbot-websites")
+    text = m["commands_text"]
+    assert 'railway variables --service "review"' not in text
+    assert "static venue" in text
+    assert "<SET-BY-OWNER>" not in text  # the old generic-fallback tell
+    review = next(s for s in m["services"] if s["surface"]["id"] == "review")
+    assert review["manage"]["url"].endswith("review-pages.yml")
+    assert review["placeholder"] == "<STATIC-VENUE-NOTHING-TO-SET>"
+    assert all(
+        row["placeholder"] == "<STATIC-VENUE-NOTHING-TO-SET>"
+        for row in review["schema"]
+    )
 
 
 def test_manifest_json_schema_carries_names_and_placeholders_only():

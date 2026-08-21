@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, envhub, github, listfilter, railway  # noqa: E402
+from app import config, envhub, github, owner, listfilter, railway  # noqa: E402
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -36,6 +36,18 @@ OWNER_PW = "test-owner-pw"
 def _basic(pw: str = OWNER_PW, user: str = "owner") -> dict:
     token = base64.b64encode(f"{user}:{pw}".encode()).decode()
     return {"Authorization": f"Basic {token}"}
+
+
+@pytest.fixture(autouse=True)
+def _reset_owner_throttle():
+    """Cross-file isolation: these tests hammer the /owner gate with bad or
+    missing creds, and the failed-auth throttle (10/60s sliding window,
+    module-level in app/owner.py) leaks across files run back-to-back — a
+    hand-picked pytest subset 429'd a later file's 401 pin. Same autouse
+    reset the test_owner_* siblings carry."""
+    owner.reset_rate_limits()
+    yield
+    owner.reset_rate_limits()
 
 
 @pytest.fixture(autouse=True)
@@ -174,9 +186,20 @@ def test_manage_link_full_deep_link_when_all_ids_recorded():
 def test_manage_link_degrades_to_project_then_console():
     reg = envhub.load_registry()
     estate = next(g for g in reg["groups"] if g["id"] == "superbot-websites")
-    # review: no service id recorded → project-level link, not an invented id.
+    # review is a static venue (2026-08-20): its explicit manage_url — the
+    # republish workflow — WINS over the group's Railway project link
+    # (Codex #510 round 2).
     review = next(s for s in estate["surfaces"] if s["id"] == "review")
     assert envhub.manage_link(estate, review)["url"] == (
+        "https://github.com/menno420/websites/actions/workflows/review-pages.yml"
+    )
+    # a RAILWAY surface with no recorded service id degrades to the
+    # project-level link, never an invented id (synthetic — the registry no
+    # longer carries such a surface in this group).
+    synthetic = {"id": "x", "name": "x", "kind": "railway-service",
+                 "purpose": "", "variable_names": [],
+                 "railway_service_id": None}
+    assert envhub.manage_link(estate, synthetic)["url"] == (
         "https://railway.com/project/70198ece-cbc0-484e-86d9-f8a1eca4f045"
     )
     # reliable-grace: no ids at all (production, by design) → console home.
@@ -233,6 +256,12 @@ def test_hub_renders_all_groups_without_token(client):
     ) in r.text
     # unrecorded production ids degrade to the console home, never fabricated.
     assert envhub.CONSOLE_HOME in r.text
+    # the static review surface manages at its republish workflow — never a
+    # Railway link inherited from the group (Codex #510 round 2).
+    assert (
+        "https://github.com/menno420/websites/actions/workflows/review-pages.yml"
+        in r.text
+    )
     # per-repo GitHub secrets manage links.
     assert "https://github.com/menno420/websites/settings/secrets/actions" in r.text
     assert "https://github.com/menno420/fleet-manager/settings/secrets/actions" in r.text

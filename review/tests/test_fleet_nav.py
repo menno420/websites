@@ -17,7 +17,11 @@ FLEET_HREFS = [
     "https://control-plane-production-abb0.up.railway.app",
     "https://botsite-production-cfd7.up.railway.app",
     "https://dashboard-production-a91b.up.railway.app",
-    "https://menno420.github.io/websites/",
+    # review's SELF-link is root-relative ("/"): the static exporter's
+    # base-path pass rewrites it exactly once, where a hardcoded absolute
+    # Pages URL was double-prefixed to /websites/websites/ by the host-root
+    # feed rewrite (Codex #510 round 2, P1).
+    "/",
 ]
 
 
@@ -27,3 +31,5 @@ def test_footer_fleet_strip_links_all_four_services():
         assert f'href="{href}"' in html, f"missing fleet link: {href}"
     # this service (review) is the current one — marked, not just listed
     assert 'aria-current="page"' in html
+    # the absolute self-URL must NOT come back (the double-prefix source).
+    assert 'href="https://menno420.github.io/websites/"' not in html

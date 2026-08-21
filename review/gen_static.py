@@ -140,7 +140,22 @@ def rewrite_urls(
         return body
     text = body.decode("utf-8")
     text = _ROOT_REL_RE.sub(lambda m: f'{m.group(1)}="{base_path}/', text)
-    text = text.replace(host_root.rstrip("/") + "/", site_url.rstrip("/") + "/")
+    # Host-root absolutes (the Atom feed renders from request.base_url) move
+    # onto the full site URL — IDEMPOTENTLY: a URL already carrying the base
+    # path is left alone, otherwise a hardcoded full Pages URL in a template
+    # came out double-prefixed (…/websites/websites/ — Codex #510 round 2).
+    prefix = host_root.rstrip("/") + "/"
+    target = site_url.rstrip("/") + "/"
+    if target != prefix:
+        if target.startswith(prefix):
+            base_seg = target[len(prefix):]
+            text = re.sub(
+                re.escape(prefix) + "(?!" + re.escape(base_seg) + ")",
+                target,
+                text,
+            )
+        else:
+            text = text.replace(prefix, target)
     return text.encode("utf-8")
 
 

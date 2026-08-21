@@ -129,7 +129,15 @@ def manage_link(group: dict[str, Any], surface: dict[str, Any]) -> dict[str, str
     """The manage-here deep link for one surface, degrading honestly:
     full Railway variables deep link (all three ids recorded) → project-level
     Railway link → the surface's explicit ``manage_url`` → the group's
-    ``console_url`` → the Railway console home. Never a fabricated id."""
+    ``console_url`` → the Railway console home. Never a fabricated id.
+
+    A NON-Railway surface with an explicit ``manage_url`` (review → its
+    GitHub Pages export, republished by a CI workflow) takes that link
+    FIRST — its parent group's Railway ids are the siblings' home, not its
+    management target (Codex #510 round 2)."""
+    kind = surface.get("kind") or ""
+    if "railway" not in kind and surface.get("manage_url"):
+        return {"label": "manage", "url": surface["manage_url"]}
     project_id = group.get("railway_project_id")
     environment_id = group.get("railway_environment_id")
     service_id = surface.get("railway_service_id")
@@ -299,6 +307,10 @@ BOUNDARY_NOTICE = (
 
 
 def placeholder_for(kind: str) -> str:
+    # A static venue has NOTHING to set at any console — the placeholder
+    # says so instead of inventing an owner errand (Codex #510 round 2).
+    if "static export" in kind:
+        return "<STATIC-VENUE-NOTHING-TO-SET>"
     return PLACEHOLDER_BY_KIND.get(kind, DEFAULT_PLACEHOLDER)
 
 
@@ -342,6 +354,23 @@ def _surface_commands(group: dict[str, Any], surface: dict[str, Any]) -> list[st
                 "them by PR (app/data/environments.json) before "
                 "provisioning; never guess."
             )
+    elif "static export" in kind:
+        # A static venue (review → its GitHub Pages export, 2026-08-20):
+        # nothing to provision, nowhere to set a variable. The documented
+        # names are the CODE's env reads, kept for the drift checks — the
+        # pairs below are informational, never console commands
+        # (Codex #510 round 2).
+        lines.append(
+            f"# static venue — served at {surface.get('url') or manage['url']}; "
+            f"republish via {manage['url']} (CI bakes + deploys the export "
+            "on merge). Nothing to provision, no variables to set."
+        )
+        if names:
+            lines.append(
+                "# documented names = the CODE's env reads (drift checks "
+                "only; never set in a console):"
+            )
+            lines.extend(f"# {name}={ph}" for name in names)
     elif kind == "railway-postgres":
         lines.append(
             "# Railway-managed database — add it from the Railway console; "

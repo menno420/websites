@@ -103,6 +103,18 @@ def test_rewrite_moves_feed_absolutes_onto_the_site_url():
     assert f"{SITE}/reviews/x" in out
 
 
+def test_rewrite_is_idempotent_for_urls_already_under_the_base_path():
+    """A full Pages URL already carrying the base path must survive the
+    host-root pass untouched — the hardcoded fleet-strip self-link came out
+    as …/websites/websites/ on every page (Codex #510 round 2, P1)."""
+    body = f'<a href="{SITE}/">Review</a><id>{HOST}/reviews/x</id>'
+    once = _rw(body)
+    assert f'href="{SITE}/"' in once  # not re-prefixed
+    assert f"{SITE}/reviews/x" in once  # host-rooted still moves
+    assert "websites/websites" not in once
+    assert _rw(once) == once  # a second pass changes nothing
+
+
 def test_rewrite_skips_non_markup_bodies():
     body = b'{"href": "/fleet"}'
     assert (

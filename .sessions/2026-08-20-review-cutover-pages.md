@@ -57,9 +57,15 @@ mineverse deployment, repointed or honestly retired:
 
 ## Session idea
 
-- 💡 The two remaining 08-14 dup rows in `environments.json`
-  (`botsite-dup-superbot-app`, `dashboard-dup-superbot-dashboard`) document
-  services deleted six days ago — same staleness class this PR clears for
-  review-dup-f027, left untouched here to keep the diff in this slice's
-  lane. One small follow-up drops them with their web_presence duplicate
-  labels and the `DUPLICATE_IDS` test pins.
+- 💡 ~~The two remaining 08-14 dup rows in `environments.json` … one small
+  follow-up drops them~~ — pulled INTO this PR at Codex round 1's ask
+  (both rows + web_presence labels + the `DUPLICATE_IDS` pins, now an
+  empty contract set).
+- 💡 Latent test-order flake, pre-existing: the envhub-family test files
+  (test_envhub*, test_owner_readiness_*) hammer the /owner gate with bad
+  creds but never call `owner.reset_rate_limits()`, unlike their nine
+  sibling files — a hand-picked pytest subset ran them back-to-back and
+  the failed-auth throttle 429'd a later file's 401 pin. The full suite's
+  fixed order has never tripped it (CI green throughout), so it stays out
+  of this PR's lane; the follow-up is the sibling files' one autouse
+  fixture, copied into the six.
