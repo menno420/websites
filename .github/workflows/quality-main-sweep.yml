@@ -21,7 +21,23 @@ name: quality-main-sweep
 # Idempotent and quiet: a HEAD that already has a completed quality run
 # (push, PR-merge-fastforward, or a previous sweep dispatch) logs
 # "quality present" and exits 0; a HEAD with a run still in flight is
-# left alone (no duplicate dispatch). API-only — no checkout needed.
+# left alone (no duplicate dispatch).
+#
+# API-only — no checkout. That is fine ONLY because every gh call below
+# names the repository explicitly. It did not hold once: `gh workflow run`
+# was written without --repo, and with no checkout it has no git remote to
+# infer one from, so it died with
+# `failed to run git: fatal: not a git repository`.
+#
+# What that cost, MEASURED 2026-08-22 and scoped to what was actually
+# sampled (361 runs exist; the 100 most recent were read): 71 success /
+# 29 failure. The split is not flakiness — it is the two branches:
+#   - 1 of 1 sampled success  logged "quality present … nothing to do".
+#   - 4 of 4 sampled failures logged "no quality check run on <sha>" and
+#     then died on the dispatch line.
+# So this workflow was green whenever it had nothing to do, and failed
+# whenever it had work. No sampled run has been observed to complete a
+# dispatch. A 71%-green schedule reads healthy, which is why this survived.
 
 on:
   schedule:
@@ -57,5 +73,5 @@ jobs:
             exit 0
           fi
           echo "no quality check run on $sha — dispatching quality.yml on main (GITHUB_TOKEN workflow_dispatch, the documented recursion-guard exception)."
-          gh workflow run quality.yml --ref main
+          gh workflow run quality.yml --ref main --repo "${{ github.repository }}"
           echo "dispatched quality.yml on main for HEAD $sha."
