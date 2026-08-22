@@ -26,12 +26,18 @@ name: quality-main-sweep
 # API-only — no checkout. That is fine ONLY because every gh call below
 # names the repository explicitly. It did not hold once: `gh workflow run`
 # was written without --repo, and with no checkout it has no git remote to
-# infer one from, so every scheduled run since died at that line with
-# `failed to run git: fatal: not a git repository` (MEASURED 2026-08-22:
-# 7 of the last 7 runs failed, 0 succeeded). The failure was invisible
-# because it happens AFTER the "no quality check run" decision is logged,
-# so the log reads as if the sweep were working. Net effect: the backfill
-# this workflow exists to perform has never once executed.
+# infer one from, so it died with
+# `failed to run git: fatal: not a git repository`.
+#
+# What that cost, MEASURED 2026-08-22 and scoped to what was actually
+# sampled (361 runs exist; the 100 most recent were read): 71 success /
+# 29 failure. The split is not flakiness — it is the two branches:
+#   - 1 of 1 sampled success  logged "quality present … nothing to do".
+#   - 4 of 4 sampled failures logged "no quality check run on <sha>" and
+#     then died on the dispatch line.
+# So this workflow was green whenever it had nothing to do, and failed
+# whenever it had work. No sampled run has been observed to complete a
+# dispatch. A 71%-green schedule reads healthy, which is why this survived.
 
 on:
   schedule:
