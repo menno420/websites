@@ -59,8 +59,10 @@
     </p>
     {% if fleet_age and fleet_age.stale %}
     <div class="rv-aged" role="note">
-      <strong>This mirror is stale</strong> — baked {{ fleet_age.age_human }} ({{ fleet_age.iso }});
-      the daily bake appears not to have landed since. What you see was true then, not necessarily now.
+      <strong>This mirror is frozen</strong> — baked {{ fleet_age.age_human }} ({{ fleet_age.iso }}).
+      That is the intended state, not a failed job: the daily bake was retired on
+      2026-08-20 with the move to a static export, and the mirror now refreshes only on a
+      manual dispatch. What you see was true then, not necessarily now.
     </div>
     {% endif %}
     {% if not stats_ok %}

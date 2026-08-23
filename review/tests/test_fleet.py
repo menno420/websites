@@ -218,7 +218,12 @@ def test_fleet_page_staleness_banner_epoch_stamp(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(fleetdata, "FLEET_PATH", p)
     r = client.get("/fleet")
     assert r.status_code == 200
-    assert "This mirror is stale" in r.text
+    # Wording changed 2026-08-23: the daily bake was retired 2026-08-20, so an old
+    # mirror is the INTENDED frozen state, not a failed job (Codex #512 R4). The
+    # test's purpose is unchanged — an epoch bake still deterministically renders
+    # the banner, with no wall-clock coupling.
+    assert "This mirror is frozen" in r.text
+    assert "the daily bake was retired" in r.text
 
 
 def test_fleet_page_no_stale_banner_far_future_stamp(monkeypatch, tmp_path: Path):
