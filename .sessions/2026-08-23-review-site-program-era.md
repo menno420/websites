@@ -1,6 +1,6 @@
 # 2026-08-23 — The review site says the program is still running; it ended 2026-07-21
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** opus-5 · high · docs/templates
 
@@ -59,6 +59,60 @@ The era banner in `review/templates/base.html` (following the repo's own
 banners, so the mechanism is established, not invented), the `/fleet/` present-tense
 corrections, the gate, then a Pages dispatch so the live surface actually changes.
 
+## Adversarial review — `@codex`, 5 rounds, 16 findings
+
+**`[conceded]` × 16 · `[survived]` × 0.** Every one verified against source before
+accepting. Rounds: 5 · 1 · 3 · 4 · 3.
+
+The four that changed what ships:
+
+1. **R1 — the banner attributed post-close metrics to the program.**
+   `snapshot.json` is an Aug-20 bake (`totals.prs_merged` 480) against 449 at
+   close, so ≥31 post-program merges sat under *"measured during the program"*.
+   That is **TRAP-004** committed inside the banner announcing this site tells
+   the truth about its own era.
+2. **R2 — my fix for R1 then falsified the archived editions.**
+   `/reviews/2026-07-21-edition-002` states its own provenance (2026-07-20
+   mirrors, 430 merged PRs) and my site-wide banner stamped August over it. A
+   site-wide claim is a claim about every page, and this site's pages have
+   genuinely different provenance.
+3. **R3 — the homepage hero contradicted the banner directly beneath it**
+   (*"the review of **running** Claude Code Projects"*). I had fixed the fleet
+   page and the banner and never looked at the element above them.
+4. **R4/R5 — the page advertised a live assistant that no longer exists.**
+   *"a live, evidence-grounded assistant"* plus two `/ask` CTAs, then
+   `site_map()`'s *"plus the live AI assistant on /ask"*, then *"even while the
+   live model is degraded"*. A broken promise, not a wording slip. All guarded;
+   the built export now contains **zero** assistant claims.
+
+## Accepted open — named, not silently dropped
+
+Codex's final round raised two P2s left unfixed, deliberately:
+
+- **"Do not announce backend retirement in live renders."** True, and it only
+  affects the non-static path, which has **no deployment** — the Railway service
+  was deleted 2026-08-21. Fixing it would add a branch to a code path nothing
+  serves.
+- **"Qualify provenance claims when the other mirrors also fail."** A nested edge
+  case of the snapshot-unreadable degradation path (snapshot *and* fleet *and*
+  stats all unreadable at once). The claim is already scoped to snapshot-derived
+  figures; this narrows it further inside a state no one has observed.
+
+Rounds went 5 → 1 → 3 → 4 → 3 with severity falling to all-P2, which is where the
+estate's convention says to stop cycling and say what remains.
+
 ## Verify
 
-(to be filled before the flip — real exit codes, never after a pipe: TRAP-002)
+- `python3 -m pytest review/tests -q` → **exit 0, 296 passed** (real exit code,
+  redirected never piped — TRAP-002).
+- `python3 bootstrap.py check --strict` → exit 1 before this flip, on the
+  designed born-red hold alone.
+- `python3 review/gen_static.py` → **exit 0, 35 routes**, and every fix asserted
+  against the **built export** rather than the dev render — that is what ships.
+- Degradation path exercised by actually moving `snapshot.json` aside, not reasoned about.
+- `grep` over the built export for every live-assistant string → **0 occurrences**.
+
+## Layer-2 handoff
+
+`docs/repos/websites/README.md` — the review-site thread gains the era-framing
+pass; the entry point's cutover facts are unchanged.
