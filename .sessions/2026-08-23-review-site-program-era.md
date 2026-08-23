@@ -2,7 +2,7 @@
 
 > **Status:** `complete`
 
-- **📊 Model:** opus-5 · high · docs/templates
+- **📊 Model:** opus-5 · high · docs-only *(the deliverable is corrected prose; it is carried through Jinja templates, one CSS class and one test assertion that pinned the old wording)*
 
 ## 💡 Session idea
 
