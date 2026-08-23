@@ -124,12 +124,18 @@
       longer exist, and the review backend that once served this site has been
       retired in favour of this static export. The estate's other services
       linked below are separate and unaffected.
+      {%- if snap_ok and generated_at %}
       Figures drawn from the <em>current</em> data snapshot were baked
       <span class="sb-mono">{{ generated_at }}</span> and therefore include work
       done <em>after</em> the program closed &mdash; read those as the record's
       state at that bake, not as program-era totals. Archived editions below
       carry their own, earlier provenance and state it on the page; that date
       governs their figures, not this one.
+      {%- else %}
+      No current data snapshot is readable, so no figures on this page carry a
+      provenance stamp; the alert above says so. Archived editions state their
+      own provenance on the page.
+      {%- endif %}
     </div>
   </div>
   {% block content %}{% endblock %}

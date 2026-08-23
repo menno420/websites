@@ -9,8 +9,8 @@
       During the program the websites lane <strong>was</strong> one seat of a fleet of Claude
       Projects, each bound to a repo and coordinated over committed git files. The seats were
       terminated <span class="sb-mono">2026-07-21</span>; the counts below are the dispositions the
-      registry last recorded (2026-08-20) — not a live roll-call, and not a count taken at close. This page mirrors the fleet-manager
-      registry{% if fleet_ok %} (<a href="{{ overview.registry.url }}" target="_blank" rel="noopener">the registry generator</a> — the roster it produced was frozen at generation #430, 2026-08-06, and no longer regenerates){% endif %}
+      registry mirror last recorded{% if fleet_age and fleet_age.ok %} (<span class="sb-mono">{{ fleet_age.iso }}</span>){% endif %} — not a live roll-call, and not a count taken at close. This page mirrors the fleet-manager
+      registry{% if fleet_ok %} (<a href="{{ overview.registry.url }}" target="_blank" rel="noopener">the registry generator</a> — the roster it produced stopped regenerating after generation #430, 2026-08-06){% endif %}
       plus each lane's own committed heartbeat — baked to JSON, never estimated. Where a lane's
       data can't be read, the gap is labeled, not filled in.
     </p>
