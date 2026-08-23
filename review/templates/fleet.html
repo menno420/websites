@@ -6,9 +6,11 @@
     <p class="sb-ey">Fleet</p>
     <h1>Every seat in the fleet, from the manager's own registry</h1>
     <p class="sb-lead">
-      The websites lane is one seat of a fleet of Claude Projects, each bound to a repo and
-      coordinated over committed git files. This page mirrors the fleet-manager's canonical
-      registry{% if fleet_ok %} (<a href="{{ overview.registry.url }}" target="_blank" rel="noopener">the source of truth</a>){% endif %}
+      During the program the websites lane <strong>was</strong> one seat of a fleet of Claude
+      Projects, each bound to a repo and coordinated over committed git files. The seats were
+      terminated <span class="sb-mono">2026-07-21</span>; the counts below are the fleet as the
+      registry last recorded it, not a live roll-call. This page mirrors the fleet-manager
+      registry{% if fleet_ok %} (<a href="{{ overview.registry.url }}" target="_blank" rel="noopener">the final registry snapshot</a>, frozen at generation #430, 2026-08-06 — it no longer regenerates){% endif %}
       plus each lane's own committed heartbeat — baked to JSON, never estimated. Where a lane's
       data can't be read, the gap is labeled, not filled in.
     </p>
@@ -36,7 +38,7 @@
       </div>
       <div class="sb-stat">
         <div class="rv-stat-value">{{ overview.counts.live }}</div>
-        <div class="sb-label">live lanes</div>
+        <div class="sb-label">lanes active at close</div>
         <div class="sb-muted rv-stat-sub">{{ overview.counts.archived }} archived · {{ overview.counts.hub }} hub</div>
       </div>
       <div class="sb-stat">
