@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Program Review — how an owner + agent fleet ships{% endblock %}</title>
-<meta name="description" content="{% block description %}An honest, evidence-linked account of how this owner + Claude-agent program runs: process, growth, successes, and problems.{% endblock %}">
+<title>{% block title %}Program Review — how an owner + agent fleet shipped{% endblock %}</title>
+<meta name="description" content="{% block description %}An honest, evidence-linked account of how this owner + Claude-agent program ran (2026-07-07 to 2026-07-21): process, growth, successes, and problems.{% endblock %}">
 {% if static_export %}
 {#- Static export: the committed robots.txt cannot govern a project-site
     path (crawlers read only the origin root), so the Disallow-all policy
@@ -109,6 +109,36 @@
 {% endif %}
 
 <main id="main" class="sb-view">
+  {#- Inside <main>, not above it: the skip-link jumps to #main, so a notice
+      placed between the header and main is bypassed by exactly the readers who
+      most need it first (Codex #512). Scope is deliberate on both halves —
+      the SEATS ended, not this site's other services, and the data below is an
+      Aug-20 bake that includes post-close activity, so this cannot claim
+      everything below was measured during the program. -#}
+  <div class="sb-wrap" style="padding-top:16px">
+    <div class="rv-era" role="note">
+      <strong>This is a record of a programme that ended.</strong>
+      The autonomous-Projects program reviewed here ran
+      <span class="sb-mono">2026-07-07</span> &rarr; <span class="sb-mono">2026-07-21</span>
+      and <strong>concluded</strong>; the Claude Project seats it describes no
+      longer exist, and the review backend that once served this site has been
+      retired in favour of this static export. The estate's other services
+      linked below are separate and unaffected.
+      {%- if snap_ok and generated_at %}
+      Figures drawn from the <em>current</em> data snapshot were baked
+      <span class="sb-mono">{{ generated_at }}</span> and therefore include work
+      done <em>after</em> the program closed &mdash; read those as the record's
+      state at that bake, not as program-era totals. Archived editions below
+      carry their own, earlier provenance and state it on the page; that date
+      governs their figures, not this one.
+      {%- else %}
+      No current data snapshot is readable, so <em>snapshot-derived</em> figures
+      carry no provenance stamp; the alert above says so. Other mirrors on the
+      page (the fleet registry mirror, per-repo stats) state their own bake
+      dates, and archived editions state theirs.
+      {%- endif %}
+    </div>
+  </div>
   {% block content %}{% endblock %}
 </main>
 

@@ -565,6 +565,13 @@ def homepage_stats(
     return tiles
 
 
+def _static_export() -> bool:
+    """True when rendering the Pages export, where the /ask backend does not exist.
+    The static build advertises no live service (Codex #512 R5)."""
+    import os
+    return os.environ.get("REVIEW_STATIC_EXPORT") == "1"
+
+
 def site_map(seats_count: int | None = None) -> list[tuple[str, str, str]]:
     """The "how this site is organized" map — one honest line per section.
     The fleet line carries the seat count only when the committed mirror
@@ -580,7 +587,8 @@ def site_map(seats_count: int | None = None) -> list[tuple[str, str, str]]:
         ("Growth", "/growth", "the metrics over time, derived from git history"),
         ("Fleet", "/fleet", fleet_line),
         ("Reviews", "/reviews", "dated review editions, subscribable as an Atom feed"),
-        ("Q&A", "/questionnaire", "evidence-backed answers — plus the live AI assistant on /ask"),
+        ("Q&A", "/questionnaire", "evidence-backed answers"
+         + ("" if _static_export() else " — plus the live AI assistant on /ask")),
         ("Successes", "/successes", "what went right, each win linked to commits"),
         ("Problems", "/problems", "what failed and what it cost — including the 07-12 incident"),
     ]

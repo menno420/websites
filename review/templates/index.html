@@ -3,11 +3,11 @@
 <section class="sb-page-hero">
   <div class="sb-wrap-narrow">
     <p class="sb-ey">For the Anthropic Claude Code team</p>
-    <h1>The public, evidence-backed review of running Claude Code Projects as an autonomous software fleet.</h1>
+    <h1>The public, evidence-backed review of a completed program: running Claude Code Projects as an autonomous software fleet.</h1>
     <p class="sb-lead">
-      One human directs; Claude agents build, verify, and coordinate — through git alone.
-      This site is the program reviewing itself for the Claude Code team, and every claim on it
-      links to a public commit. It pairs with the July&nbsp;8 and July&nbsp;12 emails: the findings
+      One human directed; Claude agents built, verified and coordinated — through git alone.
+      The program ran 2026-07-07 to 2026-07-21; this site is that program reviewing itself for
+      the Claude Code team, and every claim on it links to a public commit. It pairs with the July&nbsp;8 and July&nbsp;12 emails: the findings
       those emails report are the cards below, each with its evidence.
     </p>
   </div>
@@ -58,6 +58,15 @@
     <div class="sb-card rv-ai-panel">
       <p class="sb-ey">Interactive</p>
       <h2>Ask the project / Review with an AI</h2>
+      {%- if static_export %}
+      <p>
+        <strong>Retired with the program.</strong> While the review service ran, this panel
+        offered a live, evidence-grounded assistant over the committed corpus — free-form
+        questions and a one-click structured review, every answer citing its commits. The
+        backend retired with the move to this static export, so the assistant is no longer
+        reachable; the evidence it drew on is all still here, linked from every claim.
+      </p>
+      {%- else %}
       <p>
         Talk to the record: a live, evidence-grounded assistant answers free-form questions
         about this program, or produces a one-click structured review (strong / weak-or-risky /
@@ -65,14 +74,19 @@
         draw only from the committed evidence corpus and cite their commits — what isn't in the
         evidence gets an honest "that's not in the evidence", never an invention.
       </p>
+      {%- endif %}
+      {%- if not static_export %}
       <p class="rv-ai-panel-actions">
         <a class="sb-btn sb-btn-primary" href="/ask">Ask the project</a>
         <a class="sb-btn sb-btn-ghost" href="/ask">Run a structured review</a>
       </p>
+      {%- endif %}
+      {%- if not static_export %}
       <p class="sb-muted rv-stat-sub">
         Server-side only — no key ever reaches the browser. Seeded answers to the common
         questions work instantly even while the live model is degraded.
       </p>
+      {%- endif %}
     </div>
   </div>
 </section>

@@ -6,9 +6,11 @@
     <p class="sb-ey">Fleet</p>
     <h1>Every seat in the fleet, from the manager's own registry</h1>
     <p class="sb-lead">
-      The websites lane is one seat of a fleet of Claude Projects, each bound to a repo and
-      coordinated over committed git files. This page mirrors the fleet-manager's canonical
-      registry{% if fleet_ok %} (<a href="{{ overview.registry.url }}" target="_blank" rel="noopener">the source of truth</a>){% endif %}
+      During the program the websites lane <strong>was</strong> one seat of a fleet of Claude
+      Projects, each bound to a repo and coordinated over committed git files. The seats were
+      terminated <span class="sb-mono">2026-07-21</span>; the counts below are the dispositions the
+      registry mirror last recorded{% if fleet_age and fleet_age.ok %} (<span class="sb-mono">{{ fleet_age.iso }}</span>){% endif %} — not a live roll-call, and not a count taken at close. This page mirrors the fleet-manager
+      registry{% if fleet_ok %} (<a href="{{ overview.registry.url }}" target="_blank" rel="noopener">the registry generator</a> — the roster it produced stopped regenerating after generation #430, 2026-08-06){% endif %}
       plus each lane's own committed heartbeat — baked to JSON, never estimated. Where a lane's
       data can't be read, the gap is labeled, not filled in.
     </p>
@@ -36,7 +38,7 @@
       </div>
       <div class="sb-stat">
         <div class="rv-stat-value">{{ overview.counts.live }}</div>
-        <div class="sb-label">live lanes</div>
+        <div class="sb-label">lanes marked live in the final registry</div>
         <div class="sb-muted rv-stat-sub">{{ overview.counts.archived }} archived · {{ overview.counts.hub }} hub</div>
       </div>
       <div class="sb-stat">
@@ -57,8 +59,10 @@
     </p>
     {% if fleet_age and fleet_age.stale %}
     <div class="rv-aged" role="note">
-      <strong>This mirror is stale</strong> — baked {{ fleet_age.age_human }} ({{ fleet_age.iso }});
-      the daily bake appears not to have landed since. What you see was true then, not necessarily now.
+      <strong>This mirror is frozen</strong> — baked {{ fleet_age.age_human }} ({{ fleet_age.iso }}).
+      That is the intended state, not a failed job: the daily bake was retired on
+      2026-08-20 with the move to a static export, and the mirror now refreshes only on a
+      manual dispatch. What you see was true then, not necessarily now.
     </div>
     {% endif %}
     {% if not stats_ok %}

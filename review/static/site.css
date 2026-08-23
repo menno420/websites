@@ -134,6 +134,21 @@
   margin-top: var(--sb-s-3);
 }
 
+/* program-era banner (2026-08-23) — states that the reviewed program CONCLUDED.
+   Its OWN class, not .rv-aged, for two reasons: the data-age note and the
+   program-over note are different claims, and review/tests/test_questionnaire.py
+   selects the first `class="rv-aged"` block on the page — reusing that class
+   silently captured those assertions (3 tests failed on exactly that). */
+.rv-era {
+  background: color-mix(in srgb, var(--sb-ink-2, #667) 10%, var(--sb-surface));
+  border: 1px solid color-mix(in srgb, var(--sb-ink-2, #667) 40%, transparent);
+  border-radius: var(--sb-r-md);
+  padding: var(--sb-s-3) var(--sb-s-4);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-ink-2);
+  margin-top: var(--sb-s-3);
+}
+
 /* release-drift banner (ORDER 033) — an amber note, same weight as .rv-aged;
    factual, not alarming (this is a review site). */
 .rv-drift {
