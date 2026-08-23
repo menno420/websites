@@ -55,24 +55,6 @@
   </div>
 </header>
 
-{#- The program this site reviews CONCLUDED 2026-07-21. Until 2026-08-23 no page
-    said so, and /fleet/ rendered "live lanes" and mirrored heartbeats in the
-    present tense — a finished program reading as a running one. Site-wide and
-    FIRST on purpose: the notes below age the DATA, which is a different claim
-    from the PROGRAM being over, and a reader who meets only the data note
-    concludes the fleet still runs and the numbers are merely late. -#}
-<div class="sb-wrap" style="padding-top:16px">
-  <div class="rv-era" role="note">
-    <strong>This is a record, not a live dashboard.</strong>
-    The autonomous-Projects program reviewed here ran
-    <span class="sb-mono">2026-07-07</span> &rarr; <span class="sb-mono">2026-07-21</span>
-    and <strong>concluded</strong>; the seats no longer exist and nothing on this
-    site is still running. Everything below is preserved exactly as it was
-    measured during the program &mdash; present-tense wording in the evidence
-    describes that period, not today.
-  </div>
-</div>
-
 {% if not snap_ok %}
 <div class="sb-wrap" style="padding-top:16px">
   <div class="sb-error" role="alert">
@@ -127,6 +109,26 @@
 {% endif %}
 
 <main id="main" class="sb-view">
+  {#- Inside <main>, not above it: the skip-link jumps to #main, so a notice
+      placed between the header and main is bypassed by exactly the readers who
+      most need it first (Codex #512). Scope is deliberate on both halves —
+      the SEATS ended, not this site's other services, and the data below is an
+      Aug-20 bake that includes post-close activity, so this cannot claim
+      everything below was measured during the program. -#}
+  <div class="sb-wrap" style="padding-top:16px">
+    <div class="rv-era" role="note">
+      <strong>This is a record of a programme that ended.</strong>
+      The autonomous-Projects program reviewed here ran
+      <span class="sb-mono">2026-07-07</span> &rarr; <span class="sb-mono">2026-07-21</span>
+      and <strong>concluded</strong>; the Claude Project seats it describes no
+      longer exist, and the review backend that once served this site has been
+      retired in favour of this static export. The estate's other services
+      linked below are separate and unaffected.
+      Figures on this site were baked <span class="sb-mono">{{ generated_at }}</span>
+      and therefore include work done <em>after</em> the program closed &mdash;
+      read them as the record's state at that bake, not as program-era totals.
+    </div>
+  </div>
   {% block content %}{% endblock %}
 </main>
 
