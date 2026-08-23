@@ -81,10 +81,12 @@
         <a class="sb-btn sb-btn-ghost" href="/ask">Run a structured review</a>
       </p>
       {%- endif %}
+      {%- if not static_export %}
       <p class="sb-muted rv-stat-sub">
         Server-side only — no key ever reaches the browser. Seeded answers to the common
         questions work instantly even while the live model is degraded.
       </p>
+      {%- endif %}
     </div>
   </div>
 </section>
