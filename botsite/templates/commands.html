@@ -30,7 +30,7 @@
 
     <div class="sb-cmdlist">
       {% for c in commands %}
-      <a class="sb-cmdrow" href="/commands/{{ c.name|urlencode }}" id="cmd-{{ c.name }}" data-filter-item data-cat="{{ c.category }}"
+      <a class="sb-cmdrow cmd-index-row" href="/commands/{{ c.name|urlencode }}" id="cmd-{{ c.name }}" data-filter-item data-cat="{{ c.category }}"
            data-search="{{ c.name }} {{ c.summary }} {{ c.aliases|join(' ') }} {{ c.category_label }}"
            style="--c:{{ c.color }}">
         <code>{{ c.usage }}</code>

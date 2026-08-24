@@ -549,6 +549,7 @@ a.sb-bar-row:hover, .sb-bar-row:hover { background: var(--sb-surface-soft); }
 
 /* ── 17. utilities & motion ──────────────────────────────── */
 .sb-mono { font-family: var(--sb-font-mono); }
+.sb-break-anywhere { overflow-wrap: anywhere; }
 .sb-muted { color: var(--sb-ink-4); }
 .sb-row { display: flex; align-items: center; gap: var(--sb-s-3); flex-wrap: wrap; }
 .sb-stack { display: flex; flex-direction: column; gap: var(--sb-s-3); }
@@ -573,7 +574,7 @@ a.sb-bar-row:hover, .sb-bar-row:hover { background: var(--sb-surface-soft); }
 }
 @media (max-width: 640px) {
   /* command rows shed their secondary chrome; name + summary + status stay */
-  .sb-cmdrow .v2-alias, .sb-cmdrow .end .sb-badge-neutral { display: none; }
+  .sb-cmdrow .v2-alias, .sb-cmdrow .cmd-meta .sb-badge-neutral { display: none; }
   .sb-kicker { white-space: normal; }
   .sb-searchbtn .sb-kbd { display: none; } /* ⌘K means nothing on a phone */
 }

@@ -149,12 +149,13 @@ REWRITTEN_LINK_RE = re.compile(
 REWRITTEN_SAMPLE_LIMIT = 10  # at most this many URLs existence-checked per crawl
 REWRITTEN_CHECK_TIMEOUT_SECONDS = 5.0  # per-request budget (HEAD or GET)
 REWRITTEN_CHECK_BUDGET_SECONDS = 30.0  # total added wall-clock for the check
-# GitHub masks private repositories as 404 for anonymous requests. This one
-# path is a verified private owner destination, so keep the exception exact:
+# GitHub masks private repositories as 404 for anonymous requests. These two
+# paths are verified private owner destinations, so keep the exceptions exact:
 # any other 404, including another path in the same repo, must still fail.
 INTENTIONAL_PRIVATE_REWRITTEN_URLS = frozenset(
     {
         "https://github.com/menno420/pokemon-mod-lab/blob/main/control/inbox.md",
+        "https://github.com/menno420/pokemon-mod-lab/blob/main/control/status.md",
     }
 )
 # Attribute extractor over the serialized DOM (Chromium's page.content() —
@@ -241,7 +242,7 @@ def classify_rewritten_status(status: int | None, url: str = "") -> str:
     - 403         → ``"warn"`` (forbidden/rate-limited is ambiguous; never
                     claim privacy without path-specific evidence)
     - 404         → ``"pass-private"`` only for the path-exact, verified
-                    private owner destination; otherwise ``"fail"``
+                    private owner destinations; otherwise ``"fail"``
     - None/other  → ``"warn"`` (network error / rate limit — environmental,
                     reported but never a hard fail)
     """

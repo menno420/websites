@@ -33,6 +33,12 @@
 .cmd-meta { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
 .cmd-count { font-family: var(--sb-font-mono); font-size: 12px; color: var(--sb-ink-4); }
 
+/* native-details Agent PR tree; layout lives here so phone depth can collapse */
+.apc-node { margin: 10px 0; padding: 10px 14px; border: 1px solid var(--sb-line-2);
+  border-radius: var(--sb-r-md); background: var(--sb-surface-soft); }
+.apc-opt { margin: 8px 0 8px 16px; padding: 8px 12px;
+  border-left: 2px solid var(--sb-line-2); }
+
 /* filter bar sits under a page hero */
 .toolbar { display: flex; flex-wrap: wrap; gap: var(--sb-s-3); align-items: center; margin: var(--sb-s-5) 0 var(--sb-s-5); }
 .toolbar .sb-search { flex: 1; min-width: 220px; }
@@ -52,6 +58,20 @@
   .sb-nav-in { gap: 10px; }
   .sb-searchbtn, .sb-themebtn { display: none; }
   .sb-menubtn { flex: none; }
+
+  .cmd-index-row { display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start; }
+  .cmd-index-row > code { grid-column: 1; grid-row: 1; min-width: 0;
+    white-space: normal; overflow-wrap: anywhere; }
+  .cmd-index-row > .cmd-meta { grid-column: 2; grid-row: 1; margin-left: 0;
+    min-width: 0; }
+  .cmd-index-row > .desc { grid-column: 1 / -1; grid-row: 2;
+    white-space: normal; overflow: visible; text-overflow: clip; }
+
+  .apc-node, .apc-opt, .apc-leaf { overflow-wrap: anywhere; }
+  .apc-node { padding-inline: 8px; }
+  .apc-opt { margin-left: 0; padding-inline: 6px; }
+  .apc-leaf { padding-inline: 12px; }
 }
 
 .sb-drawer { max-height: calc(100dvh - var(--sb-nav-h)); overflow-y: auto;
