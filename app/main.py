@@ -776,7 +776,7 @@ async def journal_search_json(request: Request, q: str = ""):
 
 @app.get("/directory", response_class=HTMLResponse)
 async def web_directory(request: Request):
-    """ORDER 021: the web-presence directory — every web surface we own on one
+    """ORDER 021: the canonical eight-product website inventory on one
     read-only page. Rows come from the committed registry
     app/data/web_presence.json (single source of truth; add rows by PR), read
     at request time. Per-row liveness is probed through the same TTL-cached
@@ -830,6 +830,16 @@ async def journal_file(request: Request, repo: str, path: str, ref: str = "main"
             "res": res,
             "body_html": body_html,
             "github_url": f"https://github.com/{config.OWNER}/{repo}/blob/{ref}/{path}",
+            "back_url": (
+                f"/journal/{repo}"
+                if repo in config.REPOS
+                else f"/fleet#lane-{repo}"
+            ),
+            "back_label": (
+                f"back to {repo} journal"
+                if repo in config.REPOS
+                else f"back to {repo} on fleet"
+            ),
             "active": "journal",
         },
     )

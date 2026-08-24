@@ -20,6 +20,44 @@
 /* command list tweaks */
 .cmd-meta { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
 .cmd-count { font-family: var(--sb-font-mono); font-size: 12px; color: var(--sb-ink-4); }
+.sb-stat .v, .sb-stat .l { display: block; }
+
+@media (max-width: 640px) {
+  .command-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+  }
+  .command-row code,
+  .command-row .desc,
+  .command-row .cmd-meta {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .command-row code,
+  .command-row .desc {
+    white-space: normal;
+  }
+  .command-row .desc {
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .command-row .cmd-meta {
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .command-row .cmd-count {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
 
 /* filter bar under a page hero */
 .toolbar { display: flex; flex-wrap: wrap; gap: var(--sb-s-3); align-items: center; margin: var(--sb-s-5) 0; }

@@ -8,7 +8,7 @@ The **public** marketing + reference site for the SuperBot Discord bot, rebuilt 
 this repo's substrate from superbot's `botsite/`: **same ideas and functionality,
 fresh implementation.** It is a **separate Railway service** in `superbot-websites`,
 deployed alongside `control-plane` from the same repo — a second service, not a router
-mounted on the private control-plane app (the public/private split the plan requires).
+mounted on the public Control Plane app.
 
 ## What it is
 
@@ -19,22 +19,26 @@ mounted on the private control-plane app (the public/private split the plan requ
   copied verbatim from superbot, promoted here under `botsite/static/ds/`), plus a
   small layout-only `site.css`. Dark-first with a real light theme; theme toggle,
   mobile drawer, and a ⌘K command palette come from the verbatim `ds.js`.
-- **Public and secret-free.** It holds no token and never imports bot code.
+- **Public reference views, separately gated owner tools.** It never imports bot code or
+  holds a production bot-control credential. The public catalogue is read-only toward
+  superbot; the durable `/submit`/tester stores and owner moderation/login use their own
+  database and OAuth/session variables.
 
 ## Routes
 
 | Route | What | Source |
 |---|---|---|
-| `/` | Home — hero, live stat tiles, area cards, latest-updates teaser, CTA | `index.html` |
+| `/` | Home — source-backed snapshot counts, area cards, updates teaser, CTA | `index.html` |
 | `/features` | Full 43-feature catalogue; client-side filter by area + search | `features.html` |
 | `/features/{key}` | Per-feature detail + its commands (404 for unknown keys) | `feature_detail.html` |
-| `/commands` | Full command reference (485); client-side search + area filter. Each row links to its detail page | `commands.html` |
+| `/commands` | 365 distinct command names deduplicated from 485 registry entries; client-side search + complete area filter, including Other. Each row links to its detail page | `commands.html` |
 | `/commands/{name}` | Per-command detail — invocation, description, aliases, permissions, examples, linked ideas + same-area cross-links (404 for unknown names; URL-safe for names like `+prize`) | `command_detail.html` |
 | `/games` | The game features (12) | `games.html` |
-| `/changelog` | Enriched changelog — real "Latest build" panel (`meta.build` + `counts`), entries grouped by kind, and the newest-first timeline | `changelog.html` |
-| `/status` | Honest status band — subsystems "as of last deploy" (not live-probed) | `status.html` |
+| `/changelog` | Enriched changelog — dated "Snapshot build" panel (`meta.build` + `counts`), entries grouped by kind, and the newest-first timeline | `changelog.html` |
+| `/status` | Dated bot-data/build snapshot, explicitly **not** a live uptime check | `status.html` |
 | `/design` | Living style guide for the `ds/` system | `design.html` |
-| `/submit` | Suggestion/bug form — **write path stubbed** (see open items) | `submit.html` |
+| `/submit` | Durable public suggestion/bug intake when `DATABASE_URL` is configured; degrades honestly when storage is unavailable | `submit.html` + `submissions_store.py` |
+| `/submit/status/{ref}` | Privacy-preserving status lookup by the opaque reference issued at submission | `app.py` + `submissions_store.py` |
 | `/puddle-museum` | The Puddle Museum — venture-lab picture-book marketing page: emoji exhibit gallery + EN/NL/DE edition status (honest coming-soon, no buy links; data: committed `botsite/data/puddle_museum.json`) | `puddle_museum.html` |
 | `/palette.json` | Command-palette index (pages + features + games + commands) | `app.py` |
 | `/healthz` | Liveness probe (JSON, unauthenticated, no network dependency) | `app.py` |
@@ -58,9 +62,9 @@ Core inherited principle: **never fake data.** If the feed can't be fetched, eve
 renders an honest "Live data temporarily unavailable" banner and only what the feed
 provides — never stale invented content. `?refresh=1` on any page busts the cache.
 
-The only mutation toward superbot is **none**: websites stays read-only and forward-only
-toward the bot repo (plan open-question Q7, resolved: consume the artifact, don't rebuild
-the export tooling here).
+The only mutation toward the **superbot repo/bot** is none: websites stays read-only and
+forward-only there. Public submissions and tester records write only to this website's
+separate `DATABASE_URL` store; owner moderation remains separately gated.
 
 **Command detail** (`/commands/{name}`) reuses the exact `data_source.commands()` shaping
 (so a detail row can never drift from its list entry) — `command_by_name()` finds by exact
@@ -69,12 +73,18 @@ name, `related_commands()` supplies same-area cross-links, and links are built w
 Absent fields (the feed leaves `cooldown`/`use_cases`/`notes` null, and many rows carry no
 aliases/examples/linked-ideas) are **omitted cleanly** — nothing is invented to fill a gap.
 
+**Command-count taxonomy.** The current feed has **485 registry entries** because the
+producer emits cog commands and subcommands, including repeated bare names. The public
+reference deduplicates those rows to **365 distinct command names**. Its area filter
+includes **Other**, so the category totals sum to 365; neither number is presented as a
+cosmetic substitute for the other.
+
 **Changelog data source.** The real artifact is `site.json`'s **`bot_changelog`** array
 (`date`/`title`/`kind`/`summary`) — genuine but thin (a few entries, **no semantic version
 numbers**). The page deepens it honestly rather than fabricating a version history:
 `changelog_by_kind()` groups the real entries by kind (added / improved / fixed), and
 `changelog_context()` surfaces the real **`meta.build`** (commit + subject + date) and
-**`counts`** as a "Latest build" panel. Every value is straight from the feed; the page
+**`counts`** as a "Snapshot build" panel. Every value is straight from the feed; the page
 footer states the sourcing (`bot_changelog` + `meta.build`) so no reader mistakes it for
 invented releases.
 
@@ -85,7 +95,7 @@ invented releases.
 | Project | `superbot-websites` — `70198ece-cbc0-484e-86d9-f8a1eca4f045` |
 | Environment | `production` — `31485ecd-b3fe-4a8f-b136-337f6f099dc2` |
 | Service | `botsite` — **`4314f839-0a93-4995-b424-02861ad2d5e6`** |
-| Domain | https://botsite-production-cfd7.up.railway.app |
+| Domain | https://superbot-app.up.railway.app |
 | Source | GitHub `menno420/websites`, branch `main` (repo-connect → merge = deploy) |
 | Root Directory | `botsite` (Railway builds only this folder + its `Dockerfile`) |
 | Build | `botsite/Dockerfile` (python:3.12-slim; binds `0.0.0.0:$PORT`) |
@@ -96,7 +106,7 @@ the explicit `superbot-websites` IDs — the ambient `RAILWAY_*` env (production
 was never passed; no destructive mutation was ever issued. Same guardrails as
 `docs/deployment.md`.
 
-## Environment variables (names only — none required)
+## Environment variables (names only)
 
 | Var | Set? | Notes |
 |---|---|---|
@@ -104,12 +114,14 @@ was never passed; no destructive mutation was ever issued. Same guardrails as
 | `SITE_JSON_URL` | not set (default superbot@main) | Optional override of the data feed. |
 | `ADD_TO_DISCORD_URL` | not set (default) | Optional override of the install link. |
 | `SITE_CACHE_TTL_SECONDS` | not set (default 180) | Optional feed cache TTL. Empty/malformed values fall back to the default at import (`_env_int`, 2026-07-13 hardening) — an empty Railway entry can no longer crash the service. |
-| `SITE_PASSWORD` | **not set** (open ⚑ owner ask, `docs/owner/OWNER-ACTIONS.md`) | Gates ONLY the tester-program owner queue `/testing/owner*` (`botsite/testing.py`, HTTP Basic, any username, constant-time compare). Unset → those routes fail closed 503; the whole public site keeps working and never reads it. |
-| `ANTHROPIC_API_KEY` | **absent on superbot-websites/botsite** (ORDER 026 names-only read, 2026-07-13) | Read at runtime (never import) by `botsite/testing_ai.py` for the tester-program AI exit-review/guide; absent → the AI features degrade honestly. Whether the key sits on the **parallel botsite copy in the production-bot project** is **not measured — walled**: the only documented Railway read path is scoped to `superbot-websites`, and `docs/RAILWAY-SAFETY.md` bans passing the ambient production-bot IDs to any Railway call, reads included. |
+| `DATABASE_URL` | configured in production | Durable Postgres backend shared by `/submit` and the tester program; SQLite URLs remain the local/test backend. |
+| `DISCORD_CLIENT_ID` · `DISCORD_CLIENT_SECRET` | runtime owner config; see names-only environments view | Discord OAuth application values for the owner moderation queue. |
+| `OWNER_DISCORD_ID` · `OWNER_SESSION_SECRET` | runtime owner config; see names-only environments view | Restrict the session to Menno's Discord identity and sign its cookie. |
+| `SITE_PASSWORD` | optional fallback | HTTP Basic fallback for the tester/submission owner queue; Discord is the preferred fleet-wide login. |
+| `ANTHROPIC_API_KEY` | optional; see live names view | Read at runtime (never import) by `botsite/testing_ai.py`; absent → the AI tester features degrade honestly. Current presence belongs to the names-only `/owner/environments` view rather than a dated claim here. |
 
-The public surface deliberately carries **no secret**. When the submissions pipeline is
-provisioned (below), the one secret it may ever hold is an **INSERT-only**
-`SUBMISSIONS_DB_DSN` — never a control-API/mirror/OAuth token.
+OAuth/session and database secrets support the bounded login/storage paths, but are never
+rendered. The service deliberately carries no production bot-control URL or token.
 
 ## How to redeploy
 
@@ -125,19 +137,11 @@ python3 -m pytest botsite/tests       # network-free smoke tests (feed primed fr
 ```
 
 ## Open items / stubs (owner-deferred)
-
-- **`/submit` write path is a labeled stub (plan Q5).** The moderated submissions
-  pipeline (INSERT-only Postgres + GitHub-issue mirror on approval) is **not
-  provisioned** in `superbot-websites`. The form renders and validates, but POST
-  honestly reports the intake is not live and points to the bot's GitHub issues —
-  it never fakes a save. Wiring it up = provision a Postgres + an INSERT-only role,
-  set `SUBMISSIONS_DB_DSN` on this service, and add the moderation ring as a
-  **separate** owner-gated service (never mounted on this public app).
 - **Design provenance (plan Q2, defaulted).** The rebuild standardizes on the `ds/`
   system + a v2-style layout rather than preserving superbot's v1 neon SPA
   pixel-for-pixel. Reversible if the owner wants the exact v1 look.
-- **Custom domain (plan Q6).** Dark-launched on the Railway URL; apex/subdomain
-  assignment is deferred to owner cutover. Nothing in superbot is touched.
+- **Optional branded domain (plan Q6).** The friendly Railway domain is live; a separate
+  branded apex/subdomain remains an owner-deferred marketing decision.
 - **`ds/` sharing.** The design system is currently vendored inside `botsite/static/ds/`
   for a self-contained service build. Lifting it to a repo-shared package is a sensible
   later step once the dashboard is built too (plan §3) — deferred to avoid restructuring

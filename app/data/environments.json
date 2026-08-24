@@ -50,7 +50,7 @@
           "name": "botsite",
           "kind": "railway-service",
           "purpose": "public bot site — arcade, testing tasks, reference",
-          "url": "https://botsite-production-cfd7.up.railway.app",
+          "url": "https://superbot-app.up.railway.app",
           "railway_service_id": "4314f839-0a93-4995-b424-02861ad2d5e6",
           "manage_url": null,
           "variable_names": [
@@ -85,7 +85,7 @@
           "name": "dashboard",
           "kind": "railway-service",
           "purpose": "read-only developer dashboard over superbot's committed inventory",
-          "url": "https://dashboard-production-a91b.up.railway.app",
+          "url": "https://superbot-dashboard.up.railway.app",
           "railway_service_id": "39007299-11a2-49a8-9c5c-21e17194fb3e",
           "manage_url": null,
           "variable_names": [

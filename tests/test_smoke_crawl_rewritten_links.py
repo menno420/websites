@@ -146,17 +146,40 @@ def test_classifier_2xx_3xx_pass():
         assert smoke_crawl.classify_rewritten_status(status) == "pass"
 
 
-def test_classifier_403_passes_as_private():
-    assert smoke_crawl.classify_rewritten_status(403) == "pass-private"
+def test_classifier_403_warns_without_claiming_privacy():
+    assert smoke_crawl.classify_rewritten_status(403) == "warn"
 
 
 def test_classifier_404_fails():
     assert smoke_crawl.classify_rewritten_status(404) == "fail"
 
 
+def test_classifier_only_accepts_path_exact_verified_private_404():
+    private_url = next(iter(smoke_crawl.INTENTIONAL_PRIVATE_REWRITTEN_URLS))
+    assert smoke_crawl.classify_rewritten_status(404, private_url) == "pass-private"
+    assert (
+        smoke_crawl.classify_rewritten_status(
+            404, private_url.replace("inbox.md", "missing.md")
+        )
+        == "fail"
+    )
+
+
 def test_classifier_errors_and_odd_statuses_warn():
     for status in (None, 429, 500, 503):
         assert smoke_crawl.classify_rewritten_status(status) == "warn"
+
+
+def test_mobile_overflow_checks_body_and_document_not_only_root():
+    hidden_body_overflow = {
+        "client_width": 375,
+        "body_scroll_width": 1140,
+        "document_scroll_width": 375,
+    }
+    assert smoke_crawl.mobile_horizontal_overflow(hidden_body_overflow)
+    assert not smoke_crawl.mobile_horizontal_overflow(
+        {"client_width": 375, "body_scroll_width": 375, "document_scroll_width": 376}
+    )
 
 
 # ── check runner (fake fetch, offline) ───────────────────────────────────────
@@ -180,14 +203,31 @@ def test_check_404_fails_naming_url_and_source_page():
     assert any(line.lstrip().startswith("FAIL") for line in lines)
 
 
-def test_check_403_passes_with_private_repo_note():
+def test_check_403_warns_without_unverified_private_repo_note():
     url = "https://github.com/menno420/private-lane/blob/main/x.md"
     failures, lines = smoke_crawl.check_rewritten_links(
         [(url, PAGE)], 1, fetch=_fake_fetch({url: (403, "")})
     )
     assert failures == []
     note = next(line for line in lines if url in line)
-    assert "PASS" in note and "private repo" in note
+    assert "WARN" in note and "HTTP 403" in note
+    assert "private repo" not in note.lower()
+    assert "verified private" not in note.lower()
+
+
+def test_check_private_masked_404_passes_but_public_404_still_fails():
+    private_url = next(iter(smoke_crawl.INTENTIONAL_PRIVATE_REWRITTEN_URLS))
+    public_url = "https://github.com/menno420/superbot/blob/main/gone.md"
+    failures, lines = smoke_crawl.check_rewritten_links(
+        [(private_url, PAGE), (public_url, PAGE)],
+        2,
+        fetch=_fake_fetch(
+            {private_url: (404, ""), public_url: (404, "")}
+        ),
+    )
+    assert len(failures) == 1 and public_url in failures[0]
+    private_note = next(line for line in lines if private_url in line)
+    assert "PASS" in private_note and "verified private owner destination" in private_note
 
 
 def test_check_network_error_warns_never_fails():

@@ -1,10 +1,14 @@
 # Project Closeout — websites
 
-> **Status:** `reference`
+> **Status:** `historical`
 >
-> Final closeout of the autonomous agent build period for the websites project. Written for two cold readers: the owner, and a future Claude session opening this repo fresh. Everything here is cited to a PR or commit; anything not independently verified is marked so.
+> Final closeout of the autonomous agent build period, frozen at its July 2026
+> write time. Hosting, URLs and open actions have since changed; use
+> `docs/current-state.md` for current truth.
 
-This repo — **websites** — is the owner's launch console and fleet arcade: four independent server-rendered FastAPI services (Python 3.12, Jinja2 + httpx) in one repo, each with its own Dockerfile and Railway service. Merge to `main` deploys. The four services:
+This repo was closed out with four FastAPI services. It now publishes three
+Railway services plus the Program Review GitHub Pages archive; the bullets below
+describe the build-period topology.
 
 - **control-plane** (`app/`) — the owner console + environments hub.
 - **botsite** (`botsite/`) — the public arcade, game submission intake, and tester queue.
@@ -26,7 +30,7 @@ Over the build period, autonomous agent sessions took the repo from scaffold to 
 - **Owner surface polish** — a cross-service fleet nav strip on all four sites [#466](https://github.com/menno420/websites/pull/466), an inline "your open actions" panel on the owner home [#467](https://github.com/menno420/websites/pull/467), and a submitter status lookup by opaque ref [#469](https://github.com/menno420/websites/pull/469).
 - **Records + orientation overhaul** — current-state refreshed [#458](https://github.com/menno420/websites/pull/458) and the seat-digest render regenerated [#459](https://github.com/menno420/websites/pull/459).
 
-## Current true state (verified live at write time)
+## State at closeout (verified live then; historical now)
 
 - **HEAD:** `97c44a9` (#471), tree clean, no open claims.
 - **Tests:** full four-suite run = **2185 passed** (`tests/ botsite/tests dashboard/tests review/tests`). `bootstrap.py check --strict` = green (only never-exit-affecting advisory notices on `docs/CAPABILITIES.md`).
@@ -41,7 +45,7 @@ Over the build period, autonomous agent sessions took the repo from scaffold to 
 
 Each item names the exact resume step. Full detail lives in `docs/owner/OWNER-ACTIONS.md` and `docs/NEXT-TASKS.md`.
 
-1. **Owner Discord sitting (quickest, unblocks the most).** control-plane login is already live. botsite (ASK-0006) and dashboard (ASK-0017) still need the four Discord OAuth vars set on their Railway services: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `OWNER_DISCORD_ID`, `OWNER_SESSION_SECRET`, plus the redirect URI registered in the Discord app. Redirect URIs: botsite `https://botsite-production-cfd7.up.railway.app/owner/auth/callback`, dashboard `https://dashboard-production-a91b.up.railway.app/admin/auth/callback`. Setting them unlocks the botsite `/submit` moderation queue + `/testing` owner reads and the dashboard admin surface. (A simpler alternative for dashboard only: set `SITE_PASSWORD` — but Discord is the unified path.)
+1. **Historical owner Discord sitting.** The current callback homes are botsite `https://superbot-app.up.railway.app/owner/auth/callback` and dashboard `https://superbot-dashboard.up.railway.app/admin/auth/callback`; consult the living owner-action ledger before acting.
 2. **review-bake cron wiring.** `review-bake.yml` should also run `gen_releases` + `gen_edition` on its schedule so releases and edition drafts refresh unattended. This is a workflow-file diff → carries the do-not-automerge carve-out → owner merges it in the hub venue.
 3. **Arcade detail screenshots.** [#470](https://github.com/menno420/websites/pull/470) shipped optional screenshot/controls/changelog support on game detail pages; the screenshot assets themselves aren't provided yet. Drop images into the arcade data and they render.
 4. **The gated ladder (owner input required, no seat work possible until then).** ASK-0005 (PayPal Payouts creds), ASK-0012 (Gumroad publish pass — 10 titles), ASK-0013 (full-res photo originals), ASK-0014 (pick Ultramarine title), ASK-0015 (§5 illustration money-gate), ASK-0016 (Dutch proofread), ASK-0003 (scoped control-API token + separate armed Railway service), ASK-0009 (delete the unused dashboard `SITE_PASSWORD`).
@@ -52,9 +56,9 @@ Each item names the exact resume step. Full detail lives in `docs/owner/OWNER-AC
 The four live sites, what each is for, and how to use it:
 
 - **Owner console + environments hub** — https://control-plane-production-abb0.up.railway.app — your launch console. Owner login is live via Discord (`/owner/login`). The `/owner` home shows an "your open actions" panel summarizing what's waiting on you.
-- **Arcade + submissions** — https://botsite-production-cfd7.up.railway.app — the public arcade (`/arcade`) with verified Download/Play and per-game detail pages; `/submit` takes game submissions (durable on Postgres); `/testing` is the tester queue; submitters check status by ref at `/submit/status/{ref}`. Owner moderation/reads unlock once the Discord vars are set (ASK-0006).
-- **Fleet dashboard** — https://dashboard-production-a91b.up.railway.app — fleet `/status` and an admin surface (`/admin`, Discord-gated once ASK-0017 vars are set).
-- **Review site** — https://review-production-fc91.up.railway.app — the review/editions site: `/` home, `/reviews` (editions incl. edition-002 + Atom feed), `/questions`, and machine-readable `/releases.json`.
+- **Arcade + submissions** — https://superbot-app.up.railway.app — the public SuperBot reference, arcade, durable `/submit` intake and tester queue.
+- **Fleet dashboard** — https://superbot-dashboard.up.railway.app — public read-only oversight plus the separately Discord-gated dry-run `/admin` actions.
+- **Review archive** — https://menno420.github.io/websites/ — the static review/editions/evidence record; its former Railway service is retired.
 
 **Owner checklist (quickest first):**
 1. Set the four Discord vars + redirect URI on the **botsite** and **dashboard** Railway services (ASK-0006, ASK-0017) — unlocks the moderation queue, tester reads, and admin surface.

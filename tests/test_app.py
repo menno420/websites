@@ -271,6 +271,9 @@ def test_journal_file_fleet_lane_repo_renders(client, monkeypatch):
     )
     assert r.status_code == 200
     assert "hello" in r.text
+    assert 'href="/fleet#lane-sim-lab"' in r.text
+    assert "back to sim-lab on fleet" in r.text
+    assert 'href="/journal/sim-lab"' not in r.text
     assert calls == [("sim-lab", "docs/current-state.md", "main")]
 
 
@@ -282,6 +285,8 @@ def test_journal_file_original_repo_still_renders(client, monkeypatch):
     )
     assert r.status_code == 200
     assert "hello" in r.text
+    assert 'href="/journal/superbot"' in r.text
+    assert "back to superbot journal" in r.text
     assert calls == [("superbot", "docs/current-state.md", "main")]
 
 

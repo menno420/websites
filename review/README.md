@@ -1,11 +1,11 @@
 # review/ — the program-review site (for Anthropic reviewers)
 
-> **Status:** `service-doc` — the fourth independent service in this repo
-> (own Dockerfile / requirements / tests; Railway Root Directory = `review`).
-> Read-only and **network-free at runtime**: everything the pages show is a
-> committed file under `review/data/`, baked from the real record. A missing
-> or stale data file banners honestly — the site cannot invent data even in
-> principle.
+> **Status:** `site-doc` — the fourth product in this repo and a public
+> **GitHub Pages archive** at <https://menno420.github.io/websites/>. FastAPI
+> remains its rendering source and local-test surface; `gen_static.py` exports
+> it for Pages. The former Railway service retired 2026-08-20. Everything the
+> public pages show is a committed file under `review/data/`, baked from the
+> real record; a missing or stale file banners honestly.
 
 ## Surface
 
@@ -19,13 +19,14 @@
 | `/reviews` · `/reviews/{slug}` · `/reviews/feed.xml` | Dated review editions + a subscribable Atom feed |
 | `/questionnaire` | Anticipated reviewer questions, answered from repo evidence with citations |
 | `/questions` | The questions-asked → answered ledger (+ the intake convention) |
-| `/story.json` · `/healthz` · `/version` | Machine snapshot + the estate-standard probes |
+| `/story.json` | Machine-readable archive snapshot |
+| `/healthz` · `/version` | Source-app probes used locally; deliberately omitted from the static Pages artifact |
 
 ## Data model — bake, commit, render
 
-Railway Root-Directory deploys ship ONLY this folder, so runtime reads of
-git/`.sessions/`/`control/` (or the network) are impossible by design. Three
-generators, run from the repo root, produce the committed mirrors:
+The Pages artifact is generated entirely from this folder, so a public request
+cannot read git/`.sessions/`/`control/` or call the network. Three generators,
+run from the repo root, produce the committed mirrors:
 
 - `gen_snapshot.py` → `data/snapshot.json` — this repo's own per-day history.
 - `gen_fleet.py` → `data/fleet.json` — the fleet-manager's canonical `LANES`
@@ -42,46 +43,20 @@ generators, run from the repo root, produce the committed mirrors:
   total PRs ever, open issues+PRs), fail-soft per repo, honest reasons
   recorded. Uses `GITHUB_TOKEN` when present; anonymous otherwise.
 
-**Freshness**: the scheduled `review-bake` workflow
-(`.github/workflows/review-bake.yml`, daily cron + `workflow_dispatch`)
-re-runs all three and lands the data-only diff (direct push if the ruleset
-allows, else a `[bake]` PR with auto-merge, else the PR waits visibly).
-Every stats surface renders its as-of timestamp; mirrors older than
-`fleetdata.STALE_HOURS` (48h) banner as stale, and a deployment whose code
-sha differs from the snapshot's source commit shows the snapshot-aging
-banner site-wide.
-
-**⚑ Until the owner flips one console toggle, the daily bake cannot
-self-land.** Verified 2026-07-12 (both historical runs, incl. run
-29184552812): the bake succeeds and pushes its `bake/…` branch, then
-`gh pr create` is refused with *"GitHub Actions is not permitted to create
-or approve pull requests"*. The workflow degrades honestly (job stays
-green; the run summary carries a compare link). The manual refresh path,
-until then:
-
-1. GitHub → Actions → **review-bake** → *Run workflow* (`workflow_dispatch`
-   on `main`) — or wait for the daily cron (`23 5 * * *`, best-effort).
-2. Open the run's **Summary**: if the ruleset allowed a direct push, the
-   data is already on `main` (done). Otherwise the summary names the pushed
-   `bake/…` branch and links the compare page — open the PR from there
-   (any session or the owner) and merge it on green `quality`.
-3. **Owner fix that retires step 2** (✅ safe, reversible): repo
-   **Settings → Actions → General → Workflow permissions → check "Allow
-   GitHub Actions to create and approve pull requests"**. After that the
-   workflow opens its own `[bake]` PR and arms auto-merge; the whole loop
-   is hands-free. (Queued in `docs/owner/OWNER-ACTIONS.md`.)
-
-Any agent session can also refresh by hand: run the three generators from
-the repo root and land `review/data/**` through a normal PR (this is what
-the ORDER 017 refresh did).
+**Freshness**: this is deliberately a dated archive. `review-bake.yml` is now
+manual-only for a deliberate committed-mirror refresh. `review-pages.yml`
+builds and publishes the static tree after relevant changes land on `main`
+(or on manual dispatch). Every stats surface renders its own as-of timestamp;
+mirrors older than `fleetdata.STALE_HOURS` (48h) banner as stale rather than
+pretending to be current. An agent can refresh by running the generators and
+landing `review/data/**` through a normal PR.
 
 ## Publishing a review edition (the ritual)
 
-Editions make this site a **continuous** review channel. Any session can
-publish one — no permission needed beyond the normal landing path. Publish
-when there is something real to review: a significant unattended window, a
-major landing, an incident worth a written account, or an answered reviewer
-question.
+Editions are preserved archive records. A later agent-authored answer or
+correction can add an edition through the normal landing path, but publication
+is a deliberate archive update, not a claim that the concluded programme or
+retired assistant is live again.
 
 1. Create `review/data/reviews/YYYY-MM-DD-edition-NNN.md` (lowercase
    kebab-case filename — it becomes the slug and the URL).
@@ -115,8 +90,9 @@ Every page footer (and the fleet/edition pages inline) carries a prefilled
 GitHub new-issue link. Convention: reviewer question → issue → the manager
 routes it as an order on the bus → the answer publishes in the next edition
 AND lands in `data/questions.json` (rendered at `/questions`) with links to
-both. A real intake form/database is a flagged future owner option — this
-site holds no credentials and takes no writes.
+both. A real intake form/database is a flagged future owner option. The Pages
+archive itself is static: it stores no credentials and writes no submissions;
+the GitHub issue link is the active external intake.
 
 ## Verifying
 

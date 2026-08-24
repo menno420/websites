@@ -126,6 +126,7 @@ def test_overview_dir_exists_but_no_packages_is_empty(monkeypatch):
 # --------------------------------------------------------------------------- #
 
 _ROOT_LISTING = [
+    {"type": "dir", "name": "_inventory", "path": "projects/_inventory"},
     {"type": "dir", "name": "websites", "path": "projects/websites"},
     {"type": "file", "name": "README.md", "path": "projects/README.md"},
 ]
@@ -164,7 +165,11 @@ def test_overview_renders_package_cards(monkeypatch):
 
     out = asyncio.run(run())
     assert out["state"] == "ok"
-    assert [f["name"] for f in out["root_files"]] == ["README.md"]
+    assert [f["name"] for f in out["root_files"]] == ["_inventory/", "README.md"]
+    inventory = out["root_files"][0]
+    assert inventory["github_url"].endswith(
+        "/fleet-manager/tree/main/projects/_inventory"
+    )
     assert len(out["packages"]) == 1
     pkg = out["packages"][0]
     assert pkg["name"] == "websites" and pkg["error"] is None
@@ -201,11 +206,15 @@ def test_projects_route_happy_renders_cards_and_json(monkeypatch):
     assert r.status_code == 200
     assert "websites" in r.text and "Custom Instructions" in r.text
     assert "pasted to console 2026-07-10" in r.text
+    assert "_inventory/" in r.text
+    assert "/fleet-manager/tree/main/projects/_inventory" in r.text
+    assert 'href="/projects/_inventory"' not in r.text
 
     rj = client.get("/projects.json")
     assert rj.status_code == 200
     d = rj.json()
     assert d["state"] == "ok" and d["packages"][0]["name"] == "websites"
+    assert [f["name"] for f in d["root_files"]] == ["_inventory/", "README.md"]
     # rendered HTML dropped from the JSON payload (HTML-view concern)
     assert "meta_html" not in d["packages"][0]
 

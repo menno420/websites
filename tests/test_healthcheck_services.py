@@ -25,8 +25,8 @@ _spec.loader.exec_module(healthcheck)
 
 EXPECTED_SERVICES = {
     "control-plane": "https://control-plane-production-abb0.up.railway.app",
-    "botsite": "https://botsite-production-cfd7.up.railway.app",
-    "dashboard": "https://dashboard-production-a91b.up.railway.app",
+    "botsite": "https://superbot-app.up.railway.app",
+    "dashboard": "https://superbot-dashboard.up.railway.app",
 }
 
 

@@ -8,8 +8,8 @@
     <span class="sb-ey"><span class="dot">·</span> control panel · dry-run · recorded</span>
     <div class="head-row"><h1>Dry-run: <span class="sb-grad">recorded, not sent</span></h1></div>
     <p class="sb-lead">Audit entry <code>#{{ entry.id }}</code> at {{ entry.time }} —
-      actor <code>{{ entry.actor }}</code>. This service holds no credentials, so the request below
-      went nowhere; it lives in the in-memory audit log until the process restarts.</p>
+      actor <code>{{ entry.actor }}</code>. This service holds no bot-control credential, so the
+      request below went nowhere; it lives in the in-memory audit log until the process restarts.</p>
   </section>
 
   <div class="group-head"><h2>The request that WOULD have been sent</h2></div>

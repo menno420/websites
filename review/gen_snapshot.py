@@ -1,13 +1,13 @@
-"""Snapshot generator for the review service — bake real repo numbers to JSON.
+"""Snapshot generator for the Review archive — bake real repo numbers to JSON.
 
-The review service is deployed with Railway Root Directory = ``review``, so the
-running container ships ONLY this folder — it cannot read the repo's git
-history, ``.sessions/`` cards, or ``control/`` files at request time. The
-deliberate data model (mirroring how botsite/dashboard consume superbot's
-COMMITTED json feeds) is therefore: derive the machine numbers from the repo
-at build time, commit them as ``review/data/snapshot.json``, and let the app
-read only that local file. Deterministic, network-free, honest — the snapshot
-records exactly when it was generated and at which commit.
+The public GitHub Pages artifact is generated only from ``review/`` and cannot
+read the repo's git history, ``.sessions/`` cards, or ``control/`` files at
+request time. The deliberate data model (mirroring how botsite/dashboard
+consume superbot's COMMITTED json feeds) is therefore: derive the machine
+numbers from the repo at build time, commit them as
+``review/data/snapshot.json``, and let the renderer read only that local file.
+Deterministic, network-free, honest — the snapshot records exactly when it was
+generated and at which commit.
 
 Run from the repo root (any session, any time the numbers should refresh):
 

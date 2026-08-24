@@ -1,9 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Ask the project — Program Review{% endblock %}
-{% block description %}Ask the program's evidence-grounded AI assistant a question, or request a structured review — every answer cites its committed source.{% endblock %}
+{% block title %}{% if static_export %}Archived answers{% else %}Ask the project{% endif %} — Program Review{% endblock %}
+{% block description %}{% if static_export %}Archived evidence-backed answers from the retired Program Review assistant.{% else %}Ask the program's evidence-grounded AI assistant a question, or request a structured review — every answer cites its committed source.{% endif %}{% endblock %}
 {% block content %}
 <section class="sb-page-hero">
   <div class="sb-wrap-narrow">
+    {% if static_export %}
+    <p class="sb-ey">Archive</p>
+    <h1>Archived answers</h1>
+    <p class="sb-lead">
+      Evidence-backed answers preserved from the retired Program Review assistant. They remain
+      linked to the committed evidence corpus; this static archive cannot accept new questions.
+    </p>
+    {% else %}
     <p class="sb-ey">Ask the project</p>
     <h1>Talk to the record — grounded, cited, honest about its limits</h1>
     <p class="sb-lead">
@@ -15,6 +23,7 @@
       claim cites a commit, and what isn't in the evidence gets an honest
       "that's not in the evidence", never an invention.
     </p>
+    {% endif %}
   </div>
 </section>
 
@@ -91,11 +100,16 @@
     </div>
     {% endif %}
 
-    <h2 style="margin-top:32px">Seeded answers — instant, consistent, key-free</h2>
+    <h2 style="margin-top:32px">{% if static_export %}Archived answers{% else %}Seeded answers — instant, consistent, key-free{% endif %}</h2>
     <p class="sb-muted">
+      {% if static_export %}
+      These evidence-backed answers are committed to the repository and preserved verbatim;
+      each one still links to its source.
+      {% else %}
       These evidence-backed answers are committed to the repo and served without any model
       call — they work even while the live assistant is degraded. The live model handles
       the long tail.
+      {% endif %}
     </p>
     {% for item in seeds %}
     <article class="rv-qa" id="seed-{{ item.id }}">

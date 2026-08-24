@@ -48,6 +48,20 @@
 
 .eyebrow-note { font-family: var(--sb-font-mono); font-size: 12px; color: var(--sb-ink-4); margin-top: var(--sb-s-3); }
 
+@media (max-width: 640px) {
+  .sb-nav-in { gap: 10px; }
+  .sb-searchbtn, .sb-themebtn { display: none; }
+  .sb-menubtn { flex: none; }
+}
+
+.sb-drawer { max-height: calc(100dvh - var(--sb-nav-h)); overflow-y: auto;
+  overscroll-behavior: contain; }
+.sb-drawer-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  padding-bottom: 10px; margin-bottom: 6px; border-bottom: 1px solid var(--sb-line); }
+.sb-drawer-tools .sb-iconbtn { width: 100%; justify-content: flex-start;
+  padding: 0 12px; font: inherit; }
+.sb-drawer-theme::after { content: "Theme"; }
+
 /* centralized list filter widget (vendored listfilter.py + _listfilter.html, ORDER 019).
    The partial is byte-identical across services; these rules map its classes
    onto this service's ds tokens. */

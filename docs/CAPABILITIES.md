@@ -76,6 +76,17 @@ Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 (Hand-filled by sessions, per the discovery rule. Seed walls/capabilities
 above came from the fleet's lived 2026-07 findings; local ones go here.)
 
+- 2026-08-24 · wall · **A `uv`-downloaded Python 3.12.14 cannot load `_ssl`
+  on this Windows Codex Desktop seat because Application Control blocks the
+  downloaded DLL.** A repo-local `.venv` was created only after owner approval,
+  but `import ssl` failed verbatim: `ImportError: DLL load failed while
+  importing _ssl: An Application Control policy has blocked this file.` ·
+  evidence: measured in `C:\dev\websites\.venv` during the website
+  truth-and-defects tranche; the already-installed, trusted Python 3.13.15
+  imports SSL and ran the complete 2,229-test suite from repo-local
+  `.venv313` · workaround: use the trusted 3.13 interpreter for local checks
+  and let GitHub Actions exercise the repository's pinned Python 3.12; do not
+  weaken Windows Application Control or install another global interpreter.
 - 2026-07-18 · wall · **Railway account-key MUTATIONS were classifier-DENIED
   (2026-07-18) at worker spawn, even under a live owner order relayed via
   coordinator-context — the READ path is unaffected.** This session confirmed

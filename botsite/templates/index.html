@@ -1,17 +1,18 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% block title %}SuperBot — {{ counts.commands }} commands for your Discord server{% endblock %}
+{% block title %}SuperBot — {{ counts.distinct_command_names }} distinct command names{% endblock %}
 
 {% block content %}
 <section class="hero">
   <div class="glow" aria-hidden="true"></div>
   <div class="wrap">
-    <span class="sb-kicker"><span class="d"></span> Public reference · live from the bot's own data</span>
+    <span class="sb-kicker"><span class="d"></span> Public reference · committed bot-data snapshot</span>
     <h1>One bot for your <span class="sb-grad">whole server</span>.</h1>
-    <p class="sb-lead">Moderation, economy, games, leveling, utilities — {{ counts.commands }}
-      commands across {{ counts.features }} features, all in one Discord bot. Browse
-      exactly what it does before you add it. Nothing here is marketing fluff: every
-      number and command below is read straight from the bot's committed data.</p>
+    <p class="sb-lead">Moderation, economy, games, leveling, utilities —
+      {{ counts.distinct_command_names }} distinct command names from
+      {{ counts.command_registry_entries }} registry entries across
+      {{ counts.features }} features. Registry rows include subcommands and repeated
+      names across cogs; the command reference shows each name once.</p>
     <div class="cta">
       <a class="sb-btn sb-btn-primary sb-btn-lg" href="{{ add_url }}" target="_blank" rel="noopener">Add to Discord</a>
       <a class="sb-btn sb-btn-ghost sb-btn-lg" href="/commands">Browse commands {{ icon("arrow", 16) }}</a>
@@ -22,10 +23,11 @@
 <section class="section-sm">
   <div class="wrap">
     <div class="sb-statrow">
-      <a class="sb-stat" href="/commands"><span class="v">{{ counts.commands }}</span><span class="l">commands</span></a>
+      <a class="sb-stat" href="/commands"><span class="v">{{ counts.distinct_command_names }}</span><span class="l">distinct command names</span></a>
       <a class="sb-stat" href="/features"><span class="v">{{ counts.features }}</span><span class="l">features</span></a>
       <a class="sb-stat" href="/games"><span class="v">{{ counts.games }}</span><span class="l">games</span></a>
     </div>
+    <p class="eyebrow-note">{{ counts.feature_area_command_names }} names use the catalogued feature areas below; {{ counts.uncatalogued_command_names }} fall outside them ({{ counts.other_command_names }} in Other). Together they total {{ counts.distinct_command_names }}.</p>
   </div>
 </section>
 

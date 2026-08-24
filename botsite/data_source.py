@@ -207,8 +207,23 @@ def build_meta(site: dict[str, Any]) -> dict[str, Any]:
 
 def counts(site: dict[str, Any]) -> dict[str, int]:
     c = site.get("counts", {}) or {}
+    raw_rows = site.get("commands", []) or []
+    distinct = commands(site)
+    registry_entries = len(raw_rows)
+    distinct_names = len(distinct)
+    feature_categories = {feature["category"] for feature in features(site)}
+    feature_area_names = sum(
+        1 for command in distinct if command["category"] in feature_categories
+    )
+    other_names = sum(1 for command in distinct if command["category"] == "other")
     return {
         "commands": int(c.get("commands", 0) or 0),
+        "command_registry_entries": registry_entries,
+        "distinct_command_names": distinct_names,
+        "repeated_command_entries": max(0, registry_entries - distinct_names),
+        "feature_area_command_names": feature_area_names,
+        "uncatalogued_command_names": distinct_names - feature_area_names,
+        "other_command_names": other_names,
         "features": int(c.get("features", 0) or 0),
         "games": int(c.get("games", 0) or 0),
     }
@@ -331,6 +346,30 @@ def present_categories(site: dict[str, Any]) -> list[dict[str, Any]]:
     return result
 
 
+def command_categories(site: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every category present in the distinct-name command reference.
+
+    Unlike :func:`present_categories`, this includes command-only ``other``
+    rows, so the visible filter totals reconcile exactly to the reference.
+    """
+    feats = features(site)
+    cmds = commands(site)
+    present = {c["category"] for c in cmds}
+    ordered = [c for c in [*_CATEGORY_ORDER, "other"] if c in present]
+    ordered += sorted(present - set(ordered))
+    return [
+        {
+            "id": cat,
+            "label": category_meta(cat)["label"],
+            "color": category_meta(cat)["color"],
+            "icon": category_meta(cat)["icon"],
+            "feature_count": sum(1 for f in feats if f["category"] == cat),
+            "command_count": sum(1 for c in cmds if c["category"] == cat),
+        }
+        for cat in ordered
+    ]
+
+
 _CHANGE_KIND = {"feature": "added", "improvement": "improved", "fix": "fixed"}
 
 
@@ -384,23 +423,27 @@ def changelog_context(site: dict[str, Any]) -> dict[str, Any]:
         "subject": _norm(build.get("subject")),
         "committed_at": (str(build.get("committed_at") or "")[:10]),
         "entry_count": len(changelog(site)),
-        "commands": c["commands"],
+        "command_registry_entries": c["command_registry_entries"],
+        "distinct_command_names": c["distinct_command_names"],
         "features": c["features"],
         "games": c["games"],
     }
 
 
 def systems(site: dict[str, Any]) -> list[dict[str, Any]]:
-    """Honest status rows: derived from real areas, stated 'as of last deploy'.
+    """Inventory rows present in the dated public-data snapshot.
 
-    No fabricated incident history or per-second uptime — the row set mirrors the
-    real subsystem areas + core infra, all reported operational as of the build.
+    This deliberately makes no runtime or uptime claim: ``site.json`` contains
+    command inventory and build provenance, not a live service probe.
     """
-    rows = [{"name": "Core gateway", "desc": "Command routing & Discord connection", "color": "var(--sb-ok)"}]
-    for c in present_categories(site):
-        rows.append({"name": c["label"], "desc": f"{c['command_count']} commands", "color": c["color"]})
-    rows.append({"name": "Database", "desc": "Persistence for XP, economy, tags & settings", "color": "var(--sb-ok)"})
-    return rows
+    return [
+        {
+            "name": category["label"],
+            "desc": f"{category['command_count']} distinct command names",
+            "color": category["color"],
+        }
+        for category in command_categories(site)
+    ]
 
 
 def palette_items(site: dict[str, Any]) -> list[dict[str, str]]:

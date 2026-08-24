@@ -1,8 +1,8 @@
 # Public bot site (server-rendered marketing + reference).
 # Railway service: Root Directory = botsite (build context is this folder),
 # so this Dockerfile sees botsite/'s contents at its build root. It binds
-# 0.0.0.0:$PORT; env vars are documented in docs/botsite.md (none required — the
-# public data feed is anonymous raw.githubusercontent.com).
+# 0.0.0.0:$PORT; env vars are documented in docs/botsite.md. Public reference data
+# is anonymous; database/OAuth/session vars support the bounded intake and owner routes.
 FROM python:3.12-slim
 
 WORKDIR /srv

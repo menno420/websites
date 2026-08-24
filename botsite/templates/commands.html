@@ -5,10 +5,12 @@
 {% block content %}
 <div class="wrap">
   <section class="sb-page-hero">
-    <span class="sb-ey"><span class="dot">·</span> {{ commands|length }} commands</span>
+    <span class="sb-ey"><span class="dot">·</span> {{ commands|length }} distinct command names</span>
     <div class="head-row"><h1>Command reference</h1></div>
-    <p class="sb-lead">Every command the bot exposes, straight from its data. Search by name
-      or description, or filter by area. Prefix is <code class="sb-mono">!</code> by default.</p>
+    <p class="sb-lead">The bot's {{ counts.command_registry_entries }} registry entries reduce
+      to {{ commands|length }} distinct command names here. Repeated names across cogs and
+      subcommands appear once. Search by name or description, or filter by area. Prefix is
+      <code class="sb-mono">!</code> by default.</p>
   </section>
 
   <div data-filter-root>
@@ -46,6 +48,6 @@
       <div class="sb-empty"><span class="ico">{{ icon("search", 20) }}</span><h4>No commands match</h4><p>Try a different search or clear the filter.</p></div>
     </div>
   </div>
-  <p class="eyebrow-note" style="margin-bottom:40px">Names are deduplicated across cogs; permissions and status come from the bot's own registry.</p>
+  <p class="eyebrow-note" style="margin-bottom:40px">Category totals, including Other, sum to {{ commands|length }} distinct names. Permissions and status come from the bot's own registry.</p>
 </div>
 {% endblock %}

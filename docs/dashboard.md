@@ -16,11 +16,10 @@ mounted on another app.
 - **Server-rendered** FastAPI + Jinja2, no build step — the same stack as the
   control-plane and botsite apps. Drops superbot's Tailwind-CDN: one server-rendered site
   on the shared `ds/` design system.
-- **Public.** Every route serves without credentials (owner decision 2026-07-09, "Yes
-  drop the auth"). The former HTTP Basic gate — and its fail-closed 503-when-unset
-  behaviour — was removed; `SITE_PASSWORD` is no longer read. The surface is read-only
-  oversight of **public** data (superbot's committed `dashboard.json` / `console.json`)
-  and holds no secret, so there is nothing to gate. `/healthz` is the Railway probe.
+- **Public read views.** The former HTTP Basic gate was removed; `SITE_PASSWORD` is no
+  longer read. Oversight pages serve public committed data without credentials. Only the
+  state-changing dry-run POSTs under `/admin/actions` are Discord-OAuth-gated; the service
+  therefore reads OAuth/session secrets for that narrow boundary. `/healthz` is public.
 - **Read-only toward the bot.** It never imports bot code and holds **no bot control
   credential**. A failed feed renders an honest banner — never faked data.
 - **Names, never values.** The oversight pages already show only *names + locations*
@@ -29,7 +28,7 @@ mounted on another app.
 
 ## Routes
 
-### Read-only oversight (fully live)
+### Read-only oversight (public)
 
 | Route | What | Source |
 |---|---|---|
@@ -40,7 +39,7 @@ mounted on another app.
 | `/settings` | Settings catalogue — every per-guild key by owning subsystem, with type/default/hint/enum. Names + metadata only, **never a stored value** | `settings.html` |
 | `/access` | Permissions & access map — the visibility-tier ladder + which subsystems each tier can see | `access.html` |
 | `/env` | Env-var usage map — each variable → every file/line that reads it, by layer. **Names + code locations only, never a value** | `env.html` |
-| `/ideas` | Idea backlog (from superbot `docs/ideas/`) | `ideas.html` |
+| `/ideas` | Idea backlog (from superbot `docs/ideas/`), one valid card per source idea | `ideas.html` |
 | `/bugs` | Bug board (from superbot `docs/health/bug-book.md`) | `bugs.html` |
 | `/updates` | Updates feed built from superbot `.sessions/` logs | `updates.html` |
 | `/console` | Owner one-glance program console — sessions/ideas/bugs/changelog from `console.json` | `console.html` |
@@ -50,27 +49,18 @@ mounted on another app.
 | `/version` | Deployed commit SHA `{service, sha, short}` — read from `RAILWAY_GIT_COMMIT_SHA` → `GIT_SHA` → `"unknown"`; powers the control-plane deploy-state cell (see `docs/site.md`) | `app.py` |
 | `/static/*` | `ds/` assets + `app.js` + `site.css` | `StaticFiles` |
 
-### Control panel — a deliberate, clearly-labeled STUB
+### Owner panel — OAuth-gated, dry-run only
 
 | Route | What | State |
 |---|---|---|
-| `/admin` | Discord-OAuth control panel UI (sign-in, per-server settings/help/cog-routing editors, submissions moderation) | **Stub — renders the shape; every mutating action is a disabled placeholder** |
+| `/admin` | Control-panel UI over committed settings/help/cog data | Publicly readable shell; state-changing preview/confirm POSTs require the owner Discord login and remain dry-run only |
 
-In superbot the dashboard control panel signs in with Discord OAuth and **writes the live
-production bot's control API** (settings / help / cog-routing, applied live), plus an
-owner-gated submissions-moderation ring. That live-write path couples websites to the
-**running production bot** across the repo boundary and is an owner decision (rework-plan
-open question **Q4**). So it is **NOT wired here**:
-
-- `/admin` renders the UI so the intent is visible, but every mutating control is a
-  disabled placeholder labeled *"requires owner wiring — not connected to the live bot."*
-- **No production bot control-API URL or token exists anywhere in this service** — no
-  Discord OAuth client, no control-API token, no write path. A test
-  (`dashboard/tests/test_dashboard.py::test_no_control_api_token_or_url_anywhere`) asserts
-  those literal names never appear in the service source.
-
-Wiring it later is an owner decision about *where bot control should live* (here, in
-superbot, or in superbot-next) — see the plan's Q4.
+The panel implements a complete two-step **dry-run** flow. A signed-in owner can validate
+an action against the committed typed schema, preview the exact contract-v1 request JSON,
+and confirm it into an in-memory audit log that clears on restart. Nothing is sent to the
+running bot. The four Discord/owner variables below authenticate and attribute those POSTs;
+there is still **no production bot control-API URL or token** anywhere in this service.
+Tests pin both the fail-closed OAuth boundary and the absence of a live control credential.
 
 ## Data source — read-only toward superbot, never fake
 
@@ -109,7 +99,7 @@ open_count, open}`), not lists.
 | Project | `superbot-websites` — `70198ece-cbc0-484e-86d9-f8a1eca4f045` |
 | Environment | `production` — `31485ecd-b3fe-4a8f-b136-337f6f099dc2` |
 | Service | `dashboard` — **`39007299-11a2-49a8-9c5c-21e17194fb3e`** |
-| Domain | https://dashboard-production-a91b.up.railway.app |
+| Domain | https://superbot-dashboard.up.railway.app |
 | Source | GitHub `menno420/websites`, branch `main` (repo-connect → merge = deploy) |
 | Root Directory | `dashboard` (Railway builds only this folder + its `Dockerfile`) |
 | Build | `dashboard/Dockerfile` (python:3.12-slim; binds `0.0.0.0:$PORT`) |
@@ -129,9 +119,13 @@ never passed; no destructive mutation was ever issued. Same guardrails as
 | `DASHBOARD_JSON_URL` | not set (default superbot@main) | Optional override of the oversight feed. |
 | `CONSOLE_JSON_URL` | not set (default superbot@main) | Optional override of the console feed. |
 | `DATA_CACHE_TTL_SECONDS` | not set (default 180) | Optional feed cache TTL. Empty/malformed values fall back to the default at import (`_env_int`, 2026-07-13 hardening) — an empty Railway entry can no longer crash the service. |
+| `DISCORD_CLIENT_ID` | runtime owner config; see names-only environments view | Discord OAuth application id; gates only `/admin/actions/*`. |
+| `DISCORD_CLIENT_SECRET` | runtime owner config; see names-only environments view | Discord OAuth client secret; never exposed to public read views. |
+| `OWNER_DISCORD_ID` | runtime owner config; see names-only environments view | Only this Discord user may receive an owner session. |
+| `OWNER_SESSION_SECRET` | runtime owner config; see names-only environments view | Signs the owner session cookie. |
 
-This service deliberately carries **no** bot control credential — no control-API token, no
-Discord OAuth secret. Those are what the control-panel stub is a stub *about*.
+This service carries OAuth/session secrets for the owner gate, but deliberately carries
+**no bot-control credential**: no production control-API URL or token.
 
 ## How to redeploy
 
@@ -142,23 +136,21 @@ auto-deploys the `dashboard` root directory. No manual deploy step.
 
 ```bash
 pip install -r dashboard/requirements.txt
-uvicorn dashboard.app:app --reload   # http://127.0.0.1:8000 — public, no auth
+uvicorn dashboard.app:app --reload   # http://127.0.0.1:8000 — public read views
 python3 -m pytest dashboard/tests    # network-free smoke tests (feeds primed from fixtures)
 ```
 
 ## Open items / stubs
 
-- **Discord-OAuth live-write control panel (plan Q4) — the deliberate stub.** Whether the
-  panel that writes the *live production bot* comes to websites at all is an owner decision;
-  until then `/admin` is a labeled stub with no production control-API URL/token. Wiring it
-  = an owner call on where bot control lives + provisioning the OAuth app + control-API
-  token as a **separate** service (never mounted on a read-only surface).
-- **Submissions moderation ring (plan Q5).** The owner-gated moderation of public botsite
-  `/submit` suggestions (+ GitHub-issue mirror) is part of the same stubbed control ring;
-  it needs the submissions Postgres + mirror PAT provisioned in `superbot-websites` first.
+- **Live bot control remains deliberately unwired (plan Q4).** `/admin` is useful today as
+  an OAuth-gated dry-run preview/audit surface. Any future production control API remains a
+  separate owner decision and a separate armed service, never a credential added to these
+  public read views.
+- **Dashboard-local submissions moderation (plan Q5).** The public intake and durable
+  Postgres store already live on botsite; bringing that queue into this dashboard remains
+  a separate deferred information-design choice, not a prerequisite for `/admin` dry runs.
 - **`ds/` sharing.** The design system is vendored in `dashboard/static/ds/` (also vendored
   in `botsite/static/ds/`). Lifting it to a repo-shared package (plan §3) is a sensible next
   step now that two services vendor it — deferred to avoid restructuring the live services.
-- **Custom domain (plan Q6).** Dark-launched on the Railway URL; apex/subdomain assignment
-  is deferred to owner cutover. Nothing in superbot is touched; the live superbot dashboard
-  keeps running unchanged.
+- **Optional branded domain (plan Q6).** The friendly Railway domain is live; a separate
+  branded apex/subdomain remains an owner-deferred marketing decision.

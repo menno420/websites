@@ -56,17 +56,22 @@
 <section class="sb-section">
   <div class="sb-wrap-narrow">
     <div class="sb-card rv-ai-panel">
-      <p class="sb-ey">Interactive</p>
-      <h2>Ask the project / Review with an AI</h2>
       {%- if static_export %}
+      <p class="sb-ey">Archive</p>
+      <h2>Archived answers</h2>
       <p>
         <strong>Retired with the program.</strong> While the review service ran, this panel
         offered a live, evidence-grounded assistant over the committed corpus — free-form
         questions and a one-click structured review, every answer citing its commits. The
         backend retired with the move to this static export, so the assistant is no longer
-        reachable; the evidence it drew on is all still here, linked from every claim.
+        reachable. Its evidence-backed seeded answers remain available as a historical record.
+      </p>
+      <p class="rv-ai-panel-actions">
+        <a class="sb-btn sb-btn-primary" href="/ask">Browse archived answers</a>
       </p>
       {%- else %}
+      <p class="sb-ey">Interactive</p>
+      <h2>Ask the project / Review with an AI</h2>
       <p>
         Talk to the record: a live, evidence-grounded assistant answers free-form questions
         about this program, or produces a one-click structured review (strong / weak-or-risky /

@@ -57,7 +57,7 @@ from .prompt_artifacts import REPO, blob_url as _blob_url  # noqa: F401
 # The owner's seat start order (dispatch order, 2026-07-12 ask) — ONE roster
 # shared with /prompts (``app/roster.py``); unmatched packages sort after
 # every matched slot, alphabetically (:func:`start_rank`).
-from .roster import START_ORDER as _START_ORDER
+from .roster import REGISTRY_METADATA_DIRS, START_ORDER as _START_ORDER
 
 ROOT = "projects"
 
@@ -395,7 +395,18 @@ async def overview(refresh: bool = False) -> dict[str, Any]:
     dirs: list[tuple[str, str]] = []
     for entry in root["data"]:
         if entry.get("type") == "dir":
-            dirs.append((entry.get("name", ""), entry.get("path", "")))
+            name = entry.get("name", "")
+            path = entry.get("path", "")
+            if name in REGISTRY_METADATA_DIRS and path:
+                out["root_files"].append(
+                    {
+                        "name": f"{name}/",
+                        "path": path,
+                        "github_url": f"{_repo_url()}/{name}",
+                    }
+                )
+            else:
+                dirs.append((name, path))
         elif entry.get("type") == "file":
             fpath = entry.get("path", "")
             out["root_files"].append(
