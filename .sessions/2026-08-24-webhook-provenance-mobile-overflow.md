@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #516 is ready to merge under Menno's standing approval; post-merge deployment and the unchanged live crawl are the remaining operational verification.
 
-- **📊 Model:** GPT-5 · high · deployed browser regression
+- **📊 Model:** GPT-5 · high · runtime bugfix
 
 **What this session is about:** Close the one remaining failure from the post-deployment canonical browser crawl: SuperBot `/webhook-analyzer` makes the body 13 px wider than the exact 375 px phone viewport in CI. Trace the concrete overflowing content, repair it without hiding real page overflow or removing the result table's local horizontal scroller, prove the exact live geometry through the unchanged crawl, and merge the finished green repair under Menno's standing approval.
 
