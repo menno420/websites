@@ -1,0 +1,1 @@
+- `claude/current-state-truth-closeout` · **Current-state truth tranche closeout** · docs/current-state.md deployed revision and follow-on order · 2026-08-24
