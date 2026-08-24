@@ -138,11 +138,8 @@ def test_page_shows_provenance_and_grounding(client):
     assert "SWTK material via botsite/data/stripe_gotchas.json" in r.text
     assert "docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries" in r.text
     assert "not verified from source this session" in r.text
-    url_count = sum(
-        bool(source.get("url"))
-        for source in webhook_analyzer.load_analyzer()["provenance"]["sources"]
-    )
-    assert r.text.count('class="sb-mono sb-break-anywhere"') == url_count
+    sources = webhook_analyzer.load_analyzer()["provenance"]["sources"]
+    assert r.text.count('<li class="sb-break-anywhere">') == len(sources)
     assert ".sb-break-anywhere { overflow-wrap: anywhere; }" in client.get(
         "/static/ds/components.css"
     ).text

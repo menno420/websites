@@ -70,9 +70,9 @@
       {% endif %}
       <ul style="margin:0;font-size:var(--sb-text-sm)">
         {% for s in analyzer.provenance.sources %}
-        <li><strong>{{ s.label }}</strong>{% if not s.verified %} <em>(not verified from source
+        <li class="sb-break-anywhere"><strong>{{ s.label }}</strong>{% if not s.verified %} <em>(not verified from source
           this session)</em>{% endif %}{% if s.detail %} — {{ s.detail }}{% endif %}{% if s.url %}
-          · <a href="{{ s.url }}" target="_blank" rel="noopener" class="sb-mono sb-break-anywhere">{{ s.url }}</a>{% endif %}</li>
+          · <a href="{{ s.url }}" target="_blank" rel="noopener" class="sb-mono">{{ s.url }}</a>{% endif %}</li>
         {% endfor %}
       </ul>
     </article>
