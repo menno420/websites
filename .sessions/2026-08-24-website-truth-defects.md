@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — PR #513 is ready and deliberately unmerged pending Menno's approval for the auto-deploying merge.
 
-- **📊 Model:** GPT-5 · implementation coordinator · runtime bugfix
+- **📊 Model:** GPT-5 · high · runtime bugfix
 
 **What this session is about:** Complete the first evidence-led truth-and-defects tranche from Menno's 2026-08-24 live website UX audit. Repair verified broken journeys and contradictory public claims across the four products in this repository, preserve its public/read-only and owner-gated boundaries, and stop before the auto-deploying merge for Menno's approval.
 
