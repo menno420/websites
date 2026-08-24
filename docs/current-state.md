@@ -119,8 +119,9 @@ Deployment: `docs/deployment.md` + each service's doc.
   a plain-text provenance SHA widening `/webhook-analyzer` — now wraps at the
   complete list-entry boundary while its generated results table keeps a local
   horizontal scroller. Live smoke run 32746498270: 25 pages per product at
-  desktop + 375 px, zero console errors, all same-site links green, and the
-  strict rewritten-link sample green.
+  desktop + 375 px, zero console errors, and no broken link among the bounded
+  same-site checks (Control 175/219, SuperBot 175/463, Dashboard 47/47, Review
+  55/55); the strict 10-link rewritten sample was also green.
 - **2026-08-20 — the crawler DoS on control-plane ended at the route layer
   ([D-0036], PR this session):** `/orders` (~608 KB faceted seat-era page),
   `/orders.json` (775 KB) and `/prompts` (513 KB) now answer anonymous
