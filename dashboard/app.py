@@ -1,15 +1,16 @@
-"""SuperBot developer dashboard — private, server-rendered oversight site.
+"""SuperBot developer dashboard — public, server-rendered read-only oversight.
 
-The **private** half of the websites estate (plan
+The dashboard half of the websites estate (plan
 ``docs/planning/dashboard-botsite-rework-plan-2026-07-09.md``). Rebuilt on this repo's
 substrate — FastAPI + Jinja2, server-rendered, no build step — from superbot's
 ``dashboard/``: same read-only ideas and functionality, fresh implementation on the
 shared ``ds/`` design system.
 
-**Public.** Every route serves without credentials (owner decision [D-0011] — the
-Basic-auth gate was dropped). The surface is read-only oversight of public data
-(superbot's committed ``dashboard.json`` / ``console.json``); it holds no secret and no
-bot control credential, so there is nothing to gate. ``/healthz`` is the Railway probe.
+**Public read views.** The oversight routes serve without credentials (owner decision
+[D-0011] — the Basic-auth gate was dropped). The state-changing dry-run POSTs under
+``/admin/actions`` are separately gated by Discord OAuth, so this service can read
+OAuth/session secrets when configured. It holds no production bot-control credential.
+``/healthz`` is the Railway probe.
 
 **Data.** The read-only oversight pages consume superbot's committed ``dashboard.json`` /
 ``console.json`` live over raw.githubusercontent.com (``data_source``). This app **never
@@ -19,8 +20,8 @@ honest banner — never faked data.
 **The control panel (the deliberate boundary — DRY-RUN).** superbot's dashboard also has
 a Discord-OAuth control panel that WRITES the *live production bot's* control API
 (settings / help / cog-routing, applied live), plus an owner-gated submissions-moderation
-ring. That live-write path is **NOT wired here** (plan Q4 / Q-0004 is an open owner
-decision, and doctrine places a wired panel in a **separate** service): ``/admin`` is a
+ring. That live-write path is **NOT wired here** (plan Q4 / Q-0004 resolved that an
+armed path belongs in a **separate** service): ``/admin`` is a
 complete management UX running against an explicit **dry-run controller seam**
 (``dashboard/control_plane.py``). Every action is validated against the live typed
 schema, previewed as the exact contract-v1 request JSON (spec
@@ -81,16 +82,14 @@ NAV = [
 # alive across the cutover (when OLD is retired and its URL repoints to NEW) the
 # /games and /reviews routes below FORWARD to the re-homed surfaces instead of
 # 404ing. The targets are env-overridable so a domain rename at cutover is a
-# config change, not a code edit; the defaults are the repo's canonical NEW
-# service URLs (app/config.py SERVICE_DEPLOY_TARGETS) — botsite-…-cfd7 and the
-# review service …-fc91 (NOT the …-f027 old copy in the reliable-grace project,
-# which is the RETIRE target at consolidation). Same env-var-with-default idiom
+# config change, not a code edit; the defaults are the current friendly SuperBot
+# domain and the Program Review GitHub Pages archive. Same env-var-with-default idiom
 # as data_source.py's feed
 # URLs; declared in the dashboard manifest (app/railway.py) so the env-drift
 # panel reads them in-sync.
 BOTSITE_GAMES_URL = os.environ.get(
     "BOTSITE_GAMES_URL",
-    "https://botsite-production-cfd7.up.railway.app/games",
+    "https://superbot-app.up.railway.app/games",
 ).strip()
 REVIEW_REVIEWS_URL = os.environ.get(
     "REVIEW_REVIEWS_URL",
@@ -463,16 +462,16 @@ async def games_redirect():
 
 @app.get("/reviews")
 async def reviews_redirect():
-    """Consolidation redirect: the reviews content was re-homed to the review
-    service. Forward there so an inbound /reviews link does not 404."""
+    """Consolidation redirect: reviews now live in the Program Review archive.
+    Forward there so an inbound /reviews link does not 404."""
     return _consolidation_redirect(
-        REVIEW_REVIEWS_URL, "Reviews", "review service"
+        REVIEW_REVIEWS_URL, "Reviews", "Program Review archive"
     )
 
 
 # ===========================================================================
-# Control panel — DRY-RUN management UX (plan Q4 / Q-0004 stays an open owner
-# decision).
+# Control panel — DRY-RUN management UX (plan Q4 / Q-0004 keeps the armed
+# path in a separate service).
 #
 # superbot's dashboard control panel signs in with Discord OAuth and WRITES the
 # LIVE PRODUCTION BOT's control API (settings / help / cog-routing, applied live),

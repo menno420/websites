@@ -1,11 +1,10 @@
 """Static export of the review site — the whole rendered surface as files.
 
-The program-review audience concluded 2026-07-21; the site is server-rendered
-entirely from committed data (`review/data/**` + the committed editions), so
-its Railway service is a 24/7 process serving a historical record. This
-exporter walks every GET route through FastAPI's TestClient — no server, no
-network — and writes the rendered bytes as a plain file tree that GitHub
-Pages can serve, after which the Railway `review` service retires
+The program-review audience concluded 2026-07-21; the site is rendered entirely
+from committed data (`review/data/**` + the committed editions). This exporter
+walks every GET route through FastAPI's TestClient — no server, no network —
+and writes the rendered bytes as the plain file tree GitHub Pages currently
+serves. The former Railway `review` service retired on 2026-08-20
 (fleet-manager `docs/planning/2026-08-20-railway-keep-bot-only-worklist.md`
 slice 3; the decisions ledger carries the entry).
 

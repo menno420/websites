@@ -72,15 +72,15 @@ def version_info(service: str) -> dict:
     }
 
 
-# Public `/version` endpoints of the four superbot-websites Railway services.
+# Public `/version` endpoints of the three live superbot-websites Railway services.
 # The readiness board's websites-row "deploy state" cell compares each service's
 # DEPLOYED sha to the websites repo's `main` HEAD. control-plane is THIS app, so
 # its deployed sha is read straight from the environment with no network hop
-# (url = None); the other three are fetched over their public /version JSON.
+# (url = None); botsite and dashboard are fetched over public /version JSON.
 SERVICE_DEPLOY_TARGETS: dict = {
     "control-plane": None,
-    "botsite": "https://botsite-production-cfd7.up.railway.app/version",
-    "dashboard": "https://dashboard-production-a91b.up.railway.app/version",
+    "botsite": "https://superbot-app.up.railway.app/version",
+    "dashboard": "https://superbot-dashboard.up.railway.app/version",
     # review retired 2026-08-20: a GitHub Pages static export
     # (https://menno420.github.io/websites/) with no /version process to
     # poll — the Railway service is deleted (websites decisions ledger).
@@ -362,4 +362,3 @@ FLEET_LANES: list = [
 JOURNAL_RENDER_REPOS: set = set(REPOS) | {
     lane["repo"] for lane in FLEET_LANES if lane.get("repo")
 }
-

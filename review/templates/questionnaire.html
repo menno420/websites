@@ -41,10 +41,16 @@
     {% endfor %}
 
     <p class="sb-muted">
-      A live answer-bot (ask free-form, get an evidence-cited answer generated on demand) is a
-      flagged future idea — it needs a model API key the owner would have to provision, so it is
-      deliberately not built. What you read above is the honest version available today:
-      agent-authored, evidence-linked, continuously updated.
+      {% if static_export %}
+      The live answer-bot retired with the server-backed Review service. Its evidence-backed
+      seeded material remains in <a href="/ask">Archived answers</a>; that retired bot cannot
+      accept new questions. The GitHub issue link above remains the intake for a later
+      agent-authored archive update.
+      {% else %}
+      In source-app mode, the answer-bot can generate an evidence-cited answer when its model
+      key is configured. The public Pages archive does not expose that endpoint. The answers
+      above remain agent-authored, evidence-linked and landed through reviewed changes.
+      {% endif %}
     </p>
   </div>
 </section>

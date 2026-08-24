@@ -209,6 +209,26 @@ pre.superseded, .copywrap pre.superseded { border:1px solid var(--red); }
   .card h2 { font-size:15px; }
   /* wide tables scroll inside their card rather than squashing/overflowing */
   .card table { min-width:520px; }
+  /* The public portfolio is a reading surface, not a diagnostic matrix. Each
+     product becomes one labelled card on a phone so its URL, access boundary,
+     health and notes stay visible without sideways discovery. */
+  .card table.portfolio-table { display:block; min-width:0; }
+  .portfolio-table thead { position:absolute; width:1px; height:1px;
+       padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0);
+       white-space:nowrap; border:0; }
+  .portfolio-table tbody { display:block; }
+  .portfolio-table tr[data-row-id] { display:block; padding:.5rem .65rem;
+       margin:.65rem 0; border:1px solid var(--border); border-radius:6px;
+       background:var(--bg); }
+  .portfolio-table td { display:grid; grid-template-columns:5.6rem minmax(0,1fr);
+       gap:.65rem; width:100%; padding:.42rem 0; border:0 !important; }
+  .portfolio-table td + td { border-top:1px solid #21262d !important; }
+  .portfolio-table td::before { content:attr(data-label); color:var(--dim);
+       font-size:11px; font-weight:600; letter-spacing:.03em;
+       text-transform:uppercase; }
+  .portfolio-table .portfolio-value { min-width:0; overflow-wrap:anywhere; }
+  .portfolio-table .btn { max-width:100%; white-space:normal;
+       overflow-wrap:anywhere; }
   /* …except the /fleet key/value status table, which wraps to fit instead of
      forcing a horizontal scrollbar that clips long monospace values (owner
      ask 2026-07-18). */
@@ -254,8 +274,8 @@ pre.superseded, .copywrap pre.superseded { border:1px solid var(--red); }
       import) — hardcoded railway URLs until the deferred custom-domain call. -#}
   <nav class="fleet" aria-label="SuperBot fleet">Fleet:
     <a href="https://control-plane-production-abb0.up.railway.app" aria-current="page">Control</a> ·
-    <a href="https://botsite-production-cfd7.up.railway.app">Bots</a> ·
-    <a href="https://dashboard-production-a91b.up.railway.app">Dashboard</a> ·
+    <a href="https://superbot-app.up.railway.app">Bots</a> ·
+    <a href="https://superbot-dashboard.up.railway.app">Dashboard</a> ·
     <a href="https://menno420.github.io/websites/">Review</a>
   </nav>
 </footer>

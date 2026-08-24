@@ -242,12 +242,11 @@ def test_fleet_lane_rows_carry_open_status_button(monkeypatch):
 # --------------------------------------------------------------------------- #
 
 
-def test_directory_url_rows_render_button_urlless_rows_do_not(monkeypatch):
+def test_directory_renders_one_live_url_button_per_canonical_product(monkeypatch):
     _offline(monkeypatch)
     with TestClient(app) as c:
         r = c.get("/directory")
     assert r.status_code == 200
-    # committed registry rows with a URL get a .btn link to that URL
-    assert 'class="btn" href="https://' in r.text
-    # URL-less rows keep their honest dash — no dead buttons invented
-    assert "no URL recorded" in r.text
+    assert r.text.count('data-row-id="') == 8
+    assert r.text.count('class="btn" href="https://') == 8
+    assert "no URL recorded" not in r.text

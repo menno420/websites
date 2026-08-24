@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Post-deploy healthcheck: GET /healthz and / on the four live services, plus
+"""Post-deploy healthcheck: GET /healthz and / on the three live Railway services, plus
 the `/fleet` registry live-parse smoke check, the arcade URL drift probe
 (live+download), the tester-task URL liveness guard (open tasks) and the
 release-drift flag (registry blockers vs askverify probes).
@@ -8,10 +8,9 @@ release-drift flag (registry blockers vs askverify probes).
 PROVENANCE / KILL-SWITCH HEADER
   Why:   "Merge = deploy" — each service auto-redeploys on merge to main. This
          is the reusable post-deploy verification habit: one command confirms
-         all four Railway services answer `/healthz` and serve their public
-         `/` with HTTP 200. Beats hand-curling four URLs after every merge.
-         (review joined 2026-07-13 — the service went LIVE 2026-07-12 but the
-         SERVICES table was never extended; gap found by a prior session.)
+         all three Railway services answer `/healthz` and serve their public
+         `/` with HTTP 200. Program Review's Pages archive is browser-crawled
+         separately because it has no process-level `/healthz` endpoint.
   Added: 2026-07-09 (websites hardening pass, PR #19, [D-0015]).
   Trust: DETERMINISTIC (pure stdlib urllib) — but UNVERIFIED as a habit; sanity
          check its verdict against a manual curl a few times before trusting.
@@ -101,15 +100,13 @@ from botsite import (  # noqa: E402  (path setup must run first)
 )
 
 # (label, base URL). Endpoints checked per service: /healthz and / (both expect
-# 200 now that all four are public). The review URL is the canonical fc91
-# deployment in the superbot-websites project (app/config.py
-# SERVICE_DEPLOY_TARGETS + app/data/web_presence.json); the f027 copy is the
-# old reliable-grace "parallel copy" (the consolidation RETIRE target) — not
-# probed here.
+# 200 now that all three Railway sites are public). Program Review is the
+# GitHub Pages archive and remains covered by scripts/smoke_crawl.py rather
+# than a process-level /healthz probe.
 SERVICES = [
     ("control-plane", "https://control-plane-production-abb0.up.railway.app"),
-    ("botsite", "https://botsite-production-cfd7.up.railway.app"),
-    ("dashboard", "https://dashboard-production-a91b.up.railway.app"),
+    ("botsite", "https://superbot-app.up.railway.app"),
+    ("dashboard", "https://superbot-dashboard.up.railway.app"),
     # review retired 2026-08-20: a GitHub Pages static export with no
     # /healthz process — this checker probes RAILWAY services only; the
     # Pages site keeps rendering-layer coverage in scripts/smoke_crawl.py.

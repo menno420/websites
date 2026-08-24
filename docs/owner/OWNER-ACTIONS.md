@@ -131,8 +131,8 @@ VERIFIED-NEEDED: adding a redirect URI + pasting env vars are owner-account acti
 ID: ASK-0003
 WHAT: Provision the scoped bot control-API token and the SEPARATE armed Railway service that will hold it.
 WHERE: railway.app → project superbot-websites → New → Service (a NEW service, per the standing "never mounted on a read-only surface" rule) + the token minted on the bot side (superbot's control-api seam).
-HOW: after Q-0004 and the OAuth app: create the service, set its env per docs/specs/bot-control-api-v1.md §9 (OAuth client id/secret/redirect, session secret, control URL + scoped token). Never reuse the ambient production RAILWAY_*_ID vars (docs/RAILWAY-SAFETY.md); the dashboard service gets NOTHING.
-WHY-IT-MATTERS: the credential boundary is the whole design — the public read-only dashboard stays permanently credential-free, so a compromise of it can never reach the live bot; the power lives in one small gated service you provision knowingly.
+HOW: after Q-0004 and the OAuth app: create the service, set its env per docs/specs/bot-control-api-v1.md §9 (OAuth client id/secret/redirect, session secret, control URL + scoped token). Never reuse the ambient production RAILWAY_*_ID vars (docs/RAILWAY-SAFETY.md); the dashboard keeps only its existing OAuth/session gate and receives no control URL or token.
+WHY-IT-MATTERS: the credential boundary is the whole design — the dashboard's public read views expose no credentials and the service cannot reach the live bot; the power lives in one small gated service you provision knowingly.
 UNBLOCKS: flipping the specified armed path from spec to service; the dashboard's dry-run flows are the exact UX + request contract it will reuse.
 VERIFIED-NEEDED: Railway service creation + secret provisioning are owner account mutations — the Railway-safety policy (`docs/RAILWAY-SAFETY.md` + the deploy decision in the ledger) forbids agent-initiated Railway mutations without your explicit go (the same policy wall as the review-service ask above; not attempted).
 ```
@@ -236,11 +236,11 @@ VERIFIED-NEEDED: PayPal business-account/app creation is owner-held (no agent cr
 ID: ASK-0006
 WHAT: Unlock botsite's owner moderation queue with the fleet-wide Discord login (the same login just shipped on the control-plane, #426) — sign in with your Discord account instead of a password. Optional fallback: set SITE_PASSWORD.
 WHERE: (1) Discord Developer Portal → the SuperBot application → OAuth2 → Redirects; (2) railway.app → project superbot-websites → service botsite → Variables → New Variable.
-HOW: (1) Add the redirect URI `https://botsite-production-cfd7.up.railway.app/owner/auth/callback` and Save. (2) Paste the SAME four variables already on the control-plane service (NAMES only shown here — reuse the identical values from #426): DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, OWNER_DISCORD_ID, OWNER_SESSION_SECRET. Save. Then sign in at `https://botsite-production-cfd7.up.railway.app/owner/login`. Optional fallback path: set SITE_PASSWORD to a value only you know (any username at the Basic prompt) — the queue then also opens without Discord.
+HOW: (1) Add the redirect URI `https://superbot-app.up.railway.app/owner/auth/callback` and Save. (2) Paste the SAME four variables already on the control-plane service (NAMES only shown here — reuse the identical values from #426): DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, OWNER_DISCORD_ID, OWNER_SESSION_SECRET. Save. Then sign in at `https://superbot-app.up.railway.app/owner/login`. Optional fallback path: set SITE_PASSWORD to a value only you know (any username at the Basic prompt) — the queue then also opens without Discord.
 RISK: ↩️ reversible — remove the vars or the redirect URI any time; while neither Discord nor SITE_PASSWORD is set the queue fails closed (503) and the public /testing + /submit pages keep working. SITE_PASSWORD is now optional, not required.
 WHY-IT-MATTERS: one Discord login across the whole fleet (control-plane + botsite); the tester queue and /submit moderation stop being unreachable.
 UNBLOCKS: /testing/owner review queue (approve/reject/mark-paid), the JSON export backup valve, and /submit/queue.json moderation.
-VERIFIED-NEEDED: `https://botsite-production-cfd7.up.railway.app/owner/login` renders "Redirecting to Discord to sign in…" (configured) instead of the "not configured" page; after sign-in `/testing/owner` serves the queue.
+VERIFIED-NEEDED: `https://superbot-app.up.railway.app/owner/login` renders "Redirecting to Discord to sign in…" (configured) instead of the "not configured" page; after sign-in `/testing/owner` serves the queue.
 ```
 
 ### ⚑ Ask added by ORDER 038 (2026-07-19 — dashboard Discord unlock, fleet login unification)
@@ -250,11 +250,11 @@ VERIFIED-NEEDED: `https://botsite-production-cfd7.up.railway.app/owner/login` re
 ID: ASK-0017
 WHAT: Turn on the fleet-wide Discord login for the dashboard admin surface (the same login now on the control-plane and botsite) — sign in with your Discord account to use the dashboard's control actions. Discord-only (dashboard has no SITE_PASSWORD).
 WHERE: (1) Discord Developer Portal → the SuperBot application → OAuth2 → Redirects; (2) railway.app → project superbot-websites → service dashboard → Variables → New Variable.
-HOW: (1) Add the redirect URI `https://dashboard-production-a91b.up.railway.app/admin/auth/callback` and Save. (2) Paste the SAME four variables already on the control-plane + botsite services (NAMES only — reuse the identical values): DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, OWNER_DISCORD_ID, OWNER_SESSION_SECRET. Save. Then sign in at `https://dashboard-production-a91b.up.railway.app/admin/login`.
+HOW: (1) Add the redirect URI `https://superbot-dashboard.up.railway.app/admin/auth/callback` and Save. (2) Paste the SAME four variables already on the control-plane + botsite services (NAMES only — reuse the identical values): DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, OWNER_DISCORD_ID, OWNER_SESSION_SECRET. Save. Then sign in at `https://superbot-dashboard.up.railway.app/admin/login`.
 RISK: ↩️ reversible — remove the vars or the redirect URI any time; while unset the dashboard's read/oversight views stay fully public and only the two dry-run control actions (preview/confirm) are locked (503) until you sign in.
 WHY-IT-MATTERS: one Discord login across the ENTIRE fleet (control-plane + botsite + dashboard); the dashboard's control actions become real, owner-attributed instead of anonymous.
 UNBLOCKS: the dashboard's dry-run control actions (preview/confirm) with real owner attribution in the audit log.
-VERIFIED-NEEDED: `https://dashboard-production-a91b.up.railway.app/admin/login` renders "Redirecting to Discord to sign in…" (configured) instead of the not-configured page; after sign-in the control actions work and the audit log shows "owner (Discord)".
+VERIFIED-NEEDED: `https://superbot-dashboard.up.railway.app/admin/login` renders "Redirecting to Discord to sign in…" (configured) instead of the not-configured page; after sign-in the control actions work and the audit log shows "owner (Discord)".
 ```
 
 **Cross-reference (→ ASK-0006):** this dashboard unlock and the botsite unlock (ASK-0006) share the SAME four Discord/owner values from #426 — the Discord Developer Portal accepts multiple redirect URIs on the one SuperBot app, so both redirect URIs + both variable pastes can be done in a single Railway/Discord-hub sitting.

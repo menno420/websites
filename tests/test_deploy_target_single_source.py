@@ -28,7 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_DIR = REPO_ROOT / "app"
 
 # A full Railway `/version` probe-URL literal, e.g.
-#   https://botsite-production-cfd7.up.railway.app/version
+#   https://superbot-app.up.railway.app/version
 _PROBE_URL_RE = re.compile(r"https?://[\w.-]+\.up\.railway\.app/version")
 
 

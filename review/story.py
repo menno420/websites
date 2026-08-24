@@ -180,7 +180,7 @@ LANDING_PATH: list[tuple[str, str]] = [
     ("Build + verify", "The work itself, plus proof: the full multi-service pytest suite and the kit's strict checker must pass locally before push."),
     ("READY PR", "A real pull request into main. The required quality check runs the whole ceremony: kit gate, session-card gate, safety guards, every service's tests."),
     ("Flip + merge", "The card flips to complete (with the real PR number) as the last code step; CI goes green; squash-merge. Main is always deployable because merge IS the deploy."),
-    ("Deploy + prove", "Railway auto-deploys main. The session verifies live: every service's /version endpoint must equal the new main HEAD (a script polls until converged). 'Pushed' or 'deployed' is never recorded without proof."),
+    ("Deploy + prove", "Main auto-deploys the three Railway services and republishes Review when its static sources change. The session compares each Railway /version to main, then verifies the Pages workflow/routes separately. 'Pushed' or 'deployed' is never recorded without proof."),
     ("Heartbeat", "Final step: overwrite control/status.md — what shipped, health, what's next, anything only the owner can do. The next session, and the manager, read the state from the repo, not from memory."),
 ]
 
@@ -194,14 +194,14 @@ SERVICES: list[dict[str, str]] = [
     {
         "name": "botsite",
         "dir": "botsite/",
-        "url": "https://botsite-production-cfd7.up.railway.app",
+        "url": "https://superbot-app.up.railway.app",
         "desc": "Public marketing/reference site for the owner's Discord bot, rendering the bot repo's committed site.json.",
     },
     {
         "name": "dashboard",
         "dir": "dashboard/",
-        "url": "https://dashboard-production-a91b.up.railway.app",
-        "desc": "Read-only developer dashboard over the bot's committed inventory feeds; its live-bot write panel is a deliberate, labeled stub.",
+        "url": "https://superbot-dashboard.up.railway.app",
+        "desc": "Public read-only dashboard over the bot's committed inventory feeds; its separately OAuth-gated owner panel records dry runs only and has no live-bot control credential.",
     },
     {
         "name": "review",
@@ -645,15 +645,15 @@ def load_questions(path: Path | None = None) -> dict[str, Any]:
 
 # ---------------------------------------------------------------------------
 # The questionnaire — anticipated reviewer questions, answered from the
-# repo's committed evidence. No live model endpoint: the "AI" here is that
-# agent sessions author these answers and keep them current (each landing
+# repo's committed evidence. The public static export has no live model
+# endpoint: agent sessions author these answers (each landing
 # through the same PR ceremony as code). Every answer cites its evidence.
 # ---------------------------------------------------------------------------
 QUESTIONNAIRE: list[dict[str, Any]] = [
     {
         "id": "runaway",
         "q": "How do you prevent runaway agents?",
-        "a": "Three layers, all inspectable. (1) Structural: the deployed services are read-only toward everything they touch — no service holds a credential that can mutate anything beyond a cache refresh, and the genuinely powerful levers (Railway account actions, live-bot control, databases) are deliberately unwired; several are labeled stubs. (2) Enforced: CI carries an enforcing guard that fails any tracked code reading the ambient production-bot Railway IDs, and repo policy forbids agent-initiated Railway mutations without the owner's explicit go — a policy wall agents have honored rather than tested (the pending service creations are queued as owner clicks, not attempted). (3) Ceremonial: every change lands through a branch → session card → PR → required CI gate → squash-merge path, so there is no write path that skips review by the gates. Sessions that CAN'T complete that path (some scheduled wakes lack PR tooling) strand harmlessly and get relayed by sessions that can.",
+        "a": "Three layers, all inspectable. (1) Structural: public oversight/reference views remain read-only toward the bot and repositories. The one public intake writes only to botsite's separate database; owner actions are separately authenticated; Dashboard confirms only in-memory dry runs; no public service holds a production bot-control credential; Review is a static archive. (2) Enforced: CI fails tracked code that reads the ambient production-bot Railway IDs, and repository policy requires explicit owner authority for Railway mutations. (3) Ceremonial: every code change lands through a branch → session card → PR → required CI gate → squash-merge path, so public deployment cannot skip the gates.",
         "evidence": [
             ("docs/RAILWAY-SAFETY.md", blob("docs/RAILWAY-SAFETY.md")),
             ("scripts/check_no_ambient_railway_ids.py (CI guard)", blob("scripts/check_no_ambient_railway_ids.py")),

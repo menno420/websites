@@ -15,8 +15,8 @@ from botsite.tests.test_botsite import FIXTURE
 
 FLEET_HREFS = [
     "https://control-plane-production-abb0.up.railway.app",
-    "https://botsite-production-cfd7.up.railway.app",
-    "https://dashboard-production-a91b.up.railway.app",
+    "https://superbot-app.up.railway.app",
+    "https://superbot-dashboard.up.railway.app",
     "https://menno420.github.io/websites/",
 ]
 

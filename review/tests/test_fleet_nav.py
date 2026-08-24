@@ -15,8 +15,8 @@ client = TestClient(app)
 
 FLEET_HREFS = [
     "https://control-plane-production-abb0.up.railway.app",
-    "https://botsite-production-cfd7.up.railway.app",
-    "https://dashboard-production-a91b.up.railway.app",
+    "https://superbot-app.up.railway.app",
+    "https://superbot-dashboard.up.railway.app",
     # review's SELF-link is root-relative ("/"): the static exporter's
     # base-path pass rewrites it exactly once, where a hardcoded absolute
     # Pages URL was double-prefixed to /websites/websites/ by the host-root

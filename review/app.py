@@ -1,9 +1,10 @@
-"""Program review site — how an owner + Claude-agent fleet ships, told honestly.
+"""Program Review source app — the public historical archive, told honestly.
 
-The FOURTH independent service in the websites repo (alongside control-plane,
-botsite, dashboard — same pattern: own Dockerfile, own requirements, own
-tests, server-rendered FastAPI + Jinja2 on the vendored ``ds/`` design system,
-no build step, no client-side framework).
+This is the fourth product in the websites repo. FastAPI + Jinja2 remain the
+rendering source and local-test surface, but the public site is now the static
+GitHub Pages export produced by ``gen_static.py``. Its former Railway service
+was retired on 2026-08-20; the other three products remain independent Railway
+services.
 
 **Purpose.** Built for Anthropic reviewers looking at how this program runs:
 one human owner who designs and directs but does not code, and a fleet of
@@ -14,18 +15,17 @@ and — deliberately first-class — the problems. Every claim links to committe
 evidence; nothing is marketing prose.
 
 **Data.** Read-only and network-free: the one data source is the committed
-``data/snapshot.json``, baked from the real repo record by ``gen_snapshot.py``
-at build time (the deployed container ships only this folder, so runtime reads
-of git/.sessions/control are impossible by design — see that module's
-docstring). A missing or corrupt snapshot renders an honest banner, never
-invented numbers. Charts are server-rendered inline SVG; geometry is computed
-in the domain layer (``story.py``) so it stays unit-testable. ORDER 017 added
-ONE deliberate exception to the network-free rule: the AI assistant's
-server-side Anthropic API call in ``ai.py`` (nothing else gained network).
+``data/snapshot.json``, baked from the real repo record by ``gen_snapshot.py``.
+The Pages artifact is built entirely from committed files and cannot read
+git/.sessions/control at request time. A missing or corrupt snapshot renders
+an honest banner, never invented numbers. Charts are server-rendered inline
+SVG; geometry is computed in the domain layer (``story.py``) so it stays
+unit-testable. ORDER 017's live AI exception remains only in the retired
+source-app mode; the public export preserves its seeded material as Archived
+answers and makes no model call.
 
-Deploy: a new Railway service in ``superbot-websites`` (Root Directory =
-``review``), own Dockerfile, binds ``0.0.0.0:$PORT`` — queued as an
-⚑ OWNER-ACTION in ``docs/owner/OWNER-ACTIONS.md``.
+Publish: ``review-pages.yml`` runs ``gen_static.py`` and deploys the resulting
+tree to ``https://menno420.github.io/websites/``.
 """
 
 from __future__ import annotations
@@ -89,10 +89,15 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
     # the honest empty default means no drift → no banner.
     rel = fleetdata.load_releases()
     release_drift_entries = [e for e in rel["entries"] if e.get("drift")]
+    static_export = os.environ.get("REVIEW_STATIC_EXPORT", "") == "1"
+    nav = [
+        (key, "Archived answers" if static_export and key == "ask" else label, href)
+        for key, label, href in NAV
+    ]
     return {
         "request": request,
         "active": active,
-        "nav": NAV,
+        "nav": nav,
         "snap_ok": snap["ok"],
         "snap_error": snap["error"],
         "snapshot": snap["data"],
@@ -118,7 +123,7 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
         # the list-filter GET forms/links (server-side query rendering) and
         # the /ask/api widget — and say so, instead of shipping controls that
         # silently no-op on GitHub Pages. Read per-request for testability.
-        "static_export": os.environ.get("REVIEW_STATIC_EXPORT", "") == "1",
+        "static_export": static_export,
         # The anchor the static banner shows: every relative age on an
         # exported page is measured from this moment (Codex #509 round 2).
         "static_built_at": datetime.now(timezone.utc).strftime(

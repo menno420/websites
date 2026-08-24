@@ -1,10 +1,9 @@
 """Review editions — dated, committed program reviews rendered as a section.
 
-The site is a channel for CONTINUOUS review: each edition is one committed
-markdown file under ``data/reviews/`` (shipped inside the Railway
-Root-Directory deploy, like every other data file here), written by an agent
-session from the repo's real record and landed through the normal PR
-ceremony. The publishing ritual + template live in ``review/README.md``.
+Each preserved edition is one committed markdown file under ``data/reviews/``
+(shipped inside the Pages artifact like every other data file here), written
+from the repo's real record and landed through the normal PR ceremony. The
+publishing ritual + template live in ``review/README.md``.
 
 File format — a minimal front-matter header, then markdown:
 

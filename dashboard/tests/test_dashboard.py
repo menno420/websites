@@ -218,6 +218,13 @@ def test_root_is_public_no_auth(client):
     assert "www-authenticate" not in {k.lower() for k in r.headers}
 
 
+def test_root_names_public_read_only_boundary(client):
+    text = client.get("/").text.lower()
+    assert "public read-only dashboard" in text
+    assert "owner actions" in text and "/admin" in text
+    assert "private developer dashboard" not in text
+
+
 # --- consolidation redirects (/games, /reviews) --------------------------
 # The OLD dashboard served /games and /reviews; on this NEW dashboard that
 # content was deliberately RE-HOMED (games -> botsite service, reviews ->
@@ -228,7 +235,7 @@ def test_games_redirects_to_botsite(client):
     r = client.get("/games", follow_redirects=False)
     assert r.status_code == 302
     loc = r.headers["location"]
-    assert "botsite" in loc and loc.endswith("/games")
+    assert loc == "https://superbot-app.up.railway.app/games"
 
 
 def test_reviews_redirects_to_review_static_export(client):
@@ -280,6 +287,18 @@ def test_commands_lists_real_commands(client):
     r = client.get("/commands")
     assert "!daily" in r.text
     assert "!shop buy" in r.text  # subcommand rendered with parent
+
+
+def test_commands_have_page_scoped_mobile_wrap_contract(client):
+    page = client.get("/commands").text
+    css = client.get("/static/site.css").text
+    assert page.count('class="sb-cmdrow command-row"') == 3
+    assert "@media (max-width: 640px)" in css
+    assert ".command-row" in css
+    assert "grid-template-columns: minmax(0, 1fr)" in css
+    assert "overflow-wrap: anywhere" in css
+    assert "white-space: normal" in css
+    assert ".sb-stat .v, .sb-stat .l { display: block; }" in css
 
 
 def test_env_map_shows_names_not_values(client):
@@ -362,10 +381,12 @@ def test_admin_is_honestly_labeled_dry_run(client):
     assert r.status_code == 200
     assert "DRY-RUN" in r.text
     assert "cannot affect the live bot" in r.text.lower()
-    assert "holds no credentials" in r.text.lower()
+    assert "holds no bot-control credentials" in r.text.lower()
+    assert "holds no credentials" not in r.text.lower()
     assert "clears on restart" in r.text.lower()  # audit-log honesty label
-    # The submission-moderation card stays inert, gated on Q5, with its honest tag.
-    assert "requires owner wiring" in r.text.lower()
+    # The submission-moderation card stays inert and names its real botsite home.
+    assert "not connected here" in r.text.lower()
+    assert "owner queue live on botsite" in r.text.lower()
     assert "stub-action" in r.text
 
 
@@ -788,6 +809,25 @@ def test_ideas_status_pills_render_and_bucket_cards():
         assert 'data-filter-pill="shipped"' in r.text
         assert 'data-cat="shipped"' in r.text  # the implemented idea's lane
         assert 'data-cat="open"' in r.text  # the still-open idea's lane
+    ds.clear_cache()
+
+
+def test_ideas_render_one_valid_nonempty_card_per_idea():
+    data = {**DASHBOARD_FIXTURE, "ideas": [
+        {"file": "x.md", "title": "Done thing", "status": "implemented",
+         "date": "2026-07-01", "summary": "Shipped."},
+        {"file": "y.md", "title": "Pending thing", "status": "ideas",
+         "date": "2026-07-02", "summary": "Not yet."},
+    ]}
+    with _client_with_dashboard(data) as c:
+        text = c.get("/ideas").text
+        cards = re.findall(r'<article class="sb-card".*?</article>', text, re.S)
+        assert len(cards) == 2
+        assert all(card.strip() and "data-filter-item" in card for card in cards)
+        assert sum("Done thing" in card for card in cards) == 1
+        assert sum("Pending thing" in card for card in cards) == 1
+        assert text.count("https://github.com/menno420/superbot/blob/main/docs/ideas/") == 2
+        assert '<a class="sb-card"' not in text
     ds.clear_cache()
 
 

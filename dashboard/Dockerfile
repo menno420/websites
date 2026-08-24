@@ -1,8 +1,9 @@
-# Developer dashboard service (private, server-rendered oversight site).
+# Developer dashboard service (public, server-rendered read-only oversight).
 # Railway service: Root Directory = dashboard (build context is this folder), so this
 # Dockerfile sees dashboard/'s contents at its build root. It binds 0.0.0.0:$PORT; env
-# vars are documented in docs/dashboard.md. The service is PUBLIC ([D-0011]) and reads
-# no secret of any kind.
+# vars are documented in docs/dashboard.md. Read views are PUBLIC ([D-0011]); Discord
+# OAuth/session secrets gate only the dry-run owner actions. No production bot-control
+# credential is present.
 FROM python:3.12-slim
 
 WORKDIR /srv

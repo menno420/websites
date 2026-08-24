@@ -57,9 +57,12 @@ SEATS: tuple[str, ...] = tuple(aliases[0] for aliases in START_ORDER)
 # flag it as drift → re-pin it into START_ORDER above. When a new tombstone
 # stub appears it will also flag (rare, human-classified) — the honest signal
 # is "a new dir exists, decide which set it belongs in", never a false green.
+REGISTRY_METADATA_DIRS: frozenset[str] = frozenset({"_inventory"})
+
+
 NON_SEAT_DIRS: frozenset[str] = frozenset(
     {
-        "_inventory",
+        *REGISTRY_METADATA_DIRS,
         "codetool-lab-fable5",
         "codetool-lab-opus4.8",
         "codetool-lab-sonnet5",

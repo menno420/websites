@@ -36,7 +36,7 @@
     <div class="sb-cmdlist">
       {% for c in commands %}
       {% set sys = sysmap.get(c.subsystem) %}
-      <div class="sb-cmdrow" id="cmd-{{ c.name }}" data-filter-item data-cat="{{ sys.category if sys else 'other' }}"
+      <div class="sb-cmdrow command-row" id="cmd-{{ c.name }}" data-filter-item data-cat="{{ sys.category if sys else 'other' }}"
            data-search="{{ c.name }} {{ c.brief }} {{ (c.aliases or [])|join(' ') }} {{ c.subsystem }}"
            style="cursor:default">
         <code>{% if c.parent %}!{{ c.parent }} {{ c.name }}{% else %}!{{ c.name }}{% endif %}</code>

@@ -1,8 +1,7 @@
-"""Fleet-mirror bake for the review service — registry + heartbeats to JSON.
+"""Fleet-mirror bake for the Review archive — registry + heartbeats to JSON.
 
-The review service is network-free at runtime (Railway Root Directory =
-``review`` ships only this folder — see ``gen_snapshot.py`` for the full
-rationale), so everything the fleet pages show must be COMMITTED under
+The public Pages artifact is network-free at request time (see
+``gen_snapshot.py`` for the full rationale), so everything the fleet pages show must be COMMITTED under
 ``review/data/``. This script is the bake half: run it from the repo root
 (any session, or the scheduled ``review-bake`` GitHub Actions workflow) and
 it writes ``review/data/fleet.json``:

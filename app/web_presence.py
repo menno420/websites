@@ -1,4 +1,4 @@
-"""ORDER 021: the web-presence directory — every web surface we own, one page.
+"""ORDER 021: the canonical eight-product live website directory.
 
 Single source of truth is the committed registry ``app/data/web_presence.json``
 (other seats add rows by PR). It is read from disk AT REQUEST TIME (no build
@@ -12,9 +12,6 @@ console:
   target this TTL window; any other HTTP answer is ``degraded (HTTP n)``, a
   network failure is ``down``, and a row with no URL renders an honest
   "nothing to probe" state, never a green badge or a dead button;
-* duplicate rows (the reliable-grace parallel copies of the websites estate,
-  pending OQ-RAILWAY-PROJECT-SPLIT) stay labeled duplicates — the directory
-  must not present them as distinct products;
 * a malformed/unreadable registry degrades to a banner on a 200 page,
   never a 500.
 
@@ -159,7 +156,7 @@ async def overview(refresh: bool = False) -> dict:
     external = [r for r in rows if r.get("section") == "external"]
     unclassified = [r for r in rows if r.get("section") not in ("our-sites", "external")]
 
-    # our-sites grouped by Railway project / estate, registry order preserved.
+    # Canonical products grouped by source repository, registry order preserved.
     groups: list[dict] = []
     by_project: dict[str, dict] = {}
     for r in our_sites:

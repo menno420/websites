@@ -34,7 +34,8 @@ Behavior:
     2. zero console errors / uncaught page errors across BOTH viewports
        (an allowlist of regex patterns exists for known noise — seeded
        EMPTY: the #311 pass ended with zero known-noise errors);
-    3. every discovered same-site link answers non-4xx/5xx (GET, redirects
+    3. Dashboard /commands has no page-level horizontal overflow at mobile;
+    4. every discovered same-site link answers non-4xx/5xx (GET, redirects
        followed; links beyond the crawl cap are status-checked only).
 - Bounded: a per-site page cap and a global wall-clock deadline keep a full
   run well under the 5-minute mark; blowing the deadline is itself a FAILURE
@@ -45,9 +46,10 @@ Behavior:
   inside rendered remote markdown, deterministically samples AT MOST 10
   (sorted + evenly strided — no randomness, no clock), and existence-checks
   each with HEAD (GET fallback), ~5s per request, its own 30s total budget:
-  2xx/3xx PASS; 403 PASSES with a private-repo note (repo privacy, not a
-  rewrite defect — PR #322's live verification); 404 FAILS naming the URL
-  and the page it was collected from; network errors are WARNINGS
+  2xx/3xx PASS; an ambiguous 403 is reported as a warning, never labelled
+  private without evidence; the one path-exact, independently verified private
+  owner destination passes its anonymous masked 404; every other 404 FAILS
+  naming the URL and source page; network errors are WARNINGS
   (environmental), never hard fails.
 
 Container/CI split (docs/CAPABILITIES.md 2026-07-13 entry): in the agent
@@ -76,12 +78,12 @@ import time
 from html import unescape
 from urllib.parse import urldefrag, urljoin, urlsplit
 
-# (label, base URL) — the SAME inventory scripts/healthcheck.py probes: the
-# three public sites + the control-plane root. Keep the two tables in sync.
+# (label, base URL) — the SAME inventory scripts/healthcheck.py probes: three
+# public Railway sites plus the Review Pages archive. Keep the tables in sync.
 SITES = [
     ("control-plane", "https://control-plane-production-abb0.up.railway.app"),
-    ("botsite", "https://botsite-production-cfd7.up.railway.app"),
-    ("dashboard", "https://dashboard-production-a91b.up.railway.app"),
+    ("botsite", "https://superbot-app.up.railway.app"),
+    ("dashboard", "https://superbot-dashboard.up.railway.app"),
     # review is the GitHub Pages static export since 2026-08-20 — same
     # rendering-layer checks, new home (its Railway service is deleted).
     ("review", "https://menno420.github.io/websites"),
@@ -147,6 +149,14 @@ REWRITTEN_LINK_RE = re.compile(
 REWRITTEN_SAMPLE_LIMIT = 10  # at most this many URLs existence-checked per crawl
 REWRITTEN_CHECK_TIMEOUT_SECONDS = 5.0  # per-request budget (HEAD or GET)
 REWRITTEN_CHECK_BUDGET_SECONDS = 30.0  # total added wall-clock for the check
+# GitHub masks private repositories as 404 for anonymous requests. This one
+# path is a verified private owner destination, so keep the exception exact:
+# any other 404, including another path in the same repo, must still fail.
+INTENTIONAL_PRIVATE_REWRITTEN_URLS = frozenset(
+    {
+        "https://github.com/menno420/pokemon-mod-lab/blob/main/control/inbox.md",
+    }
+)
 # Attribute extractor over the serialized DOM (Chromium's page.content() —
 # and bleach before it — emit double-quoted attributes): every <a href> and
 # <img src> on a crawled page.
@@ -224,25 +234,42 @@ def sample_rewritten_links(
     return [(u, min(collected[u])) for u in urls]
 
 
-def classify_rewritten_status(status: int | None) -> str:
+def classify_rewritten_status(status: int | None, url: str = "") -> str:
     """Classify one sampled URL's final HTTP status (redirects followed).
 
     - 2xx/3xx     → ``"pass"``
-    - 403         → ``"pass-private"`` (private repo — repo privacy, not a
-                    rewrite defect; PR #322's live verification)
-    - 404         → ``"fail"`` (the rewrite minted a dead link)
+    - 403         → ``"warn"`` (forbidden/rate-limited is ambiguous; never
+                    claim privacy without path-specific evidence)
+    - 404         → ``"pass-private"`` only for the path-exact, verified
+                    private owner destination; otherwise ``"fail"``
     - None/other  → ``"warn"`` (network error / rate limit — environmental,
                     reported but never a hard fail)
     """
     if status is None:
         return "warn"
     if status == 404:
+        if url in INTENTIONAL_PRIVATE_REWRITTEN_URLS:
+            return "pass-private"
         return "fail"
     if status == 403:
-        return "pass-private"
+        return "warn"
     if 200 <= status < 400:
         return "pass"
     return "warn"
+
+
+def mobile_horizontal_overflow(metrics: dict[str, int], tolerance: int = 1) -> bool:
+    """True when either document surface exceeds the mobile viewport.
+
+    ``documentElement.scrollWidth`` alone is insufficient: the Dashboard's
+    global overflow clipping previously hid a 1,140px body inside a 375px root.
+    """
+    client = int(metrics.get("client_width", 0) or 0)
+    scroll = max(
+        int(metrics.get("body_scroll_width", 0) or 0),
+        int(metrics.get("document_scroll_width", 0) or 0),
+    )
+    return bool(client and scroll > client + tolerance)
 
 
 def _fetch_status(
@@ -286,10 +313,11 @@ def check_rewritten_links(
 ) -> tuple[list[str], list[str]]:
     """Existence-check the sampled rewritten links.
 
-    Returns ``(failures, report_lines)``. Only a 404 fails — and its failure
-    line names both the URL and the crawled page it was collected from; 403
-    passes with the private-repo note; network errors and unclassified
-    statuses are report-only WARNINGs (environmental). The whole check runs
+    Returns ``(failures, report_lines)``. A 404 fails unless its complete URL
+    is the independently verified private owner destination; the failure line
+    names both the URL and the crawled page it was collected from. A generic
+    403 and network errors/unclassified statuses are report-only WARNINGs;
+    none are mislabelled private. The whole check runs
     under its own wall-clock budget so it can never blow the crawl deadline.
     """
     failures: list[str] = []
@@ -306,13 +334,14 @@ def check_rewritten_links(
             )
             break
         status, detail = fetch(url)
-        verdict = classify_rewritten_status(status)
+        verdict = classify_rewritten_status(status, url)
         if verdict == "pass":
             lines.append(f"  PASS  {status}  {url}  (from {source_page})")
         elif verdict == "pass-private":
             lines.append(
-                f"  PASS  403  {url}  (from {source_page}) — private repo: "
-                "repo privacy, not a rewrite defect"
+                f"  PASS  {status}  {url}  (from {source_page}) — verified "
+                "private owner destination: private repo privacy, not a "
+                "rewrite defect"
             )
         elif verdict == "fail":
             lines.append(f"  FAIL  {status}  {url}  (from {source_page})")
@@ -437,6 +466,26 @@ def crawl_site(
             status = resp.status if resp else 0
             if status != 200:
                 failures.append(f"[{label}] {url} [mobile] — HTTP {status} (expected 200)")
+                continue
+            check_mobile_width = label == "botsite" or (
+                label == "dashboard"
+                and urlsplit(url).path.rstrip("/") == "/commands"
+            )
+            if check_mobile_width:
+                metrics = mpage.evaluate(
+                    """() => ({
+                        client_width: document.documentElement.clientWidth,
+                        body_scroll_width: document.body.scrollWidth,
+                        document_scroll_width: document.documentElement.scrollWidth
+                    })"""
+                )
+                if mobile_horizontal_overflow(metrics):
+                    failures.append(
+                        f"[{label}] {url} [mobile] — horizontal overflow: "
+                        f"body {metrics['body_scroll_width']}px, document "
+                        f"{metrics['document_scroll_width']}px, viewport "
+                        f"{metrics['client_width']}px"
+                    )
 
         # ── console verdict (both viewports) ────────────────────────────────
         real_errors = [

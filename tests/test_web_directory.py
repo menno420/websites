@@ -1,12 +1,7 @@
-"""Offline tests for the ORDER 021 web-presence directory (/directory).
+"""Offline tests for the canonical eight-product directory (/directory).
 
-Pins: the three sections render with their seed rows; the reliable-grace
-parallel copies carry the duplicate label (never presented as distinct
-products); the console-home section map links the directory; and liveness is
-NEVER fabricated — a failed probe renders down/degraded, a URL-less row an
-honest absence, a pending-publish row "pending publish", and no green badge
-appears without a real 2xx. Registry contract is pinned so other seats can
-add rows by PR without breaking the page.
+Pins: one exact row and friendly public URL per audited product, explicit
+public/read-only/archive boundaries, and measured liveness only.
 """
 
 import asyncio
@@ -23,29 +18,16 @@ from app.main import app  # noqa: E402
 
 REGISTRY = json.loads(web_presence.REGISTRY_PATH.read_text(encoding="utf-8"))
 
-# Empty since 2026-08-20: the last duplicate rows (the f027 review copy +
-# the menno420/superbot dashboard/botsite parallels) documented Railway
-# services deleted 2026-08-14/20, so the keep-bot-only cutover dropped them
-# from the registry. The set stays as the contract pin — a future row may
-# carry the duplicate label only by being added here in the same PR.
-DUPLICATE_IDS: set[str] = set()
-
-# Seed URLs that must render as links — updated 2026-08-20 with the
-# keep-bot-only cutover: review is the GitHub Pages static export, and the
-# mineverse + duplicate-review rows left the registry with their deleted
-# Railway services.
-SEED_URLS = [
-    "https://menno420.github.io/websites/",
-    "https://control-plane-production-abb0.up.railway.app",
-    "https://botsite-production-cfd7.up.railway.app",
-    "https://dashboard-production-a91b.up.railway.app",
-]
-
-# The two arcade games flipped live 2026-07-18 (#428): the /directory registry
-# now records real URLs for both (was pending-publish / url:null). Lumen Drift is
-# the direct .gba release asset; games-web is its live GitHub Pages deploy.
-LUMEN_DRIFT_GBA_URL = "https://github.com/menno420/gba-homebrew/releases/download/lumen-drift-v1.3/lumen-drift.gba"
-GAMES_WEB_URL = "https://menno420.github.io/product-forge/"
+CANONICAL_PRODUCTS = {
+    "control-plane": "https://control-plane-production-abb0.up.railway.app/",
+    "superbot": "https://superbot-app.up.railway.app/",
+    "superbot-dashboard": "https://superbot-dashboard.up.railway.app/",
+    "program-review": "https://menno420.github.io/websites/",
+    "product-forge": "https://menno420.github.io/product-forge/",
+    "couch-legend": "https://menno420.github.io/couch-legend/",
+    "gba-homebrew": "https://menno420.github.io/gba-homebrew/",
+    "curious-research": "https://menno420.github.io/curious-research/",
+}
 
 
 def _result(url, status, ok, error=""):
@@ -70,51 +52,38 @@ def _probes_down(monkeypatch):
 # --- the page -----------------------------------------------------------
 
 
-def test_directory_renders_three_sections_with_seeds(monkeypatch):
+def test_directory_renders_canonical_eight_with_friendly_urls(monkeypatch):
     _probes_up(monkeypatch)
     with TestClient(app) as c:
         r = c.get("/directory")
     assert r.status_code == 200
-    # the three sections
-    assert ">our sites</h2>" in r.text
-    assert ">external business surfaces</h2>" in r.text
+    assert ">live portfolio</h2>" in r.text
     assert ">health</h2>" in r.text
-    # our-sites seeds: every verified URL is a real link
-    for url in SEED_URLS:
+    assert r.text.count('data-row-id="') == 8
+    for product_id, url in CANONICAL_PRODUCTS.items():
+        assert f'data-row-id="{product_id}"' in r.text
         assert f'href="{url}"' in r.text
-    # URL-less real surfaces render honestly (no dead buttons, no invented URL)
-    assert "superbot worker (the real bot)" in r.text
-    assert "superbot live control panel" in r.text
-    assert "no URL recorded" in r.text
-    # project grouping (the corrected 2026-07-12 fleet inventory)
-    for project in ("superbot-websites", "reliable-grace"):
+    for project in ("websites", "product-forge", "couch-legend",
+                    "gba-homebrew", "curious-research"):
         assert f"<h3>{project}</h3>" in r.text
-    # external seeds: venture-lab x3 (still pending) + Lumen Drift + games-web
-    # (both flipped live 2026-07-18, #428)
-    for title in ("venture-lab product 1", "venture-lab product 2",
-                  "venture-lab product 3", "Lumen Drift", "games-web arcade"):
-        assert title in r.text
-    # the two arcade games now render their real live links, and the stale
-    # "one owner click to publish" pending blurb is gone
-    assert f'href="{LUMEN_DRIFT_GBA_URL}"' in r.text
-    assert f'href="{GAMES_WEB_URL}"' in r.text
-    assert "lumen-drift-v1.3 GitHub Release needs one owner click" not in r.text
-    # the venture-lab storefront rows are still honestly pending
-    assert "owner creates the storefront listing" in r.text
+    assert "Public read-only; owner actions in /admin are Discord-gated." in r.text
+    assert "Public archive; the retired live assistant" in r.text
+    assert "phase-1 RPG mining character-sheet demo over two mock characters" in r.text
+    assert "external business surfaces" not in r.text
+    assert "pending publish" not in r.text
+    assert "no URL recorded" not in r.text
+    # Phone-width rendering exposes every field as a labelled product card;
+    # the public URL is not hidden behind a five-column sideways scroll.
+    assert '<table class="portfolio-table">' in r.text
+    assert r.text.count('data-label="public URL"') == 8
+    assert ".card table.portfolio-table { display:block; min-width:0; }" in r.text
+    assert ".portfolio-table .portfolio-value { min-width:0; overflow-wrap:anywhere; }" in r.text
     # the registry file is named on the page (single source of truth)
     assert "app/data/web_presence.json" in r.text
 
 
-def test_duplicates_carry_the_duplicate_label(monkeypatch):
-    """Since 2026-08-20 no duplicate rows remain (their Railway services
-    were deleted); the label machinery stays pinned to the (empty) set so
-    a reintroduced duplicate must declare itself in DUPLICATE_IDS."""
-    _probes_up(monkeypatch)
-    with TestClient(app) as c:
-        r = c.get("/directory")
-    assert r.status_code == 200
-    assert r.text.count('data-status="duplicate"') == len(DUPLICATE_IDS)
-    assert "duplicate (pending consolidation)" not in r.text
+def test_registry_is_exactly_the_canonical_eight():
+    assert {s["id"]: s["url"] for s in REGISTRY["sites"]} == CANONICAL_PRODUCTS
 
 
 def test_probe_success_shows_live_with_as_of(monkeypatch):
@@ -135,32 +104,25 @@ def test_probe_failure_renders_honest_state_never_a_green_badge(monkeypatch):
     assert 'data-health="live"' not in r.text
     assert 'data-health="down"' in r.text
     assert "probe refused (offline test)" in r.text
-    # unprobeable rows keep their own honest states (not "down", not "live")
-    assert 'data-health="pending"' in r.text
-    assert 'data-health="no-url"' in r.text
+    assert r.text.count('data-health="down"') >= 8
+    assert 'data-health="pending"' not in r.text
+    assert 'data-health="no-url"' not in r.text
 
 
-def test_pending_publish_rows_are_never_probed(monkeypatch):
+def test_only_the_eight_canonical_urls_are_probed(monkeypatch):
     calls = []
 
     async def fake_get(url, refresh=False, raw=False, follow_redirects=False):
-        calls.append(url)
+        calls.append((url, follow_redirects))
         return _result(url, 200, True)
 
     monkeypatch.setattr(github, "_get", fake_get)
     with TestClient(app) as c:
         r = c.get("/directory")
     assert r.status_code == 200
-    # only rows with a recorded URL and probe:true were fetched
-    probeable = {s["url"] for s in REGISTRY["sites"]
-                 if s.get("url") and s.get("probe")}
-    assert set(calls) == probeable
-    # every pending-publish external row shows "pending publish" (the venture-lab
-    # storefront seeds; Lumen Drift + games-web flipped live 2026-07-18, #428, so
-    # they are no longer pending)
-    pending_external = [s for s in REGISTRY["sites"]
-                        if s["section"] == "external" and s["status"] == "pending-publish"]
-    assert r.text.count('data-health="pending"') == len(pending_external)
+    assert {url for url, _follow in calls} == set(CANONICAL_PRODUCTS.values())
+    assert len(calls) == 8
+    assert all(follow for _url, follow in calls)
 
 
 def test_degraded_is_not_live(monkeypatch):
@@ -245,9 +207,9 @@ def test_registry_rows_honor_the_schema():
     assert len(ids) == len(set(ids)), "row ids must be unique"
     for s in sites:
         for field in ("id", "title", "section", "kind", "description",
-                      "status", "notes"):
+                      "access", "status", "notes"):
             assert s.get(field) is not None, f"{s.get('id')}: missing {field}"
-        assert s["section"] in ("our-sites", "external")
+        assert s["section"] == "our-sites"
         assert s["status"] in web_presence.KNOWN_STATUSES
         if s.get("probe"):
             assert s.get("url"), f"{s['id']}: probe:true requires a url"
@@ -255,15 +217,8 @@ def test_registry_rows_honor_the_schema():
             assert s.get("project") in REGISTRY["projects"], (
                 f"{s['id']}: our-sites rows carry a known project"
             )
-    dup_rows = {s["id"]: s for s in sites if s["status"] == "duplicate"}
-    assert set(dup_rows) == DUPLICATE_IDS
-    for s in dup_rows.values():
-        assert s.get("duplicate_of") in set(ids), (
-            f"{s['id']}: duplicate_of must reference an existing row"
-        )
-    for s in sites:
-        if s["status"] == "pending-publish":
-            assert s.get("unblocked_by"), f"{s['id']}: pending rows say what unblocks them"
+    assert len(sites) == 8
+    assert all(s["status"] == "live-service" and s["probe"] for s in sites)
 
 
 def test_registry_content_is_autoescaped(monkeypatch):
@@ -281,6 +236,7 @@ def test_registry_content_is_autoescaped(monkeypatch):
             "project": "p",
             "kind": "<img src=x onerror=alert(1)>",
             "description": "desc",
+            "access": "Public.",
             "status": "url-unrecorded",
             "notes": "<b>notes</b>",
             "probe": False,

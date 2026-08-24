@@ -19,10 +19,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import github  # noqa: E402
 from app.main import app  # noqa: E402
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 FLEET_HREFS = [
     "https://control-plane-production-abb0.up.railway.app",
-    "https://botsite-production-cfd7.up.railway.app",
-    "https://dashboard-production-a91b.up.railway.app",
+    "https://superbot-app.up.railway.app",
+    "https://superbot-dashboard.up.railway.app",
     "https://menno420.github.io/websites/",
 ]
 
@@ -46,3 +48,13 @@ def test_footer_fleet_strip_links_all_four_services(client):
         assert f'href="{href}"' in html, f"missing fleet link: {href}"
     # this service (control-plane) is the current one — marked, not just listed
     assert 'aria-current="page"' in html
+
+
+def test_current_owner_docs_use_friendly_oauth_callback_hosts():
+    owner_actions = (REPO_ROOT / "docs/owner/OWNER-ACTIONS.md").read_text(encoding="utf-8")
+    closeout = (REPO_ROOT / "docs/PROJECT-CLOSEOUT.md").read_text(encoding="utf-8")
+    current = owner_actions + closeout
+    assert "https://superbot-app.up.railway.app/owner/auth/callback" in current
+    assert "https://superbot-dashboard.up.railway.app/admin/auth/callback" in current
+    assert "botsite-production-cfd7.up.railway.app/owner/auth/callback" not in current
+    assert "dashboard-production-a91b.up.railway.app/admin/auth/callback" not in current

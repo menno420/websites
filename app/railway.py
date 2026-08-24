@@ -2,8 +2,8 @@
 
 Executes slice 1 of the owner-directed plan
 ``docs/planning/live-env-visibility-plan-2026-07-11.md`` (ORDER 015): show
-what is configured where across the four Railway services, live where
-possible, honest where not.
+what is configured across the three live Railway services plus the retired
+Review service record, live where possible, honest where not.
 
 Two data halves, deliberately separated:
 
@@ -134,7 +134,7 @@ SERVICES: list[dict[str, Any]] = [
         "package": "botsite/",
         "dockerfile": "botsite/Dockerfile",
         "requirements": "botsite/requirements.txt",
-        "url": "https://botsite-production-cfd7.up.railway.app",
+        "url": "https://superbot-app.up.railway.app",
         "self": False,
         "env_vars": [
             _var("SITE_JSON_URL", "committed site.json content source (raw.githubusercontent)"),
@@ -167,7 +167,7 @@ SERVICES: list[dict[str, Any]] = [
         "package": "dashboard/",
         "dockerfile": "dashboard/Dockerfile",
         "requirements": "dashboard/requirements.txt",
-        "url": "https://dashboard-production-a91b.up.railway.app",
+        "url": "https://superbot-dashboard.up.railway.app",
         "self": False,
         "env_vars": [
             _var("DASHBOARD_JSON_URL", "committed dashboard.json data source (raw.githubusercontent)"),
@@ -177,7 +177,7 @@ SERVICES: list[dict[str, Any]] = [
             _var("DATA_CACHE_TTL_SECONDS", "data cache TTL (default 180)"),
             _var("SUPERBOT_REPO", "upstream repo for committed JSON (default menno420/superbot)"),
             _var("SUPERBOT_REF", "upstream ref (default main)"),
-            _var("BOTSITE_GAMES_URL", "consolidation-redirect target for /games — the re-homed games surface on the botsite service (optional; default botsite-production-cfd7/games — env-overridable for cutover)"),
+            _var("BOTSITE_GAMES_URL", "consolidation-redirect target for /games — the botsite service (optional; default superbot-app/games)"),
             _var("REVIEW_REVIEWS_URL", "consolidation-redirect target for /reviews — the re-homed reviews surface (optional; default menno420.github.io/websites/reviews/ since the 2026-08-20 static-export cutover — env-overridable)"),
             _var("DISCORD_CLIENT_ID", "Discord OAuth owner login — client id, reused from the existing SuperBot Discord app (dashboard/discord_auth.py; ORDER 038; unset → /admin/login says not-configured and the admin actions stay locked — Discord-only, no SITE_PASSWORD)"),
             _var("DISCORD_CLIENT_SECRET", "Discord OAuth owner login — client secret from the SuperBot app (dashboard/discord_auth.py; ORDER 038; name only, never a value)"),

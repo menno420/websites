@@ -5,19 +5,18 @@
 {% block content %}
 <div class="wrap">
   <section class="sb-page-hero">
-    <span class="sb-ey"><span class="dot">·</span> service status</span>
-    <div class="head-row"><h1>System status</h1></div>
-    <p class="sb-lead">An honest snapshot of the subsystems, as of the last deploy. This page
-      does not invent uptime percentages or incident history — it reflects the areas the bot
-      ships and its build provenance.</p>
+    <span class="sb-ey"><span class="dot">·</span> data / build snapshot</span>
+    <div class="head-row"><h1>Bot data snapshot</h1></div>
+    <p class="sb-lead">A dated inventory of the command areas in SuperBot's committed public
+      data. This is not a live uptime check and makes no claim about the running bot,
+      Discord connection, database, or current incidents.</p>
   </section>
 
   <div class="section-sm">
-    <div class="sb-status-banner" style="--c:var(--sb-ok)">
-      <span class="sb-pulse" aria-hidden="true"></span>
+    <div class="sb-status-banner" style="--c:var(--sb-brand)">
       <div>
-        <strong>All systems operational</strong>
-        <span class="sub">As of build
+        <strong>Committed inventory snapshot</strong>
+        <span class="sub">Generated from build
           {% if build.commit %}<a href="https://github.com/menno420/superbot/commit/{{ build.commit }}" target="_blank" rel="noopener">{{ build.commit[:8] }}</a>{% else %}(unknown){% endif %}
           {% if build.committed_at %}· {{ build.committed_at }}{% endif %}
         </span>
@@ -35,12 +34,12 @@
               <div class="sb-sys-desc">{{ s.desc }}</div>
             </div>
           </div>
-          <span class="sb-sys-state" style="color:var(--sb-ok)">{{ icon("check", 13) }} operational</span>
+          <span class="sb-sys-state">included in snapshot</span>
         </div>
       </div>
       {% endfor %}
     </div>
-    <p class="eyebrow-note" style="margin-bottom:40px">Status is stated as of the last deploy, not live-probed — the site is decoupled from the running bot by design.</p>
+    <p class="eyebrow-note" style="margin-bottom:40px">Not a live uptime check. The site reads a committed data export and is deliberately decoupled from the running bot.</p>
   </div>
 </div>
 {% endblock %}

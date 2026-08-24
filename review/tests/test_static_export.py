@@ -165,7 +165,30 @@ def test_static_ask_replaces_the_widget_with_the_retirement_notice(static_client
     assert 'fetch("/ask/api"' not in r.text
     assert 'id="btn-ask"' not in r.text
     # the seeded answers stay — the surviving surface
-    assert "Seeded answers" in r.text
+    assert "Archived answers" in r.text
+    assert "Talk to the record" not in r.text
+    assert "The live model handles" not in r.text
+
+
+def test_static_archive_language_is_consistent_across_navigation(static_client):
+    home = static_client.get("/").text
+    ask = static_client.get("/ask").text
+    questionnaire = static_client.get("/questionnaire").text
+    assert "Archived answers" in home
+    assert 'href="/ask">Browse archived answers</a>' in home
+    assert "Ask the project / Review with an AI" not in home
+    assert 'href="/ask">Archived answers</a>' in home
+    assert "Archived answers" in ask
+    assert "Ask AI" not in ask
+    assert "Talk to the record" not in ask
+    assert "Archived answers" in questionnaire
+    assert "deliberately not built" not in questionnaire
+    assert "this static archive does not accept new questions" not in questionnaire
+    assert "issues/new" in questionnaire
+    assert "GitHub issue link above remains the intake" in questionnaire
+    assert "no service holds a credential" not in questionnaire
+    assert "separate database" in questionnaire
+    assert "in-memory dry runs" in questionnaire
 
 
 def test_live_ask_keeps_the_widget(live_client):

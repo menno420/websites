@@ -18,8 +18,8 @@ follow-redirects code under test) and pin the contract BOTH ways:
   contract `app/askverify.py`'s Discord-login probes depend on (they read the
   bare 302 status itself as the "configured" signal) is preserved.
 
-A final `overview()` integration test asserts a redirect-hosted download row
-renders `data-health="live"`, not degraded.
+A final `overview()` integration test asserts a canonical portfolio URL that
+redirects during the test still renders health `live`, not degraded.
 """
 
 from __future__ import annotations
@@ -37,6 +37,7 @@ from app import github, web_presence  # noqa: E402
 
 RELEASE_URL = "https://github.com/menno420/gba-homebrew/releases/download/lumen-drift-v1.3/lumen-drift.gba"
 CDN_URL = "https://cdn.example.net/objects/lumen-drift.gba"
+DIRECTORY_URL = "https://menno420.github.io/product-forge/"
 
 
 @pytest.fixture(autouse=True)
@@ -105,18 +106,18 @@ def test_302_stays_302_by_default_preserving_the_askverify_signal():
 # --- /directory overview integration -------------------------------------------
 
 
-def test_directory_overview_renders_redirect_hosted_download_as_live():
+def test_directory_overview_follows_redirects_for_canonical_product_urls():
     """End-to-end through web_presence.overview: with the probe following
     redirects, the Lumen Drift .gba row (302 → CDN 200) reports health 'live'."""
     def handler(req: httpx.Request) -> httpx.Response:
-        if str(req.url) == RELEASE_URL:
+        if str(req.url) == DIRECTORY_URL:
             return httpx.Response(302, headers={"location": CDN_URL})
         return httpx.Response(200, text="ok")
 
     _install(handler)
     data = asyncio.run(web_presence.overview())
     rows = data["our_sites"] + data["external"]
-    lumen = next(r for r in rows if r.get("id") == "lumen-drift")
-    assert lumen.get("probe") is True  # the committed registry row is probed now
-    assert lumen["health"]["state"] == "live"
-    assert lumen["health"]["detail"] == "HTTP 200"
+    product = next(r for r in rows if r.get("id") == "product-forge")
+    assert product.get("probe") is True
+    assert product["health"]["state"] == "live"
+    assert product["health"]["detail"] == "HTTP 200"

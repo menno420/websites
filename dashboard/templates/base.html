@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>{% block title %}SuperBot — developer dashboard{% endblock %}</title>
-<meta name="description" content="{% block description %}Private developer dashboard for the SuperBot Discord bot — read-only oversight of functions, commands, settings, access, env-map, ideas, and bugs.{% endblock %}">
+<meta name="description" content="{% block description %}Public read-only dashboard for the SuperBot Discord bot — oversight of functions, commands, settings, access, env-map, ideas, and bugs. Owner actions are separately gated in /admin.{% endblock %}">
 {# Set the theme before first paint to avoid a flash (ds.js persists the choice). #}
 <script>
   (function () {
@@ -90,14 +90,14 @@
 
 <footer class="sb-footer">
   <div class="sb-wrap-wide sb-footer-in">
-    <span>SuperBot — private developer dashboard.</span>
-    <span class="sb-muted">Read-only. Data from superbot <code>dashboard.json</code>.</span>
+    <span>SuperBot — public read-only dashboard.</span>
+    <span class="sb-muted">Owner actions in <code>/admin</code> are separately gated.</span>
     {#- Fleet strip: cross-service nav. URLs vendored per service (NO cross-service
         import) — hardcoded railway URLs until the deferred custom-domain call. -#}
     <nav class="sb-fleet sb-muted" aria-label="SuperBot fleet">Fleet:
       <a href="https://control-plane-production-abb0.up.railway.app">Control</a> ·
-      <a href="https://botsite-production-cfd7.up.railway.app">Bots</a> ·
-      <a href="https://dashboard-production-a91b.up.railway.app" aria-current="page">Dashboard</a> ·
+      <a href="https://superbot-app.up.railway.app">Bots</a> ·
+      <a href="https://superbot-dashboard.up.railway.app" aria-current="page">Dashboard</a> ·
       <a href="https://menno420.github.io/websites/">Review</a>
     </nav>
     <span class="right">

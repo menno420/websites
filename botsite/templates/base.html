@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}SuperBot — a Discord bot for your server{% endblock %}</title>
-<meta name="description" content="{% block description %}SuperBot: {{ counts.commands }} commands across {{ counts.features }} features and {{ counts.games }} games. The public reference for the SuperBot Discord bot.{% endblock %}">
+<meta name="description" content="{% block description %}SuperBot: {{ counts.distinct_command_names }} distinct command names from {{ counts.command_registry_entries }} registry entries, across {{ counts.features }} features and {{ counts.games }} games.{% endblock %}">
 {# Set the theme before first paint to avoid a flash (ds.js persists the choice). #}
 <script>
   (function () {
@@ -41,11 +41,17 @@
     <button class="sb-iconbtn sb-searchbtn" data-palette-open aria-label="Search the site">
       {{ icon("search", 15) }}<kbd class="sb-kbd">⌘K</kbd>
     </button>
-    <button class="sb-iconbtn" data-theme-toggle aria-label="Toggle theme" aria-pressed="false"></button>
+    <button class="sb-iconbtn sb-themebtn" data-theme-toggle aria-label="Toggle theme" aria-pressed="false"></button>
     <a class="sb-btn sb-btn-primary sb-btn-sm" href="{{ add_url }}" target="_blank" rel="noopener">Add to Discord</a>
     <button class="sb-iconbtn sb-menubtn" data-menu-toggle aria-expanded="false" aria-controls="sb-drawer" aria-label="Open menu"></button>
   </div>
   <div class="sb-drawer" id="sb-drawer" data-drawer>
+    <div class="sb-drawer-tools" aria-label="Site tools">
+      <button class="sb-iconbtn sb-drawer-search" data-palette-open aria-label="Search the site">
+        {{ icon("search", 15) }}<span>Search</span>
+      </button>
+      <button class="sb-iconbtn sb-drawer-theme" data-theme-toggle aria-label="Toggle theme" aria-pressed="false"></button>
+    </div>
     {% for id, label, href in nav %}
     <a class="sb-nav-link" href="{{ href }}"{% if active == id %} aria-current="page"{% endif %}>{{ label }}</a>
     {% endfor %}
@@ -80,8 +86,8 @@
         import) — hardcoded railway URLs until the deferred custom-domain call. -#}
     <nav class="sb-fleet sb-muted" aria-label="SuperBot fleet">Fleet:
       <a href="https://control-plane-production-abb0.up.railway.app">Control</a> ·
-      <a href="https://botsite-production-cfd7.up.railway.app" aria-current="page">Bots</a> ·
-      <a href="https://dashboard-production-a91b.up.railway.app">Dashboard</a> ·
+      <a href="https://superbot-app.up.railway.app" aria-current="page">Bots</a> ·
+      <a href="https://superbot-dashboard.up.railway.app">Dashboard</a> ·
       <a href="https://menno420.github.io/websites/">Review</a>
     </nav>
     <span class="right">

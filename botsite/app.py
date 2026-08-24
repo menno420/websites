@@ -6,16 +6,16 @@ substrate — FastAPI + Jinja2, server-rendered, no build step — from superbot
 ``botsite/``: same ideas and functionality, fresh implementation on the shared ``ds/``
 design system.
 
-Data: the committed public subset ``site.json``, fetched live from the superbot repo
-over raw.githubusercontent.com (``data_source``). This app **never imports bot code**
-and holds **no secret** — it is the public, secret-free marketing surface. The future
-gated control panel is a *separate service*, never a router mounted here.
+Data: the committed public subset ``site.json``, fetched from the superbot repo over
+raw.githubusercontent.com (``data_source``). This app **never imports bot code** and
+holds no production bot-control credential. Public reference views stay open; the
+owner moderation/testing routes are separately OAuth/password-gated.
 
-``/submit`` ships its form; the DB write path is a clearly-labeled stub until the
-submissions Postgres is provisioned (owner-deferred question Q5 in the plan).
+``/submit`` persists to the service's durable Postgres ``DATABASE_URL`` in production
+(SQLite in local/tests) and issues an opaque public status reference.
 
-Deploy: a new Railway service in ``superbot-websites`` (Root Directory = ``botsite``),
-own Dockerfile, binds ``0.0.0.0:$PORT``. See ``botsite/README.md`` and
+Deploy: the live Railway service in ``superbot-websites`` (Root Directory = ``botsite``)
+uses its own Dockerfile and binds ``0.0.0.0:$PORT``. See ``botsite/README.md`` and
 ``docs/botsite.md``.
 """
 
@@ -192,7 +192,7 @@ async def commands(request: Request):
     res = await ds.fetch_site(refresh=_refresh(request))
     site = res.get("data", {}) or {}
     ctx = _base_ctx(request, "commands", res)
-    ctx.update({"commands": ds.commands(site), "categories": ds.present_categories(site)})
+    ctx.update({"commands": ds.commands(site), "categories": ds.command_categories(site)})
     return templates.TemplateResponse(request, "commands.html", ctx)
 
 

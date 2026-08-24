@@ -1,8 +1,7 @@
-"""Release-drift bake for the review service — expected vs. live release tags.
+"""Release-drift bake for the Review archive — expected vs. live release tags.
 
-The review service is network-free at runtime (Railway Root Directory =
-``review`` ships only this folder — see ``gen_snapshot.py`` for the full
-rationale), so everything the pages show must be COMMITTED under
+The public Pages artifact is network-free at request time (see
+``gen_snapshot.py`` for the full rationale), so everything it shows is COMMITTED under
 ``review/data/``. This script is the bake half: run it from the repo root
 (any session, or a scheduled bake) and it writes ``review/data/releases.json``.
 

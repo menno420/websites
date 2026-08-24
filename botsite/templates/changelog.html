@@ -16,7 +16,7 @@
   <section class="section-sm">
     <div class="sb-panel" style="--c:var(--sb-brand)">
       <div class="sb-sec-head">
-        <h3>Latest build</h3>
+        <h3>Snapshot build</h3>
         {% if changelog_ctx.committed_at %}<span class="eyebrow-note">{{ changelog_ctx.committed_at }}</span>{% endif %}
       </div>
       {% if changelog_ctx.subject %}<p class="sb-lead" style="margin:0 0 14px">{{ changelog_ctx.subject }}</p>{% endif %}
@@ -24,7 +24,8 @@
         <div class="sb-kv"><dt>Build</dt><dd>
           <a class="sb-mono" href="https://github.com/menno420/superbot/commit/{{ changelog_ctx.commit }}" target="_blank" rel="noopener">{{ changelog_ctx.commit[:8] }} {{ icon("external", 12) }}</a>
         </dd></div>
-        <div class="sb-kv"><dt>Commands</dt><dd>{{ changelog_ctx.commands }}</dd></div>
+        <div class="sb-kv"><dt>Registry entries</dt><dd>{{ changelog_ctx.command_registry_entries }}</dd></div>
+        <div class="sb-kv"><dt>Distinct names</dt><dd>{{ changelog_ctx.distinct_command_names }}</dd></div>
         <div class="sb-kv"><dt>Features</dt><dd>{{ changelog_ctx.features }}</dd></div>
         <div class="sb-kv"><dt>Games</dt><dd>{{ changelog_ctx.games }}</dd></div>
       </dl>

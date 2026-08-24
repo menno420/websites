@@ -213,7 +213,9 @@ def _sweep() -> tuple[list[tuple[str, str]], list[tuple[tuple[str, str], str]]]:
     names: list[tuple[str, str]] = []
     dynamic: list[tuple[tuple[str, str], str]] = []
     for path in _service_sources():
-        rel = str(path.relative_to(REPO_ROOT))
+        # Stable across Windows and CI: allowlist keys and service prefixes use
+        # repository-style forward slashes, never host-native separators.
+        rel = path.relative_to(REPO_ROOT).as_posix()
         result = scan_module(path.read_text(encoding="utf-8"), rel)
         names.extend(result["names"])
         dynamic.extend(result["dynamic"])
