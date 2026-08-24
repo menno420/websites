@@ -137,6 +137,21 @@ def test_phone_nav_keeps_primary_action_and_moves_tools_into_drawer(client):
     assert ".sb-menubtn { flex: none; }" in css
 
 
+def test_phone_command_rows_wrap_without_dropping_name_summary_or_status(client):
+    page = client.get("/commands").text
+    site_css = client.get("/static/site.css").text
+    component_css = client.get("/static/ds/components.css").text
+    assert 'class="sb-cmdrow cmd-index-row"' in page
+    assert ".cmd-index-row { display: grid; grid-template-columns: minmax(0, 1fr) auto;" in site_css
+    assert "column-gap: 8px; row-gap: 4px; padding: 10px 12px;" in site_css
+    assert ".cmd-index-row > code { grid-column: 1; grid-row: 1; min-width: 0;" in site_css
+    assert "white-space: normal; overflow-wrap: anywhere;" in site_css
+    assert ".cmd-index-row > .desc { grid-column: 1 / -1; grid-row: 2; min-width: 0;" in site_css
+    assert "white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" in site_css
+    assert ".sb-cmdrow .cmd-meta .sb-badge-neutral { display: none; }" in component_css
+    assert ".sb-cmdrow .end .sb-badge-neutral" not in component_css
+
+
 def test_home_shows_real_counts(client):
     r = client.get("/")
     assert ">2<" in r.text  # feature count from the fixture

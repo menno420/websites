@@ -10,11 +10,11 @@
 {% macro render_node(node_id, tree, depth=0) %}
 {% set node = tree.nodes[node_id] %}
 {% if node.question is defined or node.options is defined %}
-<details class="apc-node"{% if depth == 0 %} open{% endif %} style="margin:10px 0;padding:10px 14px;border:1px solid var(--sb-line-2);border-radius:var(--sb-r-md);background:var(--sb-surface-soft)">
+<details class="apc-node"{% if depth == 0 %} open{% endif %}>
   <summary style="cursor:pointer;font-weight:600">{{ node.question }}</summary>
   {% if node.context %}<p class="sb-muted" style="margin:8px 0 0;font-size:var(--sb-text-sm)">{{ node.context }}</p>{% endif %}
   {% for opt in node.options %}
-  <details class="apc-opt" style="margin:8px 0 8px 16px;padding:8px 12px;border-left:2px solid var(--sb-line-2)">
+  <details class="apc-opt">
     <summary style="cursor:pointer">→ {{ opt.label }}</summary>
     {{ render_node(opt.next, tree, depth + 1) }}
   </details>
@@ -27,7 +27,7 @@
   {% if node.error %}<p class="sb-mono apc-error" style="margin:10px 0 0;padding:10px 12px;border:1px solid var(--sb-line-2);border-radius:var(--sb-r-sm);background:var(--sb-surface);overflow-x:auto">{{ node.error }}</p>{% endif %}
   <p style="margin:10px 0 0"><strong>Fix:</strong> {{ node.fix }}</p>
   <p class="sb-muted apc-sources" style="margin:10px 0 0;font-size:var(--sb-text-xs)">Cited:
-    {% for s in node.sources %}<span class="sb-mono">{{ s }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+    {% for s in node.sources %}<span class="sb-mono sb-break-anywhere">{{ s }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</p>
 </div>
 {% endif %}
 {% endmacro %}
@@ -91,7 +91,7 @@
       <p class="sb-muted" style="margin:0;font-size:var(--sb-text-xs)">
         {{ tree.meta.title }} — curated from verified fleet findings as of {{ tree.meta.as_of }} ·
         committed JSON (<span class="sb-mono">botsite/data/agent_pr_tree.json</span>), no live fetch ·
-        sources: {% for s in tree.meta.sources %}<span class="sb-mono">{{ s }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+        sources: {% for s in tree.meta.sources %}<span class="sb-mono sb-break-anywhere">{{ s }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
       </p>
     </div>
   </section>

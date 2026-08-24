@@ -173,6 +173,27 @@ def test_provenance_footer_shows_sources_and_as_of(client):
         assert source in text
 
 
+def test_phone_tree_wraps_sources_and_collapses_recursive_indent(client):
+    page = client.get("/agent-pr-check").text
+    css = client.get("/static/site.css").text
+    components = client.get("/static/ds/components.css").text
+    tree = agent_pr_tree.load_tree()
+    rendered_sources = set(tree["meta"]["sources"])
+    rendered_sources.update(
+        source
+        for node in tree["nodes"].values()
+        if "question" not in node
+        for source in node["sources"]
+    )
+    decoded_page = html.unescape(page)
+    for source in rendered_sources:
+        assert f'class="sb-mono sb-break-anywhere">{source}</span>' in decoded_page
+    assert ".sb-break-anywhere { overflow-wrap: anywhere; }" in components
+    assert ".apc-node { margin: 10px 0; padding: 10px 14px;" in css
+    assert ".apc-node, .apc-opt, .apc-leaf { overflow-wrap: anywhere; }" in css
+    assert ".apc-opt { margin-left: 0; padding-inline: 6px; }" in css
+
+
 # --------------------------------------------------------------------------- #
 # Degrade branch — the page stays honest on bad data
 # --------------------------------------------------------------------------- #

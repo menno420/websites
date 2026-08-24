@@ -19,6 +19,7 @@ Zero network: the site renders from committed review/data/**.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -158,6 +159,7 @@ def test_live_fleet_keeps_the_filter_widget(live_client):
 def test_static_ask_replaces_the_widget_with_the_retirement_notice(static_client):
     r = static_client.get("/ask")
     assert r.status_code == 200
+    text = " ".join(r.text.split())
     assert 'id="ai-static-notice"' in r.text
     assert 'id="ai-widget"' not in r.text
     # the live call path is gone (the notice may NAME /ask/api; the script
@@ -168,6 +170,14 @@ def test_static_ask_replaces_the_widget_with_the_retirement_notice(static_client
     assert "Archived answers" in r.text
     assert "Talk to the record" not in r.text
     assert "The live model handles" not in r.text
+    assert "this static archive cannot accept new questions" not in text
+    assert "The retired on-page assistant cannot answer new questions" in text
+    assert "GitHub issue link remains the active intake" in text
+    assert re.search(
+        r'<a href="https://github\.com/menno420/websites/issues/new\?[^\"]+"[^>]*>'
+        r"Ask about this page</a>",
+        r.text,
+    )
 
 
 def test_static_archive_language_is_consistent_across_navigation(static_client):

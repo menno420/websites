@@ -8,7 +8,8 @@ smoke-crawl never follows external links. These tests pin the pure logic of
 the bounded sample that puts a floor back under the rewrite: the collector
 (HTML in, (url, source page) pairs out), the deterministic sampler (≤10,
 sorted + evenly strided, no randomness/clock), and the status classifier
-(2xx/3xx pass, 403 pass-with-private-note, 404 fail, error warn).
+(2xx/3xx pass, ambiguous 403 warn without a privacy claim, 404 fail except
+for path-exact verified-private owner destinations, error warn).
 
 Offline: pure functions only — no network, no playwright (smoke_crawl.py
 lazy-imports playwright inside main(), so the module imports cleanly here).
@@ -155,14 +156,19 @@ def test_classifier_404_fails():
 
 
 def test_classifier_only_accepts_path_exact_verified_private_404():
-    private_url = next(iter(smoke_crawl.INTENTIONAL_PRIVATE_REWRITTEN_URLS))
-    assert smoke_crawl.classify_rewritten_status(404, private_url) == "pass-private"
-    assert (
-        smoke_crawl.classify_rewritten_status(
-            404, private_url.replace("inbox.md", "missing.md")
-        )
-        == "fail"
+    inbox_url = "https://github.com/menno420/pokemon-mod-lab/blob/main/control/inbox.md"
+    status_url = "https://github.com/menno420/pokemon-mod-lab/blob/main/control/status.md"
+    assert smoke_crawl.INTENTIONAL_PRIVATE_REWRITTEN_URLS == {inbox_url, status_url}
+    for private_url in (inbox_url, status_url):
+        assert smoke_crawl.classify_rewritten_status(404, private_url) == "pass-private"
+
+    near_misses = (
+        "https://github.com/menno420/pokemon-mod-lab/blob/main/control/missing.md",
+        "https://github.com/menno420/pokemon-mod-lab/blob/dev/control/status.md",
+        "https://github.com/menno420/superbot/blob/main/control/status.md",
     )
+    for url in near_misses:
+        assert smoke_crawl.classify_rewritten_status(404, url) == "fail"
 
 
 def test_classifier_errors_and_odd_statuses_warn():
@@ -215,19 +221,22 @@ def test_check_403_warns_without_unverified_private_repo_note():
     assert "verified private" not in note.lower()
 
 
-def test_check_private_masked_404_passes_but_public_404_still_fails():
-    private_url = next(iter(smoke_crawl.INTENTIONAL_PRIVATE_REWRITTEN_URLS))
+def test_check_private_masked_404s_pass_but_public_404_still_fails():
+    private_urls = sorted(smoke_crawl.INTENTIONAL_PRIVATE_REWRITTEN_URLS)
     public_url = "https://github.com/menno420/superbot/blob/main/gone.md"
     failures, lines = smoke_crawl.check_rewritten_links(
-        [(private_url, PAGE), (public_url, PAGE)],
-        2,
-        fetch=_fake_fetch(
-            {private_url: (404, ""), public_url: (404, "")}
-        ),
+        [*((url, PAGE) for url in private_urls), (public_url, PAGE)],
+        3,
+        fetch=_fake_fetch({
+            **{url: (404, "") for url in private_urls},
+            public_url: (404, ""),
+        }),
     )
     assert len(failures) == 1 and public_url in failures[0]
-    private_note = next(line for line in lines if private_url in line)
-    assert "PASS" in private_note and "verified private owner destination" in private_note
+    for private_url in private_urls:
+        private_note = next(line for line in lines if private_url in line)
+        assert "PASS" in private_note
+        assert "verified private owner destination" in private_note
 
 
 def test_check_network_error_warns_never_fails():
