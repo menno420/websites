@@ -19,6 +19,7 @@ Zero network: the site renders from committed review/data/**.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -172,8 +173,11 @@ def test_static_ask_replaces_the_widget_with_the_retirement_notice(static_client
     assert "this static archive cannot accept new questions" not in text
     assert "The retired on-page assistant cannot answer new questions" in text
     assert "GitHub issue link remains the active intake" in text
-    assert "issues/new?" in r.text
-    assert ">Ask about this page</a>" in r.text
+    assert re.search(
+        r'<a href="https://github\.com/menno420/websites/issues/new\?[^\"]+"[^>]*>'
+        r"Ask about this page</a>",
+        r.text,
+    )
 
 
 def test_static_archive_language_is_consistent_across_navigation(static_client):

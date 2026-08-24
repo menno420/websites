@@ -8,7 +8,8 @@ smoke-crawl never follows external links. These tests pin the pure logic of
 the bounded sample that puts a floor back under the rewrite: the collector
 (HTML in, (url, source page) pairs out), the deterministic sampler (≤10,
 sorted + evenly strided, no randomness/clock), and the status classifier
-(2xx/3xx pass, 403 pass-with-private-note, 404 fail, error warn).
+(2xx/3xx pass, ambiguous 403 warn without a privacy claim, 404 fail except
+for path-exact verified-private owner destinations, error warn).
 
 Offline: pure functions only — no network, no playwright (smoke_crawl.py
 lazy-imports playwright inside main(), so the module imports cleanly here).
