@@ -1,1 +1,0 @@
-- `claude/webhook-provenance-mobile-overflow` · **SuperBot 375px webhook provenance overflow** · botsite webhook template/tests and deployed smoke verification · 2026-08-24
