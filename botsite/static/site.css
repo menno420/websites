@@ -60,13 +60,13 @@
   .sb-menubtn { flex: none; }
 
   .cmd-index-row { display: grid; grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start; }
+    align-items: start; column-gap: 8px; row-gap: 4px; padding: 10px 12px; }
   .cmd-index-row > code { grid-column: 1; grid-row: 1; min-width: 0;
     white-space: normal; overflow-wrap: anywhere; }
   .cmd-index-row > .cmd-meta { grid-column: 2; grid-row: 1; margin-left: 0;
     min-width: 0; }
-  .cmd-index-row > .desc { grid-column: 1 / -1; grid-row: 2;
-    white-space: normal; overflow: visible; text-overflow: clip; }
+  .cmd-index-row > .desc { grid-column: 1 / -1; grid-row: 2; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .apc-node, .apc-opt, .apc-leaf { overflow-wrap: anywhere; }
   .apc-node { padding-inline: 8px; }
