@@ -1,0 +1,1 @@
+- `claude/postdeploy-truth-defects-2026-08-24` · **deployed truth and phone smoke defects** · scripts/smoke_crawl.py, botsite, review · 2026-08-24
