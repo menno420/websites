@@ -157,9 +157,14 @@ def test_classifier_404_fails():
 
 def test_classifier_only_accepts_path_exact_verified_private_404():
     inbox_url = "https://github.com/menno420/pokemon-mod-lab/blob/main/control/inbox.md"
+    readme_url = "https://github.com/menno420/pokemon-mod-lab/blob/main/control/README.md"
     status_url = "https://github.com/menno420/pokemon-mod-lab/blob/main/control/status.md"
-    assert smoke_crawl.INTENTIONAL_PRIVATE_REWRITTEN_URLS == {inbox_url, status_url}
-    for private_url in (inbox_url, status_url):
+    assert smoke_crawl.INTENTIONAL_PRIVATE_REWRITTEN_URLS == {
+        inbox_url,
+        readme_url,
+        status_url,
+    }
+    for private_url in (inbox_url, readme_url, status_url):
         assert smoke_crawl.classify_rewritten_status(404, private_url) == "pass-private"
 
     near_misses = (
@@ -226,7 +231,7 @@ def test_check_private_masked_404s_pass_but_public_404_still_fails():
     public_url = "https://github.com/menno420/superbot/blob/main/gone.md"
     failures, lines = smoke_crawl.check_rewritten_links(
         [*((url, PAGE) for url in private_urls), (public_url, PAGE)],
-        3,
+        len(private_urls) + 1,
         fetch=_fake_fetch({
             **{url: (404, "") for url in private_urls},
             public_url: (404, ""),

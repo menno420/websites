@@ -149,12 +149,13 @@ REWRITTEN_LINK_RE = re.compile(
 REWRITTEN_SAMPLE_LIMIT = 10  # at most this many URLs existence-checked per crawl
 REWRITTEN_CHECK_TIMEOUT_SECONDS = 5.0  # per-request budget (HEAD or GET)
 REWRITTEN_CHECK_BUDGET_SECONDS = 30.0  # total added wall-clock for the check
-# GitHub masks private repositories as 404 for anonymous requests. These two
+# GitHub masks private repositories as 404 for anonymous requests. These three
 # paths are verified private owner destinations, so keep the exceptions exact:
 # any other 404, including another path in the same repo, must still fail.
 INTENTIONAL_PRIVATE_REWRITTEN_URLS = frozenset(
     {
         "https://github.com/menno420/pokemon-mod-lab/blob/main/control/inbox.md",
+        "https://github.com/menno420/pokemon-mod-lab/blob/main/control/README.md",
         "https://github.com/menno420/pokemon-mod-lab/blob/main/control/status.md",
     }
 )
