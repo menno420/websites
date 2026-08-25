@@ -1,7 +1,6 @@
 # 2026-08-25 — reduce Railway traffic and restore the scheduled smoke signal
 
-> **Status:** `in-progress` — branch `codex/railway-hardening`; flips to
-> `complete` + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `codex/railway-hardening`; PR #519.
 
 - **📊 Model:** GPT-5 · high · production upkeep
 
@@ -30,8 +29,11 @@ masked-private destination that made the smoke signal red.
   observability dashboard. The separate worker projects received ceilings and
   dashboards too; three detached no-backup SuperBot volumes were removed while
   the attached database volume remained online.
-- Verification uses the four service suites, the strict repository gate, the
-  ambient Railway-ID guard, and a fresh scheduled smoke run after merge.
+- Local verification on the checked interpreter completed with **2233 passed**
+  across all four service suites (5 existing deprecation warnings, 481.75 s),
+  and the ambient Railway-ID guard reported OK. The strict gate runs against
+  this completed card; a fresh scheduled smoke run is the post-merge live
+  proof.
 
 ⚑ Self-initiated: no — direct owner instruction to execute the Railway audit
 recommendations, excluding two-factor authentication.
