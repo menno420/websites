@@ -1,17 +1,17 @@
-SEAT CLOSED — 2026-07-21T21:11:34Z
+MAINTENANCE GREEN — 2026-08-25T22:24:17Z
 
 # websites · status
 
-updated: 2026-07-21T21:11:34Z
-phase: SEAT CLOSED — terminal heartbeat, program close (deadline 2026-07-22T00:00Z). No further work queued from this seat. Closeout doc: docs/PROJECT-CLOSEOUT.md (merged #472 → ea1f2a1). Successor pointer: read docs/PROJECT-CLOSEOUT.md first.
-health: green — full suite 2185 passed (tests/ + botsite/tests + dashboard/tests + review/tests); python3 bootstrap.py check --strict all-passed; four services /healthz 200. tests/test_own_heartbeat.py 5/5.
-last-shipped: #474 — review: link /releases.json from the fleet page, merged 2026-07-21; main tip 371a640.
-blockers: none — seat closed.
+updated: 2026-08-25T22:24:17Z
+phase: MAINTENANCE — Railway hardening shipped; no further repository work queued from this pass. Closeout doc remains docs/PROJECT-CLOSEOUT.md.
+health: green — full four-suite gate 2233 passed; python3 bootstrap.py check --strict and the exact added-card simulation passed; ambient Railway-ID guard passed. Control-plane, botsite and dashboard /healthz + /version are HTTP 200 at main 42eba224; Program Review Pages root is HTTP 200.
+last-shipped: #519 — restore the scheduled smoke signal for the exact verified-private pokemon-mod-lab/control/README.md destination; merged 2026-08-25; main tip 42eba224.
+blockers: none — fresh scheduled smoke crawl is post-merge verification, not a landing blocker.
 orders: acked=001-038 done=001-038 (021 closed w/ evidence #444; 037/038 done #442/#443; 036 done)
 routine: none — zero live (verified via exhausted list_triggers, 2,262 account triggers paginated; failsafe cron trig_01FYyvu2EytWF5NSEzLU2qLD already deleted; only permanently-ended fired one-shot records remain).
-landing: all-merged — 0 open claude/* PRs; every seat branch terminal. PR terminal ledger: see notes.
-deployed: main 371a640 · four Railway services (control-plane / botsite / dashboard / review, superbot-websites project); four /healthz 200 verified at close.
-⚑ needs-owner: the ⚑ rows in docs/owner/OWNER-ACTIONS.md (canonical list there; unchanged at close).
-notes: PR terminal ledger — #472 merged ea1f2a1 (closeout doc) · #473 merged c890fd3 (records true-up) · #474 merged 371a640 (review findability) · #465 closed without merge (superseded bake) · all prior seat PRs #414–#463+ terminal per the closeout doc; 0 open. Final facts: suite 2185 passed; bootstrap check --strict all-passed; four services /healthz 200. Successor: read docs/PROJECT-CLOSEOUT.md first.
+landing: all-merged — PR #519 merged green; 0 open owner-authored work from this pass.
+deployed: main 42eba224 · three Railway services (control-plane / botsite / dashboard) all /healthz + /version 200 at that exact SHA; Program Review is the GitHub Pages archive and its root is 200.
+⚑ needs-owner: none for this pass; canonical unrelated owner asks remain in docs/owner/OWNER-ACTIONS.md.
+notes: Railway-side upkeep paired with #519: /orders* edge challenge active; explicit service ceilings, healthchecks, CDN and observability configured; stale GitHub warning proven cosmetic because the installed Railway App has all-repository access and the repo is selectable. The six-hour smoke cadence and desktop/mobile coverage were preserved. Successor: read docs/PROJECT-CLOSEOUT.md first.
 
 kit: v1.21.0
