@@ -2,7 +2,7 @@
 
 > **Status:** `complete` — branch `codex/railway-hardening`; PR #519.
 
-- **📊 Model:** GPT-5 · high · production upkeep
+- **📊 Model:** GPT-5 · high · runtime bugfix
 
 **What this session was about:** Owner-directed Railway hardening. The live
 usage audit tied most website cost to control-plane CPU and egress. Live logs
