@@ -6,17 +6,32 @@
 - **📊 Model:** GPT-5 · high · production upkeep
 
 **What this session was about:** Owner-directed Railway hardening. The live
-usage audit tied most website cost to control-plane CPU and egress, and the
-scheduled browser crawl was both a concentrated anonymous request burst and red
-on one independently verified private GitHub destination. Preserve real
-desktop/mobile rendering coverage while reducing avoidable traffic and fixing
-only the exact masked-private case.
+usage audit tied most website cost to control-plane CPU and egress. Live logs
+then corrected the first hypothesis: the continuing request flood was an
+external crawler enumerating `/orders` filters, not the bounded scheduled
+browser crawl. Preserve the crawl's real desktop/mobile rendering coverage,
+stop the external flood at Railway's edge, and fix only the exact
+masked-private destination that made the smoke signal red.
 
 ## What was done
 
-- In progress.
-- Verification will use the four service suites, the strict repository gate,
-  the ambient Railway-ID guard, and a fresh scheduled smoke run.
+- Added the exact verified-private `pokemon-mod-lab/control/README.md` URL to
+  the crawler's path-level 404 exception set. A same-repository near miss still
+  fails; the exception does not weaken ordinary public-link failures.
+- Generalized the private-404 test budget from a stale literal to the size of
+  the exact exception set, and extended the classifier regression coverage.
+- Kept the six-hourly smoke schedule and its desktop/mobile rendering checks:
+  run `32899593848` proved its only failure was this exact private link, while
+  live Railway logs showed the continuing `/orders?...` traffic after that run
+  was an unrelated external crawler.
+- Railway-side hardening completed alongside this code change: the public
+  control-plane now challenges `/orders*` at the edge; all three website
+  services have explicit healthchecks, resource ceilings, CDN caching, and an
+  observability dashboard. The separate worker projects received ceilings and
+  dashboards too; three detached no-backup SuperBot volumes were removed while
+  the attached database volume remained online.
+- Verification uses the four service suites, the strict repository gate, the
+  ambient Railway-ID guard, and a fresh scheduled smoke run after merge.
 
 ⚑ Self-initiated: no — direct owner instruction to execute the Railway audit
 recommendations, excluding two-factor authentication.
