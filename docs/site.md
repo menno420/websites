@@ -128,11 +128,11 @@ reader reflects durability only after that record merges to Fleet Manager
 `main`. Missing capability and failed or ambiguous writes are named honestly;
 there is no website-local durable queue or comment truth store.
 
-The implementation is in websites PR #523 and is not yet deployed. It remains
-ordered behind Fleet Manager PR #952, which owns the v1 storage, index, routing,
-and consume contract. Production writeback additionally remains unavailable
-until the dedicated token is configured; no production end-to-end submission
-is claimed here.
+The implementation is the websites #523 change and is ordered behind Fleet
+Manager #952, which owns the v1 storage, index, routing, and consume contract.
+Runtime deployment remains a `/version` fact. Production writeback is available
+only when the dedicated token is configured and accepted by Fleet Manager; no
+production end-to-end submission is claimed by this repository record.
 
 3a. **Fleet heartbeat** (`/lanes`, `/fleet.json` compatibility variant) — every fleet **lane's**
    `control/status*.md` heartbeat on one glanceable screen ([D-0021], ORDER 002).

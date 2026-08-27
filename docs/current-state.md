@@ -5,8 +5,8 @@
 > behavior landed through `a9ec59c6` (#513, #514, #516), and canonical live
 > crawl run 32746498270 passed all four products at desktop and 375 px. Later
 > work added the owner-facing repository-estate review surface in #521. The
-> Fleet Manager owner-comment read/write interface is in-flight in #523 and
-> remains held behind Fleet Manager's still-open storage contract in #952;
+> Fleet Manager owner-comment read/write interface is the #523 change, with
+> Fleet Manager #952 as its canonical storage/router/consume dependency;
 > `/version` remains the authority for the latest Railway deployment
 > revision. The repo
 > owns three live Railway services plus the public Program Review archive on
@@ -105,16 +105,18 @@ Deployment: `docs/deployment.md` + each service's doc.
   canonical owner-facing catalogue, with validated detail pages; `/fleet`,
   `/projects`, and `/freshness` no longer serve competing current
   estate views.
-- **Repository comment integration is implemented in #523 but is not yet
-  landed or deployed.** Public `/repos` reads Fleet Manager's v1 root and
+- **Repository comment integration is implemented under [D-0039].** Public
+  `/repos` reads Fleet Manager's v1 root and
   per-repository indexes with explicit freshness/provenance; repository detail
   shows a bounded active/consumed history. Owner-only submission uses the
   existing gate, CSRF and rate limits plus a dedicated
   `FLEET_MANAGER_WRITEBACK_TOKEN` to open a ready Fleet Manager PR. A submitted
   PR is explicitly pending—not durable—until its record is merged and visible
-  on Fleet Manager `main`. Fleet Manager PR #952 still owns and must land the
-  storage/index/router/consume contract first; no production end-to-end write
-  has been claimed, and no website-local queue is durable feedback.
+  on Fleet Manager `main`. Fleet Manager PR #952 owns the ordered
+  storage/index/router/consume contract. Deployment and write capability remain
+  live facts to verify through `/version` and the owner form; no production
+  end-to-end write is claimed here, and no website-local queue is durable
+  feedback.
 
 ## Recently shipped (newest first)
 
