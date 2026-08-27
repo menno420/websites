@@ -227,20 +227,30 @@ async def _fetch_and_cache(
                 url, follow_redirects=follow_redirects
             )
             if preserve_text:
-                data = resp.text
+                try:
+                    data = resp.content.decode("utf-8")
+                except UnicodeDecodeError:
+                    data = None
+                    res = _result(
+                        url,
+                        0,
+                        None,
+                        f"invalid UTF-8 file body (HTTP {resp.status_code})",
+                    )
             else:
                 try:
                     data = resp.json()
                 except ValueError:
                     data = resp.text
-            err = ""
-            if resp.status_code >= 300:
-                err = (
-                    data.get("message", "")
-                    if isinstance(data, dict)
-                    else str(data)[:200]
-                )
-            res = _result(url, resp.status_code, data, err)
+            if not (preserve_text and data is None):
+                err = ""
+                if resp.status_code >= 300:
+                    err = (
+                        data.get("message", "")
+                        if isinstance(data, dict)
+                        else str(data)[:200]
+                    )
+                res = _result(url, resp.status_code, data, err)
         except httpx.HTTPError as exc:
             res = _result(url, 0, None, f"{type(exc).__name__}: {exc}")
 

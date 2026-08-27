@@ -126,6 +126,29 @@ def test_public_file_preserves_exact_json_text_for_strict_readers():
     assert public.calls == 1
 
 
+def test_public_file_rejects_invalid_utf8_instead_of_replacing_owner_text():
+    def anonymous(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=b'{"comment":"bad-\xff-byte"}\n',
+            headers={"content-type": "application/json"},
+        )
+
+    auth, public = _install_clients(
+        lambda request: httpx.Response(500), anonymous
+    )
+    result = asyncio.run(
+        github.fetch_public_file("fleet-manager", "comment.json")
+    )
+
+    assert result["ok"] is False
+    assert result["status"] == 0
+    assert "invalid UTF-8" in result["error"]
+    assert result["data"] is None
+    assert auth.calls == 0
+    assert public.calls == 1
+
+
 def test_authenticated_and_public_reads_have_isolated_cache_entries():
     def authenticated(request: httpx.Request) -> httpx.Response:
         assert request.headers["authorization"] == "Bearer private-test-token"
