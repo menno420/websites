@@ -4,9 +4,10 @@
 > The first website truth-and-defects tranche is merged and deployed: product
 > behavior landed through `a9ec59c6` (#513, #514, #516), and canonical live
 > crawl run 32746498270 passed all four products at desktop and 375 px. Later
-> work added the owner-facing repository-estate review surface in #521. The
-> Fleet Manager owner-comment read/write interface is the #523 change, with
-> Fleet Manager #952 as its canonical storage/router/consume dependency;
+> work added the owner-facing repository-estate review surface in #521 and the
+> Fleet Manager owner-comment read/write interface in #523. Its canonical
+> storage/router/consume dependency landed in Fleet Manager #952
+> (`089e0053`);
 > `/version` remains the authority for the latest Railway deployment
 > revision. The repo
 > owns three live Railway services plus the public Program Review archive on
@@ -101,25 +102,22 @@ Deployment: `docs/deployment.md` + each service's doc.
 
 ## In flight
 
-- **The repository-estate read surface is complete in #521.** `/repos` is the
-  canonical owner-facing catalogue, with validated detail pages; `/fleet`,
-  `/projects`, and `/freshness` no longer serve competing current
-  estate views.
-- **Repository comment integration is implemented under [D-0039].** Public
-  `/repos` reads Fleet Manager's v1 root and
-  per-repository indexes with explicit freshness/provenance; repository detail
-  shows a bounded active/consumed history. Owner-only submission uses the
-  existing gate, CSRF and rate limits plus a dedicated
-  `FLEET_MANAGER_WRITEBACK_TOKEN` to open a ready Fleet Manager PR. A submitted
-  PR is explicitly pending—not durable—until its record is merged and visible
-  on Fleet Manager `main`. Fleet Manager PR #952 owns the ordered
-  storage/index/router/consume contract. Deployment and write capability remain
-  live facts to verify through `/version` and the owner form; no production
+- **No estate-review implementation tranche remains in flight after #521,
+  #523, and Fleet Manager #952.** Deployment and write capability remain live
+  facts to verify through `/version` and the owner form; no production
   end-to-end write is claimed here, and no website-local queue is durable
   feedback.
 
 ## Recently shipped (newest first)
 
+- **2026-08-27 — durable repository owner feedback (#523; Fleet Manager
+  #952):** added strict anonymous reads of Fleet Manager's public v1 root,
+  per-repository indexes, and bounded active/consumed records; owner-gated,
+  CSRF/rate-limited submission through a dedicated write credential; and an
+  idempotent protected branch+PR client that verifies the complete three-file
+  tree before reporting pending. Fresh visibility checks bypass stale cache and
+  in-flight observations; replay precedes moving-ledger growth gates; pending,
+  unavailable, retryable, failed, and durable states remain distinct.
 - **2026-08-27 — repository estate review surface (#521):** added the visual
   `/repos` catalogue and `/repos/{name}` review pages over Fleet Manager's
   estate/activity/Layer-2 records plus selected repository-native truth;

@@ -1,9 +1,7 @@
 # 2026-08-27 — connect repository review to durable owner comments
 
-> **Status:** `in-progress` — branch `codex/fleet-owner-comments`; flips to
-> `complete` + PR number as the deliberate LAST code step. Implementation and
-> local review are complete; Fleet Manager #952 and exact-head Codex review
-> remain ahead of the flip.
+> **Status:** `complete` — implementation and exact-head review are complete in
+> `menno420/websites#523`; its Fleet Manager dependency landed in #952.
 
 - **📊 Model:** GPT-5 · high · feature build
 - **📍 Venue:** chatgpt-work
@@ -27,23 +25,27 @@ Manager's protected branch-and-PR path. Fleet Manager remains the record owner;
   into invented zeros or success.
 - `GET /owner/repository-comments/{name}` and
   `POST /owner/repository-comments/submit` reuse owner Basic auth, same-origin
-  CSRF, and per-route rate limiting. Mutation refreshes anonymous public
-  visibility immediately, validates the repository against Fleet Manager's
-  estate model, requires explicit public acknowledgement, and preserves the
-  accepted wording verbatim.
+  CSRF, and per-route rate limiting. Mutation performs an independent fresh
+  anonymous visibility read that neither trusts cache nor joins an older
+  in-flight request, validates the repository against Fleet Manager's estate
+  model, requires explicit public acknowledgement, and preserves the accepted
+  wording verbatim.
 - `app/owner_comment_writeback.py` uses only
   `FLEET_MANAGER_WRITEBACK_TOKEN`: it pins Fleet Manager `main`, creates record
   + repository index + root index in one Git Data commit on a deterministic
   `claude/owner-comments-*` branch, and opens a ready PR. Form-scoped
-  idempotency makes lost-response replay resolve to that exact branch/payload.
-  Pending PR, unavailable, retryable, and failed states are distinct; none is
-  called durable before the public record is readable on Fleet Manager `main`.
+  idempotency makes lost-response replay resolve to that exact branch/payload,
+  even after `main` moves or the current ledger reaches a growth cap. Fresh
+  submissions bound record count and both prospective generated indexes before
+  any GitHub mutation. Pending PR, unavailable, retryable, and failed states
+  are distinct; none is called durable before the public record is readable on
+  Fleet Manager `main`.
 - Hostile-source and upstream-response hardening rejects duplicate keys,
   noncanonical/invalid UTF-8 JSON, deep/oversized shapes, non-LF generated
   indexes, malformed nested GitHub responses, lone Unicode surrogates, and
   credential echo before truncation. Read fan-out is capped at four and eight
   seconds for the selected repository.
-- `[D-0039]`, `docs/site.md`, environment manifests, and the repository route
+- Decision 0039, `docs/site.md`, environment manifests, and the repository route
   table document the ownership, security, freshness, and capability boundary.
 
 ⚑ Self-initiated: no — direct owner implementation request, following the
@@ -70,30 +72,31 @@ read-surface architecture.
   lost duplicate keys, mutation trusted cached public visibility, and successful
   POST replay could duplicate a comment. **[conceded]** All three were fixed,
   replied to with exact evidence, and their threads were resolved.
-- Independent contract/security audits then drove additional fail-closed work
-  across idempotent recovery, bounded fan-out, malformed transports, nested
-  response validation, canonical LF parsing, invalid Unicode, and token
-  redaction. Final exact-worktree verdict: no remaining P0/P1/P2; no concrete
-  P3 blocker.
-- Remote head `f18021147e783c49b0c87eca8592fd7d4e774bda` is byte-identical to
-  locally audited HEAD `7889e8a`; its exact-head Codex review was requested
-  before the final flip.
+- Later exact-head reviews found and closed credential-redaction, PR identity,
+  first-submit timestamp, moving-main replay, visibility-coalescing, bounded
+  index growth, replay-before-growth, and malformed optional-context cases.
+  **[conceded]** Every valid finding received a regression, exact-head reply,
+  and resolved thread; the compare-list finding was rejected with the official
+  GitHub API contract plus boundary tests.
+- Final remote product head `b2914e075723fd2695a0e8a7b0279911cb696156`
+  is tree-identical to local `69ba33e`; its exact-head review completed with no
+  new or open finding. Independent contract/security audits found no remaining
+  P0/P1/P2.
 
 ## Verify
 
 - `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q` —
-  **2,433 passed**, 5 deprecation warnings.
-- Focused comment/public-read/auth/CSRF/rate-limit audit — **155 passed**.
-- Independent strict contract pass — **122 passed**.
+  **2,471 passed**, 5 deprecation warnings.
+- Focused final comment-reader/writeback/replay contract — **119 passed**.
 - `git diff --check` — clean locally and on the exact remote PR diff.
-- `python3 bootstrap.py check --strict` — substantive checks green; only this
-  deliberate `in-progress` card remains before the final flip.
+- `python3 bootstrap.py check --strict` — green after this deliberate final
+  completion flip.
 
 ## Landing
 
-- Fleet Manager storage/index/router/consume contract: `menno420/fleet-manager#952`
-  (ordered dependency; must land first).
-- Website UI/read/writeback: `menno420/websites#523` — READY, held by this card
-  until the dependency and exact-head review are terminal.
+- Fleet Manager storage/index/router/consume contract:
+  `menno420/fleet-manager#952`, merged as `089e0053791a8a6b33c51869ae4780f0d03b1ac9`.
+- Website UI/read/writeback: `menno420/websites#523` — READY on protected
+  `main`; the exact product tree is reviewed and the repository gate is green.
 - Production write capability is not claimed by repository tests; after deploy,
   the owner form itself reports whether the dedicated credential is available.

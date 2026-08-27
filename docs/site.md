@@ -93,7 +93,7 @@ The former competing HTML routes are reversible 307 migrations:
 `/projects.json`, and `/freshness.json` remain compatibility
 contracts.
 
-#### Repository owner feedback ([D-0039])
+#### Repository owner feedback (decision 0039)
 
 Fleet Manager remains the record owner. Its public v1 ledger lives under
 `docs/owner-comments/`: `index.json` is the cheap estate-wide count source,
@@ -113,10 +113,12 @@ breaking the repository page.
 The write half lives behind the existing owner overlay:
 `GET /owner/repository-comments/{name}` shows the public-record warning and
 capability, and `POST /owner/repository-comments/submit` validates the
-repository through a freshly refreshed anonymous estate model (so cached
-public visibility cannot authorize a now-private repository), requires explicit public
-acknowledgement, and preserves the accepted wording verbatim. Only a repository
-both Fleet-indexed and confidently public is eligible. With the dedicated
+repository through an independent fresh anonymous visibility request that
+neither trusts cache nor joins an older in-flight read (so cached or racing
+public visibility cannot authorize a now-private repository), requires explicit
+public acknowledgement, and preserves the accepted wording verbatim. The newer
+observation publishes monotonically so an older request cannot overwrite it.
+Only a repository both Fleet-indexed and confidently public is eligible. With the dedicated
 `FLEET_MANAGER_WRITEBACK_TOKEN`, one Git Data transaction creates the record,
 repository index, and root index on a `claude/owner-comments-*` branch, then
 opens a ready Fleet Manager PR. Protected `main` is never written directly.
@@ -125,13 +127,16 @@ record id. `created_at` is measured on the first POST, not when the form was
 opened; an unchanged replay after a lost response strictly verifies and reuses
 the exact record, original timestamp, three-file branch tree, ancestry, and PR
 instead of opening a duplicate or being confused by later movement on `main`.
+Replay reconciliation happens before current-ledger count/size gates, while a
+fresh submission bounds the prospective record count, repository README, and
+root index before any GitHub mutation.
 The strongest immediate success is **pending PR / not durable**; the public
 reader reflects durability only after that record merges to Fleet Manager
 `main`. Missing capability and failed or ambiguous writes are named honestly;
 there is no website-local durable queue or comment truth store.
 
-The implementation is the websites #523 change and is ordered behind Fleet
-Manager #952, which owns the v1 storage, index, routing, and consume contract.
+The implementation is the websites #523 change. Fleet Manager #952 landed its
+ordered v1 storage, index, routing, and consume dependency on 2026-08-27.
 Runtime deployment remains a `/version` fact. Production writeback is available
 only when the dedicated token is configured and accepted by Fleet Manager; no
 production end-to-end submission is claimed by this repository record.
