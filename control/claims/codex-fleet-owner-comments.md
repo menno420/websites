@@ -1,0 +1,1 @@
+- `codex/fleet-owner-comments` · **owner comments** — read and submit Fleet Manager-owned repository feedback from the estate review UI · `app/owner_comments.py`, owner routes, templates, tests · 2026-08-27
