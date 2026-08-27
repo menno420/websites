@@ -15,6 +15,7 @@ test). The render test drives /fleet through the same mock transport.
 """
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -197,6 +198,51 @@ def test_api_request_redacts_long_token_from_plaintext_before_slicing(
     assert token not in res["error"]
     assert "B" * 32 not in res["error"]
     assert res["error"] == "denied bearer [credential redacted]"
+
+
+@pytest.mark.parametrize(
+    ("variant_name", "serialize"),
+    (
+        ("literal", lambda token: token),
+        ("repr-escaped", lambda token: repr(token)[1:-1]),
+        (
+            "json-escaped",
+            lambda token: json.dumps(token, ensure_ascii=True)[1:-1],
+        ),
+    ),
+)
+def test_api_request_redacts_serialized_token_before_prefix_truncation(
+    monkeypatch, variant_name, serialize
+):
+    del variant_name
+    token = 'LEAKMARK"quote\'slash\\credential-' + ("Z" * 80)
+    prefix = "p" * 130
+    echoed = serialize(token)
+    assert echoed.startswith("LEAKMARK")
+    client = _mock_client(
+        lambda request: httpx.Response(
+            403,
+            json={"message": prefix + echoed},
+        )
+    )
+    monkeypatch.setattr(github, "get_client", lambda raw=False: client)
+    try:
+        res = asyncio.run(
+            github.api_request(
+                "POST", "/repos/example/write", {"value": 1}, token=token
+            )
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+    assert res["ok"] is False and res["status"] == 403
+    assert len(res["error"]) == github.REASON_MAX_CHARS
+    assert res["error"].startswith(prefix)
+    assert res["error"].endswith("…")
+    assert "LEAKMARK" not in res["error"]
+    assert token not in res["error"]
+    assert repr(token)[1:-1] not in res["error"]
+    assert json.dumps(token, ensure_ascii=True)[1:-1] not in res["error"]
 
 
 @pytest.mark.parametrize(

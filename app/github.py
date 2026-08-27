@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import re
 import time
 from typing import Any, Optional
@@ -82,6 +83,28 @@ def get_client(raw: bool = False) -> httpx.AsyncClient:
 # owner UI, and any future consumer inherit the guard for free). Same cap
 # as the #237 precedent (app/freshness.py REASON_MAX_CHARS).
 REASON_MAX_CHARS = 140
+
+
+def _redact_token_variants(text: str, token: str) -> str:
+    """Redact literal and serialized forms of one request credential.
+
+    A string-valued upstream error can echo the token after applying Python-
+    or JSON-style escaping. Redaction must happen before :func:`short_reason`
+    truncates the message; otherwise the cap can retain a credential prefix
+    while removing the suffix needed for a later exact replacement.
+    """
+
+    if not token:
+        return text
+    variants = {
+        token,
+        repr(token)[1:-1],
+        json.dumps(token, ensure_ascii=True)[1:-1],
+    }
+    for variant in sorted(variants, key=len, reverse=True):
+        if variant:
+            text = text.replace(variant, "[credential redacted]")
+    return text
 
 
 def short_reason(
@@ -467,7 +490,7 @@ async def api_request(
         # user-visible 140-character cap; after truncation the complete token
         # may no longer be present for a downstream writer to remove.
         if token:
-            err = err.replace(token, "[credential redacted]")
+            err = _redact_token_variants(err, token)
         return _result(url, resp.status_code, data, err)
     except httpx.HTTPError as exc:
         # A per-request credential is present on this path. Exception strings

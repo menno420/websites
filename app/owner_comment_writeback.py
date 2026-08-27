@@ -38,6 +38,7 @@ ROOT_INDEX_PATH = f"{COMMENTS_ROOT}/index.json"
 SCHEMA_VERSION = 1
 MAX_COMMENT_CHARS = 20_000
 MAX_CONTEXT_CHARS = 1_000
+MAX_INDEX_CHARS = 1_000_000
 MAX_INDEX_RECORDS = 10_000
 SOURCE_SURFACE = "control-plane"
 DERIVED_FROM = [
@@ -581,6 +582,8 @@ def _parse_repository_readme(
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise _ContractError("repository owner-comment index is not UTF-8") from exc
+    if len(text) > MAX_INDEX_CHARS:
+        raise _ContractError("repository owner-comment README exceeds bounded read size")
     match = _repository_readme_pattern(repository).fullmatch(text)
     if not match:
         raise _ContractError("repository owner-comment README is not exact v1 output")
@@ -792,6 +795,11 @@ def _updated_contract_files(
         raise _ContractError("root and repository latest consumed timestamps disagree")
     if comment_id in {entry.comment_id for entry in active + consumed}:
         raise _ContractError(f"owner-comment id {comment_id} already exists on main")
+    prospective_active_count = len(active) + 1
+    if prospective_active_count > MAX_INDEX_RECORDS:
+        raise _ContractError(
+            "prospective repository README active count exceeds the bounded count"
+        )
 
     record = {
         "schema_version": SCHEMA_VERSION,
@@ -803,6 +811,11 @@ def _updated_contract_files(
         "comment": comment,
     }
     active.append(_ActiveIndexEntry(comment_id, created_at, SOURCE_SURFACE))
+    prospective_readme = render_repository_readme(repository, active, consumed)
+    if len(prospective_readme) > MAX_INDEX_CHARS:
+        raise _ContractError(
+            "prospective repository owner-comment README exceeds bounded read size"
+        )
     target["unconsumed_count"] += 1
     target["latest_unconsumed_at"] = max(
         (entry.created_at for entry in active),
@@ -812,7 +825,7 @@ def _updated_contract_files(
     readme_path = f"{COMMENTS_ROOT}/{repository}/README.md"
     return {
         record_path: _canonical_json_bytes(record),
-        readme_path: render_repository_readme(repository, active, consumed),
+        readme_path: prospective_readme,
         ROOT_INDEX_PATH: _canonical_json_bytes(root_data),
     }
 

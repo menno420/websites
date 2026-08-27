@@ -980,6 +980,77 @@ def test_root_count_over_contract_bound_blocks_mutation(monkeypatch, field):
     assert not any(call[0] == "POST" for call in fake.calls)
 
 
+def test_prospective_active_count_at_contract_bound_blocks_mutation(monkeypatch):
+    monkeypatch.setattr(writeback, "MAX_INDEX_RECORDS", 1)
+    active = [
+        writeback._ActiveIndexEntry(
+            "oc-existing",
+            "2026-08-26T10:11:12Z",
+            "control-plane",
+        )
+    ]
+    row = _row("websites")
+    row.update(
+        {
+            "unconsumed_count": 1,
+            "latest_unconsumed_at": "2026-08-26T10:11:12Z",
+        }
+    )
+    fake = FakeGitHub(
+        root=_canonical(_root_index(websites=row)),
+        readme=writeback.render_repository_readme("websites", active, []),
+    )
+
+    result = _submit(fake, monkeypatch)
+
+    assert result.state == "failed"
+    assert "prospective repository README active count" in result.message
+    assert "exceeds the bounded count" in result.message
+    assert not any(call[0] == "POST" for call in fake.calls)
+
+
+@pytest.mark.parametrize(
+    ("remaining_chars", "expected_state"),
+    ((0, "pending_pr"), (-1, "failed")),
+)
+def test_prospective_readme_size_honors_exact_character_bound(
+    monkeypatch, remaining_chars, expected_state
+):
+    comment = "  Keep this wording.\nSecond line.  "
+    comment_id = writeback._comment_id(
+        "websites", comment, "/repos/websites", SUBMISSION_KEY
+    )
+    prospective = writeback.render_repository_readme(
+        "websites",
+        [
+            writeback._ActiveIndexEntry(
+                comment_id,
+                writeback._timestamp(NOW),
+                writeback.SOURCE_SURFACE,
+            )
+        ],
+        [],
+    )
+    monkeypatch.setattr(
+        writeback,
+        "MAX_INDEX_CHARS",
+        len(prospective) + remaining_chars,
+    )
+    fake = FakeGitHub()
+
+    result = _submit(fake, monkeypatch, comment=comment)
+
+    assert result.state == expected_state
+    if remaining_chars == 0:
+        assert len(fake.files["docs/owner-comments/websites/README.md"]) == len(
+            prospective
+        )
+    else:
+        assert "prospective repository owner-comment README" in result.message
+        assert "exceeds bounded read size" in result.message
+        assert not any(call[0] == "POST" for call in fake.calls)
+
+
 def test_consumption_before_creation_blocks_mutation(monkeypatch):
     consumed = [
         writeback._ConsumedIndexEntry(
