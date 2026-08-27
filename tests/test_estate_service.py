@@ -229,14 +229,19 @@ def test_successful_but_unparseable_sources_are_not_labelled_live():
 def test_overview_delegates_to_reader(monkeypatch):
     calls = []
 
-    async def fake_read(refresh=False):
-        calls.append(refresh)
+    async def fake_read(refresh=False, *, coalesce_public_listing=True):
+        calls.append((refresh, coalesce_public_listing))
         return _sources()
 
     monkeypatch.setattr(estate_reader, "read_overview_sources", fake_read)
-    model = asyncio.run(estate_service.overview(refresh=True))
+    model = asyncio.run(
+        estate_service.overview(
+            refresh=True,
+            coalesce_public_listing=False,
+        )
+    )
     assert model.repository("alpha")
-    assert calls == [True]
+    assert calls == [(True, False)]
 
 
 def test_detail_uses_member_truth_and_exact_next_heading(monkeypatch):

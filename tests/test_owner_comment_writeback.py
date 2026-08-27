@@ -96,6 +96,7 @@ class FakeGitHub:
         parent_root: bytes | None = None,
         parent_readme: bytes | None = None,
         expected_token: str = "fleet-only-token",
+        compare_ahead_by: int = 1,
     ) -> None:
         self.root = root if root is not None else _canonical(_root_index())
         self.readme = readme or writeback.render_repository_readme(
@@ -119,6 +120,8 @@ class FakeGitHub:
         self.pr_number = pr_number
         self.pr_url = pr_url
         self.expected_token = expected_token
+        self.compare_ahead_by = compare_ahead_by
+        self.compare_response_sizes: list[int] = []
         self.existing_files: dict[str, bytes] = {}
         self.calls: list[tuple[str, str, Any, str]] = []
         self.blob_count = 0
@@ -195,23 +198,27 @@ class FakeGitHub:
         if method == "GET" and "/compare/" in path:
             if self.malformed == "ancestry":
                 return _envelope(200, {"status": "diverged"})
+            commits = [
+                {"sha": "5" * 40}
+                for _ in range(min(self.compare_ahead_by, 250))
+            ]
+            commits[-1] = {
+                "sha": (
+                    "9" * 40
+                    if self.malformed == "compare_head"
+                    else self.main_sha
+                )
+            }
+            self.compare_response_sizes.append(len(commits))
             return _envelope(
                 200,
                 {
                     "status": "ahead",
-                    "ahead_by": 1,
+                    "ahead_by": self.compare_ahead_by,
                     "behind_by": 0,
                     "base_commit": {"sha": self.existing_parent_sha},
                     "merge_base_commit": {"sha": self.existing_parent_sha},
-                    "commits": [
-                        {
-                            "sha": (
-                                "9" * 40
-                                if self.malformed == "compare_head"
-                                else self.main_sha
-                            )
-                        }
-                    ],
+                    "commits": commits,
                 },
             )
         if method == "GET" and "/contents/" in path:
@@ -782,6 +789,26 @@ def test_exact_replay_after_main_advances_recovers_original_receipt(monkeypatch)
     assert any("/compare/" in call[1] for call in fake.calls)
 
 
+def test_unpaginated_compare_keeps_current_main_as_tail_beyond_250(monkeypatch):
+    fake = FakeGitHub(
+        ref_exists=True,
+        pr_exists=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+        compare_ahead_by=251,
+    )
+
+    result = _submit(fake, monkeypatch)
+
+    assert result.state == "pending_pr"
+    compare_calls = [
+        call for call in fake.calls if call[0] == "GET" and "/compare/" in call[1]
+    ]
+    assert len(compare_calls) == 1
+    assert "?" not in compare_calls[0][1]
+    assert fake.compare_response_sizes == [250]
+
+
 def test_replay_rebuilds_against_original_indexes_after_newer_comment(
     monkeypatch,
 ):
@@ -932,6 +959,24 @@ def test_hostile_repository_count_blocks_mutation_without_escaping(monkeypatch):
 
     assert result.state == "failed"
     assert "bounded count" in result.message
+    assert not any(call[0] == "POST" for call in fake.calls)
+
+
+@pytest.mark.parametrize("field", ("unconsumed_count", "consumed_count"))
+def test_root_count_over_contract_bound_blocks_mutation(monkeypatch, field):
+    row = _row("websites")
+    row[field] = writeback.MAX_INDEX_RECORDS + 1
+    row[
+        "latest_unconsumed_at"
+        if field == "unconsumed_count"
+        else "latest_consumed_at"
+    ] = "2026-08-27T10:11:12Z"
+
+    fake = FakeGitHub(root=_canonical(_root_index(websites=row)))
+    result = _submit(fake, monkeypatch)
+
+    assert result.state == "failed"
+    assert "exceeds the bounded count" in result.message
     assert not any(call[0] == "POST" for call in fake.calls)
 
 
@@ -1158,6 +1203,7 @@ def test_replay_binds_compare_head_and_parent_commit_identity(monkeypatch, seam)
             main_sha=ADVANCED_SHA,
             existing_parent_sha=BASE_SHA,
             malformed=seam,
+            compare_ahead_by=251 if seam == "compare_head" else 1,
         ),
         monkeypatch,
     )

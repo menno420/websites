@@ -271,6 +271,23 @@ def test_bad_root_shapes_are_rejected(mutate):
         owner_comments.parse_root_index(mutate(data))
 
 
+@pytest.mark.parametrize("field", ("unconsumed_count", "consumed_count"))
+def test_root_counts_over_contract_bound_are_rejected(field):
+    row = _root_row()
+    row[field] = owner_comments.MAX_INDEX_RECORDS + 1
+    row[
+        "latest_unconsumed_at"
+        if field == "unconsumed_count"
+        else "latest_consumed_at"
+    ] = "2026-08-27T10:00:00Z"
+
+    with pytest.raises(
+        owner_comments.OwnerCommentContractError,
+        match="exceeds the bounded count",
+    ):
+        owner_comments.parse_root_index(_root(row))
+
+
 def test_missing_or_case_mismatched_repository_is_unknown_not_zero():
     source = estate.SourceReference(
         "Fleet owner comments",

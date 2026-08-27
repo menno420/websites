@@ -221,10 +221,10 @@ async def _fetch_and_cache(
 ) -> dict:
     """Perform one network GET and populate the stable-result cache.
 
-    The caller registers this coroutine as the sole in-flight task for
-    ``key`` before awaiting it.  Cleanup in ``finally`` means cancellation,
-    an unexpected client exception, and ordinary completion all release the
-    coalescing slot.
+    Normal callers register this coroutine as the sole in-flight task for
+    ``key`` before awaiting it. A security-sensitive freshness caller may run
+    it unregistered so it cannot join an older observation. Cleanup in
+    ``finally`` is identity-checked for both modes.
     """
     try:
         try:
@@ -264,10 +264,13 @@ async def _fetch_and_cache(
         # poison the cache for the whole TTL — retry them on the next request.
         if res["ok"] or res["status"] in (404, 403, 401):
             async with _cache_lock:
-                _cache[key] = (
-                    started_at + config.CACHE_TTL_SECONDS,
-                    res,
-                )
+                expires_at = started_at + config.CACHE_TTL_SECONDS
+                current = _cache.get(key)
+                # An older coalesced request may finish after a newer
+                # uncoalesced mutation check. Never let that older observation
+                # overwrite the cache entry minted by the later request.
+                if current is None or current[0] < expires_at:
+                    _cache[key] = (expires_at, res)
         return res
     finally:
         async with _cache_lock:
@@ -281,6 +284,8 @@ async def _get(
     raw: bool = False,
     follow_redirects: bool = False,
     preserve_text: bool = False,
+    *,
+    coalesce: bool = True,
 ) -> dict:
     """GET a URL through the TTL cache, returning the honest result envelope.
 
@@ -291,6 +296,10 @@ async def _get(
     (``web_presence.overview``) opts in, so a redirect-hosted download (a
     release asset that 302s to a CDN) is health-probed to its FINAL status
     instead of false-negativing on the 302.
+
+    ``coalesce=False`` starts a separate network request and bypasses both the
+    TTL cache and any older in-flight task. It is reserved for anonymous
+    visibility checks that authorize an owner mutation.
     """
     now = time.monotonic()
     key = _cache_key(
@@ -299,6 +308,20 @@ async def _get(
         follow_redirects=follow_redirects,
         preserve_text=preserve_text,
     )
+    if not coalesce:
+        # Security-sensitive mutation checks must start their own anonymous
+        # request after the mutation begins. They may refresh the shared cache,
+        # but must never join an older in-flight visibility read.
+        return dict(
+            await _fetch_and_cache(
+                key,
+                url,
+                raw=raw,
+                follow_redirects=follow_redirects,
+                preserve_text=preserve_text,
+                started_at=now,
+            )
+        )
     async with _cache_lock:
         if not refresh:
             hit = _cache.get(key)
@@ -333,7 +356,9 @@ async def api(path: str, refresh: bool = False) -> dict:
     return await _get(config.GITHUB_API_BASE + path, refresh=refresh)
 
 
-async def public_api(path: str, refresh: bool = False) -> dict:
+async def public_api(
+    path: str, refresh: bool = False, *, coalesce: bool = True
+) -> dict:
     """GET an api.github.com path with the anonymous client only.
 
     Public owner-facing surfaces must use this helper when server credentials
@@ -345,6 +370,7 @@ async def public_api(path: str, refresh: bool = False) -> dict:
         config.GITHUB_API_BASE + path,
         refresh=refresh,
         raw=True,
+        coalesce=coalesce,
     )
 
 

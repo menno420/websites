@@ -495,6 +495,10 @@ def _validate_root_index(data: dict[str, Any]) -> list[dict[str, Any]]:
             latest = row.get(latest_field)
             if type(count) is not int or count < 0:
                 raise _ContractError(f"{repository} has an invalid {count_field}")
+            if count > MAX_INDEX_RECORDS:
+                raise _ContractError(
+                    f"{repository} {count_field} exceeds the bounded count"
+                )
             if (count == 0) != (latest is None):
                 raise _ContractError(
                     f"{repository} has contradictory {count_field}/{latest_field}"

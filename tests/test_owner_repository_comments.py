@@ -71,7 +71,7 @@ def client(monkeypatch):
 
 
 def _install_overview(monkeypatch, *repositories):
-    async def fake_overview(refresh=False):
+    async def fake_overview(refresh=False, *, coalesce_public_listing=True):
         return _overview(*repositories)
 
     monkeypatch.setattr(estate_service, "overview", fake_overview)
@@ -127,8 +127,10 @@ def test_submission_revalidates_public_visibility_without_cache(
 ):
     refreshes = []
 
-    async def changing_overview(refresh=False):
-        refreshes.append(refresh)
+    async def changing_overview(
+        refresh=False, *, coalesce_public_listing=True
+    ):
+        refreshes.append((refresh, coalesce_public_listing))
         return _overview(
             _summary(visibility="private" if refresh else "public")
         )
@@ -145,7 +147,7 @@ def test_submission_revalidates_public_visibility_without_cache(
         "/owner/repository-comments/websites", headers=_basic()
     )
     assert form.status_code == 200
-    assert refreshes == [False]
+    assert refreshes == [(False, True)]
 
     response = client.post(
         "/owner/repository-comments/submit",
@@ -159,7 +161,7 @@ def test_submission_revalidates_public_visibility_without_cache(
     )
 
     assert response.status_code == 503
-    assert refreshes == [False, True]
+    assert refreshes == [(False, True), (True, False)]
     assert "not confidently established as public" in response.text
 
 

@@ -204,8 +204,8 @@ def test_overview_is_exactly_two_public_files_and_one_public_listing(
         file_calls.append((repo, path, ref, refresh))
         return envelope(ESTATE_SAMPLE if path.endswith("ESTATE.md") else ACTIVITY_SAMPLE)
 
-    async def fake_api(path, refresh=False):
-        api_calls.append((path, refresh))
+    async def fake_api(path, refresh=False, *, coalesce=True):
+        api_calls.append((path, refresh, coalesce))
         return envelope(
             [
                 {
@@ -238,7 +238,12 @@ def test_overview_is_exactly_two_public_files_and_one_public_listing(
     monkeypatch.setattr(github, "fetch_public_file", fake_file, raising=False)
     monkeypatch.setattr(github, "public_api", fake_api, raising=False)
 
-    sources = asyncio.run(estate_reader.read_overview_sources(refresh=True))
+    sources = asyncio.run(
+        estate_reader.read_overview_sources(
+            refresh=True,
+            coalesce_public_listing=False,
+        )
+    )
 
     assert file_calls == [
         ("fleet-manager", "docs/ESTATE.md", "main", True),
@@ -246,6 +251,7 @@ def test_overview_is_exactly_two_public_files_and_one_public_listing(
     ]
     assert len(api_calls) == 1
     assert api_calls[0][0].startswith("/users/menno420/repos?")
+    assert api_calls[0][1:] == (True, False)
     assert [repo.name for repo in sources.unindexed_public_repositories] == [
         "new-public-repo"
     ]

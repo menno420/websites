@@ -541,8 +541,16 @@ def _render_repository_comment(
     )
 
 
-async def _known_comment_repository(repository: str, *, refresh: bool = False):
-    overview = await estate_service.overview(refresh=refresh)
+async def _known_comment_repository(
+    repository: str,
+    *,
+    refresh: bool = False,
+    coalesce_public_listing: bool = True,
+):
+    overview_kwargs = {"refresh": refresh}
+    if not coalesce_public_listing:
+        overview_kwargs["coalesce_public_listing"] = False
+    overview = await estate_service.overview(**overview_kwargs)
     return overview.repository(repository)
 
 
@@ -567,10 +575,14 @@ async def repository_comment_submit(
     submission_key: str = Form(""),
     _: None = Depends(require_owner_action),
 ):
-    # Mutation revalidates the anonymous public boundary now. A cached
-    # public listing must not authorize a comment after a repository becomes
-    # private during the cache TTL.
-    repo = await _known_comment_repository(repository, refresh=True)
+    # Mutation revalidates the anonymous public boundary now. Neither a cached
+    # listing nor a public read already in flight before this POST may authorize
+    # a comment after a repository becomes private.
+    repo = await _known_comment_repository(
+        repository,
+        refresh=True,
+        coalesce_public_listing=False,
+    )
     if repo is None:
         raise HTTPException(status_code=404, detail="unknown repository")
 

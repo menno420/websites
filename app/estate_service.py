@@ -508,11 +508,18 @@ def _aggregate(
     )
 
 
-async def overview(refresh: bool = False) -> estate.EstateOverview:
+async def overview(
+    refresh: bool = False,
+    *,
+    coalesce_public_listing: bool = True,
+) -> estate.EstateOverview:
     """Return the cheap, stable catalogue model."""
 
+    reader_kwargs = {"refresh": refresh}
+    if not coalesce_public_listing:
+        reader_kwargs["coalesce_public_listing"] = False
     sources, comment_index = await asyncio.gather(
-        estate_reader.read_overview_sources(refresh=refresh),
+        estate_reader.read_overview_sources(**reader_kwargs),
         owner_comments.read_index(refresh=refresh),
     )
     model, _rows, _public = _aggregate(sources, comment_index)

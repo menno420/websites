@@ -237,6 +237,52 @@ def test_identical_concurrent_public_misses_share_one_request():
     assert github._inflight == {}
 
 
+def test_fresh_uncoalesced_public_read_does_not_join_older_visibility_fetch():
+    calls = 0
+    old_started = asyncio.Event()
+    release_old = asyncio.Event()
+
+    async def anonymous(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        call_number = calls
+        if call_number == 1:
+            old_started.set()
+            await release_old.wait()
+            return httpx.Response(200, json=[{"name": "example"}])
+        return httpx.Response(200, json=[])
+
+    async def exercise() -> tuple[dict, dict, dict]:
+        public = httpx.AsyncClient(transport=httpx.MockTransport(anonymous))
+        authenticated = httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(500)
+            )
+        )
+        github.set_clients(authenticated, public)
+        path = "/users/menno420/repos?type=owner"
+        old = asyncio.create_task(github.public_api(path, refresh=True))
+        await old_started.wait()
+        mutation = await github.public_api(
+            path,
+            refresh=True,
+            coalesce=False,
+        )
+        release_old.set()
+        old_result = await old
+        cached = await github.public_api(path)
+        return mutation, old_result, cached
+
+    mutation, old_result, cached = asyncio.run(exercise())
+
+    assert calls == 2
+    assert mutation["data"] == []
+    assert old_result["data"] == [{"name": "example"}]
+    assert cached["data"] == []
+    assert cached["cached"] is True
+    assert github._inflight == {}
+
+
 def test_coalesced_transient_failure_is_not_cached_and_next_read_retries():
     calls = 0
 

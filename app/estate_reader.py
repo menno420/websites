@@ -673,7 +673,11 @@ def _public_repository(item: Any) -> Optional[PublicRepository]:
     )
 
 
-async def read_overview_sources(refresh: bool = False) -> OverviewSources:
+async def read_overview_sources(
+    refresh: bool = False,
+    *,
+    coalesce_public_listing: bool = True,
+) -> OverviewSources:
     """Fetch the overview's three cheap public sources, with no repo fan-out."""
 
     listing_path = (
@@ -694,7 +698,11 @@ async def read_overview_sources(refresh: bool = False) -> OverviewSources:
             f"{FLEET_REPOSITORY}/{ACTIVITY_PATH}",
         ),
         _guarded(
-            github.public_api(listing_path, refresh=refresh),
+            github.public_api(
+                listing_path,
+                refresh=refresh,
+                coalesce=coalesce_public_listing,
+            ),
             f"api.github.com{listing_path}",
         ),
     )

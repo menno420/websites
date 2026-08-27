@@ -313,6 +313,10 @@ def parse_root_index(text: str) -> tuple[OwnerCommentIndexRow, ...]:
                 raise OwnerCommentContractError(
                     f"{label} {key} must be a non-negative integer"
                 )
+            if value > MAX_INDEX_RECORDS:
+                raise OwnerCommentContractError(
+                    f"{label} {key} exceeds the bounded count"
+                )
             counts.append(value)
         latest_values: list[Optional[datetime]] = []
         for count, key in zip(
