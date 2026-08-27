@@ -174,6 +174,12 @@ CATEGORIES: list[dict[str, Any]] = [
                     "and how far along"
                 ),
                 "action": {"label": "open lanes", "href": "/lanes"},
+                "sublinks": [
+                    {
+                        "label": "movement diagnostic",
+                        "href": "/lane-freshness",
+                    }
+                ],
             },
             {
                 # Gated in place (D-0036) — see the orders item note.

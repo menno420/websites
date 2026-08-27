@@ -313,7 +313,7 @@ _COUNTERS = {
     "ideas": _count_ideas,
     "reviews": _count_reviews,
     "activity": _count_activity,
-    "projects": _count_projects,
+    "dispatch": _count_projects,
     "prompts": _count_prompts,
     "directory": _count_directory,
 }

@@ -12,6 +12,10 @@
     records, selected repository-native truth, and safe public GitHub metadata.
     It is an orientation surface, not a copied truth store.</p>
   <p class="repo-purpose">{{ d.why_it_exists }}</p>
+  {% if repo.sources %}<p class="source-meta">Purpose/routing source:
+    {% set purpose_source = repo.sources[0] %}
+    {% if purpose_source.url and purpose_source.available %}<a href="{{ purpose_source.url }}">{{ purpose_source.display_label }} ↗</a>{% else %}{{ purpose_source.display_label }}{% endif %}
+    · {{ purpose_source.freshness.label }}</p>{% endif %}
   {% for warning in repo.attention_reasons %}
   <div class="repo-alert">⚠ {{ warning }}</div>
   {% endfor %}
@@ -27,7 +31,8 @@
       <p class="dim small">Broad routing facts only; repository-native records
         remain authoritative for product and implementation detail.</p>
       <dl class="fact-grid">
-        <div class="fact"><dt>normalized state</dt><dd><span class="b {{ repo.status_class }}">{{ repo.status_label }}</span></dd></div>
+        <div class="fact"><dt>normalized state</dt><dd><span class="b {{ repo.status_class }}">{{ repo.status_label }}</span>
+          <span class="source-meta">{{ repo.status_freshness.label }}{% if repo.status_source %} · {{ repo.status_source.display_label }}{% endif %}</span></dd></div>
         <div class="fact"><dt>Fleet Manager index</dt><dd>{{ 'indexed' if repo.indexed_by_fleet_manager else 'not indexed' }}</dd></div>
         <div class="fact"><dt>visibility / access</dt><dd>{{ repo.visibility }}</dd></div>
         <div class="fact"><dt>summary freshness</dt><dd><span class="b {{ repo.freshness.css_class }}">{{ repo.freshness.label }}</span>
@@ -48,6 +53,9 @@
       <p class="dim small">A concise extract from the best available selected
         source; check its provenance and date before acting.</p>
       <p class="repo-purpose">{{ d.current_situation or 'Current situation unavailable.' }}</p>
+      {% if d.current_situation_source %}<p class="source-meta">Source:
+        {% if d.current_situation_source.url and d.current_situation_source.available %}<a href="{{ d.current_situation_source.url }}">{{ d.current_situation_source.display_label }} ↗</a>{% else %}{{ d.current_situation_source.display_label }}{% endif %}
+        · {{ d.current_situation_source.freshness.label }}{% if d.current_situation_source.freshness.detail != d.current_situation_source.freshness.label %} · {{ d.current_situation_source.freshness.detail }}{% endif %}</p>{% endif %}
     </section>
 
     <section class="card">
@@ -75,6 +83,9 @@
         explicit current-next heading; dated scattered prose is not promoted
         into a roadmap.</p>
       <p>{{ d.current_next_thread_text }}</p>
+      {% if d.current_next_thread_source %}<p class="source-meta">Source:
+        {% if d.current_next_thread_source.url and d.current_next_thread_source.available %}<a href="{{ d.current_next_thread_source.url }}">{{ d.current_next_thread_source.display_label }} ↗</a>{% else %}{{ d.current_next_thread_source.display_label }}{% endif %}
+        · {{ d.current_next_thread_source.freshness.label }}{% endif %}</p>
     </section>
 
     <section class="card" id="owner-feedback">

@@ -74,6 +74,16 @@ def test_live_not_archived_overrides_stale_archive_wording():
     assert any("live GitHub state is not archived" in w for w in result.warnings)
 
 
+def test_future_archive_prose_does_not_become_current_archived_state():
+    result = normalize_repository_status(
+        "complete-parked architecture donor — the archive gate remains "
+        "queued; this repository is not archived",
+        section="Paused / owner-gated",
+        live_archived=None,
+    )
+    assert result.status is RepositoryStatus.PAUSED
+
+
 def test_status_surfaces_cross_source_contradiction():
     result = normalize_repository_status(
         "active",

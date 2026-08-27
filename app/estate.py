@@ -461,7 +461,10 @@ class StatusResolution:
 
 
 _STATUS_PATTERNS: tuple[tuple[RepositoryStatus, re.Pattern[str]], ...] = (
-    (RepositoryStatus.ARCHIVED, re.compile(r"\barchiv(?:e|ed)\b", re.I)),
+    (
+        RepositoryStatus.ARCHIVED,
+        re.compile(r"^(?:📦\s*)?archiv(?:e|ed)\b", re.I),
+    ),
     (RepositoryStatus.FROZEN, re.compile(r"\bfrozen\b", re.I)),
     (
         RepositoryStatus.INFRASTRUCTURE,
@@ -478,7 +481,22 @@ _STATUS_PATTERNS: tuple[tuple[RepositoryStatus, re.Pattern[str]], ...] = (
 )
 
 
+def _leading_state_phrase(text: str) -> str:
+    """Return the lifecycle assertion, excluding later explanatory prose.
+
+    Fleet Manager state cells often explain future archive gates after an em
+    dash.  Those mentions are context, not the repository's current state.
+    Only the leading assertion (or a leading explicit archive marker) may
+    drive normalization when live GitHub metadata is unavailable.
+    """
+
+    value = re.sub(r"[`*_~]", "", str(text or "")).strip()
+    value = re.split(r"\s+[—–]\s+|[\r\n]+", value, maxsplit=1)[0]
+    return value[:160].strip()
+
+
 def _status_from_text(text: str, *, allow_archived: bool = True) -> RepositoryStatus:
+    text = _leading_state_phrase(text)
     for status, pattern in _STATUS_PATTERNS:
         if status is RepositoryStatus.ARCHIVED and not allow_archived:
             continue
@@ -600,6 +618,8 @@ class RepositorySummary:
     purpose: str = ""
     status: RepositoryStatus = RepositoryStatus.UNKNOWN
     raw_status: str = ""
+    status_freshness: Freshness = field(default_factory=Freshness.unknown)
+    status_source: Optional[SourceReference] = None
     freshness: Freshness = field(default_factory=Freshness.unknown)
     sources: tuple[SourceReference, ...] = ()
     activities: tuple[Activity, ...] = ()
@@ -647,6 +667,35 @@ class RepositorySummary:
     def last_activity_at(self) -> Optional[datetime]:
         return self.last_activity.occurred_at if self.last_activity else None
 
+    @property
+    def meaningful_activity(self) -> Optional[Activity]:
+        routed = [
+            activity
+            for activity in self.activities
+            if activity.kind != "github-push"
+        ]
+        in_flight = [
+            activity for activity in routed if activity.kind == "in_flight"
+        ]
+        if in_flight:
+            return in_flight[0]
+        dated = [activity for activity in routed if activity.occurred_at]
+        if dated:
+            return max(dated, key=lambda activity: activity.occurred_at)
+        return routed[0] if routed else None
+
+    @property
+    def displayed_activity(self) -> Optional[Activity]:
+        return self.meaningful_activity or self.last_activity
+
+    @property
+    def displayed_activity_label(self) -> str:
+        return (
+            "last meaningful activity"
+            if self.meaningful_activity is not None
+            else "latest observed activity"
+        )
+
     def is_recently_active(
         self,
         *,
@@ -671,7 +720,9 @@ class RepositorySummary:
         if not self.indexed_by_fleet_manager:
             reasons.append("Present in GitHub; not yet indexed by Fleet Manager.")
         if self.github_present is False:
-            reasons.append("Indexed by Fleet Manager but unavailable in GitHub.")
+            reasons.append(
+                "Not present in the anonymous public GitHub listing."
+            )
         if self.status is RepositoryStatus.UNKNOWN:
             reasons.append("Repository state is unknown.")
         if self.freshness.state is FreshnessState.STALE:
@@ -717,10 +768,12 @@ class RepositorySummary:
 class RepositoryDetail:
     summary: RepositorySummary
     current_situation: str = ""
+    current_situation_source: Optional[SourceReference] = None
     why_it_exists: str = ""
     recent_activity: tuple[Activity, ...] = ()
     important_sources: tuple[SourceReference, ...] = ()
     current_next_thread: Optional[str] = None
+    current_next_thread_source: Optional[SourceReference] = None
     warnings: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:

@@ -38,8 +38,10 @@ MEMBER_PROBE_PATHS: tuple[str, ...] = (
     "HANDOFF.md",
 )
 DETAIL_CONCURRENCY = 3
+MAX_MEMBER_PROBE_PATHS = 9
 
 _SAFE_REPOSITORY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
+_SAFE_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$")
 _ISO_DATE_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
 _VERIFIED_DATE_RE = re.compile(
     r"\bverified\b[^\d\n]{0,32}(20\d{2}-\d{2}-\d{2})",
@@ -118,6 +120,7 @@ class ActivityParseResult:
     sessions: tuple[ActivityRecord, ...]
     invisible_work: tuple[ActivityRecord, ...]
     warnings: tuple[str, ...] = ()
+    recognized_sections: tuple[str, ...] = ()
 
     @property
     def records(self) -> tuple[ActivityRecord, ...]:
@@ -172,6 +175,54 @@ def safe_repo_name(name: str) -> bool:
     """Whether ``name`` is safe to interpolate into any GitHub read path."""
 
     return bool(_SAFE_REPOSITORY_RE.fullmatch(name or ""))
+
+
+def safe_member_ref(ref: str) -> str:
+    """Return a safe simple default branch, or the conservative main default."""
+
+    if not _SAFE_REF_RE.fullmatch(ref or ""):
+        return "main"
+    if ref.endswith("/") or any(
+        part in {"", ".", ".."} for part in ref.split("/")
+    ):
+        return "main"
+    return ref
+
+
+def read_first_paths(value: str, *, limit: int = 3) -> tuple[str, ...]:
+    """Extract safe file paths from Fleet Manager's literal read-first route.
+
+    The estate cells use inline-code paths joined by arrows or plus signs.
+    Directories and prose are deliberately ignored: detail reads are bounded
+    file fetches, never a recursive repository crawl.
+    """
+
+    paths: list[str] = []
+    for candidate in re.findall(r"`([^`]+)`", value or ""):
+        candidate = candidate.split("#", 1)[0].split("?", 1)[0].strip()
+        if not candidate or candidate.startswith("/") or candidate.endswith("/"):
+            continue
+        normal = posixpath.normpath(candidate)
+        if normal == ".." or normal.startswith("../"):
+            continue
+        if not re.fullmatch(r"[A-Za-z0-9._/-]+", normal):
+            continue
+        basename = posixpath.basename(normal)
+        if "." not in basename:
+            continue
+        if normal not in paths:
+            paths.append(normal)
+        if len(paths) >= limit:
+            break
+    return tuple(paths)
+
+
+def member_probe_paths(read_first: str) -> tuple[str, ...]:
+    """Route-prescribed files first, then the stable optional detail probes."""
+
+    return tuple(
+        dict.fromkeys((*read_first_paths(read_first), *MEMBER_PROBE_PATHS))
+    )[:MAX_MEMBER_PROBE_PATHS]
 
 
 def markdown_to_text(value: str) -> str:
@@ -444,6 +495,7 @@ def parse_activity(markdown: str) -> ActivityParseResult:
     in_flight: list[ActivityRecord] = []
     sessions: list[ActivityRecord] = []
     invisible: list[ActivityRecord] = []
+    recognized_sections: list[str] = []
     source_doc = _activity_doc_url()
 
     for table in _tables(markdown):
@@ -451,6 +503,7 @@ def parse_activity(markdown: str) -> ActivityParseResult:
         headers = {markdown_to_text(h).casefold(): i for i, h in enumerate(table.headers)}
 
         if heading.startswith("in flight right now"):
+            recognized_sections.append("in_flight")
             required = ("repo", "pr", "venue", "card")
             if not all(key in headers for key in required):
                 warnings.append(
@@ -483,6 +536,7 @@ def parse_activity(markdown: str) -> ActivityParseResult:
                 )
 
         elif heading == "sessions, newest first":
+            recognized_sections.append("sessions")
             required = ("date", "repo", "venue", "model", "status", "card")
             if not all(key in headers for key in required):
                 warnings.append(
@@ -516,6 +570,7 @@ def parse_activity(markdown: str) -> ActivityParseResult:
                 )
 
         elif heading.startswith("invisible work"):
+            recognized_sections.append("invisible_work")
             # The prose heading may grow, while the literal columns are stable.
             repo_i = headers.get("repo")
             push_i = headers.get("last push")
@@ -554,6 +609,7 @@ def parse_activity(markdown: str) -> ActivityParseResult:
         sessions=tuple(sessions),
         invisible_work=tuple(invisible),
         warnings=tuple(warnings),
+        recognized_sections=tuple(dict.fromkeys(recognized_sections)),
     )
 
 
@@ -722,6 +778,8 @@ async def read_detail_sources(
     name: str,
     is_public: bool,
     layer2_path: Optional[str],
+    member_paths: Optional[tuple[str, ...]] = None,
+    member_ref: str = "main",
     refresh: bool = False,
 ) -> DetailSources:
     """Read Fleet Manager + focused files for one validated repository only."""
@@ -732,10 +790,12 @@ async def read_detail_sources(
     normal_layer2 = normalize_layer2_path(name, layer2_path)
     semaphore = asyncio.Semaphore(DETAIL_CONCURRENCY)
 
-    async def fetch(repo: str, path: str) -> Mapping[str, Any]:
+    selected_member_ref = safe_member_ref(member_ref)
+
+    async def fetch(repo: str, path: str, *, ref: str = "main") -> Mapping[str, Any]:
         async with semaphore:
             return await _guarded(
-                github.fetch_public_file(repo, path, ref="main", refresh=refresh),
+                github.fetch_public_file(repo, path, ref=ref, refresh=refresh),
                 f"{repo}/{path}",
             )
 
@@ -745,10 +805,16 @@ async def read_detail_sources(
         else None
     )
 
+    selected_member_paths = tuple(
+        dict.fromkeys(member_paths or MEMBER_PROBE_PATHS)
+    )[:MAX_MEMBER_PROBE_PATHS]
+
     if is_public:
         member_tasks = {
-            path: asyncio.create_task(fetch(name, path))
-            for path in MEMBER_PROBE_PATHS
+            path: asyncio.create_task(
+                fetch(name, path, ref=selected_member_ref)
+            )
+            for path in selected_member_paths
         }
         if member_tasks:
             await asyncio.gather(*member_tasks.values())
@@ -761,7 +827,7 @@ async def read_detail_sources(
                 f"{name}/{path}",
                 "private or unavailable source was not fetched",
             )
-            for path in MEMBER_PROBE_PATHS
+            for path in selected_member_paths
         }
 
     if layer_task is not None:

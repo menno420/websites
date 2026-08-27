@@ -56,18 +56,20 @@
     </div>
     <p class="repo-purpose">{{ repo.purpose_text }}</p>
     <div class="repo-chips">
-      <span class="b {{ repo.freshness.css_class }}">{{ repo.freshness.label }}</span>
+      <span class="b {{ repo.freshness.css_class }}">summary · {{ repo.freshness.label }}</span>
+      <span class="b {{ repo.status_freshness.css_class }}">state · {{ repo.status_freshness.label }}</span>
       {% if repo.visibility == 'private' %}<span class="b unknown">private · contents not fetched</span>
-      {% elif repo.visibility == 'public' %}<span class="b ok">public metadata live-readable</span>
+      {% elif repo.visibility == 'public' %}<span class="b ok">anonymous public source</span>
       {% else %}<span class="b unknown">visibility unknown</span>{% endif %}
       {% if not repo.indexed_by_fleet_manager %}<span class="b warn">not indexed by Fleet Manager</span>{% endif %}
     </div>
     <dl class="repo-signals">
       <div class="repo-signal">
-        <dt>last meaningful activity</dt>
-        <dd>{% if repo.last_activity and repo.last_activity.occurred_at %}
-          <time datetime="{{ repo.last_activity.occurred_at.isoformat() }}">{{ repo.last_activity.timestamp_label }}</time>
-          <span class="source-meta">{{ repo.last_activity.summary }}</span>
+        <dt>{{ repo.displayed_activity_label }}</dt>
+        <dd>{% if repo.displayed_activity %}
+          {% if repo.displayed_activity.occurred_at %}<time datetime="{{ repo.displayed_activity.occurred_at.isoformat() }}">{{ repo.displayed_activity.timestamp_label }}</time>
+          {% else %}<span class="dim">time unknown</span>{% endif %}
+          <span class="source-meta">{{ repo.displayed_activity.summary }}</span>
           {% else %}<span class="dim">unknown / unavailable</span>{% endif %}</dd>
       </div>
       <div class="repo-signal">

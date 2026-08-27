@@ -91,6 +91,36 @@ def test_parse_estate_preserves_current_table_shape_and_provenance():
     assert parsed.warnings == ()
 
 
+@pytest.mark.parametrize(
+    ("route", "expected"),
+    [
+        (
+            "`docs/AGENT_ORIENTATION.md` → `docs/current-state.md`",
+            ("docs/AGENT_ORIENTATION.md", "docs/current-state.md"),
+        ),
+        (
+            "`docs/decisions.md` + `.sessions/`",
+            ("docs/decisions.md",),
+        ),
+        (
+            "`products/phone-controller/README.md`",
+            ("products/phone-controller/README.md",),
+        ),
+    ],
+)
+def test_read_first_paths_follow_safe_file_routes_only(route, expected):
+    assert estate_reader.read_first_paths(route) == expected
+
+
+def test_member_probe_paths_put_routed_truth_first_without_duplicates():
+    paths = estate_reader.member_probe_paths(
+        "`docs/current-state.md` → `CLAUDE.md`"
+    )
+    assert paths[:2] == ("docs/current-state.md", "CLAUDE.md")
+    assert paths.count("docs/current-state.md") == 1
+    assert len(paths) <= estate_reader.MAX_MEMBER_PROBE_PATHS
+
+
 def test_parse_estate_row_date_overrides_header_and_bad_row_degrades_alone():
     markdown = ESTATE_SAMPLE.replace(
         "**active** — keep-bot-only cutover landed",
@@ -306,9 +336,9 @@ def test_public_detail_is_selected_repo_only_and_concurrency_is_bounded(
     active = 0
     peak = 0
 
-    async def fake_file(repo, path, **_kwargs):
+    async def fake_file(repo, path, **kwargs):
         nonlocal active, peak
-        calls.append((repo, path))
+        calls.append((repo, path, kwargs.get("ref")))
         active += 1
         peak = max(peak, active)
         await asyncio.sleep(0.005)
@@ -319,14 +349,22 @@ def test_public_detail_is_selected_repo_only_and_concurrency_is_bounded(
 
     sources = asyncio.run(
         estate_reader.read_detail_sources(
-            "websites", True, "repos/websites/README.md"
+            "websites",
+            True,
+            "repos/websites/README.md",
+            member_paths=("docs/decisions.md", "README.md"),
+            member_ref="master",
         )
     )
 
     assert peak <= estate_reader.DETAIL_CONCURRENCY
-    assert len(calls) == 1 + len(estate_reader.MEMBER_PROBE_PATHS)
-    assert calls.count(("fleet-manager", "docs/repos/websites/README.md")) == 1
-    assert all(repo in {"fleet-manager", "websites"} for repo, _path in calls)
+    assert len(calls) == 3
+    assert calls.count(
+        ("fleet-manager", "docs/repos/websites/README.md", "main")
+    ) == 1
+    assert ("websites", "docs/decisions.md", "master") in calls
+    assert ("websites", "README.md", "master") in calls
+    assert all(repo in {"fleet-manager", "websites"} for repo, _path, _ref in calls)
     assert sources.member_results["README.md"]["ok"] is True
 
 

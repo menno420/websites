@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from datetime import date, datetime, timezone
 from typing import Any, Mapping, Optional
+from urllib.parse import quote
 
 from . import config, estate, estate_reader
 
@@ -23,6 +24,9 @@ def _datetime(value: Any) -> Optional[datetime]:
     text = str(value or "").strip()
     if not text:
         return None
+    date_match = re.search(r"\b20\d{2}-\d{2}-\d{2}\b", text)
+    if date_match and not re.search(r"\d{2}:\d{2}", text):
+        return datetime.fromisoformat(date_match.group(0)).replace(tzinfo=UTC)
     try:
         if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
             return datetime.fromisoformat(text).replace(tzinfo=UTC)
@@ -74,10 +78,12 @@ def _source(
     authority: str,
     available: Optional[bool] = True,
     url: str = "",
+    ref: str = "main",
 ) -> estate.SourceReference:
     if not url and available is True:
         url = (
-            f"https://github.com/{config.OWNER}/{repository}/blob/main/{path}"
+            f"https://github.com/{config.OWNER}/{repository}/blob/"
+            f"{quote(ref, safe='')}/{path}"
             if path
             else f"https://github.com/{config.OWNER}/{repository}"
         )
@@ -107,6 +113,24 @@ def _concise(text: str, limit: int = 300) -> str:
 def _activity_freshness(
     sources: estate_reader.OverviewSources,
 ) -> estate.Freshness:
+    parse_ok = bool(
+        sources.activity.generated_at
+        and (
+            sources.activity.recognized_sections
+            or sources.activity.records
+        )
+        and not any(
+            "malformed" in warning.casefold()
+            for warning in sources.activity.warnings
+        )
+    )
+    if sources.activity_result.get("ok") and not parse_ok:
+        return estate.Freshness.unavailable(
+            retrieved_at=_datetime(
+                sources.activity_result.get("fetched_at_iso")
+            ),
+            reason="Fleet Manager activity log could not be parsed.",
+        )
     return _envelope_freshness(
         sources.activity_result,
         fact_as_of=_datetime(sources.activity.generated_at),
@@ -199,11 +223,24 @@ def _aggregate(
 
     rows_by_name: dict[str, estate_reader.EstateRow] = {}
     repositories: list[estate.RepositorySummary] = []
-    estate_source_freshness = _envelope_freshness(sources.estate_result)
+    estate_parse_ok = bool(sources.estate.rows)
+    estate_source_freshness = (
+        _envelope_freshness(sources.estate_result)
+        if estate_parse_ok
+        else estate.Freshness.unavailable(
+            retrieved_at=_datetime(
+                sources.estate_result.get("fetched_at_iso")
+            ),
+            reason="Fleet Manager estate index could not be parsed.",
+        )
+    )
     listing_freshness = _envelope_freshness(sources.public_repos_result)
+    listing_data = sources.public_repos_result.get("data")
     listing_complete = bool(
         sources.public_repos_result.get("ok")
-        and isinstance(sources.public_repos_result.get("data"), list)
+        and isinstance(listing_data, list)
+        and len(listing_data) < 100
+        and len(sources.public_repositories) == len(listing_data)
     )
 
     for key, duplicate_rows in grouped.items():
@@ -246,8 +283,10 @@ def _aggregate(
             if push:
                 row_activities.append(push)
         row_activities.sort(
-            key=lambda item: item.occurred_at
-            or datetime.min.replace(tzinfo=UTC),
+            key=lambda item: (
+                item.kind == "in_flight",
+                item.occurred_at or datetime.min.replace(tzinfo=UTC),
+            ),
             reverse=True,
         )
 
@@ -258,7 +297,7 @@ def _aggregate(
                 estate_reader.ESTATE_PATH,
                 row_freshness,
                 authority="routing",
-                available=bool(sources.estate_result.get("ok")),
+                available=estate_parse_ok,
             )
         ]
         if row.layer2_path:
@@ -282,6 +321,14 @@ def _aggregate(
                     available=True,
                 )
             )
+
+        live_status_checked = bool(
+            public_repo and public_repo.archived is not None
+        )
+        status_source = references[-1] if live_status_checked else references[0]
+        status_freshness = (
+            listing_freshness if live_status_checked else row_freshness
+        )
 
         warnings = [*row.warnings, *resolution.warnings]
         if len(duplicate_rows) > 1:
@@ -310,6 +357,8 @@ def _aggregate(
                 purpose=_concise(row.purpose_text),
                 status=resolution.status,
                 raw_status=row.state_text,
+                status_freshness=status_freshness,
+                status_source=status_source,
                 freshness=row_freshness,
                 sources=tuple(references),
                 activities=tuple(row_activities),
@@ -326,27 +375,28 @@ def _aggregate(
         if key in grouped:
             continue
         push = _github_activity(public_repo, listing_freshness)
+        github_source = estate.SourceReference(
+            label="Public GitHub repository metadata",
+            url=public_repo.html_url,
+            repository=public_repo.name,
+            authority="authoritative",
+            freshness=listing_freshness,
+            available=True,
+        )
         repositories.append(
             estate.RepositorySummary(
                 name=public_repo.name,
-                purpose=_concise(public_repo.description),
+                purpose="",
                 status=(
                     estate.RepositoryStatus.ARCHIVED
                     if public_repo.archived is True
                     else estate.RepositoryStatus.UNKNOWN
                 ),
                 raw_status="",
+                status_freshness=listing_freshness,
+                status_source=github_source,
                 freshness=listing_freshness,
-                sources=(
-                    estate.SourceReference(
-                        label="Public GitHub repository metadata",
-                        url=public_repo.html_url,
-                        repository=public_repo.name,
-                        authority="authoritative",
-                        freshness=listing_freshness,
-                        available=True,
-                    ),
-                ),
+                sources=(github_source,),
                 activities=(push,) if push else (),
                 owner_comments=_comments_not_ready(),
                 warnings=(
@@ -366,7 +416,7 @@ def _aggregate(
             estate_reader.ESTATE_PATH,
             estate_source_freshness,
             authority="routing",
-            available=bool(sources.estate_result.get("ok")),
+            available=estate_parse_ok,
         ),
         _source(
             "Fleet Manager activity log",
@@ -374,7 +424,7 @@ def _aggregate(
             estate_reader.ACTIVITY_PATH,
             activity_freshness,
             authority="routing",
-            available=bool(sources.activity_result.get("ok")),
+            available=activity_freshness.is_available,
         ),
         estate.SourceReference(
             label="Public GitHub repository listing",
@@ -385,7 +435,15 @@ def _aggregate(
             available=bool(sources.public_repos_result.get("ok")),
         ),
     )
-    warnings = tuple(dict.fromkeys((*sources.warnings, *sources.estate.warnings)))
+    warnings = tuple(
+        dict.fromkeys(
+            (
+                *sources.warnings,
+                *sources.estate.warnings,
+                *sources.activity.warnings,
+            )
+        )
+    )
     verified_dates = [
         value
         for row in sources.estate.rows
@@ -393,7 +451,7 @@ def _aggregate(
     ]
     overview_freshness = (
         estate.Freshness.last_verified(
-            max(verified_dates).date(),
+            min(verified_dates).date(),
             retrieved_at=_datetime(sources.estate_result.get("fetched_at_iso")),
         )
         if verified_dates
@@ -441,6 +499,8 @@ def _member_source(
     name: str,
     path: str,
     result: Mapping[str, Any],
+    *,
+    ref: str,
 ) -> estate.SourceReference:
     text = result.get("data") if isinstance(result.get("data"), str) else ""
     fact_date = _document_date(text)
@@ -470,6 +530,7 @@ def _member_source(
         freshness,
         authority="authoritative",
         available=bool(result.get("ok")),
+        ref=ref,
     )
 
 
@@ -489,26 +550,46 @@ async def detail(
     key = summary.name.casefold()
     row = rows.get(key)
     public_repo = public.get(key)
+    member_ref = estate_reader.safe_member_ref(
+        public_repo.default_branch if public_repo else "main"
+    )
+    routed_member_paths = (
+        estate_reader.read_first_paths(row.read_first) if row else ()
+    )
     detail_sources = await estate_reader.read_detail_sources(
         summary.name,
         is_public=public_repo is not None,
         layer2_path=row.layer2_path if row else None,
+        member_paths=(
+            estate_reader.member_probe_paths(row.read_first)
+            if row
+            else estate_reader.MEMBER_PROBE_PATHS
+        ),
+        member_ref=member_ref,
         refresh=refresh,
     )
 
     warnings: list[str] = []
     important: list[estate.SourceReference] = []
+    member_sources: dict[str, estate.SourceReference] = {}
     member_texts: list[tuple[str, str]] = []
     if detail_sources.is_public:
-        for path in estate_reader.MEMBER_PROBE_PATHS:
-            result = detail_sources.member_results[path]
+        for path, result in detail_sources.member_results.items():
             if result.get("ok") and isinstance(result.get("data"), str):
-                important.append(_member_source(summary.name, path, result))
+                source = _member_source(
+                    summary.name, path, result, ref=member_ref
+                )
+                important.append(source)
+                member_sources[path] = source
                 member_texts.append((path, result["data"]))
                 if estate_reader.is_placeholder_text(result["data"]):
                     warnings.append(f"{path} is an unrendered placeholder.")
             elif result.get("status") not in (404,):
-                important.append(_member_source(summary.name, path, result))
+                source = _member_source(
+                    summary.name, path, result, ref=member_ref
+                )
+                important.append(source)
+                member_sources[path] = source
     else:
         important.append(
             estate.SourceReference(
@@ -529,30 +610,37 @@ async def detail(
         and isinstance(detail_sources.layer2_result.get("data"), str)
         else ""
     )
+    layer_source: Optional[estate.SourceReference] = None
     if detail_sources.layer2_path:
         fact_date = _document_date(layer_text)
-        important.append(
-            _source(
-                "Fleet Manager Layer-2 entry",
-                "fleet-manager",
-                detail_sources.layer2_path,
-                _envelope_freshness(
-                    detail_sources.layer2_result,
-                    fact_as_of=fact_date,
-                    verified=bool(fact_date),
-                ),
-                authority="routing",
-                available=bool(detail_sources.layer2_result.get("ok")),
-            )
+        layer_source = _source(
+            "Fleet Manager Layer-2 entry",
+            "fleet-manager",
+            detail_sources.layer2_path,
+            _envelope_freshness(
+                detail_sources.layer2_result,
+                fact_as_of=fact_date,
+                verified=bool(fact_date),
+            ),
+            authority="routing",
+            available=bool(detail_sources.layer2_result.get("ok")),
         )
+        important.append(layer_source)
 
     situation = ""
-    for preferred in (
-        "docs/current-state.md",
-        "README.md",
-        "docs/PROJECT-CLOSEOUT.md",
-        "docs/DESIGN.md",
-    ):
+    situation_source: Optional[estate.SourceReference] = None
+    situation_paths = tuple(
+        dict.fromkeys(
+            (
+                *routed_member_paths,
+                "docs/current-state.md",
+                "README.md",
+                "docs/PROJECT-CLOSEOUT.md",
+                "docs/DESIGN.md",
+            )
+        )
+    )
+    for preferred in situation_paths:
         text_value = next(
             (body for path, body in member_texts if path == preferred),
             "",
@@ -560,36 +648,57 @@ async def detail(
         if text_value and not estate_reader.is_placeholder_text(text_value):
             situation = estate_reader.extract_concise_situation(text_value)
         if situation:
+            situation_source = member_sources.get(preferred)
             break
     if not situation and layer_text:
         situation = estate_reader.extract_concise_situation(layer_text)
+        if situation:
+            situation_source = layer_source
     if not situation:
         situation = summary.purpose_text
+        situation_source = summary.sources[0] if summary.sources else None
 
     # Layer-2 is routing context and may lag the repository. A roadmap is
     # shown only when a repository-native source uses an exact next heading.
     next_thread: Optional[str] = None
-    for preferred in (
-        "docs/current-state.md",
-        "docs/PROJECT-CLOSEOUT.md",
-        "HANDOFF.md",
-        "README.md",
-    ):
+    next_thread_source: Optional[estate.SourceReference] = None
+    next_paths = tuple(
+        dict.fromkeys(
+            (
+                *routed_member_paths,
+                "docs/current-state.md",
+                "docs/PROJECT-CLOSEOUT.md",
+                "HANDOFF.md",
+                "README.md",
+            )
+        )
+    )
+    for preferred in next_paths:
         text_value = next(
             (body for path, body in member_texts if path == preferred),
             "",
         )
         next_thread = estate_reader.extract_explicit_next_thread(text_value)
         if next_thread:
+            next_thread_source = member_sources.get(preferred)
             break
+
+    in_flight = [
+        item for item in summary.activities if item.kind == "in_flight"
+    ]
+    other_activity = [
+        item for item in summary.activities if item.kind != "in_flight"
+    ]
+    recent_activity = tuple((in_flight + other_activity)[: max(8, len(in_flight))])
 
     return estate.RepositoryDetail(
         summary=summary,
         current_situation=situation,
+        current_situation_source=situation_source,
         why_it_exists=summary.purpose_text,
-        recent_activity=summary.activities[:8],
+        recent_activity=recent_activity,
         important_sources=tuple(important),
         current_next_thread=next_thread,
+        current_next_thread_source=next_thread_source,
         warnings=tuple(dict.fromkeys(warnings)),
     )
-

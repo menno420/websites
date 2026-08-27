@@ -24,6 +24,7 @@ ALL_FEATURE_ROUTES = [
     "/",
     "/repos",
     "/lanes",
+    "/lane-freshness",
     "/work",
     "/queue",
     "/orders",

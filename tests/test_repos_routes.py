@@ -43,6 +43,10 @@ def _summary(name="alpha", status=estate.RepositoryStatus.ACTIVE, **kwargs):
         "purpose": f"{name} product purpose",
         "status": status,
         "raw_status": status.value,
+        "status_freshness": estate.Freshness.live(
+            datetime(2026, 8, 27, 10, tzinfo=UTC)
+        ),
+        "status_source": _source(),
         "freshness": estate.Freshness.last_verified(
             datetime(2026, 8, 26, tzinfo=UTC),
             now=datetime(2026, 8, 27, tzinfo=UTC),
@@ -88,6 +92,7 @@ def _detail():
     return estate.RepositoryDetail(
         summary=summary,
         current_situation="Alpha is useful and currently verified.",
+        current_situation_source=_source(),
         why_it_exists=summary.purpose,
         recent_activity=summary.activities,
         important_sources=(_source(),),
@@ -145,6 +150,8 @@ def test_known_detail_renders_sections_and_honest_next_thread(monkeypatch):
     ):
         assert heading in response.text
     assert estate.NEXT_THREAD_UNKNOWN in response.text
+    assert "Source:" in response.text
+    assert "Fleet Manager estate index" in response.text
     assert "Nothing queued only in this website" in response.text
 
 
