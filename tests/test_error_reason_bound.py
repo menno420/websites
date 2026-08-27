@@ -176,6 +176,39 @@ def test_api_request_redacts_long_token_from_plaintext_before_slicing(
     assert res["error"] == "denied bearer [credential redacted]"
 
 
+@pytest.mark.parametrize(
+    "message",
+    (
+        lambda token: ["denied bearer", token],
+        lambda token: {"reason": "denied bearer", "credential": token},
+    ),
+)
+def test_api_request_redacts_token_from_non_string_json_message(
+    monkeypatch, message
+):
+    token = "C" * 200
+    client = _mock_client(
+        lambda request: httpx.Response(
+            403,
+            json={"message": message(token)},
+        )
+    )
+    monkeypatch.setattr(github, "get_client", lambda raw=False: client)
+    try:
+        res = asyncio.run(
+            github.api_request(
+                "POST", "/repos/example/write", {"value": 1}, token=token
+            )
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+    assert res["ok"] is False and res["status"] == 403
+    assert token not in res["error"]
+    assert "C" * 32 not in res["error"]
+    assert "[credential redacted]" in res["error"]
+
+
 def test_short_plain_reasons_pass_verbatim(monkeypatch):
     # JSON message path (the GitHub API's normal error shape).
     res = _fetch(

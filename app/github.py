@@ -423,16 +423,17 @@ async def api_request(
             data = resp.text
         err = ""
         if resp.status_code >= 300:
-            err = (
+            raw_error = (
                 data.get("message", "")
                 if isinstance(data, dict)
-                else str(data)
+                else data
             )
+            err = str(raw_error)
         # A per-request mutation credential can be echoed by a hostile or
         # misbehaving upstream. Redact it before ``_result`` applies the
         # user-visible 140-character cap; after truncation the complete token
         # may no longer be present for a downstream writer to remove.
-        if token and isinstance(err, str):
+        if token:
             err = err.replace(token, "[credential redacted]")
         return _result(url, resp.status_code, data, err)
     except httpx.HTTPError as exc:
