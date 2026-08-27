@@ -93,6 +93,41 @@ The former competing HTML routes are reversible 307 migrations:
 `/projects.json`, and `/freshness.json` remain compatibility
 contracts.
 
+#### Repository owner feedback ([D-0039])
+
+Fleet Manager remains the record owner. Its public v1 ledger lives under
+`docs/owner-comments/`: `index.json` is the cheap estate-wide count source,
+each repository has a stable `README.md` index, comments are standalone JSON
+records, and consumption moves a record into `consumed/` while preserving
+it. `/repos` reads only the root index; `/repos/{name}` adds at most 50 active
+and 10 consumed record reads for that validated repository, with concurrency
+bounded to four. The reader is anonymous-only, shares the isolated public
+cache boundary described above, escapes comment text as untrusted data, and
+keeps the Fleet Manager source link plus live/measured/stale/unknown-or-
+unavailable freshness. A malformed index, private/unreachable source, or
+partial record failure renders explicitly rather than becoming a zero count or
+breaking the repository page.
+
+The write half lives behind the existing owner overlay:
+`GET /owner/repository-comments/{name}` shows the public-record warning and
+capability, and `POST /owner/repository-comments/submit` validates the
+repository through the estate model, requires explicit public
+acknowledgement, and preserves the accepted wording verbatim. Only a repository
+both Fleet-indexed and confidently public is eligible. With the dedicated
+`FLEET_MANAGER_WRITEBACK_TOKEN`, one Git Data transaction creates the record,
+repository index, and root index on a `claude/owner-comments-*` branch, then
+opens a ready Fleet Manager PR. Protected `main` is never written directly.
+The strongest immediate success is **pending PR / not durable**; the public
+reader reflects durability only after that record merges to Fleet Manager
+`main`. Missing capability and failed or ambiguous writes are named honestly;
+there is no website-local durable queue or comment truth store.
+
+The implementation is in websites PR #523 and is not yet deployed. It remains
+ordered behind Fleet Manager PR #952, which owns the v1 storage, index, routing,
+and consume contract. Production writeback additionally remains unavailable
+until the dedicated token is configured; no production end-to-end submission
+is claimed here.
+
 3a. **Fleet heartbeat** (`/lanes`, `/fleet.json` compatibility variant) — every fleet **lane's**
    `control/status*.md` heartbeat on one glanceable screen ([D-0021], ORDER 002).
    The fleet-coordination protocol has each Project overwrite a `control/status.md`
@@ -323,7 +358,7 @@ contracts.
 | `/directory` | public | canonical eight-product website inventory with friendly public URLs, explicit public/read-only/archive boundaries, and live HTTP health probes |
 | `/api/readiness.json` | public | board data as JSON (no secret names) |
 | `/repos` | public | **canonical repository estate catalogue** — purpose, normalized state, activity, freshness, provenance, attention and feedback state |
-| `/repos/{name}` | public | validated focused repository review; selected public member sources only; unknown repo → 404 |
+| `/repos/{name}` | public | validated focused repository review; selected public member sources plus bounded Fleet Manager owner-comment history; unknown repo → 404 |
 | `/fleet` | public | 307 compatibility redirect to `/repos`; never serves the seat-era estate view |
 | `/lanes` | public | operational lane heartbeat — every lane's `control/status*.md` (HTML) — [D-0021] |
 | `/fleet.json` | public | legacy-named lane-heartbeat JSON compatibility contract |
@@ -358,6 +393,8 @@ contracts.
 | `/version` | public | deployed commit SHA (`{service, sha, short}`) — powers the deploy-state cell ([D-0018]) |
 | `/owner` | **gated** | full-detail board — un-masked Actions **secret names** + broken-check/oldest-PR detail |
 | `/owner/api/readiness.json` | **gated** | authed JSON, including secret names |
+| `/owner/repository-comments/{name}` | **gated** | repository feedback form and Fleet Manager write-capability state; unknown repo → 404 |
+| `/owner/repository-comments/submit` (POST) | **gated** | validated public-record submission → ready Fleet Manager PR; 202 means pending/not durable, never landed |
 | `/owner/actions/refresh` (POST) | **gated** | clear the in-memory TTL cache (in-process) |
 | `/owner/actions/rerun-ci` (POST) | **gated** | re-run the latest FAILED Actions run on a selected repo |
 
@@ -444,6 +481,10 @@ action, while the main site stays browsable:
   banner; read failure → honest `unavailable` with the reason. Read-only GET
   behind the same gate — no CSRF surface (the ORDER 013 hardening applies to
   the POST actions only).
+- **`GET /owner/repository-comments/{name}`** — repository-scoped feedback
+  form for a known estate repository. It exposes only whether the dedicated
+  Fleet Manager write capability is present, never its token, and requires an
+  explicit acknowledgement that the comment and metadata become public.
 - **Privileged actions** (POST, same gate, all reversible, using creds already
   on the service):
   - **force cache refresh** — clears the in-memory TTL cache; the next load
@@ -452,6 +493,11 @@ action, while the main site stays browsable:
     repo's default branch and POSTs `rerun-failed-jobs` via `GITHUB_TOKEN`.
     Honest banners for the 403 (token lacks `actions:write`) and no-failed-run
     cases; never 500s.
+  - **submit repository feedback** — validates the repository against the
+    estate model and uses `FLEET_MANAGER_WRITEBACK_TOKEN` to open a ready
+    branch + PR carrying one atomic v1 record/index update in Fleet Manager.
+    The response remains pending/not durable until protected `main` contains
+    the record; failures never fall back to a local durable claim.
 - **POST hardening (ORDER 013):** every state-changing `/owner` action layers,
   after Basic auth, a **strict same-origin CSRF check** — the `Origin` header's
   host must match the request's own `Host` (falling back to `Referer` when
@@ -476,6 +522,7 @@ itself, and never uses the account key or the ambient production IDs
 |---|---|---|
 | `SITE_PASSWORD` | for `/owner` | Gates ONLY the `/owner` area (HTTP Basic, any username). The public site never reads it. Unset → `/owner*` fails closed 503; the public site still works. |
 | `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; the Actions **secrets count** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)`. Secret *names* are exposed only through the gated `/owner` area; `actions:write` is needed for the `/owner` re-run-CI action. Also the only credential that can read `menno420/fleet-manager` when its contents aren't anonymously reachable — unset, `/queue`'s fleet-manager half and `/environments` show an honest **not configured** banner ([D-0027]). **`/repos` never uses this token:** its public reader has no authenticated fallback and a separate cache namespace. |
+| `FLEET_MANAGER_WRITEBACK_TOKEN` | for repository-comment submission | Dedicated GitHub credential used only by the owner-gated Fleet Manager comment writer; it needs Contents read/write and Pull requests read/write on `menno420/fleet-manager`. It is never used as a public-read fallback and its value is never rendered. Unset → the form remains readable but reports writeback unavailable; no permission is borrowed from `GITHUB_TOKEN`. |
 | `PORT` | Railway sets it | bind port (default 8000) |
 | `CACHE_TTL_SECONDS` | no | server-side GitHub cache TTL, default `180`. Empty/malformed values fall back to the default at import (`_env_int`, 2026-07-13 hardening — same for `AUTOREFRESH_SECONDS`/`FLEET_STALE_HOURS`/`CLAIM_STALE_HOURS`); an empty Railway entry can no longer crash the service. |
 | `AUTOREFRESH_SECONDS` | no | client poll interval for the board `/` + `/lanes` live-monitoring auto-refresh, default `45` ([D-0023]) |

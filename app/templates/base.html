@@ -252,6 +252,42 @@ pre.superseded, .copywrap pre.superseded { border:1px solid var(--red); }
   background:var(--bg);
   overflow-wrap:anywhere;
 }
+.feedback-list { display:grid; gap:.65rem; margin:.7rem 0; }
+.feedback-entry {
+  min-width:0;
+  padding:.75rem;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:6px;
+  overflow-wrap:anywhere;
+}
+.feedback-entry.consumed { border-color:#24462c; }
+.feedback-meta { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .6rem; }
+.feedback-text {
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  font:14px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;
+}
+.feedback-history { margin-top:.8rem; }
+.feedback-history > summary { cursor:pointer; color:var(--blue); }
+.owner-comment-form textarea {
+  display:block;
+  width:100%;
+  max-width:100%;
+  margin:.45rem 0 .8rem;
+  padding:.7rem;
+  resize:vertical;
+  color:var(--fg);
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:6px;
+  font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+.owner-comment-form textarea:focus { outline:2px solid var(--blue); outline-offset:1px; }
+.owner-comment-ack { display:flex; align-items:flex-start; gap:.55rem; margin:.7rem 0; }
+.owner-comment-ack input { margin-top:.25rem; flex:0 0 auto; }
+.privacy-warning { color:var(--amber); }
 .repo-card-footer {
   display:flex;
   align-items:center;

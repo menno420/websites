@@ -22,6 +22,7 @@ import base64
 import secrets
 import time
 from collections import defaultdict, deque
+from dataclasses import replace
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -36,6 +37,7 @@ from . import (
     codedrift,
     config,
     discord_auth,
+    estate_service,
     envdrift,
     envhub,
     fleet,
@@ -43,6 +45,7 @@ from . import (
     listfilter,
     nav,
     owner_assist,
+    owner_comment_writeback,
     owner_queue,
     prompts,
     railway,
@@ -461,6 +464,146 @@ async def _render_with_banner(request: Request, banner: dict) -> HTMLResponse:
             "banner": banner,
             "repos": list(config.REPOS),
         },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Repository review comments — authenticated UI, Fleet Manager-owned record.
+#
+# Public `/repos/{name}` pages only read the public v1 ledger. These routes are
+# the write half and therefore use the existing owner gate, same-origin CSRF
+# check, and per-path rate limiter. A pending PR is intentionally not called
+# durable; the public reader reflects it only after Fleet Manager `main` does.
+# ---------------------------------------------------------------------------
+
+
+def _repository_comment_capability(repo):
+    capability = owner_comment_writeback.capability()
+    if not repo.indexed_by_fleet_manager:
+        return replace(
+            capability,
+            available=False,
+            label="Repository is not Fleet-indexed",
+            reason=(
+                "Fleet Manager has not established this repository in its estate "
+                "index, so there is no authoritative owner-comment destination."
+            ),
+        )
+    if repo.visibility != "public":
+        return replace(
+            capability,
+            available=False,
+            label="Public submission boundary unavailable",
+            reason=(
+                "This repository is not confidently established as public. "
+                "The control plane will not create a public feedback record that "
+                "could invite private repository details."
+            ),
+        )
+    return capability
+
+
+def _render_repository_comment(
+    request: Request,
+    repo,
+    *,
+    capability=None,
+    result=None,
+    comment_text: str = "",
+    error: str = "",
+    status_code: int = 200,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "owner_repository_comment.html",
+        {
+            "repo": repo,
+            "capability": capability or _repository_comment_capability(repo),
+            "result": result,
+            "comment_text": comment_text,
+            "error": error,
+            "active": "repos",
+        },
+        status_code=status_code,
+    )
+
+
+async def _known_comment_repository(repository: str):
+    overview = await estate_service.overview()
+    return overview.repository(repository)
+
+
+@router.get("/repository-comments/{name}", response_class=HTMLResponse)
+async def repository_comment_form(
+    request: Request,
+    name: str,
+    _: None = Depends(require_owner),
+):
+    repo = await _known_comment_repository(name)
+    if repo is None:
+        raise HTTPException(status_code=404, detail="unknown repository")
+    return _render_repository_comment(request, repo)
+
+
+@router.post("/repository-comments/submit", response_class=HTMLResponse)
+async def repository_comment_submit(
+    request: Request,
+    repository: str = Form(""),
+    comment: str = Form(""),
+    public_acknowledgement: str = Form(""),
+    _: None = Depends(require_owner_action),
+):
+    repo = await _known_comment_repository(repository)
+    if repo is None:
+        raise HTTPException(status_code=404, detail="unknown repository")
+
+    capability = _repository_comment_capability(repo)
+    if not capability.available:
+        return _render_repository_comment(
+            request,
+            repo,
+            capability=capability,
+            comment_text=comment,
+            status_code=503,
+        )
+    if public_acknowledgement != "yes":
+        return _render_repository_comment(
+            request,
+            repo,
+            capability=capability,
+            comment_text=comment,
+            error="Confirm that the comment and its metadata may be public.",
+            status_code=422,
+        )
+    problem = owner_comment_writeback.validate_comment(comment)
+    if problem:
+        return _render_repository_comment(
+            request,
+            repo,
+            capability=capability,
+            comment_text=comment,
+            error=problem,
+            status_code=422,
+        )
+
+    result = await owner_comment_writeback.submit_owner_comment(
+        repo.name,
+        comment,
+        context=f"/repos/{repo.name}",
+    )
+    status_code = {
+        "pending_pr": 202,
+        "unavailable": 503,
+        "failed_retryable": 503,
+        "failed": 409,
+    }[result.state]
+    return _render_repository_comment(
+        request,
+        repo,
+        capability=capability,
+        result=result,
+        comment_text="" if result.state == "pending_pr" else comment,
+        status_code=status_code,
     )
 
 

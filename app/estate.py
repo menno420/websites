@@ -446,6 +446,96 @@ class OwnerCommentSummary:
 
 
 @dataclass(frozen=True)
+class OwnerCommentRecord:
+    """One validated public Fleet Manager owner-comment record.
+
+    Text fields deliberately remain plain, unrendered data.  The UI must escape
+    them as text; this model never interprets owner wording or context as
+    Markdown/HTML and never turns consumption evidence into a link.
+    """
+
+    id: str
+    repository: str
+    comment: str
+    created_at: datetime
+    state: str
+    source_surface: str
+    source_context: Optional[str] = None
+    consumed_at: Optional[datetime] = None
+    consumption_actor: Optional[str] = None
+    consumption_evidence: Optional[str] = None
+    source: Optional[SourceReference] = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "created_at", _utc_datetime(self.created_at))
+        if self.consumed_at is not None:
+            object.__setattr__(
+                self, "consumed_at", _utc_datetime(self.consumed_at)
+            )
+        if self.state not in {"unconsumed", "consumed"}:
+            raise ValueError("owner-comment state must be unconsumed or consumed")
+        consumption_values = (
+            self.consumed_at,
+            self.consumption_actor,
+            self.consumption_evidence,
+        )
+        if self.state == "unconsumed" and any(
+            value is not None for value in consumption_values
+        ):
+            raise ValueError("unconsumed owner comment cannot carry consumption")
+        if self.state == "consumed" and any(
+            value is None for value in consumption_values
+        ):
+            raise ValueError("consumed owner comment requires consumption metadata")
+
+    @property
+    def created_at_label(self) -> str:
+        return self.created_at.strftime("%Y-%m-%d %H:%M UTC")
+
+    @property
+    def consumed_at_label(self) -> str:
+        if self.consumed_at is None:
+            return ""
+        return self.consumed_at.strftime("%Y-%m-%d %H:%M UTC")
+
+
+@dataclass(frozen=True)
+class OwnerCommentCollection:
+    """Bounded detail records plus honest completeness/provenance state."""
+
+    unconsumed: tuple[OwnerCommentRecord, ...] = ()
+    consumed: tuple[OwnerCommentRecord, ...] = ()
+    warnings: tuple[str, ...] = ()
+    freshness: Freshness = field(default_factory=Freshness.unknown)
+    source: Optional[SourceReference] = None
+    truncated: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "unconsumed", tuple(self.unconsumed))
+        object.__setattr__(self, "consumed", tuple(self.consumed))
+        object.__setattr__(self, "warnings", tuple(self.warnings))
+        if any(record.state != "unconsumed" for record in self.unconsumed):
+            raise ValueError("unconsumed collection contains a consumed record")
+        if any(record.state != "consumed" for record in self.consumed):
+            raise ValueError("consumed collection contains an unconsumed record")
+        ids = [record.id for record in (*self.unconsumed, *self.consumed)]
+        if len(ids) != len(set(ids)):
+            raise ValueError("owner-comment collection contains duplicate ids")
+
+    @property
+    def is_available(self) -> bool:
+        return self.freshness.state is not FreshnessState.UNAVAILABLE
+
+    @property
+    def unconsumed_count(self) -> int:
+        return len(self.unconsumed)
+
+    @property
+    def consumed_count(self) -> int:
+        return len(self.consumed)
+
+
+@dataclass(frozen=True)
 class StatusResolution:
     status: RepositoryStatus
     raw_status: str
@@ -774,6 +864,9 @@ class RepositoryDetail:
     important_sources: tuple[SourceReference, ...] = ()
     current_next_thread: Optional[str] = None
     current_next_thread_source: Optional[SourceReference] = None
+    owner_feedback: OwnerCommentCollection = field(
+        default_factory=OwnerCommentCollection
+    )
     warnings: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -793,7 +886,26 @@ class RepositoryDetail:
     def all_sources(self) -> tuple[SourceReference, ...]:
         sources: list[SourceReference] = []
         seen: set[tuple[str, str]] = set()
-        for source in (*self.summary.sources, *self.important_sources):
+        feedback_sources = tuple(
+            source
+            for source in (
+                self.summary.owner_comments.source,
+                self.owner_feedback.source,
+                *(
+                    record.source
+                    for record in (
+                        *self.owner_feedback.unconsumed,
+                        *self.owner_feedback.consumed,
+                    )
+                ),
+            )
+            if source is not None
+        )
+        for source in (
+            *self.summary.sources,
+            *self.important_sources,
+            *feedback_sources,
+        ):
             key = (source.url, source.path)
             if key not in seen:
                 sources.append(source)

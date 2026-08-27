@@ -152,7 +152,7 @@ def test_known_detail_renders_sections_and_honest_next_thread(monkeypatch):
     assert estate.NEXT_THREAD_UNKNOWN in response.text
     assert "Source:" in response.text
     assert "Fleet Manager estate index" in response.text
-    assert "Nothing queued only in this website" in response.text
+    assert "pending or website-local state is never presented as landed" in response.text
 
 
 def test_unknown_or_traversal_repository_is_not_a_detail_page(monkeypatch):

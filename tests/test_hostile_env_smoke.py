@@ -69,6 +69,9 @@ ENV_VARS = [
     "WRITEBACK_BRANCH",
     "WRITEBACK_BRANCH_PREFIX",
     "WRITEBACK_DB_PATH",
+    # Dedicated Fleet Manager owner-comment mutation credential. It must not
+    # fall back to the control-plane's generic GitHub read token.
+    "FLEET_MANAGER_WRITEBACK_TOKEN",
     # app/ Discord OAuth owner login (app/discord_auth.py, ASK-0001 / ORDER 035)
     "DISCORD_CLIENT_ID",
     "DISCORD_CLIENT_SECRET",

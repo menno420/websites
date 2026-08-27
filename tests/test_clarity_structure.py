@@ -83,8 +83,21 @@ def client(monkeypatch):
         )
         return estate.RepositoryDetail(summary=summary)
 
+    async def fake_estate_overview(refresh=False):
+        return estate.EstateOverview(
+            repositories=(
+                estate.RepositorySummary(
+                    name="websites",
+                    purpose="Offline representative repository.",
+                    indexed_by_fleet_manager=True,
+                    visibility="public",
+                ),
+            )
+        )
+
     monkeypatch.setattr(github, "_get", fake_get)
     monkeypatch.setattr(estate_service, "detail", fake_repository_detail)
+    monkeypatch.setattr(estate_service, "overview", fake_estate_overview)
     with TestClient(app) as c:
         yield c
 
@@ -145,6 +158,10 @@ def _repository_urls() -> list[str]:
     return ["/repos/websites"]
 
 
+def _owner_repository_comment_urls() -> list[str]:
+    return ["/owner/repository-comments/websites"]
+
+
 def _prompt_history_urls() -> list[str]:
     seats = list(roster.SEATS)
     assert seats, "roster.SEATS is empty — /prompts/history/{seat} expander is dead"
@@ -180,6 +197,7 @@ def _envhub_manifest_urls() -> list[str]:
 # entry whose route was removed.
 PARAM_EXPANDERS: dict[str, Callable[[], list[str]]] = {
     "/repos/{name}": _repository_urls,
+    "/owner/repository-comments/{name}": _owner_repository_comment_urls,
     "/dispatch/{package}": _projects_urls,
     "/prompts/history/{seat}": _prompt_history_urls,
     "/journal/{repo}": _journal_repo_urls,

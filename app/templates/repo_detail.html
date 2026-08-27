@@ -89,15 +89,71 @@
     </section>
 
     <section class="card" id="owner-feedback">
-      <h2>owner feedback</h2>
-      <p class="dim small">Repository-specific review comments belong in
-        Fleet Manager and must land there before they are called durable.</p>
-      <div class="feedback-entry">
-        <strong>{{ repo.owner_comments.label }}</strong>
-        <p class="feedback-text">Write capability is currently unavailable
-          until the Fleet Manager comment contract and merge path are present.
-          Nothing queued only in this website is described as durable.</p>
+      <div class="rowhead">
+        <h2>owner feedback</h2>
+        {% if repo.indexed_by_fleet_manager and repo.visibility == 'public' %}
+        <span class="cr-action"><a class="btn" href="/owner/repository-comments/{{ repo.name }}">leave a comment 🔒</a></span>
+        {% endif %}
       </div>
+      <p class="dim small">Repository-specific comments are public Fleet
+        Manager records. A submission is durable only after its Fleet Manager
+        PR merges; pending or website-local state is never presented as landed.</p>
+      <p><strong>{{ repo.owner_comments.label }}</strong>
+        {% if repo.owner_comments.source and repo.owner_comments.source.url %}
+        <a class="small" href="{{ repo.owner_comments.source.url }}">index source ↗</a>
+        {% endif %}
+        <span class="source-meta">{{ repo.owner_comments.freshness.label }}{% if repo.owner_comments.freshness.detail != repo.owner_comments.freshness.label %} · {{ repo.owner_comments.freshness.detail }}{% endif %}</span>
+      </p>
+
+      {% for warning in d.owner_feedback.warnings %}
+      <div class="repo-alert">⚠ {{ warning }}</div>
+      {% endfor %}
+
+      {% if d.owner_feedback.unconsumed %}
+      <div class="feedback-list" aria-label="Unconsumed owner comments">
+        {% for comment in d.owner_feedback.unconsumed %}
+        <article class="feedback-entry">
+          <div class="feedback-meta">
+            <span class="b warn">awaiting action</span>
+            <time datetime="{{ comment.created_at.isoformat() }}">{{ comment.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</time>
+            <span class="source-meta"><code>{{ comment.id }}</code> · {{ comment.source_surface }}</span>
+          </div>
+          <p class="feedback-text">{{ comment.comment }}</p>
+          {% if comment.source_context %}<p class="source-meta">Context: {{ comment.source_context }}</p>{% endif %}
+          {% if comment.source and comment.source.url %}<a class="small" href="{{ comment.source.url }}">durable record ↗</a>{% endif %}
+        </article>
+        {% endfor %}
+      </div>
+      {% elif repo.owner_comments.unconsumed_count == 0 %}
+      <p class="dim">No owner comments are awaiting action.</p>
+      {% else %}
+      <p class="dim">Unconsumed comments are unknown / unavailable.</p>
+      {% endif %}
+
+      {% if d.owner_feedback.consumed %}
+      <details class="feedback-history">
+        <summary>consumed history ({{ d.owner_feedback.consumed | length }} shown)</summary>
+        <div class="feedback-list">
+          {% for comment in d.owner_feedback.consumed %}
+          <article class="feedback-entry consumed">
+            <div class="feedback-meta">
+              <span class="b ok">consumed</span>
+              {% if comment.consumed_at %}<time datetime="{{ comment.consumed_at.isoformat() }}">{{ comment.consumed_at.strftime('%Y-%m-%d %H:%M UTC') }}</time>{% endif %}
+              <span class="source-meta"><code>{{ comment.id }}</code></span>
+            </div>
+            <p class="feedback-text">{{ comment.comment }}</p>
+            {% if comment.consumption_actor %}<p class="source-meta">Actor: {{ comment.consumption_actor }}</p>{% endif %}
+            {% if comment.consumption_evidence %}<p class="source-meta">Evidence: {{ comment.consumption_evidence }}</p>{% endif %}
+            {% if comment.source and comment.source.url %}<a class="small" href="{{ comment.source.url }}">preserved record ↗</a>{% endif %}
+          </article>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+      {% if d.owner_feedback.truncated %}<p class="source-meta">Only a bounded recent subset is shown; use the Fleet Manager index for the full ledger.</p>{% endif %}
+      {% if not (repo.indexed_by_fleet_manager and repo.visibility == 'public') %}
+      <p class="source-meta">Submission is unavailable here because the repository is not both Fleet-indexed and safely established as public.</p>
+      {% endif %}
     </section>
   </div>
 
