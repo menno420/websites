@@ -23,7 +23,7 @@
   </div>
   <p class="dim small">Catalogue facts: <span class="b {{ e.freshness.css_class }}">{{ e.freshness.label }}</span>
     {% if e.freshness.detail != e.freshness.label %}· {{ e.freshness.detail }}{% endif %}
-    · overview performs two public Fleet Manager reads and one public GitHub
+    · overview performs three public Fleet Manager reads and one public GitHub
     listing, never a private-token crawl.</p>
   {% for warning in e.warnings %}
   <div class="banner">⚠ {{ warning }}</div>

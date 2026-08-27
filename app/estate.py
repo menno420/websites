@@ -384,12 +384,19 @@ class OwnerCommentSummary:
     consumed_count: Optional[int] = None
     freshness: Freshness = field(default_factory=Freshness.unknown)
     source: Optional[SourceReference] = None
+    latest_unconsumed_at: Optional[datetime] = None
+    latest_consumed_at: Optional[datetime] = None
+    contradiction: str = ""
 
     def __post_init__(self) -> None:
         for name in ("unconsumed_count", "consumed_count"):
             value = getattr(self, name)
             if value is not None and value < 0:
                 raise ValueError(f"{name} cannot be negative")
+        for name in ("latest_unconsumed_at", "latest_consumed_at"):
+            value = getattr(self, name)
+            if value is not None:
+                object.__setattr__(self, name, _utc_datetime(value))
 
     @property
     def open_count(self) -> Optional[int]:
@@ -397,7 +404,11 @@ class OwnerCommentSummary:
 
     @property
     def is_known(self) -> bool:
-        return self.unconsumed_count is not None and self.consumed_count is not None
+        return (
+            not self.contradiction
+            and self.unconsumed_count is not None
+            and self.consumed_count is not None
+        )
 
     @property
     def total_count(self) -> Optional[int]:
@@ -443,6 +454,117 @@ class OwnerCommentSummary:
                 f"comment{'' if self.consumed_count == 1 else 's'} consumed"
             )
         return "No unconsumed comments · history unknown"
+
+
+@dataclass(frozen=True)
+class OwnerCommentRecord:
+    """One validated public Fleet Manager owner-comment record.
+
+    Text fields deliberately remain plain, unrendered data.  The UI must escape
+    them as text; this model never interprets owner wording or context as
+    Markdown/HTML and never turns consumption evidence into a link.
+    """
+
+    id: str
+    repository: str
+    comment: str
+    created_at: datetime
+    state: str
+    source_surface: str
+    source_context: Optional[str] = None
+    consumed_at: Optional[datetime] = None
+    consumption_actor: Optional[str] = None
+    consumption_evidence: Optional[str] = None
+    source: Optional[SourceReference] = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "created_at", _utc_datetime(self.created_at))
+        if self.consumed_at is not None:
+            object.__setattr__(
+                self, "consumed_at", _utc_datetime(self.consumed_at)
+            )
+        if self.state not in {"unconsumed", "consumed"}:
+            raise ValueError("owner-comment state must be unconsumed or consumed")
+        consumption_values = (
+            self.consumed_at,
+            self.consumption_actor,
+            self.consumption_evidence,
+        )
+        if self.state == "unconsumed" and any(
+            value is not None for value in consumption_values
+        ):
+            raise ValueError("unconsumed owner comment cannot carry consumption")
+        if self.state == "consumed" and any(
+            value is None for value in consumption_values
+        ):
+            raise ValueError("consumed owner comment requires consumption metadata")
+
+    @property
+    def created_at_label(self) -> str:
+        return self.created_at.strftime("%Y-%m-%d %H:%M UTC")
+
+    @property
+    def consumed_at_label(self) -> str:
+        if self.consumed_at is None:
+            return ""
+        return self.consumed_at.strftime("%Y-%m-%d %H:%M UTC")
+
+
+@dataclass(frozen=True)
+class OwnerCommentCollection:
+    """Bounded detail records plus honest completeness/provenance state."""
+
+    unconsumed: tuple[OwnerCommentRecord, ...] = ()
+    consumed: tuple[OwnerCommentRecord, ...] = ()
+    warnings: tuple[str, ...] = ()
+    freshness: Freshness = field(default_factory=Freshness.unknown)
+    source: Optional[SourceReference] = None
+    truncated: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "unconsumed", tuple(self.unconsumed))
+        object.__setattr__(self, "consumed", tuple(self.consumed))
+        object.__setattr__(self, "warnings", tuple(self.warnings))
+        if any(record.state != "unconsumed" for record in self.unconsumed):
+            raise ValueError("unconsumed collection contains a consumed record")
+        if any(record.state != "consumed" for record in self.consumed):
+            raise ValueError("consumed collection contains an unconsumed record")
+        ids = [record.id for record in (*self.unconsumed, *self.consumed)]
+        if len(ids) != len(set(ids)):
+            raise ValueError("owner-comment collection contains duplicate ids")
+
+    @property
+    def is_available(self) -> bool:
+        return self.freshness.state is not FreshnessState.UNAVAILABLE
+
+    @property
+    def is_complete(self) -> bool:
+        """Whether the selected detail read can support definitive absence.
+
+        The per-repository index and its selected records are a separate read
+        from the estate-wide count summary.  Any contradiction, malformed or
+        unavailable record, or exhausted detail budget is preserved in
+        ``warnings`` and makes an empty record tuple unknown rather than zero.
+        A bounded consumed-history subset does not make an independently empty
+        unconsumed section uncertain.
+        """
+
+        return not self.warnings and self.freshness.state not in {
+            FreshnessState.UNKNOWN,
+            FreshnessState.UNAVAILABLE,
+        }
+
+    @property
+    def can_confirm_no_unconsumed(self) -> bool:
+        return self.is_complete and not self.unconsumed
+
+    @property
+    def unconsumed_count(self) -> int:
+        return len(self.unconsumed)
+
+    @property
+    def consumed_count(self) -> int:
+        return len(self.consumed)
 
 
 @dataclass(frozen=True)
@@ -657,6 +779,19 @@ class RepositorySummary:
         return self.purpose or "Purpose not confidently established."
 
     @property
+    def owner_comment_form_reachable(self) -> bool:
+        """Whether the gated exact-visibility review flow may be attempted.
+
+        Fleet Manager indexing establishes the durable destination.  An
+        explicit Fleet-private state remains a disclosure boundary, while an
+        overview ``unknown`` may merely mean the bounded public listing did
+        not include this repository; the owner-only form performs the exact
+        repository lookup before exposing a usable submission action.
+        """
+
+        return self.indexed_by_fleet_manager and self.visibility != "private"
+
+    @property
     def last_activity(self) -> Optional[Activity]:
         dated = [a for a in self.activities if a.occurred_at is not None]
         if dated:
@@ -774,6 +909,9 @@ class RepositoryDetail:
     important_sources: tuple[SourceReference, ...] = ()
     current_next_thread: Optional[str] = None
     current_next_thread_source: Optional[SourceReference] = None
+    owner_feedback: OwnerCommentCollection = field(
+        default_factory=OwnerCommentCollection
+    )
     warnings: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -790,10 +928,64 @@ class RepositoryDetail:
         return (self.current_next_thread or "").strip() or NEXT_THREAD_UNKNOWN
 
     @property
+    def owner_feedback_label(self) -> str:
+        """Reconcile overview counts with the repository-detail read.
+
+        A root-index zero must not masquerade as a definitive detail state
+        when the per-repository index disagrees or a referenced record could
+        not be read.  Valid detail reads may continue to use the concise root
+        label; otherwise the uncertainty is explicit.
+        """
+
+        feedback = self.owner_feedback
+        if not feedback.is_complete:
+            if feedback.freshness.state is FreshnessState.UNAVAILABLE:
+                return "Comments unavailable"
+            if any(
+                "disagree" in warning.casefold()
+                for warning in feedback.warnings
+            ):
+                return "Owner comment state contradictory"
+            return "Owner comment state unknown / incomplete"
+        if self.summary.owner_comments.is_known:
+            return self.summary.owner_comments.label
+        if feedback.truncated:
+            return "Owner comments available · bounded subset shown"
+        if feedback.unconsumed:
+            count = len(feedback.unconsumed)
+            return (
+                f"{count} owner comment{'' if count == 1 else 's'} "
+                "awaiting action"
+            )
+        if feedback.consumed:
+            count = len(feedback.consumed)
+            return f"{count} owner comment{'' if count == 1 else 's'} consumed"
+        return "No owner comments"
+
+    @property
     def all_sources(self) -> tuple[SourceReference, ...]:
         sources: list[SourceReference] = []
         seen: set[tuple[str, str]] = set()
-        for source in (*self.summary.sources, *self.important_sources):
+        feedback_sources = tuple(
+            source
+            for source in (
+                self.summary.owner_comments.source,
+                self.owner_feedback.source,
+                *(
+                    record.source
+                    for record in (
+                        *self.owner_feedback.unconsumed,
+                        *self.owner_feedback.consumed,
+                    )
+                ),
+            )
+            if source is not None
+        )
+        for source in (
+            *self.summary.sources,
+            *self.important_sources,
+            *feedback_sources,
+        ):
             key = (source.url, source.path)
             if key not in seen:
                 sources.append(source)

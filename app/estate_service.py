@@ -8,12 +8,14 @@ member-repository fan-out.
 
 from __future__ import annotations
 
+import asyncio
 import re
+from dataclasses import replace
 from datetime import date, datetime, timezone
 from typing import Any, Mapping, Optional
 from urllib.parse import quote
 
-from . import config, estate, estate_reader
+from . import config, estate, estate_reader, owner_comments
 
 UTC = timezone.utc
 
@@ -204,6 +206,7 @@ def _comments_not_ready() -> estate.OwnerCommentSummary:
 
 def _aggregate(
     sources: estate_reader.OverviewSources,
+    comment_index: Optional[owner_comments.OwnerCommentIndexRead] = None,
 ) -> tuple[
     estate.EstateOverview,
     dict[str, estate_reader.EstateRow],
@@ -364,7 +367,11 @@ def _aggregate(
                 freshness=row_freshness,
                 sources=tuple(references),
                 activities=tuple(row_activities),
-                owner_comments=_comments_not_ready(),
+                owner_comments=(
+                    owner_comments.summary_for(comment_index, row.name)
+                    if comment_index is not None
+                    else _comments_not_ready()
+                ),
                 warnings=tuple(dict.fromkeys(warnings)),
                 indexed_by_fleet_manager=True,
                 github_present=github_present,
@@ -409,7 +416,10 @@ def _aggregate(
                 freshness=listing_freshness,
                 sources=(github_source,),
                 activities=(push,) if push else (),
-                owner_comments=_comments_not_ready(),
+                owner_comments=owner_comments.unavailable_summary(
+                    "Repository is not indexed by Fleet Manager; owner comments "
+                    "are unavailable."
+                ),
                 warnings=(
                     "Present in GitHub; not yet indexed by Fleet Manager.",
                 ),
@@ -445,13 +455,32 @@ def _aggregate(
             freshness=listing_freshness,
             available=bool(sources.public_repos_result.get("ok")),
         ),
+        *((comment_index.source,) if comment_index is not None else ()),
     )
+    comment_alignment_warnings: list[str] = []
+    if comment_index is not None and comment_index.valid:
+        estate_names = {row.name for row in sources.estate.rows}
+        comment_names = {row.repository for row in comment_index.rows}
+        missing_comments = sorted(estate_names - comment_names, key=str.casefold)
+        extra_comments = sorted(comment_names - estate_names, key=str.casefold)
+        if missing_comments:
+            comment_alignment_warnings.append(
+                "Fleet Manager owner-comment index is missing estate "
+                "repositories: " + ", ".join(missing_comments)
+            )
+        if extra_comments:
+            comment_alignment_warnings.append(
+                "Fleet Manager owner-comment index contains repositories not "
+                "present in the estate index: " + ", ".join(extra_comments)
+            )
     warnings = tuple(
         dict.fromkeys(
             (
                 *sources.warnings,
                 *sources.estate.warnings,
                 *sources.activity.warnings,
+                *(comment_index.warnings if comment_index is not None else ()),
+                *comment_alignment_warnings,
             )
         )
     )
@@ -480,12 +509,65 @@ def _aggregate(
     )
 
 
-async def overview(refresh: bool = False) -> estate.EstateOverview:
+async def overview(
+    refresh: bool = False,
+    *,
+    coalesce_public_listing: bool = True,
+) -> estate.EstateOverview:
     """Return the cheap, stable catalogue model."""
 
-    sources = await estate_reader.read_overview_sources(refresh=refresh)
-    model, _rows, _public = _aggregate(sources)
+    reader_kwargs = {"refresh": refresh}
+    if not coalesce_public_listing:
+        reader_kwargs["coalesce_public_listing"] = False
+    sources, comment_index = await asyncio.gather(
+        estate_reader.read_overview_sources(**reader_kwargs),
+        owner_comments.read_index(refresh=refresh),
+    )
+    model, _rows, _public = _aggregate(sources, comment_index)
     return model
+
+
+async def revalidate_owner_comment_repository(
+    repository: estate.RepositorySummary,
+    *,
+    mutation: bool = False,
+) -> estate.RepositorySummary:
+    """Apply an exact-public observation to one known estate member.
+
+    Fleet Manager's estate index establishes which names are valid review
+    targets.  This independent repository-specific read establishes whether
+    the selected target may receive a public owner-comment record right now;
+    it never depends on the overview listing's pagination. Mutation checks
+    are fresh and uncoalesced; form-display checks may use the public cache.
+    """
+
+    # Fleet Manager's explicit PRIVATE wording is an estate-owned disclosure
+    # boundary, not an old listing observation that GitHub may override.
+    if repository.visibility == "private":
+        return repository
+
+    lookup = await estate_reader.read_public_repository(
+        repository.name,
+        refresh=mutation,
+        coalesce=not mutation,
+    )
+    warnings = repository.warnings
+    if not lookup.is_public:
+        warnings = tuple(
+            dict.fromkeys(
+                (
+                    *warnings,
+                    "Anonymous repository-specific visibility check did not "
+                    f"prove this target public: {lookup.reason}",
+                )
+            )
+        )
+    return replace(
+        repository,
+        visibility=lookup.visibility,
+        github_present=True if lookup.is_public else None,
+        warnings=warnings,
+    )
 
 
 _AS_OF_PATTERNS = (
@@ -553,8 +635,11 @@ async def detail(
 
     if not estate_reader.safe_repo_name(name):
         return None
-    raw = await estate_reader.read_overview_sources(refresh=refresh)
-    overview_model, rows, public = _aggregate(raw)
+    raw, comment_index = await asyncio.gather(
+        estate_reader.read_overview_sources(refresh=refresh),
+        owner_comments.read_index(refresh=refresh),
+    )
+    overview_model, rows, public = _aggregate(raw, comment_index)
     summary = overview_model.repository(name)
     if summary is None:
         return None
@@ -567,7 +652,7 @@ async def detail(
     routed_member_paths = (
         estate_reader.read_first_paths(row.read_first) if row else ()
     )
-    detail_sources = await estate_reader.read_detail_sources(
+    detail_task = estate_reader.read_detail_sources(
         summary.name,
         is_public=public_repo is not None,
         layer2_path=row.layer2_path if row else None,
@@ -579,6 +664,26 @@ async def detail(
         member_ref=member_ref,
         refresh=refresh,
     )
+    if summary.indexed_by_fleet_manager:
+        detail_sources, owner_feedback = await asyncio.gather(
+            detail_task,
+            owner_comments.read_repository_comments(
+                summary.name,
+                expected_summary=summary.owner_comments,
+                refresh=refresh,
+            ),
+        )
+    else:
+        detail_sources = await detail_task
+        owner_feedback = estate.OwnerCommentCollection(
+            warnings=(
+                "Repository is not indexed by Fleet Manager; owner comments "
+                "are unavailable.",
+            ),
+            freshness=estate.Freshness.unavailable(
+                reason="No Fleet Manager owner-comment route exists."
+            ),
+        )
 
     warnings: list[str] = []
     important: list[estate.SourceReference] = []
@@ -711,5 +816,6 @@ async def detail(
         important_sources=tuple(important),
         current_next_thread=next_thread,
         current_next_thread_source=next_thread_source,
+        owner_feedback=owner_feedback,
         warnings=tuple(dict.fromkeys(warnings)),
     )

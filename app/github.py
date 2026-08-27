@@ -17,15 +17,17 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import re
 import time
 from typing import Any, Optional
+from urllib.parse import quote
 
 import httpx
 
 from . import clock, config
 
-_CacheKey = tuple[str, bool, str]
+_CacheKey = tuple[str, bool, bool, str]
 
 _cache: dict[_CacheKey, tuple[float, dict]] = {}
 _cache_lock = asyncio.Lock()
@@ -84,12 +86,35 @@ def get_client(raw: bool = False) -> httpx.AsyncClient:
 REASON_MAX_CHARS = 140
 
 
+def _redact_token_variants(text: str, token: str) -> str:
+    """Redact literal and serialized forms of one request credential.
+
+    A string-valued upstream error can echo the token after applying Python-
+    or JSON-style escaping. Redaction must happen before :func:`short_reason`
+    truncates the message; otherwise the cap can retain a credential prefix
+    while removing the suffix needed for a later exact replacement.
+    """
+
+    if not token:
+        return text
+    variants = {
+        token,
+        repr(token)[1:-1],
+        json.dumps(token, ensure_ascii=True)[1:-1],
+    }
+    for variant in sorted(variants, key=len, reverse=True):
+        if variant:
+            text = text.replace(variant, "[credential redacted]")
+    return text
+
+
 def short_reason(
     text: Any, limit: int = REASON_MAX_CHARS, status: Any = None
 ) -> str:
     """A render-safe failure reason — short, single-line, human.
 
-    Collapses whitespace runs (newlines included) to single spaces; a body
+    Rejects lone Unicode surrogates without echoing them; collapses whitespace
+    runs (newlines included) to single spaces; a body
     that looks like markup (an HTML error page is a document, not a reason)
     is replaced with a generic "HTTP <status> — non-JSON error body" phrase
     (the envelope status when known); anything still longer than ``limit``
@@ -98,7 +123,11 @@ def short_reason(
     "Not Found") pass through verbatim — honest degradation still says
     WHY, just never in document form.
     """
-    flat = re.sub(r"\s+", " ", str(text or "")).strip()
+    raw = str(text or "")
+    if any(0xD800 <= ord(character) <= 0xDFFF for character in raw):
+        prefix = f"HTTP {status} — " if status else ""
+        return f"{prefix}invalid Unicode error body"
+    flat = re.sub(r"\s+", " ", raw).strip()
     if not flat:
         return ""
     low = flat.lower()
@@ -189,7 +218,7 @@ def _result(url: str, status: int, data: Any = None, error: str = "") -> dict:
 
 
 def _cache_key(
-    url: str, *, raw: bool, follow_redirects: bool
+    url: str, *, raw: bool, follow_redirects: bool, preserve_text: bool
 ) -> _CacheKey:
     """Return the cache/coalescing identity for one read mode.
 
@@ -197,7 +226,12 @@ def _cache_key(
     ``public`` in the key rather than after the transport so the security
     property stays obvious when debugging cache state.
     """
-    return ("public" if raw else "authenticated", follow_redirects, url)
+    return (
+        "public" if raw else "authenticated",
+        follow_redirects,
+        preserve_text,
+        url,
+    )
 
 
 async def _fetch_and_cache(
@@ -206,32 +240,46 @@ async def _fetch_and_cache(
     *,
     raw: bool,
     follow_redirects: bool,
+    preserve_text: bool,
     started_at: float,
 ) -> dict:
     """Perform one network GET and populate the stable-result cache.
 
-    The caller registers this coroutine as the sole in-flight task for
-    ``key`` before awaiting it.  Cleanup in ``finally`` means cancellation,
-    an unexpected client exception, and ordinary completion all release the
-    coalescing slot.
+    Normal callers register this coroutine as the sole in-flight task for
+    ``key`` before awaiting it. A security-sensitive freshness caller may run
+    it unregistered so it cannot join an older observation. Cleanup in
+    ``finally`` is identity-checked for both modes.
     """
     try:
         try:
             resp = await get_client(raw=raw).get(
                 url, follow_redirects=follow_redirects
             )
-            try:
-                data = resp.json()
-            except ValueError:
-                data = resp.text
-            err = ""
-            if resp.status_code >= 300:
-                err = (
-                    data.get("message", "")
-                    if isinstance(data, dict)
-                    else str(data)[:200]
-                )
-            res = _result(url, resp.status_code, data, err)
+            if preserve_text:
+                try:
+                    data = resp.content.decode("utf-8")
+                except UnicodeDecodeError:
+                    data = None
+                    res = _result(
+                        url,
+                        0,
+                        None,
+                        f"invalid UTF-8 file body (HTTP {resp.status_code})",
+                    )
+            else:
+                try:
+                    data = resp.json()
+                except (ValueError, RecursionError):
+                    data = resp.text
+            if not (preserve_text and data is None):
+                err = ""
+                if resp.status_code >= 300:
+                    err = (
+                        data.get("message", "")
+                        if isinstance(data, dict)
+                        else str(data)[:200]
+                    )
+                res = _result(url, resp.status_code, data, err)
         except httpx.HTTPError as exc:
             res = _result(url, 0, None, f"{type(exc).__name__}: {exc}")
 
@@ -240,10 +288,13 @@ async def _fetch_and_cache(
         # poison the cache for the whole TTL — retry them on the next request.
         if res["ok"] or res["status"] in (404, 403, 401):
             async with _cache_lock:
-                _cache[key] = (
-                    started_at + config.CACHE_TTL_SECONDS,
-                    res,
-                )
+                expires_at = started_at + config.CACHE_TTL_SECONDS
+                current = _cache.get(key)
+                # An older coalesced request may finish after a newer
+                # uncoalesced mutation check. Never let that older observation
+                # overwrite the cache entry minted by the later request.
+                if current is None or current[0] < expires_at:
+                    _cache[key] = (expires_at, res)
         return res
     finally:
         async with _cache_lock:
@@ -256,6 +307,9 @@ async def _get(
     refresh: bool = False,
     raw: bool = False,
     follow_redirects: bool = False,
+    preserve_text: bool = False,
+    *,
+    coalesce: bool = True,
 ) -> dict:
     """GET a URL through the TTL cache, returning the honest result envelope.
 
@@ -266,11 +320,32 @@ async def _get(
     (``web_presence.overview``) opts in, so a redirect-hosted download (a
     release asset that 302s to a CDN) is health-probed to its FINAL status
     instead of false-negativing on the 302.
+
+    ``coalesce=False`` starts a separate network request and bypasses both the
+    TTL cache and any older in-flight task. It is reserved for anonymous
+    visibility checks that authorize an owner mutation.
     """
     now = time.monotonic()
     key = _cache_key(
-        url, raw=raw, follow_redirects=follow_redirects
+        url,
+        raw=raw,
+        follow_redirects=follow_redirects,
+        preserve_text=preserve_text,
     )
+    if not coalesce:
+        # Security-sensitive mutation checks must start their own anonymous
+        # request after the mutation begins. They may refresh the shared cache,
+        # but must never join an older in-flight visibility read.
+        return dict(
+            await _fetch_and_cache(
+                key,
+                url,
+                raw=raw,
+                follow_redirects=follow_redirects,
+                preserve_text=preserve_text,
+                started_at=now,
+            )
+        )
     async with _cache_lock:
         if not refresh:
             hit = _cache.get(key)
@@ -291,6 +366,7 @@ async def _get(
                     url,
                     raw=raw,
                     follow_redirects=follow_redirects,
+                    preserve_text=preserve_text,
                     started_at=now,
                 )
             )
@@ -304,7 +380,9 @@ async def api(path: str, refresh: bool = False) -> dict:
     return await _get(config.GITHUB_API_BASE + path, refresh=refresh)
 
 
-async def public_api(path: str, refresh: bool = False) -> dict:
+async def public_api(
+    path: str, refresh: bool = False, *, coalesce: bool = True
+) -> dict:
     """GET an api.github.com path with the anonymous client only.
 
     Public owner-facing surfaces must use this helper when server credentials
@@ -316,6 +394,31 @@ async def public_api(path: str, refresh: bool = False) -> dict:
         config.GITHUB_API_BASE + path,
         refresh=refresh,
         raw=True,
+        coalesce=coalesce,
+    )
+
+
+async def public_repository(
+    repository: str,
+    refresh: bool = False,
+    *,
+    coalesce: bool = True,
+) -> dict:
+    """Read one repository through GitHub's exact anonymous endpoint.
+
+    The caller still has to validate the response identity and visibility;
+    this client helper only pins the privacy, cache, and coalescing boundary.
+    In particular, mutation authorization uses ``refresh=True`` and
+    ``coalesce=False`` so it neither accepts a TTL hit nor joins a visibility
+    observation that began before the mutation request.
+    """
+
+    owner = quote(config.OWNER, safe="")
+    name = quote(str(repository or ""), safe="")
+    return await public_api(
+        f"/repos/{owner}/{name}",
+        refresh=refresh,
+        coalesce=coalesce,
     )
 
 
@@ -331,6 +434,14 @@ async def api_post(path: str, json_body: Any = None) -> dict:
         resp = await get_client().post(url, json=json_body)
         try:
             data = resp.json()
+        except (RecursionError, UnicodeError) as exc:
+            return _result(
+                url,
+                0,
+                None,
+                f"malformed GitHub JSON response (HTTP {resp.status_code}; "
+                f"{type(exc).__name__})",
+            )
         except ValueError:
             data = resp.text
         err = ""
@@ -342,7 +453,14 @@ async def api_post(path: str, json_body: Any = None) -> dict:
             )
         return _result(url, resp.status_code, data, err)
     except httpx.HTTPError as exc:
-        return _result(url, 0, None, f"{type(exc).__name__}: {exc}")
+        # Authenticated transport errors can echo illegal header bytes, so
+        # never send their raw exception strings to result envelopes.
+        return _result(
+            url,
+            0,
+            None,
+            f"{type(exc).__name__}: GitHub request transport failed",
+        )
 
 
 async def api_request(
@@ -367,18 +485,47 @@ async def api_request(
         )
         try:
             data = resp.json()
+        except (RecursionError, UnicodeError) as exc:
+            return _result(
+                url,
+                0,
+                None,
+                f"malformed GitHub JSON response (HTTP {resp.status_code}; "
+                f"{type(exc).__name__})",
+            )
         except ValueError:
             data = resp.text
         err = ""
         if resp.status_code >= 300:
-            err = (
+            raw_error = (
                 data.get("message", "")
                 if isinstance(data, dict)
-                else str(data)[:200]
+                else data
             )
+            # Only a string-valued GitHub reason is safe to expose. Stringifying
+            # a list/dict escapes credential characters (notably backslashes)
+            # before literal redaction and can make a secret unmatchable.
+            err = (
+                raw_error
+                if isinstance(raw_error, str)
+                else f"HTTP {resp.status_code} — unexpected GitHub error payload"
+            )
+        # A per-request mutation credential can be echoed by a hostile or
+        # misbehaving upstream. Redact it before ``_result`` applies the
+        # user-visible 140-character cap; after truncation the complete token
+        # may no longer be present for a downstream writer to remove.
+        if token:
+            err = _redact_token_variants(err, token)
         return _result(url, resp.status_code, data, err)
     except httpx.HTTPError as exc:
-        return _result(url, 0, None, f"{type(exc).__name__}: {exc}")
+        # A per-request credential is present on this path. Exception strings
+        # can echo illegal header bytes, so keep the envelope generic.
+        return _result(
+            url,
+            0,
+            None,
+            f"{type(exc).__name__}: GitHub request transport failed",
+        )
 
 
 async def latest_failed_run(
@@ -586,11 +733,13 @@ async def fetch_public_file(
 
     A 404/403/unavailable raw response remains exactly that honest envelope;
     it must never trigger a token-backed Contents request that could project a
-    private file onto a public page.  JSON-shaped files receive the same text
-    normalization as :func:`fetch_file`.
+    private file onto a public page. File responses stay exact text so strict
+    downstream readers can detect duplicate JSON keys and noncanonical bytes.
     """
     raw_url = f"{config.GITHUB_RAW_BASE}/{config.OWNER}/{repo}/{ref}/{path}"
-    res = await _get(raw_url, refresh=refresh, raw=True)
+    res = await _get(
+        raw_url, refresh=refresh, raw=True, preserve_text=True
+    )
     if res["ok"] and isinstance(res["data"], (str, dict, list)):
         text = (
             res["data"]

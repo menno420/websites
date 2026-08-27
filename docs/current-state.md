@@ -4,7 +4,10 @@
 > The first website truth-and-defects tranche is merged and deployed: product
 > behavior landed through `a9ec59c6` (#513, #514, #516), and canonical live
 > crawl run 32746498270 passed all four products at desktop and 375 px. Later
-> work adds the owner-facing repository-estate review surface in #521;
+> work added the owner-facing repository-estate review surface in #521 and the
+> Fleet Manager owner-comment read/write interface in #523. Its canonical
+> storage/router/consume dependency landed in Fleet Manager #952
+> (`089e0053`);
 > `/version` remains the authority for the latest Railway deployment
 > revision. The repo
 > owns three live Railway services plus the public Program Review archive on
@@ -99,17 +102,27 @@ Deployment: `docs/deployment.md` + each service's doc.
 
 ## In flight
 
-- **The repository-estate read surface is complete in #521.** `/repos` is the
-  canonical owner-facing catalogue, with validated detail pages; `/fleet`,
-  `/projects`, and `/freshness` no longer serve competing current
-  estate views.
-- **Durable repository comments remain an ordered cross-repository
-  follow-on:** Fleet Manager storage/index/routing must land before this repo
-  adds the owner-gated writeback client. No website-local queue is called
-  durable feedback.
+- **No estate-review implementation tranche remains in flight after #521,
+  #523, and Fleet Manager #952.** Deployment and write capability remain live
+  facts to verify through `/version` and the owner form; no production
+  end-to-end write is claimed here, and no website-local queue is durable
+  feedback.
 
 ## Recently shipped (newest first)
 
+- **2026-08-27 — durable repository owner feedback (#523; Fleet Manager
+  #952):** added strict anonymous reads of Fleet Manager's public v1 root,
+  per-repository indexes, and bounded active/consumed records; owner-gated,
+  CSRF/rate-limited submission through a dedicated write credential; and an
+  idempotent protected branch+PR client that verifies the complete three-file
+  tree before reporting pending. Fresh visibility checks bypass stale cache and
+  in-flight observations; root/repository reconciliation covers both counts and
+  latest timestamps, including a missing root row; replay precedes
+  moving-ledger growth gates and recognizes an exact merged PR plus current
+  `main` payload without duplicating it, including a record already moved into
+  durable consumed history. Pending, landed replay, consumed replay,
+  unavailable, retryable, failed, contradictory, consumed, and durable states
+  remain distinct.
 - **2026-08-27 — repository estate review surface (#521):** added the visual
   `/repos` catalogue and `/repos/{name}` review pages over Fleet Manager's
   estate/activity/Layer-2 records plus selected repository-native truth;

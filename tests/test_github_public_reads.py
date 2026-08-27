@@ -82,6 +82,30 @@ def test_public_api_uses_anonymous_client_only():
     assert public.calls == 1
 
 
+def test_exact_public_repository_helper_uses_anonymous_endpoint_and_fresh_mode():
+    def authenticated(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("exact public repository read must stay anonymous")
+
+    def anonymous(request: httpx.Request) -> httpx.Response:
+        assert "authorization" not in request.headers
+        assert request.url.raw_path == b"/repos/menno420/repo-with-space%20name"
+        return httpx.Response(200, json={"name": "repo-with-space name"})
+
+    auth, public = _install_clients(authenticated, anonymous)
+    result = asyncio.run(
+        github.public_repository(
+            "repo-with-space name",
+            refresh=True,
+            coalesce=False,
+        )
+    )
+
+    assert result["ok"] is True
+    assert result["cached"] is False
+    assert auth.calls == 0
+    assert public.calls == 1
+
+
 def test_public_file_404_never_falls_back_to_authenticated_contents():
     def authenticated(request: httpx.Request) -> httpx.Response:
         raise AssertionError(
@@ -99,6 +123,52 @@ def test_public_file_404_never_falls_back_to_authenticated_contents():
 
     assert result["ok"] is False
     assert result["status"] == 404
+    assert auth.calls == 0
+    assert public.calls == 1
+
+
+def test_public_file_preserves_exact_json_text_for_strict_readers():
+    raw = '{"count": 0, "count": 1}\n'
+
+    def authenticated(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("public file must stay anonymous")
+
+    def anonymous(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text=raw,
+            headers={"content-type": "application/json"},
+        )
+
+    auth, public = _install_clients(authenticated, anonymous)
+    result = asyncio.run(
+        github.fetch_public_file("fleet-manager", "index.json")
+    )
+
+    assert result["data"] == raw
+    assert auth.calls == 0
+    assert public.calls == 1
+
+
+def test_public_file_rejects_invalid_utf8_instead_of_replacing_owner_text():
+    def anonymous(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=b'{"comment":"bad-\xff-byte"}\n',
+            headers={"content-type": "application/json"},
+        )
+
+    auth, public = _install_clients(
+        lambda request: httpx.Response(500), anonymous
+    )
+    result = asyncio.run(
+        github.fetch_public_file("fleet-manager", "comment.json")
+    )
+
+    assert result["ok"] is False
+    assert result["status"] == 0
+    assert "invalid UTF-8" in result["error"]
+    assert result["data"] is None
     assert auth.calls == 0
     assert public.calls == 1
 
@@ -187,6 +257,52 @@ def test_identical_concurrent_public_misses_share_one_request():
     assert calls == 1
     assert all(result["status"] == 200 for result in results)
     assert all(result["cached"] is False for result in results)
+    assert cached["cached"] is True
+    assert github._inflight == {}
+
+
+def test_fresh_uncoalesced_public_read_does_not_join_older_visibility_fetch():
+    calls = 0
+    old_started = asyncio.Event()
+    release_old = asyncio.Event()
+
+    async def anonymous(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        call_number = calls
+        if call_number == 1:
+            old_started.set()
+            await release_old.wait()
+            return httpx.Response(200, json=[{"name": "example"}])
+        return httpx.Response(200, json=[])
+
+    async def exercise() -> tuple[dict, dict, dict]:
+        public = httpx.AsyncClient(transport=httpx.MockTransport(anonymous))
+        authenticated = httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(500)
+            )
+        )
+        github.set_clients(authenticated, public)
+        path = "/users/menno420/repos?type=owner"
+        old = asyncio.create_task(github.public_api(path, refresh=True))
+        await old_started.wait()
+        mutation = await github.public_api(
+            path,
+            refresh=True,
+            coalesce=False,
+        )
+        release_old.set()
+        old_result = await old
+        cached = await github.public_api(path)
+        return mutation, old_result, cached
+
+    mutation, old_result, cached = asyncio.run(exercise())
+
+    assert calls == 2
+    assert mutation["data"] == []
+    assert old_result["data"] == [{"name": "example"}]
+    assert cached["data"] == []
     assert cached["cached"] is True
     assert github._inflight == {}
 

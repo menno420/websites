@@ -143,6 +143,27 @@ class PublicRepository:
 
 
 @dataclass(frozen=True)
+class PublicRepositoryLookup:
+    """One exact, anonymous repository visibility observation.
+
+    ``repository`` is populated only when the response proves both the
+    requested identity and public visibility.  A 404 deliberately remains
+    ``unavailable`` because an anonymous caller cannot distinguish a private
+    repository from an absent one.
+    """
+
+    name: str
+    result: Mapping[str, Any]
+    repository: Optional[PublicRepository]
+    visibility: str
+    reason: str = ""
+
+    @property
+    def is_public(self) -> bool:
+        return self.visibility == "public" and self.repository is not None
+
+
+@dataclass(frozen=True)
 class OverviewSources:
     estate_result: Mapping[str, Any]
     activity_result: Mapping[str, Any]
@@ -673,7 +694,113 @@ def _public_repository(item: Any) -> Optional[PublicRepository]:
     )
 
 
-async def read_overview_sources(refresh: bool = False) -> OverviewSources:
+async def read_public_repository(
+    name: str,
+    *,
+    refresh: bool = False,
+    coalesce: bool = True,
+) -> PublicRepositoryLookup:
+    """Read and strictly identify one repository from the public API.
+
+    This is intentionally separate from the bounded overview listing.  The
+    listing may legitimately stop at 100 rows and therefore cannot authorize
+    a repository-specific owner mutation.
+    """
+
+    source = f"api.github.com/repos/{config.OWNER}/{name}"
+    if not safe_repo_name(name):
+        result = _failure_envelope(source, "invalid repository name")
+        return PublicRepositoryLookup(
+            name=name,
+            result=result,
+            repository=None,
+            visibility="unavailable",
+            reason="invalid repository name",
+        )
+
+    result = await _guarded(
+        github.public_repository(
+            name,
+            refresh=refresh,
+            coalesce=coalesce,
+        ),
+        source,
+    )
+    data = result.get("data")
+    if not result.get("ok"):
+        reason = str(result.get("error") or f"HTTP {result.get('status')}")
+        return PublicRepositoryLookup(
+            name=name,
+            result=result,
+            repository=None,
+            visibility="unavailable",
+            reason=github.short_reason(reason, status=result.get("status")),
+        )
+    if not isinstance(data, dict):
+        return PublicRepositoryLookup(
+            name=name,
+            result=result,
+            repository=None,
+            visibility="unknown",
+            reason="exact repository lookup returned an unexpected payload",
+        )
+
+    expected_full_name = f"{config.OWNER}/{name}"
+    owner = data.get("owner")
+    identity_matches = bool(
+        isinstance(data.get("name"), str)
+        and data["name"].casefold() == name.casefold()
+        and isinstance(data.get("full_name"), str)
+        and data["full_name"].casefold() == expected_full_name.casefold()
+        and isinstance(owner, dict)
+        and isinstance(owner.get("login"), str)
+        and owner["login"].casefold() == config.OWNER.casefold()
+    )
+    if not identity_matches:
+        return PublicRepositoryLookup(
+            name=name,
+            result=result,
+            repository=None,
+            visibility="unknown",
+            reason="exact repository lookup identity did not match the request",
+        )
+
+    if data.get("private") is not False or data.get("visibility") != "public":
+        visibility = (
+            "private"
+            if data.get("private") is True or data.get("visibility") == "private"
+            else "unknown"
+        )
+        return PublicRepositoryLookup(
+            name=name,
+            result=result,
+            repository=None,
+            visibility=visibility,
+            reason="exact repository lookup did not prove public visibility",
+        )
+
+    repository = _public_repository(data)
+    if repository is None:
+        return PublicRepositoryLookup(
+            name=name,
+            result=result,
+            repository=None,
+            visibility="unknown",
+            reason="exact repository lookup metadata was malformed",
+        )
+    return PublicRepositoryLookup(
+        name=name,
+        result=result,
+        repository=repository,
+        visibility="public",
+    )
+
+
+async def read_overview_sources(
+    refresh: bool = False,
+    *,
+    coalesce_public_listing: bool = True,
+) -> OverviewSources:
     """Fetch the overview's three cheap public sources, with no repo fan-out."""
 
     listing_path = (
@@ -694,7 +821,11 @@ async def read_overview_sources(refresh: bool = False) -> OverviewSources:
             f"{FLEET_REPOSITORY}/{ACTIVITY_PATH}",
         ),
         _guarded(
-            github.public_api(listing_path, refresh=refresh),
+            github.public_api(
+                listing_path,
+                refresh=refresh,
+                coalesce=coalesce_public_listing,
+            ),
             f"api.github.com{listing_path}",
         ),
     )

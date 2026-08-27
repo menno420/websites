@@ -22,6 +22,7 @@ import base64
 import secrets
 import time
 from collections import defaultdict, deque
+from dataclasses import replace
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -36,6 +37,7 @@ from . import (
     codedrift,
     config,
     discord_auth,
+    estate_service,
     envdrift,
     envhub,
     fleet,
@@ -43,6 +45,7 @@ from . import (
     listfilter,
     nav,
     owner_assist,
+    owner_comment_writeback,
     owner_queue,
     prompts,
     railway,
@@ -461,6 +464,222 @@ async def _render_with_banner(request: Request, banner: dict) -> HTMLResponse:
             "banner": banner,
             "repos": list(config.REPOS),
         },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Repository review comments — authenticated UI, Fleet Manager-owned record.
+#
+# Public `/repos/{name}` pages only read the public v1 ledger. These routes are
+# the write half and therefore use the existing owner gate, same-origin CSRF
+# check, and per-path rate limiter. A pending PR is intentionally not called
+# durable; the public reader reflects it only after Fleet Manager `main` does.
+# ---------------------------------------------------------------------------
+
+
+def _repository_comment_capability(repo):
+    capability = owner_comment_writeback.capability()
+    if not repo.indexed_by_fleet_manager:
+        return replace(
+            capability,
+            available=False,
+            label="Repository is not Fleet-indexed",
+            reason=(
+                "Fleet Manager has not established this repository in its estate "
+                "index, so there is no authoritative owner-comment destination."
+            ),
+            setup_required=False,
+        )
+    if repo.visibility != "public":
+        return replace(
+            capability,
+            available=False,
+            label="Public submission boundary unavailable",
+            reason=(
+                "This repository is not confidently established as public. "
+                "The control plane will not create a public feedback record that "
+                "could invite private repository details."
+            ),
+            setup_required=False,
+        )
+    return capability
+
+
+def _render_repository_comment(
+    request: Request,
+    repo,
+    *,
+    capability=None,
+    result=None,
+    comment_text: str = "",
+    submission_key: str = "",
+    error: str = "",
+    status_code: int = 200,
+) -> HTMLResponse:
+    # GitHub envelopes already sanitize failure text at source. Keep the final
+    # template boundary defensive too: a future writer result (or validation
+    # seam) must never carry a lone surrogate into Starlette's UTF-8 response.
+    if result is not None and getattr(result, "error", ""):
+        result = replace(result, error=github.short_reason(result.error))
+    error = github.short_reason(error) if error else ""
+    return templates.TemplateResponse(
+        request,
+        "owner_repository_comment.html",
+        {
+            "repo": repo,
+            "capability": capability or _repository_comment_capability(repo),
+            "result": result,
+            "comment_text": comment_text,
+            "submission_key": (
+                submission_key
+                or owner_comment_writeback.new_submission_key()
+            ),
+            "error": error,
+            "active": "repos",
+        },
+        status_code=status_code,
+    )
+
+
+async def _known_comment_repository(
+    repository: str,
+    *,
+    refresh: bool = False,
+    coalesce_public_listing: bool = True,
+):
+    overview_kwargs = {"refresh": refresh}
+    if not coalesce_public_listing:
+        overview_kwargs["coalesce_public_listing"] = False
+    overview = await estate_service.overview(**overview_kwargs)
+    return overview.repository(repository)
+
+
+@router.get("/repository-comments/{name}", response_class=HTMLResponse)
+async def repository_comment_form(
+    request: Request,
+    name: str,
+    _: None = Depends(require_owner),
+):
+    repo = await _known_comment_repository(name)
+    if repo is None:
+        raise HTTPException(status_code=404, detail="unknown repository")
+    # The overview listing is bounded and may omit a valid Fleet member. An
+    # owner opening the form gets a repository-specific anonymous observation;
+    # POST repeats it independently at the authorization boundary.
+    repo = await estate_service.revalidate_owner_comment_repository(repo)
+    return _render_repository_comment(request, repo)
+
+
+@router.post("/repository-comments/submit", response_class=HTMLResponse)
+async def repository_comment_submit(
+    request: Request,
+    repository: str = Form(""),
+    comment: str = Form(""),
+    public_acknowledgement: str = Form(""),
+    submission_key: str = Form(""),
+    _: None = Depends(require_owner_action),
+):
+    # Fleet Manager's fresh estate projection validates the target name.  A
+    # separate exact repository lookup below authorizes public writeback; the
+    # overview listing is intentionally irrelevant because it can stop at 100
+    # rows.
+    repo = await _known_comment_repository(repository, refresh=True)
+    if repo is None:
+        raise HTTPException(status_code=404, detail="unknown repository")
+    runtime_capability = owner_comment_writeback.capability()
+    if not repo.indexed_by_fleet_manager or repo.visibility == "private":
+        capability = _repository_comment_capability(repo)
+        return _render_repository_comment(
+            request,
+            repo,
+            capability=capability,
+            comment_text=comment,
+            submission_key=submission_key,
+            status_code=503,
+        )
+
+    # Cheap local validation precedes the security-sensitive GitHub request.
+    # This keeps the exact visibility observation immediately before the
+    # writer and avoids spending anonymous rate limit on malformed forms.
+    capability = runtime_capability
+    key_problem = owner_comment_writeback.validate_submission_key(submission_key)
+    if key_problem:
+        return _render_repository_comment(
+            request,
+            repo,
+            capability=capability,
+            comment_text=comment,
+            submission_key=submission_key,
+            error=key_problem,
+            status_code=422,
+        )
+    if public_acknowledgement != "yes":
+        return _render_repository_comment(
+            request,
+            repo,
+            capability=capability,
+            comment_text=comment,
+            submission_key=submission_key,
+            error="Confirm that the comment and its metadata may be public.",
+            status_code=422,
+        )
+    problem = owner_comment_writeback.validate_comment(comment)
+    if problem:
+        return _render_repository_comment(
+            request,
+            repo,
+            capability=capability,
+            comment_text=comment,
+            submission_key=submission_key,
+            error=problem,
+            status_code=422,
+        )
+
+    # This anonymous exact-repository read bypasses both its TTL entry and any
+    # older in-flight request. A private, absent, malformed, foreign, or
+    # unavailable response fails closed before the write client is called.
+    repo = await estate_service.revalidate_owner_comment_repository(
+        repo,
+        mutation=True,
+    )
+    capability = _repository_comment_capability(repo)
+    if not capability.available:
+        return _render_repository_comment(
+            request,
+            repo,
+            capability=capability,
+            comment_text=comment,
+            submission_key=submission_key,
+            status_code=503,
+        )
+
+    result = await owner_comment_writeback.submit_owner_comment(
+        repo.name,
+        comment,
+        context=f"/repos/{repo.name}",
+        submission_key=submission_key,
+    )
+    status_code = {
+        "pending_pr": 202,
+        "landed_replayed": 200,
+        "consumed_replayed": 200,
+        "unavailable": 503,
+        "failed_retryable": 503,
+        "failed": 409,
+    }[result.state]
+    return _render_repository_comment(
+        request,
+        repo,
+        capability=capability,
+        result=result,
+        comment_text=(
+            ""
+            if result.state
+            in {"pending_pr", "landed_replayed", "consumed_replayed"}
+            else comment
+        ),
+        submission_key=submission_key,
+        status_code=status_code,
     )
 
 

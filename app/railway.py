@@ -107,6 +107,7 @@ SERVICES: list[dict[str, Any]] = [
         "self": True,  # THIS app — can report its own env presence live.
         "env_vars": [
             _var("GITHUB_TOKEN", "PAT for GitHub REST reads (board cells; admin scope un-masks secrets counts)"),
+            _var("FLEET_MANAGER_WRITEBACK_TOKEN", "dedicated Fleet Manager Contents + pull-request credential for owner-comment PRs; never used by public reads"),
             _var("SITE_PASSWORD", "gates the /owner area (HTTP Basic; unset → /owner fails closed 503)"),
             _var("RAILWAY_TOKEN", "project-scoped Railway read token for THIS page's live section (set on the deployed service 2026-07-12, ORDER 022)"),
             _var("PORT", "bind port (Railway injects it)"),

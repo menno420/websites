@@ -15,6 +15,7 @@ test). The render test drives /fleet through the same mock transport.
 """
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -107,6 +108,197 @@ def test_multiline_body_collapses_to_single_line(monkeypatch):
     assert res["error"] == (
         "bad gateway: origin refused retry later trace-id 12345"
     )
+
+
+def test_json_error_with_lone_surrogate_becomes_render_safe_reason(monkeypatch):
+    res = _fetch(
+        monkeypatch,
+        httpx.Response(
+            422,
+            content=b'{"message":"\\ud800"}',
+            headers={"content-type": "application/json"},
+        ),
+        "https://api.example/surrogate-json",
+    )
+    assert res["ok"] is False and res["status"] == 422
+    assert res["error"] == "HTTP 422 — invalid Unicode error body"
+    assert res["error"].encode("utf-8")
+
+
+def test_api_request_json_surrogate_becomes_render_safe_reason(monkeypatch):
+    client = _mock_client(
+        lambda request: httpx.Response(
+            422,
+            content=b'{"message":"\\ud800"}',
+            headers={"content-type": "application/json"},
+        )
+    )
+    monkeypatch.setattr(github, "get_client", lambda raw=False: client)
+    try:
+        res = asyncio.run(
+            github.api_request(
+                "POST", "/repos/example/write", {"value": 1}, token="token"
+            )
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+    assert res["ok"] is False and res["status"] == 422
+    assert res["error"] == "HTTP 422 — invalid Unicode error body"
+    assert res["error"].encode("utf-8")
+
+
+def test_api_request_redacts_long_per_request_token_before_reason_bound(
+    monkeypatch,
+):
+    token = "A" * 200
+    client = _mock_client(
+        lambda request: httpx.Response(
+            403,
+            json={"message": f"denied bearer {token}"},
+        )
+    )
+    monkeypatch.setattr(github, "get_client", lambda raw=False: client)
+    try:
+        res = asyncio.run(
+            github.api_request(
+                "POST", "/repos/example/write", {"value": 1}, token=token
+            )
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+    assert res["ok"] is False and res["status"] == 403
+    assert token not in res["error"]
+    assert "A" * 32 not in res["error"]
+    assert res["error"] == "denied bearer [credential redacted]"
+
+
+def test_api_request_redacts_long_token_from_plaintext_before_slicing(
+    monkeypatch,
+):
+    token = "B" * 300
+    client = _mock_client(
+        lambda request: httpx.Response(
+            403,
+            text=f"denied bearer {token}",
+        )
+    )
+    monkeypatch.setattr(github, "get_client", lambda raw=False: client)
+    try:
+        res = asyncio.run(
+            github.api_request(
+                "POST", "/repos/example/write", {"value": 1}, token=token
+            )
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+    assert res["ok"] is False and res["status"] == 403
+    assert token not in res["error"]
+    assert "B" * 32 not in res["error"]
+    assert res["error"] == "denied bearer [credential redacted]"
+
+
+@pytest.mark.parametrize(
+    ("variant_name", "serialize"),
+    (
+        ("literal", lambda token: token),
+        ("repr-escaped", lambda token: repr(token)[1:-1]),
+        (
+            "json-escaped",
+            lambda token: json.dumps(token, ensure_ascii=True)[1:-1],
+        ),
+    ),
+)
+def test_api_request_redacts_serialized_token_before_prefix_truncation(
+    monkeypatch, variant_name, serialize
+):
+    del variant_name
+    token = 'LEAKMARK"quote\'slash\\credential-' + ("Z" * 80)
+    prefix = "p" * 130
+    echoed = serialize(token)
+    assert echoed.startswith("LEAKMARK")
+    client = _mock_client(
+        lambda request: httpx.Response(
+            403,
+            json={"message": prefix + echoed},
+        )
+    )
+    monkeypatch.setattr(github, "get_client", lambda raw=False: client)
+    try:
+        res = asyncio.run(
+            github.api_request(
+                "POST", "/repos/example/write", {"value": 1}, token=token
+            )
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+    assert res["ok"] is False and res["status"] == 403
+    assert len(res["error"]) == github.REASON_MAX_CHARS
+    assert res["error"].startswith(prefix)
+    assert res["error"].endswith("…")
+    assert "LEAKMARK" not in res["error"]
+    assert token not in res["error"]
+    assert repr(token)[1:-1] not in res["error"]
+    assert json.dumps(token, ensure_ascii=True)[1:-1] not in res["error"]
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        lambda token: ["denied bearer", token],
+        lambda token: {"reason": "denied bearer", "credential": token},
+    ),
+)
+def test_api_request_redacts_token_from_non_string_json_message(
+    monkeypatch, message
+):
+    token = "C" * 200
+    client = _mock_client(
+        lambda request: httpx.Response(
+            403,
+            json={"message": message(token)},
+        )
+    )
+    monkeypatch.setattr(github, "get_client", lambda raw=False: client)
+    try:
+        res = asyncio.run(
+            github.api_request(
+                "POST", "/repos/example/write", {"value": 1}, token=token
+            )
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+    assert res["ok"] is False and res["status"] == 403
+    assert token not in res["error"]
+    assert "C" * 32 not in res["error"]
+    assert res["error"] == "HTTP 403 — unexpected GitHub error payload"
+
+
+def test_structured_error_cannot_escape_a_backslash_bearing_token(monkeypatch):
+    token = r"fleet\secret-token"
+    client = _mock_client(
+        lambda request: httpx.Response(
+            403,
+            json={"message": {"authorization": token}},
+        )
+    )
+    monkeypatch.setattr(github, "get_client", lambda raw=False: client)
+    try:
+        res = asyncio.run(
+            github.api_request(
+                "POST", "/repos/example/write", {"value": 1}, token=token
+            )
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+    assert res["error"] == "HTTP 403 — unexpected GitHub error payload"
+    assert "secret-token" not in res["error"]
+    assert token not in res["error"]
 
 
 def test_short_plain_reasons_pass_verbatim(monkeypatch):

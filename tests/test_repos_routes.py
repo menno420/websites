@@ -152,7 +152,112 @@ def test_known_detail_renders_sections_and_honest_next_thread(monkeypatch):
     assert estate.NEXT_THREAD_UNKNOWN in response.text
     assert "Source:" in response.text
     assert "Fleet Manager estate index" in response.text
-    assert "Nothing queued only in this website" in response.text
+    assert "pending or website-local state is never presented as landed" in response.text
+
+
+def test_unknown_visibility_detail_keeps_gated_exact_check_comment_route(
+    monkeypatch,
+):
+    summary = _summary(visibility="unknown", github_present=None)
+    detail = estate.RepositoryDetail(
+        summary=summary,
+        why_it_exists=summary.purpose,
+        owner_feedback=estate.OwnerCommentCollection(
+            freshness=estate.Freshness.live(
+                datetime(2026, 8, 27, 10, tzinfo=UTC)
+            )
+        ),
+    )
+
+    async def fake_detail(name, refresh=False):
+        return detail
+
+    monkeypatch.setattr(estate_service, "detail", fake_detail)
+    with TestClient(app) as client:
+        response = client.get("/repos/alpha")
+
+    assert response.status_code == 200
+    assert 'href="/owner/repository-comments/alpha"' in response.text
+    assert "exact repository lookup after owner sign-in" in response.text
+
+
+def test_private_and_unindexed_details_do_not_offer_comment_route(monkeypatch):
+    summaries = {
+        "private-tool": _summary("private-tool", visibility="private"),
+        "unindexed": _summary(
+            "unindexed", visibility="public", indexed_by_fleet_manager=False
+        ),
+    }
+
+    async def fake_detail(name, refresh=False):
+        summary = summaries.get(name)
+        return estate.RepositoryDetail(summary=summary) if summary else None
+
+    monkeypatch.setattr(estate_service, "detail", fake_detail)
+    with TestClient(app) as client:
+        private = client.get("/repos/private-tool")
+        unindexed = client.get("/repos/unindexed")
+
+    assert private.status_code == 200
+    assert unindexed.status_code == 200
+    assert "/owner/repository-comments/private-tool" not in private.text
+    assert "/owner/repository-comments/unindexed" not in unindexed.text
+
+
+def test_detail_reconciles_root_zero_as_contradictory_when_records_incomplete(
+    monkeypatch,
+):
+    summary = _summary(
+        owner_comments=estate.OwnerCommentSummary(
+            0,
+            0,
+            freshness=estate.Freshness.live(
+                datetime(2026, 8, 27, 10, tzinfo=UTC)
+            ),
+            source=_source(),
+        )
+    )
+    detail_source = estate.SourceReference(
+        label="Repository owner-comment index",
+        url=(
+            "https://github.com/menno420/fleet-manager/blob/main/"
+            "docs/owner-comments/alpha/README.md"
+        ),
+        repository="fleet-manager",
+        path="docs/owner-comments/alpha/README.md",
+        freshness=estate.Freshness.unknown(
+            reason="Owner-comment detail is incomplete or contradictory."
+        ),
+    )
+    feedback = estate.OwnerCommentCollection(
+        warnings=(
+            "Fleet Manager root and repository owner-comment indexes disagree.",
+            "oc-missing: record unavailable (Not Found).",
+        ),
+        freshness=detail_source.freshness,
+        source=detail_source,
+    )
+    detail = estate.RepositoryDetail(
+        summary=summary,
+        why_it_exists=summary.purpose,
+        owner_feedback=feedback,
+    )
+
+    async def fake_detail(name, refresh=False):
+        return detail
+
+    monkeypatch.setattr(estate_service, "detail", fake_detail)
+    with TestClient(app) as client:
+        response = client.get("/repos/alpha")
+
+    assert response.status_code == 200
+    assert "Owner comment state contradictory" in response.text
+    assert "detail index source" in response.text
+    assert "docs/owner-comments/alpha/README.md" in response.text
+    assert "Fleet Manager root index reports: No owner comments" in response.text
+    assert "<strong>No owner comments</strong>" not in response.text
+    assert "No owner comments are awaiting action." not in response.text
+    assert "Unconsumed comments are unknown / unavailable." in response.text
 
 
 def test_unknown_or_traversal_repository_is_not_a_detail_page(monkeypatch):

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}owner comment · {{ repo.name }}{% endblock %}
+{% block headright %}<a href="/repos/{{ repo.name }}#owner-feedback">back to repository review</a>{% endblock %}
+{% block content %}
+<div class="card owner-comment-hero">
+  <div class="rowhead">
+    <h2>owner comment — {{ repo.name }} <span class="b {{ repo.status_class }}">{{ repo.status_label }}</span></h2>
+    <span class="cr-action"><a class="btn" href="/repos/{{ repo.name }}#owner-feedback">← review</a></span>
+  </div>
+  <p class="dim small">This authenticated form writes to Fleet Manager, the
+    estate record owner. It never writes into {{ repo.name }} and never stores
+    the comment as website-local product truth.</p>
+
+  <div class="repo-alert privacy-warning">
+    <strong>Public record.</strong> Everything committed under Fleet Manager's
+    owner-comment ledger is public. Do not include credentials,
+    private-repository contents, private-only URLs, third-party contact details,
+    or unreleased specifics.
+  </div>
+
+  {% if result %}
+    {% if result.state == 'pending_pr' %}
+    <div class="banner ok">
+      <strong>Pending Fleet Manager PR — not durable yet.</strong>
+      The record and both indexes were committed together on
+      <code>{{ result.branch }}</code>. It becomes durable only after
+      <a href="{{ result.pr_url }}">Fleet Manager PR #{{ result.pr_number }} ↗</a>
+      merges and the record is visible on <code>main</code>.
+    </div>
+    {% elif result.state == 'landed_replayed' %}
+    <div class="banner ok">
+      <strong>Landed replay — already durable.</strong>
+      The exact merged <a href="{{ result.pr_url }}">Fleet Manager PR
+      #{{ result.pr_number }} ↗</a>, its three-file payload, and the active
+      record on <code>main</code> were verified. No duplicate branch, commit, or
+      pull request was created.
+    </div>
+    {% elif result.state == 'consumed_replayed' %}
+    <div class="banner ok">
+      <strong>Consumed replay — durable history verified.</strong>
+      The exact merged <a href="{{ result.pr_url }}">Fleet Manager PR
+      #{{ result.pr_number }} ↗</a>, its original three-file payload, and the
+      consumed record plus reconciled indexes on <code>main</code> were
+      verified. No duplicate work was created.
+    </div>
+    {% elif result.state == 'unavailable' %}
+    <div class="banner warn"><strong>Write capability unavailable.</strong> {{ result.message }}</div>
+    {% elif result.state == 'failed_retryable' %}
+    <div class="banner warn"><strong>Submission did not land.</strong> {{ result.message }} Nothing is being called durable; retry is safe.</div>
+    {% else %}
+    <div class="banner warn"><strong>Submission incomplete.</strong> {{ result.message }} No durable record is being claimed.</div>
+    {% endif %}
+  {% endif %}
+  {% if error %}<div class="banner warn"><strong>Check the comment.</strong> {{ error }}</div>{% endif %}
+
+  <dl class="fact-grid">
+    <div class="fact"><dt>destination</dt><dd><code>menno420/fleet-manager</code></dd></div>
+    <div class="fact"><dt>record path</dt><dd><code>docs/owner-comments/{{ repo.name }}/&lt;id&gt;.json</code></dd></div>
+    <div class="fact"><dt>landing path</dt><dd>ready <code>claude/owner-comments-*</code> PR to protected <code>main</code></dd></div>
+    <div class="fact"><dt>capability</dt><dd>{{ capability.label }}<br><span class="source-meta">{{ capability.reason }}</span></dd></div>
+  </dl>
+</div>
+
+<section class="card owner-comment-form">
+  <h2>leave repository feedback</h2>
+  {% set finished = result and result.state in ['pending_pr', 'landed_replayed', 'consumed_replayed'] %}
+  {% if capability.available and not finished %}
+  <form method="post" action="/owner/repository-comments/submit" data-submitting-label="submitting…">
+    <input type="hidden" name="repository" value="{{ repo.name }}">
+    <input type="hidden" name="submission_key" value="{{ submission_key }}">
+    <label for="owner-comment-text"><strong>Comment</strong></label>
+    <p class="source-meta">Your wording is preserved verbatim in the JSON record. It is rendered later as untrusted plain text, never Markdown.</p>
+    <textarea id="owner-comment-text" name="comment" rows="9" maxlength="20000" required>{{ comment_text }}</textarea>
+    <label class="owner-comment-ack">
+      <input type="checkbox" name="public_acknowledgement" value="yes" required>
+      I understand this comment and its metadata will be public in Fleet Manager.
+    </label>
+    <p><button class="btn primary" type="submit">submit to Fleet Manager</button></p>
+  </form>
+  {% elif not capability.available %}
+  <div class="feedback-entry">
+    <strong>Submission is unavailable.</strong>
+    <p class="feedback-text">{{ capability.reason }}</p>
+    {% if capability.setup_required %}<p class="source-meta">Required external action: configure
+      <code>{{ capability.token_env }}</code> for this service with Contents
+      read/write and Pull requests read/write access to Fleet Manager. Do not
+      broaden any existing token silently.</p>{% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/ownercomment.js" defer></script>{% endblock %}

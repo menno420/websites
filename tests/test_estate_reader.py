@@ -204,8 +204,8 @@ def test_overview_is_exactly_two_public_files_and_one_public_listing(
         file_calls.append((repo, path, ref, refresh))
         return envelope(ESTATE_SAMPLE if path.endswith("ESTATE.md") else ACTIVITY_SAMPLE)
 
-    async def fake_api(path, refresh=False):
-        api_calls.append((path, refresh))
+    async def fake_api(path, refresh=False, *, coalesce=True):
+        api_calls.append((path, refresh, coalesce))
         return envelope(
             [
                 {
@@ -238,7 +238,12 @@ def test_overview_is_exactly_two_public_files_and_one_public_listing(
     monkeypatch.setattr(github, "fetch_public_file", fake_file, raising=False)
     monkeypatch.setattr(github, "public_api", fake_api, raising=False)
 
-    sources = asyncio.run(estate_reader.read_overview_sources(refresh=True))
+    sources = asyncio.run(
+        estate_reader.read_overview_sources(
+            refresh=True,
+            coalesce_public_listing=False,
+        )
+    )
 
     assert file_calls == [
         ("fleet-manager", "docs/ESTATE.md", "main", True),
@@ -246,6 +251,7 @@ def test_overview_is_exactly_two_public_files_and_one_public_listing(
     ]
     assert len(api_calls) == 1
     assert api_calls[0][0].startswith("/users/menno420/repos?")
+    assert api_calls[0][1:] == (True, False)
     assert [repo.name for repo in sources.unindexed_public_repositories] == [
         "new-public-repo"
     ]
@@ -283,6 +289,119 @@ def test_overview_preserves_partial_failures_and_suppresses_private_rows(
     assert sources.public_repositories == ()
     assert any("activity log unavailable" in warning for warning in sources.warnings)
     assert any("private and was suppressed" in warning for warning in sources.warnings)
+
+
+def _exact_repository_payload(name="websites"):
+    return {
+        "name": name,
+        "full_name": f"menno420/{name}",
+        "owner": {"login": "menno420"},
+        "html_url": f"https://github.com/menno420/{name}",
+        "private": False,
+        "visibility": "public",
+        "description": "Control-plane websites",
+        "archived": False,
+        "disabled": False,
+        "pushed_at": "2026-08-27T12:00:00Z",
+        "updated_at": "2026-08-27T12:00:00Z",
+        "default_branch": "main",
+        "open_issues_count": 2,
+    }
+
+
+def test_exact_public_repository_lookup_is_uncoalesced_for_mutation(monkeypatch):
+    calls = []
+
+    async def fake_repository(name, refresh=False, *, coalesce=True):
+        calls.append((name, refresh, coalesce))
+        return envelope(_exact_repository_payload(name))
+
+    monkeypatch.setattr(github, "public_repository", fake_repository)
+
+    lookup = asyncio.run(
+        estate_reader.read_public_repository(
+            "websites",
+            refresh=True,
+            coalesce=False,
+        )
+    )
+
+    assert calls == [("websites", True, False)]
+    assert lookup.is_public is True
+    assert lookup.repository is not None
+    assert lookup.repository.name == "websites"
+
+
+@pytest.mark.parametrize(
+    ("result", "visibility"),
+    [
+        (envelope(None, ok=False, status=404, error="Not Found"), "unavailable"),
+        (
+            envelope(
+                {
+                    **_exact_repository_payload(),
+                    "private": True,
+                    "visibility": "private",
+                }
+            ),
+            "private",
+        ),
+        (
+            envelope(
+                {
+                    **_exact_repository_payload(),
+                    "name": "other",
+                    "full_name": "menno420/other",
+                }
+            ),
+            "unknown",
+        ),
+        (
+            envelope(
+                {
+                    **_exact_repository_payload(),
+                    "owner": {"login": "someone-else"},
+                }
+            ),
+            "unknown",
+        ),
+        (
+            envelope(
+                {
+                    **_exact_repository_payload(),
+                    "visibility": "internal",
+                }
+            ),
+            "unknown",
+        ),
+        (
+            envelope(
+                {
+                    key: value
+                    for key, value in _exact_repository_payload().items()
+                    if key != "visibility"
+                }
+            ),
+            "unknown",
+        ),
+        (envelope([_exact_repository_payload()]), "unknown"),
+        (envelope(None, ok=False, status=503, error="unavailable"), "unavailable"),
+    ],
+)
+def test_exact_public_repository_lookup_fails_closed(
+    monkeypatch, result, visibility
+):
+    async def fake_repository(*args, **kwargs):
+        return result
+
+    monkeypatch.setattr(github, "public_repository", fake_repository)
+
+    lookup = asyncio.run(estate_reader.read_public_repository("websites"))
+
+    assert lookup.is_public is False
+    assert lookup.repository is None
+    assert lookup.visibility == visibility
+    assert lookup.reason
 
 
 @pytest.mark.parametrize("name", ["../secret", ".hidden", "bad/name", "", "a" * 101])
