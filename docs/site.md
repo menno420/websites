@@ -101,7 +101,9 @@ each repository has a stable `README.md` index, comments are standalone JSON
 records, and consumption moves a record into `consumed/` while preserving
 it. `/repos` reads only the root index; `/repos/{name}` adds at most 50 active
 and 10 consumed record reads for that validated repository, with concurrency
-bounded to four. The reader is anonymous-only, shares the isolated public
+bounded to four and an eight-second total detail-record budget. The reader
+is anonymous-only, preserves exact source text for strict duplicate-key and
+canonical-v1 validation, shares the isolated public
 cache boundary described above, escapes comment text as untrusted data, and
 keeps the Fleet Manager source link plus live/measured/stale/unknown-or-
 unavailable freshness. A malformed index, private/unreachable source, or

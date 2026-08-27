@@ -60,6 +60,30 @@ def _root(*rows) -> str:
     )
 
 
+@pytest.mark.parametrize(
+    "payload",
+    (
+        _root(_root_row()).replace(
+            '"unconsumed_count": 0',
+            '"unconsumed_count": 0,\n      "unconsumed_count": 1',
+            1,
+        ),
+        '{"schema_version": ' + ("9" * 5_000) + "}\n",
+        '{"x":' + ("[" * 2_000) + "0" + ("]" * 2_000) + "}\n",
+    ),
+)
+def test_hostile_json_degrades_index_instead_of_escaping(monkeypatch, payload):
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        return _result(payload)
+
+    monkeypatch.setattr(github, "fetch_public_file", fake_fetch)
+    result = asyncio.run(owner_comments.read_index())
+
+    assert result.valid is False
+    assert result.rows == ()
+    assert result.warnings
+
+
 def _repo_index(repository="alpha", *, active=(), consumed=()) -> str:
     lines = [
         f"# Owner comments — `{repository}`",
@@ -451,6 +475,39 @@ def test_detail_caps_fanout_and_bounds_concurrency(monkeypatch):
     assert collection.consumed[0].id == "oc-c-002"
     assert len(record_calls) == 60
     assert high_water <= owner_comments.DETAIL_CONCURRENCY
+
+
+def test_detail_total_budget_cancels_slow_record_fanout(monkeypatch):
+    active = tuple(
+        (
+            f"oc-slow-{index:03d}",
+            f"2026-08-27T10:00:{index:02d}Z",
+            "control-plane",
+        )
+        for index in range(8)
+    )
+    cancelled = 0
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        nonlocal cancelled
+        if path.endswith("README.md"):
+            return _result(_repo_index(active=active))
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelled += 1
+            raise
+
+    monkeypatch.setattr(github, "fetch_public_file", fake_fetch)
+    monkeypatch.setattr(owner_comments, "DETAIL_TIMEOUT_SECONDS", 0.01)
+    collection = asyncio.run(
+        owner_comments.read_repository_comments("alpha", refresh=True)
+    )
+
+    assert collection.unconsumed == ()
+    assert any("detail budget" in warning for warning in collection.warnings)
+    assert cancelled <= owner_comments.DETAIL_CONCURRENCY
+    assert collection.freshness.state is estate.FreshnessState.UNKNOWN
 
 
 def test_root_repository_count_mismatch_is_visible_but_records_survive(monkeypatch):

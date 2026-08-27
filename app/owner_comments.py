@@ -29,6 +29,7 @@ SCHEMA_VERSION = 1
 MAX_ACTIVE_RECORDS = 50
 MAX_CONSUMED_RECORDS = 10
 DETAIL_CONCURRENCY = 4
+DETAIL_TIMEOUT_SECONDS = 8.0
 MAX_INDEX_CHARS = 1_000_000
 MAX_COMMENT_CHARS = 20_000
 MAX_CONTEXT_CHARS = 1_000
@@ -210,7 +211,7 @@ def _strict_json(text: str, label: str) -> Any:
         return output
 
     try:
-        return json.loads(
+        data = json.loads(
             text,
             object_pairs_hook=pairs,
             parse_constant=lambda value: (_ for _ in ()).throw(
@@ -221,8 +222,22 @@ def _strict_json(text: str, label: str) -> Any:
         )
     except OwnerCommentContractError:
         raise
-    except (json.JSONDecodeError, TypeError) as exc:
+    except (json.JSONDecodeError, TypeError, ValueError, RecursionError) as exc:
         raise OwnerCommentContractError(f"{label} is malformed JSON") from exc
+    try:
+        canonical = (
+            json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False)
+            + "\n"
+        )
+    except (TypeError, ValueError, UnicodeError, RecursionError) as exc:
+        raise OwnerCommentContractError(
+            f"{label} cannot be represented as canonical v1 JSON"
+        ) from exc
+    if text != canonical:
+        raise OwnerCommentContractError(
+            f"{label} is not canonical v1 JSON"
+        )
+    return data
 
 
 def _exact_keys(data: Mapping[str, Any], expected: set[str], label: str) -> None:
@@ -835,7 +850,22 @@ async def read_repository_comments(
             return None, f"{entry.id}: {exc}"
 
     entries = (*active_entries, *consumed_entries)
-    fetched = await asyncio.gather(*(fetch_entry(entry) for entry in entries))
+    tasks = [asyncio.create_task(fetch_entry(entry)) for entry in entries]
+    done: set[asyncio.Task] = set()
+    pending: set[asyncio.Task] = set()
+    if tasks:
+        done, pending = await asyncio.wait(
+            tasks, timeout=DETAIL_TIMEOUT_SECONDS
+        )
+    for task in pending:
+        task.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+        warnings.append(
+            f"{len(pending)} owner-comment record read(s) exceeded the "
+            f"{DETAIL_TIMEOUT_SECONDS:g}s detail budget."
+        )
+    fetched = [task.result() for task in tasks if task in done]
     records: dict[str, estate.OwnerCommentRecord] = {}
     for record, warning in fetched:
         if record is not None:

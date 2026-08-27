@@ -92,6 +92,8 @@ def test_comment_form_is_owner_only_and_names_public_destination(
     assert "FLEET_MANAGER_WRITEBACK_TOKEN" not in response.text
     assert 'name="public_acknowledgement"' in response.text
     assert 'name="submission_key" value="' in response.text
+    assert "credential configured" in response.text
+    assert "verified against Fleet Manager when" in response.text
 
 
 def test_comment_post_rejects_cross_origin_before_write(client, monkeypatch):
@@ -250,6 +252,41 @@ def test_unknown_private_and_missing_token_never_write(client, monkeypatch):
     )
     assert private_response.status_code == 503
     assert "not confidently established as public" in private_response.text
+    assert "Required external action" not in private_response.text
+    assert owner_comment_writeback.ENV_TOKEN not in private_response.text
+
+    monkeypatch.delenv(owner_comment_writeback.ENV_TOKEN, raising=False)
+    private_without_token = client.post(
+        "/owner/repository-comments/submit",
+        data={
+            "repository": "estate-backups",
+            "comment": "public-looking text",
+            "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
+        },
+        headers=headers,
+    )
+    assert private_without_token.status_code == 503
+    assert "Required external action" not in private_without_token.text
+    assert owner_comment_writeback.ENV_TOKEN not in private_without_token.text
+
+    _install_overview(
+        monkeypatch, _summary("github-only", indexed=False)
+    )
+    unindexed_without_token = client.post(
+        "/owner/repository-comments/submit",
+        data={
+            "repository": "github-only",
+            "comment": "estate routing first",
+            "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
+        },
+        headers=headers,
+    )
+    assert unindexed_without_token.status_code == 503
+    assert "not established this repository" in unindexed_without_token.text
+    assert "Required external action" not in unindexed_without_token.text
+    assert owner_comment_writeback.ENV_TOKEN not in unindexed_without_token.text
 
     unknown = client.post(
         "/owner/repository-comments/submit",
@@ -264,7 +301,6 @@ def test_unknown_private_and_missing_token_never_write(client, monkeypatch):
     assert unknown.status_code == 404
 
     _install_overview(monkeypatch, _summary())
-    monkeypatch.delenv(owner_comment_writeback.ENV_TOKEN, raising=False)
     missing = client.post(
         "/owner/repository-comments/submit",
         data={

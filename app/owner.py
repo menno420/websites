@@ -488,6 +488,7 @@ def _repository_comment_capability(repo):
                 "Fleet Manager has not established this repository in its estate "
                 "index, so there is no authoritative owner-comment destination."
             ),
+            setup_required=False,
         )
     if repo.visibility != "public":
         return replace(
@@ -499,6 +500,7 @@ def _repository_comment_capability(repo):
                 "The control plane will not create a public feedback record that "
                 "could invite private repository details."
             ),
+            setup_required=False,
         )
     return capability
 

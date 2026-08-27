@@ -25,7 +25,7 @@ import httpx
 
 from . import clock, config
 
-_CacheKey = tuple[str, bool, str]
+_CacheKey = tuple[str, bool, bool, str]
 
 _cache: dict[_CacheKey, tuple[float, dict]] = {}
 _cache_lock = asyncio.Lock()
@@ -189,7 +189,7 @@ def _result(url: str, status: int, data: Any = None, error: str = "") -> dict:
 
 
 def _cache_key(
-    url: str, *, raw: bool, follow_redirects: bool
+    url: str, *, raw: bool, follow_redirects: bool, preserve_text: bool
 ) -> _CacheKey:
     """Return the cache/coalescing identity for one read mode.
 
@@ -197,7 +197,12 @@ def _cache_key(
     ``public`` in the key rather than after the transport so the security
     property stays obvious when debugging cache state.
     """
-    return ("public" if raw else "authenticated", follow_redirects, url)
+    return (
+        "public" if raw else "authenticated",
+        follow_redirects,
+        preserve_text,
+        url,
+    )
 
 
 async def _fetch_and_cache(
@@ -206,6 +211,7 @@ async def _fetch_and_cache(
     *,
     raw: bool,
     follow_redirects: bool,
+    preserve_text: bool,
     started_at: float,
 ) -> dict:
     """Perform one network GET and populate the stable-result cache.
@@ -220,10 +226,13 @@ async def _fetch_and_cache(
             resp = await get_client(raw=raw).get(
                 url, follow_redirects=follow_redirects
             )
-            try:
-                data = resp.json()
-            except ValueError:
+            if preserve_text:
                 data = resp.text
+            else:
+                try:
+                    data = resp.json()
+                except ValueError:
+                    data = resp.text
             err = ""
             if resp.status_code >= 300:
                 err = (
@@ -256,6 +265,7 @@ async def _get(
     refresh: bool = False,
     raw: bool = False,
     follow_redirects: bool = False,
+    preserve_text: bool = False,
 ) -> dict:
     """GET a URL through the TTL cache, returning the honest result envelope.
 
@@ -269,7 +279,10 @@ async def _get(
     """
     now = time.monotonic()
     key = _cache_key(
-        url, raw=raw, follow_redirects=follow_redirects
+        url,
+        raw=raw,
+        follow_redirects=follow_redirects,
+        preserve_text=preserve_text,
     )
     async with _cache_lock:
         if not refresh:
@@ -291,6 +304,7 @@ async def _get(
                     url,
                     raw=raw,
                     follow_redirects=follow_redirects,
+                    preserve_text=preserve_text,
                     started_at=now,
                 )
             )
@@ -586,11 +600,13 @@ async def fetch_public_file(
 
     A 404/403/unavailable raw response remains exactly that honest envelope;
     it must never trigger a token-backed Contents request that could project a
-    private file onto a public page.  JSON-shaped files receive the same text
-    normalization as :func:`fetch_file`.
+    private file onto a public page. File responses stay exact text so strict
+    downstream readers can detect duplicate JSON keys and noncanonical bytes.
     """
     raw_url = f"{config.GITHUB_RAW_BASE}/{config.OWNER}/{repo}/{ref}/{path}"
-    res = await _get(raw_url, refresh=refresh, raw=True)
+    res = await _get(
+        raw_url, refresh=refresh, raw=True, preserve_text=True
+    )
     if res["ok"] and isinstance(res["data"], (str, dict, list)):
         text = (
             res["data"]

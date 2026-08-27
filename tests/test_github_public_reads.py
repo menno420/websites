@@ -103,6 +103,29 @@ def test_public_file_404_never_falls_back_to_authenticated_contents():
     assert public.calls == 1
 
 
+def test_public_file_preserves_exact_json_text_for_strict_readers():
+    raw = '{"count": 0, "count": 1}\n'
+
+    def authenticated(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("public file must stay anonymous")
+
+    def anonymous(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text=raw,
+            headers={"content-type": "application/json"},
+        )
+
+    auth, public = _install_clients(authenticated, anonymous)
+    result = asyncio.run(
+        github.fetch_public_file("fleet-manager", "index.json")
+    )
+
+    assert result["data"] == raw
+    assert auth.calls == 0
+    assert public.calls == 1
+
+
 def test_authenticated_and_public_reads_have_isolated_cache_entries():
     def authenticated(request: httpx.Request) -> httpx.Response:
         assert request.headers["authorization"] == "Bearer private-test-token"

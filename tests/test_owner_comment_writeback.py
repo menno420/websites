@@ -485,6 +485,8 @@ def test_validation_rejects_before_any_github_call(
         _canonical({**_root_index(), "schema_version": True}),
         json.dumps(_root_index()).encode(),  # valid but non-canonical JSON
         _canonical({**_root_index(), "derived_from": ["a newer contract"]}),
+        b'{"schema_version": ' + (b"9" * 5_000) + b"}\n",
+        b'{"x":' + (b"[" * 2_000) + b"0" + (b"]" * 2_000) + b"}\n",
     ],
 )
 def test_v1_root_schema_or_canonical_mismatch_blocks_mutation(monkeypatch, root):
@@ -579,7 +581,9 @@ def test_repository_must_exist_in_pinned_fleet_index(monkeypatch):
         ("blob", 403, "unavailable"),
         ("tree", 422, "failed"),
         ("commit", 500, "failed_retryable"),
+        ("ref", 403, "unavailable"),
         ("ref", 503, "failed"),
+        ("pr", 403, "unavailable"),
         ("pr", 500, "failed"),
     ],
 )
@@ -593,6 +597,21 @@ def test_upstream_failures_never_claim_pending_or_durable(
     assert result.ok is False
     assert result.pr_number == 0 and result.pr_url == ""
     assert "durable" not in result.state
+
+
+@pytest.mark.parametrize(
+    ("seam", "scope"),
+    (("ref", "Contents read/write"), ("pr", "Pull requests read/write")),
+)
+def test_post_commit_permission_failure_names_required_scope(
+    monkeypatch, seam, scope
+):
+    result = _submit(FakeGitHub(failure=(seam, 403)), monkeypatch)
+
+    assert result.state == "unavailable"
+    assert writeback.ENV_TOKEN in result.message
+    assert scope in result.message
+    assert "unchanged form" in result.message
 
 
 def test_success_response_with_unverified_pr_is_not_pending(monkeypatch):

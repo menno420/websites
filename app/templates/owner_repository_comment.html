@@ -41,7 +41,7 @@
     <div class="fact"><dt>destination</dt><dd><code>menno420/fleet-manager</code></dd></div>
     <div class="fact"><dt>record path</dt><dd><code>docs/owner-comments/{{ repo.name }}/&lt;id&gt;.json</code></dd></div>
     <div class="fact"><dt>landing path</dt><dd>ready <code>claude/owner-comments-*</code> PR to protected <code>main</code></dd></div>
-    <div class="fact"><dt>capability</dt><dd>{{ capability.label }}</dd></div>
+    <div class="fact"><dt>capability</dt><dd>{{ capability.label }}<br><span class="source-meta">{{ capability.reason }}</span></dd></div>
   </dl>
 </div>
 
@@ -65,10 +65,10 @@
   <div class="feedback-entry">
     <strong>Submission is unavailable.</strong>
     <p class="feedback-text">{{ capability.reason }}</p>
-    <p class="source-meta">Required external action: configure
+    {% if capability.setup_required %}<p class="source-meta">Required external action: configure
       <code>{{ capability.token_env }}</code> for this service with Contents
       read/write and Pull requests read/write access to Fleet Manager. Do not
-      broaden any existing token silently.</p>
+      broaden any existing token silently.</p>{% endif %}
   </div>
   {% endif %}
 </section>

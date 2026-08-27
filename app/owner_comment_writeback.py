@@ -140,6 +140,7 @@ class OwnerCommentWritebackCapability:
     label: str
     reason: str
     token_env: str = ENV_TOKEN
+    setup_required: bool = False
 
 
 def runtime_token() -> str:
@@ -149,7 +150,7 @@ def runtime_token() -> str:
     and may have broader repository visibility than this mutation needs.
     """
 
-    return os.environ.get(ENV_TOKEN, "")
+    return os.environ.get(ENV_TOKEN, "").strip()
 
 
 def capability() -> OwnerCommentWritebackCapability:
@@ -159,16 +160,17 @@ def capability() -> OwnerCommentWritebackCapability:
     return OwnerCommentWritebackCapability(
         available=available,
         label=(
-            "Fleet Manager writeback ready"
+            "Fleet Manager credential configured"
             if available
             else "Fleet Manager writeback unavailable"
         ),
         reason=(
-            "A ready pull request will be opened; the comment becomes durable "
-            "only after it merges."
+            "The credential will be verified against Fleet Manager when the "
+            "comment is submitted; a ready PR is still not durable until merge."
             if available
             else f"{ENV_TOKEN} is not set on this service."
         ),
+        setup_required=not available,
     )
 
 
@@ -302,13 +304,20 @@ def _decode_canonical_json(raw: bytes, *, label: str) -> dict[str, Any]:
         data = json.loads(
             raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
         )
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except _ContractError:
+        raise
+    except (
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        ValueError,
+        RecursionError,
+    ) as exc:
         raise _ContractError(f"{label} is not valid UTF-8 JSON") from exc
     if not isinstance(data, dict):
         raise _ContractError(f"{label} must be a JSON object")
     try:
         canonical = _canonical_json_bytes(data)
-    except UnicodeEncodeError as exc:
+    except (UnicodeEncodeError, ValueError, RecursionError) as exc:
         raise _ContractError(f"{label} contains an invalid Unicode surrogate") from exc
     if raw != canonical:
         raise _ContractError(f"{label} is not canonical v1 JSON")
@@ -341,6 +350,12 @@ def _failure(
     base_sha: str = "",
     commit_sha: str = "",
 ) -> OwnerCommentWritebackResult:
+    if state == "unavailable" and ENV_TOKEN not in error:
+        error = (
+            f"{error}. Verify Fleet Manager's v1 comment contract is present "
+            f"and {ENV_TOKEN} has Contents read/write plus Pull requests "
+            "read/write access."
+        )
     return OwnerCommentWritebackResult(
         state=state,
         repository=repository,
@@ -1036,11 +1051,19 @@ async def submit_owner_comment(
     )
     if not ref_result.get("ok"):
         if ref_result.get("status") != 422:
+            permission_failure = ref_result.get("status") in (401, 403, 404)
             return _failure(
                 repository,
-                "failed",
-                "writeback branch creation could not be confirmed; inspect Fleet "
-                f"Manager before retrying: {_result_error(ref_result)}",
+                "unavailable" if permission_failure else "failed",
+                (
+                    f"{ENV_TOKEN} cannot create the Fleet Manager branch; "
+                    "grant Contents read/write access and retry the unchanged "
+                    f"form: {_result_error(ref_result)}"
+                    if permission_failure
+                    else "writeback branch creation could not be confirmed; "
+                    "inspect Fleet Manager before retrying: "
+                    f"{_result_error(ref_result)}"
+                ),
                 base_sha=base_sha,
                 commit_sha=commit_sha,
                 **common,
@@ -1071,10 +1094,21 @@ async def submit_owner_comment(
         token=token,
     )
     if error:
+        permission_failure = (failed_result or {}).get("status") in (
+            401,
+            403,
+            404,
+        )
         return _failure(
             repository,
-            "failed",
-            f"{error}; inspect Fleet Manager before retrying",
+            "unavailable" if permission_failure else "failed",
+            (
+                f"{ENV_TOKEN} cannot open or verify the Fleet Manager PR; "
+                "grant Pull requests read/write access and retry the unchanged "
+                f"form: {error}"
+                if permission_failure
+                else f"{error}; inspect Fleet Manager before retrying"
+            ),
             base_sha=base_sha,
             commit_sha=commit_sha,
             **common,
