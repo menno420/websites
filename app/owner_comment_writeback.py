@@ -373,6 +373,17 @@ def _api_path(suffix: str) -> str:
     return f"/repos/{TARGET_REPOSITORY}{suffix}"
 
 
+def _nested_sha(result: dict[str, Any], field: str) -> str:
+    data = result.get("data")
+    if not result.get("ok") or not isinstance(data, dict):
+        return ""
+    nested = data.get(field)
+    if not isinstance(nested, dict):
+        return ""
+    sha = nested.get("sha")
+    return sha if isinstance(sha, str) else ""
+
+
 def _contents_path(path: str, ref: str) -> str:
     return _api_path(f"/contents/{quote(path, safe='/')}?ref={quote(ref, safe='')}")
 
@@ -802,9 +813,7 @@ async def _verify_existing_branch(
     ref = await github.api_request(
         "GET", _api_path(f"/git/ref/heads/{quote(branch, safe='/')}"), token=token
     )
-    head_sha = ""
-    if ref.get("ok") and isinstance(ref.get("data"), dict):
-        head_sha = (ref["data"].get("object") or {}).get("sha") or ""
+    head_sha = _nested_sha(ref, "object")
     if not isinstance(head_sha, str) or not _SHA_RE.fullmatch(head_sha):
         return "", "existing writeback branch head could not be verified"
     commit = await github.api_request(
@@ -812,13 +821,17 @@ async def _verify_existing_branch(
     )
     data = commit.get("data") if isinstance(commit.get("data"), dict) else {}
     parents = data.get("parents") if isinstance(data, dict) else None
-    existing_tree = (data.get("tree") or {}).get("sha") if isinstance(data, dict) else ""
+    existing_tree = _nested_sha(commit, "tree")
+    valid_parent = (
+        isinstance(parents, list)
+        and len(parents) == 1
+        and isinstance(parents[0], dict)
+        and parents[0].get("sha") == base_sha
+    )
     if (
         not commit.get("ok")
         or existing_tree != tree_sha
-        or not isinstance(parents, list)
-        or [parent.get("sha") for parent in parents if isinstance(parent, dict)]
-        != [base_sha]
+        or not valid_parent
     ):
         return "", "existing writeback branch does not match the pinned payload"
     for path, expected in files.items():
@@ -937,9 +950,7 @@ async def submit_owner_comment(
     base_ref = await github.api_request(
         "GET", _api_path(f"/git/ref/heads/{BASE_BRANCH}"), token=token
     )
-    base_sha = ""
-    if base_ref.get("ok") and isinstance(base_ref.get("data"), dict):
-        base_sha = (base_ref["data"].get("object") or {}).get("sha") or ""
+    base_sha = _nested_sha(base_ref, "object")
     if not isinstance(base_sha, str) or not _SHA_RE.fullmatch(base_sha):
         return _failure(
             repository,
@@ -951,9 +962,7 @@ async def submit_owner_comment(
     base_commit = await github.api_request(
         "GET", _api_path(f"/git/commits/{base_sha}"), token=token
     )
-    tree_sha = ""
-    if base_commit.get("ok") and isinstance(base_commit.get("data"), dict):
-        tree_sha = (base_commit["data"].get("tree") or {}).get("sha") or ""
+    tree_sha = _nested_sha(base_commit, "tree")
     if not isinstance(tree_sha, str) or not _SHA_RE.fullmatch(tree_sha):
         return _failure(
             repository,

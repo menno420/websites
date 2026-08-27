@@ -84,6 +84,7 @@ class FakeGitHub:
         pr_exists: bool = False,
         existing_payload_matches: bool = True,
         malformed_pr: bool = False,
+        malformed: str = "",
     ) -> None:
         self.root = root if root is not None else _canonical(_root_index())
         self.readme = readme or writeback.render_repository_readme(
@@ -94,6 +95,7 @@ class FakeGitHub:
         self.pr_exists = pr_exists
         self.existing_payload_matches = existing_payload_matches
         self.malformed_pr = malformed_pr
+        self.malformed = malformed
         self.calls: list[tuple[str, str, Any, str]] = []
         self.blob_count = 0
         self.blob_payloads: dict[str, bytes] = {}
@@ -126,10 +128,14 @@ class FakeGitHub:
         assert token == "fleet-only-token"
 
         if method == "GET" and path.endswith("/git/ref/heads/main"):
+            if self.malformed == "base_ref":
+                return _envelope(200, {"object": "not-an-object"})
             return self._fail("base_ref") or _envelope(
                 200, {"object": {"sha": BASE_SHA}}
             )
         if method == "GET" and path.endswith(f"/git/commits/{BASE_SHA}"):
+            if self.malformed == "base_commit":
+                return _envelope(200, {"tree": "not-an-object"})
             return self._fail("base_commit") or _envelope(
                 200, {"tree": {"sha": BASE_TREE_SHA}}
             )
@@ -187,8 +193,26 @@ class FakeGitHub:
             method == "GET"
             and "/git/ref/heads/claude/owner-comments-" in path
         ):
+            if self.malformed == "existing_ref":
+                return _envelope(200, {"object": "not-an-object"})
             return _envelope(200, {"object": {"sha": EXISTING_SHA}})
         if method == "GET" and path.endswith(f"/git/commits/{EXISTING_SHA}"):
+            if self.malformed == "existing_commit":
+                return _envelope(
+                    200,
+                    {
+                        "tree": "not-an-object",
+                        "parents": [{"sha": BASE_SHA}],
+                    },
+                )
+            if self.malformed == "existing_parents":
+                return _envelope(
+                    200,
+                    {
+                        "tree": {"sha": NEW_TREE_SHA},
+                        "parents": [{"sha": BASE_SHA}, "not-an-object"],
+                    },
+                )
             return _envelope(
                 200,
                 {
@@ -636,6 +660,33 @@ def test_success_response_with_unverified_pr_is_not_pending(monkeypatch):
     assert "could not be verified" in result.message
     assert result.commit_sha == COMMIT_SHA
     assert result.pr_number == 0
+
+
+@pytest.mark.parametrize("seam", ("base_ref", "base_commit"))
+def test_malformed_base_nested_shape_is_an_honest_failure(monkeypatch, seam):
+    result = _submit(FakeGitHub(malformed=seam), monkeypatch)
+
+    assert result.state == "failed"
+    assert result.pr_number == 0
+    assert "could not resolve" in result.message
+
+
+@pytest.mark.parametrize(
+    "seam", ("existing_ref", "existing_commit", "existing_parents")
+)
+def test_malformed_existing_branch_shape_never_escapes_or_reuses(
+    monkeypatch, seam
+):
+    result = _submit(
+        FakeGitHub(ref_exists=True, malformed=seam), monkeypatch
+    )
+
+    assert result.state == "failed"
+    assert result.pr_number == 0
+    assert (
+        "could not be verified" in result.message
+        or "does not match" in result.message
+    )
 
 
 def test_422_branch_and_pr_are_reused_only_after_exact_verification(monkeypatch):
