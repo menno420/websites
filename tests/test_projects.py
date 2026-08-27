@@ -5,7 +5,7 @@ registry is still landing upstream / not-configured / unavailable) — the
 route always answers 200, never fabricates a package.
 
 Owner Launch Console additions (single-screen dispatch, 2026-07-12): the
-seats-first index split + owner start order, the /projects/{package}
+seats-first index split + owner start order, the /dispatch/{package}
 dispatch screen (full role-file content, copy-ready; meta fields honest
 about absence), registry-validated package names (unknown / traversal
 shapes → 404), and the same degradation ladder on the detail page.
@@ -192,7 +192,7 @@ def test_projects_route_empty_state_is_200_with_banner(monkeypatch):
 
     monkeypatch.setattr(github, "repo_api", fake_api)
     client = TestClient(app)
-    r = client.get("/projects")
+    r = client.get("/dispatch")
     assert r.status_code == 200
     assert "registry not landed yet" in r.text
     # category nav carries the page's group (projects ∈ console)
@@ -202,13 +202,13 @@ def test_projects_route_empty_state_is_200_with_banner(monkeypatch):
 def test_projects_route_happy_renders_cards_and_json(monkeypatch):
     _happy_api(monkeypatch)
     client = TestClient(app)
-    r = client.get("/projects")
+    r = client.get("/dispatch")
     assert r.status_code == 200
     assert "websites" in r.text and "Custom Instructions" in r.text
     assert "pasted to console 2026-07-10" in r.text
     assert "_inventory/" in r.text
     assert "/fleet-manager/tree/main/projects/_inventory" in r.text
-    assert 'href="/projects/_inventory"' not in r.text
+    assert 'href="/dispatch/_inventory"' not in r.text
 
     rj = client.get("/projects.json")
     assert rj.status_code == 200
@@ -308,21 +308,21 @@ def test_overview_seats_first_in_start_order_stubs_last(monkeypatch):
                      "zeta-experiment", "old-lab"]
     stubs = [p["name"] for p in out["packages"] if p["stub"]]
     assert stubs == ["old-lab"]
-    assert out["packages"][0]["detail_url"] == "/projects/venture-lab"
+    assert out["packages"][0]["detail_url"] == "/dispatch/venture-lab"
 
 
 def test_projects_index_splits_seats_and_collapses_stubs(monkeypatch):
     _multi_api(monkeypatch)
     client = TestClient(app)
-    r = client.get("/projects")
+    r = client.get("/dispatch")
     assert r.status_code == 200
     # seat cards link to the dispatch screen
-    assert 'href="/projects/websites"' in r.text
+    assert 'href="/dispatch/websites"' in r.text
     assert "open dispatch" in r.text
     # stubs collapsed under a <details> section, never hidden entirely
     assert "<details>" in r.text
     assert "Retired / merged stubs (1)" in r.text
-    assert 'href="/projects/old-lab"' in r.text
+    assert 'href="/dispatch/old-lab"' in r.text
     # seats render before the stub section
     assert r.text.index("venture-lab") < r.text.index("Retired / merged stubs")
 
@@ -384,14 +384,14 @@ def test_coverage_unknown_when_package_unlistable(monkeypatch):
     assert pkg["dispatch_ready"] is None
 
     monkeypatch.setattr(github, "repo_api", fake_api)
-    r = TestClient(app).get("/projects")
+    r = TestClient(app).get("/dispatch")
     assert r.status_code == 200
     assert "✗" not in r.text  # no chip row invented for the errored card
 
 
 def test_projects_index_renders_coverage_chips_incomplete_seat(monkeypatch):
     _happy_api(monkeypatch)
-    r = TestClient(app).get("/projects")
+    r = TestClient(app).get("/dispatch")
     assert r.status_code == 200
     assert "instructions ✓" in r.text
     assert "coordinator ✗" in r.text
@@ -422,7 +422,7 @@ def test_projects_index_renders_coverage_chips_ready_seat(monkeypatch):
 
     monkeypatch.setattr(github, "repo_api", fake_api)
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
-    r = TestClient(app).get("/projects")
+    r = TestClient(app).get("/dispatch")
     assert r.status_code == 200
     assert "instructions ✓" in r.text
     assert "coordinator ✓" in r.text
@@ -441,7 +441,7 @@ def test_projects_index_renders_coverage_chips_ready_seat(monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
-# dispatch console: /projects/{package} detail
+# dispatch console: /dispatch/{package} detail
 # --------------------------------------------------------------------------- #
 
 _DETAIL_LISTING = [
@@ -546,7 +546,7 @@ def test_detail_meta_fields_absent_render_unknown(monkeypatch):
     assert out["failsafe"] is None
 
     client = TestClient(app)
-    r = client.get("/projects/websites")
+    r = client.get("/dispatch/websites")
     assert r.status_code == 200
     assert "unknown" in r.text and "none recorded" in r.text
     assert "no failsafe file recognized" in r.text
@@ -564,7 +564,7 @@ def test_detail_rejects_unknown_and_traversal_names(monkeypatch):
 
     _detail_api(monkeypatch)
     client = TestClient(app)
-    r = client.get("/projects/not-in-registry")
+    r = client.get("/dispatch/not-in-registry")
     assert r.status_code == 404
     assert "unknown package" in r.text
 
@@ -572,7 +572,7 @@ def test_detail_rejects_unknown_and_traversal_names(monkeypatch):
 def test_detail_route_renders_copy_ready_dispatch_screen(monkeypatch):
     _detail_api(monkeypatch)
     client = TestClient(app)
-    r = client.get("/projects/websites")
+    r = client.get("/dispatch/websites")
     assert r.status_code == 200
     # full role-file content in <pre> blocks, copy button JS attached
     assert "<pre>" in r.text
@@ -597,7 +597,7 @@ def test_detail_screen_shows_dispatch_readiness_chips_ready_seat(monkeypatch):
     /projects index shows — _detail_api's package carries instructions +
     coordinator + failsafe, so the seat reads dispatch-ready, no ✗."""
     _detail_api(monkeypatch)
-    r = TestClient(app).get("/projects/websites")
+    r = TestClient(app).get("/dispatch/websites")
     assert r.status_code == 200
     assert "dispatch readiness:" in r.text
     assert "instructions ✓" in r.text
@@ -639,7 +639,7 @@ def test_detail_screen_flags_missing_role_not_dispatch_ready(monkeypatch):
 
     monkeypatch.setattr(github, "repo_api", fake_api)
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
-    r = TestClient(app).get("/projects/websites")
+    r = TestClient(app).get("/dispatch/websites")
     assert r.status_code == 200
     assert "dispatch readiness:" in r.text
     assert "instructions ✓" in r.text
@@ -653,7 +653,7 @@ def test_detail_per_file_fetch_error_degrades_per_cell(monkeypatch):
         monkeypatch, fail_paths=("projects/websites/coordinator-prompt.md",)
     )
     client = TestClient(app)
-    r = client.get("/projects/websites")
+    r = client.get("/dispatch/websites")
     assert r.status_code == 200
     assert "bad gateway" in r.text  # the failed cell says why
     assert "FULL CUSTOM INSTRUCTIONS TEXT" in r.text  # siblings still render
@@ -668,12 +668,12 @@ def test_detail_degraded_registry_states(monkeypatch):
     client = TestClient(app)
 
     monkeypatch.setattr(config, "GITHUB_TOKEN", "")
-    r = client.get("/projects/websites")
+    r = client.get("/dispatch/websites")
     assert r.status_code == 200
     assert "not configured" in r.text and "GITHUB_TOKEN" in r.text
 
     monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
-    r = client.get("/projects/websites")
+    r = client.get("/dispatch/websites")
     assert r.status_code == 200
     assert "unavailable" in r.text and "rate limited" in r.text
 
@@ -684,6 +684,6 @@ def test_detail_empty_registry_is_banner_not_404(monkeypatch):
 
     monkeypatch.setattr(github, "repo_api", fake_api)
     client = TestClient(app)
-    r = client.get("/projects/websites")
+    r = client.get("/dispatch/websites")
     assert r.status_code == 200
     assert "registry not landed yet" in r.text

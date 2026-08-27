@@ -43,9 +43,9 @@ CATEGORIES: list[dict[str, Any]] = [
     {
         "key": "overview",
         "label": "overview",
-        "href": "/",
-        "desc": "at-a-glance dashboard — fleet health plus what needs attention",
-        "landing": False,  # the console home at / IS the overview dashboard
+        "href": "/repos",
+        "desc": "the software estate — repositories, state, activity, and attention",
+        "landing": False,  # /repos is the owner-facing estate catalogue
         "gated": False,
         "items": [
             {
@@ -59,24 +59,14 @@ CATEGORIES: list[dict[str, Any]] = [
                 "action": {"label": "open board", "href": "/"},
             },
             {
-                "key": "fleet",
-                "label": "fleet heartbeats",
-                "href": "/fleet",
+                "key": "repos",
+                "label": "repositories",
+                "href": "/repos",
                 "desc": (
-                    "heartbeat per fleet lane — which agents are running, "
-                    "how far along"
+                    "the canonical estate catalogue — purpose, state, "
+                    "activity, freshness, and review"
                 ),
-                "action": {"label": "open fleet", "href": "/fleet"},
-            },
-            {
-                "key": "freshness",
-                "label": "repo freshness",
-                "href": "/freshness",
-                "desc": (
-                    "per-repo movement — last commit, last session card, "
-                    "open PRs, heartbeat age"
-                ),
-                "action": {"label": "open freshness", "href": "/freshness"},
+                "action": {"label": "review estate", "href": "/repos"},
             },
         ],
     },
@@ -166,14 +156,24 @@ CATEGORIES: list[dict[str, Any]] = [
         "gated": False,
         "items": [
             {
-                "key": "projects",
-                "label": "projects / dispatch",
-                "href": "/projects",
+                "key": "dispatch",
+                "label": "agent dispatch",
+                "href": "/dispatch",
                 "desc": (
-                    "fleet-manager dispatch registry — seat packages + role "
-                    "coverage"
+                    "operational Project packages — launch files and role "
+                    "coverage, not the repository estate"
                 ),
-                "action": {"label": "open dispatch", "href": "/projects"},
+                "action": {"label": "open dispatch", "href": "/dispatch"},
+            },
+            {
+                "key": "lanes",
+                "label": "agent lanes",
+                "href": "/lanes",
+                "desc": (
+                    "operational lane heartbeats — which agents are running "
+                    "and how far along"
+                ),
+                "action": {"label": "open lanes", "href": "/lanes"},
             },
             {
                 # Gated in place (D-0036) — see the orders item note.

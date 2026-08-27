@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}{{ d.name }} · repository review{% endblock %}
+{% block headright %}<a href="/repos/{{ d.name }}?refresh=1">refresh sources</a>{% endblock %}
+{% block content %}
+{% set repo = d.summary %}
+<div class="card repo-hero">
+  <div class="rowhead">
+    <h2>{{ d.name }} <span class="b {{ repo.status_class }}">{{ repo.status_label }}</span></h2>
+    <span class="cr-action"><a class="btn" href="/repos">← all repositories</a></span>
+  </div>
+  <p class="dim small">Repository review assembled from Fleet Manager routing
+    records, selected repository-native truth, and safe public GitHub metadata.
+    It is an orientation surface, not a copied truth store.</p>
+  <p class="repo-purpose">{{ d.why_it_exists }}</p>
+  {% for warning in repo.attention_reasons %}
+  <div class="repo-alert">⚠ {{ warning }}</div>
+  {% endfor %}
+  {% for warning in d.warnings %}
+  <div class="banner">⚠ {{ warning }}</div>
+  {% endfor %}
+</div>
+
+<div class="repo-detail-grid">
+  <div class="repo-detail-main">
+    <section class="card">
+      <h2>at a glance</h2>
+      <p class="dim small">Broad routing facts only; repository-native records
+        remain authoritative for product and implementation detail.</p>
+      <dl class="fact-grid">
+        <div class="fact"><dt>normalized state</dt><dd><span class="b {{ repo.status_class }}">{{ repo.status_label }}</span></dd></div>
+        <div class="fact"><dt>Fleet Manager index</dt><dd>{{ 'indexed' if repo.indexed_by_fleet_manager else 'not indexed' }}</dd></div>
+        <div class="fact"><dt>visibility / access</dt><dd>{{ repo.visibility }}</dd></div>
+        <div class="fact"><dt>summary freshness</dt><dd><span class="b {{ repo.freshness.css_class }}">{{ repo.freshness.label }}</span>
+          <span class="source-meta">{{ repo.freshness.detail }}</span></dd></div>
+        <div class="fact"><dt>last activity</dt><dd>{% if repo.last_activity and repo.last_activity.occurred_at %}
+          <time datetime="{{ repo.last_activity.occurred_at.isoformat() }}">{{ repo.last_activity.timestamp_label }}</time>
+          {% else %}unknown / unavailable{% endif %}</dd></div>
+        <div class="fact"><dt>owner feedback</dt><dd>{{ repo.owner_comments.label }}</dd></div>
+      </dl>
+      {% if repo.raw_status %}
+      <details class="pagehelp"><summary>raw Fleet Manager state wording</summary>
+        <p class="small">{{ repo.raw_status }}</p></details>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>current situation</h2>
+      <p class="dim small">A concise extract from the best available selected
+        source; check its provenance and date before acting.</p>
+      <p class="repo-purpose">{{ d.current_situation or 'Current situation unavailable.' }}</p>
+    </section>
+
+    <section class="card">
+      <h2>recent activity</h2>
+      <p class="dim small">Repository pushes and routed session/activity
+        signals where available; absence is not rendered as inactivity.</p>
+      {% if d.recent_activity %}
+      <ul class="activity-list">
+        {% for item in d.recent_activity %}
+        <li>
+          {% if item.occurred_at %}<time datetime="{{ item.occurred_at.isoformat() }}">{{ item.timestamp_label }}</time>
+          {% else %}<span class="dim">time unknown</span>{% endif %}
+          · {{ item.summary }}
+          {% if item.source and item.source.url %}<a class="small" href="{{ item.source.url }}">source ↗</a>{% endif %}
+          <span class="source-meta">{{ item.freshness.label }}{% if item.freshness.detail != item.freshness.label %} · {{ item.freshness.detail }}{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="dim">Recent activity unknown / unavailable.</p>{% endif %}
+    </section>
+
+    <section class="card">
+      <h2>current next thread</h2>
+      <p class="dim small">Shown only when a repository-native source uses an
+        explicit current-next heading; dated scattered prose is not promoted
+        into a roadmap.</p>
+      <p>{{ d.current_next_thread_text }}</p>
+    </section>
+
+    <section class="card" id="owner-feedback">
+      <h2>owner feedback</h2>
+      <p class="dim small">Repository-specific review comments belong in
+        Fleet Manager and must land there before they are called durable.</p>
+      <div class="feedback-entry">
+        <strong>{{ repo.owner_comments.label }}</strong>
+        <p class="feedback-text">Write capability is currently unavailable
+          until the Fleet Manager comment contract and merge path are present.
+          Nothing queued only in this website is described as durable.</p>
+      </div>
+    </section>
+  </div>
+
+  <aside class="repo-detail-aside">
+    <section class="card">
+      <h2>important sources</h2>
+      <p class="dim small">Focused pointers, not cloned files. Private or
+        unavailable records are labelled without exposing token-only content.</p>
+      <ul class="source-list">
+        {% for source in d.all_sources %}
+        <li class="source-item">
+          {% if source.url and source.available %}<a href="{{ source.url }}">{{ source.display_label }} ↗</a>
+          {% else %}<span>{{ source.display_label }}</span>{% endif %}
+          {% if source.location %}<span class="source-meta"><code>{{ source.location }}</code></span>{% endif %}
+          <span class="source-meta">{{ source.authority }} · {{ source.availability_label }} · {{ source.freshness.label }}
+            {% if source.freshness.detail != source.freshness.label %}· {{ source.freshness.detail }}{% endif %}</span>
+        </li>
+        {% else %}
+        <li class="source-item dim">No focused source could be established.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>provenance & freshness</h2>
+      <p class="dim small">Retrieval time and fact date are separate: fetching
+        an old record now does not make the record live.</p>
+      {% for source in d.all_sources %}
+      <p class="small"><strong>{{ source.display_label }}</strong><br>
+        <span class="b {{ source.freshness.css_class }}">{{ source.freshness.label }}</span>
+        · {{ source.freshness.detail }}
+        <span class="source-meta">{{ source.freshness.retrieval_label }}</span></p>
+      {% endfor %}
+    </section>
+  </aside>
+</div>
+{% endblock %}

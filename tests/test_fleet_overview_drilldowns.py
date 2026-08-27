@@ -95,7 +95,7 @@ def _wire(monkeypatch, cov_state="unknown", incomplete_names=None):
 
 def _fleet_html(monkeypatch, **kw):
     _wire(monkeypatch, **kw)
-    r = TestClient(app).get("/fleet")
+    r = TestClient(app).get("/lanes")
     assert r.status_code == 200
     return r.text
 
@@ -176,7 +176,7 @@ def test_zero_live_renders_flat_tag_not_a_drilldown(monkeypatch):
 
     _wire(monkeypatch)
     monkeypatch.setattr(github, "fetch_file", all_stale)
-    html = TestClient(app).get("/fleet").text
+    html = TestClient(app).get("/lanes").text
     assert '<span class="b ok tag">0 live</span>' in html
     # and there is no drill-down whose summary is "0 live"
     assert ">0 live<" in html
@@ -192,7 +192,7 @@ def test_stale_count_zero_renders_no_stale_badge_at_all(monkeypatch):
 
     _wire(monkeypatch)
     monkeypatch.setattr(github, "fetch_file", only_beta)
-    html = TestClient(app).get("/fleet").text
+    html = TestClient(app).get("/lanes").text
     # the stale badge only renders when the count is > 0 — a 0 count shows no
     # badge at all (nothing to drill), never a "0 stale" dead expander
     assert "0 stale" not in html
@@ -208,11 +208,11 @@ def test_stale_count_zero_renders_no_stale_badge_at_all(monkeypatch):
 def test_overview_is_get_only_no_state_route_added(monkeypatch):
     _wire(monkeypatch)
     client = TestClient(app)
-    assert client.get("/fleet").status_code == 200
+    assert client.get("/lanes").status_code == 200
     # A POST to the overview is Method Not Allowed — the drill-downs added no
     # state-changing route, so the owner-writeback CSRF/same-origin floor is
     # untouched by this change.
-    assert client.post("/fleet").status_code == 405
+    assert client.post("/lanes").status_code == 405
 
 
 # --------------------------------------------------------------------------- #
@@ -257,7 +257,7 @@ def test_status_table_uses_kv_class_and_lane_anchor(monkeypatch):
 
 def test_base_css_carries_wrap_and_contrast_and_drill_rules(monkeypatch):
     _wire(monkeypatch)
-    html = TestClient(app).get("/fleet").text
+    html = TestClient(app).get("/lanes").text
     # value cells wrap instead of clipping; label column bumped off --dim grey
     assert "overflow-wrap:anywhere" in html
     assert "table.kv th { color:#c9d1d9" in html

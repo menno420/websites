@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}fleet heartbeat{% endblock %}
-{% block headright %}<a href="/fleet.json">json</a> · <a href="/fleet?refresh=1">refresh now</a>{% endblock %}
+{% block headright %}<a href="/fleet.json">compatibility json</a> · <a href="/lanes?refresh=1">refresh now</a>{% endblock %}
 {#- A count badge that drills down inline to the lanes behind it (owner ask
     2026-07-18). A non-empty member list renders an expandable <details>
     (caret affordance, no CSRF, no JS); an empty list renders a flat, honest
@@ -78,7 +78,7 @@
     {% elif cov.incomplete %}
     <details class="drill"><summary><span class="b warn" title="seats missing a dispatch-critical role file (instructions / coordinator / failsafe)">packages incomplete: {{ cov.incomplete }}</span></summary>
       <div class="drill-list">{% for n in cov.incomplete_names %}<code>{{ n }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
-        · role chips per seat on <a href="/projects">/projects</a></div>
+        · role chips per seat on <a href="/dispatch">/dispatch</a></div>
     </details>
     {% if cov.unlistable %}<span class="b unknown tag" title="{{ cov.unlistable_names | join(', ') }}">+{{ cov.unlistable }} unlistable — coverage unknown</span>{% endif %}
     {% elif cov.unlistable %}

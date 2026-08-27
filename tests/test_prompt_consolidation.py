@@ -1,7 +1,7 @@
 """Offline tests for ORDER 015: the consolidated prompt-render path.
 
 Both prompt surfaces — the /prompts library (ORDER 014) and the
-/projects/{package} dispatch screen (Owner Launch Console) — must render
+/dispatch/{package} dispatch screen (Owner Launch Console) — must render
 fleet-manager registry artifacts through ONE shared implementation:
 ``app/prompt_artifacts.py`` (fetch + canonical artifact model over the
 TTL-cached ``github`` layer) and ``templates/_prompt_artifact.html`` (the
@@ -141,7 +141,7 @@ _BODIES = {
 
 def _both_surfaces(monkeypatch, fail_paths=()):
     """fleet-manager fixture: /prompts fetches the pinned registry;
-    /projects/websites lists + fetches the same three files."""
+    /dispatch/websites lists + fetches the same three files."""
 
     async def fake_api(repo, subpath="", refresh=False):
         if subpath.endswith("/contents/projects"):
@@ -178,7 +178,7 @@ def test_both_surfaces_render_identical_bodies(monkeypatch):
     _both_surfaces(monkeypatch)
     client = TestClient(app)
     lib = client.get("/prompts")
-    disp = client.get("/projects/websites")
+    disp = client.get("/dispatch/websites")
     assert lib.status_code == 200 and disp.status_code == 200
 
     lib_pre = set(_pre_blocks(lib.text))
@@ -204,7 +204,7 @@ def test_failed_fetch_degrades_identically_on_both(monkeypatch):
         monkeypatch, fail_paths=("projects/websites/coordinator-prompt.md",)
     )
     client = TestClient(app)
-    for url in ("/prompts", "/projects/websites"):
+    for url in ("/prompts", "/dispatch/websites"):
         r = client.get(url)
         assert r.status_code == 200
         # the shared partial's honest error cell, verbatim on both
@@ -220,6 +220,6 @@ def test_dispatch_screen_links_to_canonical_prompt_library(monkeypatch):
     """ORDER 015: /prompts is the canonical page for FINDING prompts — the
     dispatch screen links to it."""
     _both_surfaces(monkeypatch)
-    r = TestClient(app).get("/projects/websites")
+    r = TestClient(app).get("/dispatch/websites")
     assert r.status_code == 200
     assert 'href="/prompts"' in r.text

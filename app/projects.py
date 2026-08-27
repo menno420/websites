@@ -1,4 +1,4 @@
-"""Projects registry view (/projects): render fleet-manager's ``projects/``
+"""Agent-dispatch registry view (/dispatch): render fleet-manager's ``projects/``
 directory — one card per Project package.
 
 ORDER 009 increment (1): the owner centralizes ALL fleet/project information
@@ -27,7 +27,7 @@ metadata shows as "unknown", never a fabricated state.
 Owner Launch Console (single-screen dispatch, 2026-07-12 ask): the index
 splits into active **Seats** (owner start order — :func:`start_rank`) with
 retired/merged **stubs** collapsed below (:func:`is_stub`, fail-active), and
-each seat links to ``/projects/{package}`` (:func:`detail`) — the dispatch
+each seat links to ``/dispatch/{package}`` (:func:`detail`) — the dispatch
 screen rendering every recognized role file's FULL content copy-ready, plus
 best-effort meta fields (deployed state / environment / claude.ai Project
 URL — absent = "unknown"/"none recorded", never invented). Package names are
@@ -295,7 +295,7 @@ async def _build_package(
         "name": name,
         "path": path,
         "github_url": f"https://github.com/{config.OWNER}/{REPO}/tree/main/{path}",
-        "detail_url": f"/projects/{name}",
+        "detail_url": f"/dispatch/{name}",
         "files": [],
         "error": None,
         "meta_html": "",

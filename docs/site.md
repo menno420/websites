@@ -64,7 +64,36 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    with a browse-all link. A repo with no `docs/ideas/` shows an absence, not an
    error. Every idea deep-links to GitHub and to the in-app markdown file view
    (`/journal/{repo}/file`). ([D-0020])
-3a. **Fleet heartbeat** (`/fleet`, `.json` variant) — every fleet **lane's**
+### Repository estate review (owner-directed 2026-08-27)
+
+**`/repos` is the canonical owner-facing estate catalogue** and
+`/repos/{name}` is the focused repository review. The cheap overview
+reads Fleet Manager's public `docs/ESTATE.md` and generated activity
+log plus one anonymous public GitHub repository listing. Detail reads the
+selected repository only: its Fleet Manager Layer-2 entry and a bounded set of
+repository-native orientation files when that repository is anonymously
+public. Public reads have no authenticated fallback, and authenticated/public
+cache entries are separate, so a server token can never project a private file
+onto these public routes.
+
+The domain boundary is explicit: `app/estate_reader.py`
+parses/retrieves, `app/estate_service.py` aggregates, and
+`app/estate.py` exposes the stable models/freshness vocabulary used by
+routes and templates. Retrieval time and fact-as-of time are distinct; an old
+ledger fetched now stays measured, last verified, or stale. Unknown,
+unavailable, private, contradictory, and unindexed-public states render rather
+than being guessed. Overview never fans out across member files; detail is
+bounded to the selected repository.
+
+The former competing HTML routes are reversible 307 migrations:
+`/fleet`, `/projects`, and `/freshness` point to
+`/repos`. Their useful operational functions remain clearly named at
+`/lanes`, `/dispatch`, and
+`/lane-freshness`; `/fleet.json`,
+`/projects.json`, and `/freshness.json` remain compatibility
+contracts.
+
+3a. **Fleet heartbeat** (`/lanes`, `/fleet.json` compatibility variant) — every fleet **lane's**
    `control/status*.md` heartbeat on one glanceable screen ([D-0021], ORDER 002).
    The fleet-coordination protocol has each Project overwrite a `control/status.md`
    in its own repo every session; those committed files are the only visible truth
@@ -155,7 +184,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    level deep (bounded `MAX_FILES=40`) over the TTL-cached contents API.
    Honest degradation mirrors `/queue`: **not configured** (token unset) /
    **unavailable** (reason surfaced) / per-file + per-subdir error banners.
-3d. **Projects** (`/projects`, `.json` variant) — read-only render of the
+3d. **Agent dispatch** (`/dispatch`, `/projects.json` compatibility variant) — read-only render of the
    fleet's Project-package registry `menno420/fleet-manager projects/`
    ([D-0030], ORDER 009 increment 1): one card per `projects/<repo>/`
    package showing its role-classified files (meta / Custom Instructions /
@@ -180,7 +209,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
    stub packages collapsed under a `<details>` below (`is_stub` is
    fail-ACTIVE: only an unambiguous retired/merged-into/stub declaration in
    the meta state line or early meta.md body demotes a package; when unsure
-   it stays a seat). Each seat links to **`/projects/{package}`** — the
+   it stays a seat). Each seat links to **`/dispatch/{package}`** — the
    per-seat dispatch screen: every recognized role file fetched in FULL
    through the same TTL-cached layer and rendered copy-ready in `<pre>`
    blocks (`copycode.js`), a deployed-state badge + best-effort
@@ -290,17 +319,25 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 | `/` | public | Overview dashboard — what-needs-attention summary + category map, readiness board below (secrets masked to a count) |
 | `/work` | public | category landing — queue / orders / ideas / reviews as rows with live count chips (IA v2, 2026-07-12) |
 | `/history` | public | category landing — activity / journal rows (IA v2) |
-| `/console` | public | category landing — projects / prompts / environments hub / directory rows (IA v2) |
+| `/console` | public | category landing — agent dispatch / lanes / prompts / environments hub / directory rows (IA v2) |
 | `/directory` | public | canonical eight-product website inventory with friendly public URLs, explicit public/read-only/archive boundaries, and live HTTP health probes |
 | `/api/readiness.json` | public | board data as JSON (no secret names) |
-| `/fleet` | public | fleet heartbeat — every lane's `control/status*.md` (HTML) — [D-0021] |
-| `/fleet.json` | public | same fleet heartbeat as JSON (rendered body stripped) |
+| `/repos` | public | **canonical repository estate catalogue** — purpose, normalized state, activity, freshness, provenance, attention and feedback state |
+| `/repos/{name}` | public | validated focused repository review; selected public member sources only; unknown repo → 404 |
+| `/fleet` | public | 307 compatibility redirect to `/repos`; never serves the seat-era estate view |
+| `/lanes` | public | operational lane heartbeat — every lane's `control/status*.md` (HTML) — [D-0021] |
+| `/fleet.json` | public | legacy-named lane-heartbeat JSON compatibility contract |
+| `/freshness` | public | 307 compatibility redirect to `/repos` |
+| `/lane-freshness` | public | operational lane movement diagnostic retained outside the estate IA |
+| `/freshness.json` | public | legacy-named lane-freshness JSON compatibility contract |
 | `/queue` | public | owner queue — every ⚑ needs-owner ask + the fleet-manager owner-queue, deduplicated (HTML) — [D-0027] |
 | `/queue.json` | public | same owner queue as JSON — the manager's file-an-ask → poll → confirm round-trip (rendered doc HTML stripped) |
 | `/environments` | public | fleet-manager `environments/` registry, copy-to-clipboard (HTML) — [D-0027] |
-| `/projects` | public | fleet-manager `projects/` Project-package registry — seats-first dispatch index (HTML) — [D-0030] |
-| `/projects.json` | public | same registry as JSON (rendered meta HTML stripped; packages carry `stub` + `detail_url`) |
-| `/projects/{package}` | public | per-seat dispatch screen — full role-file contents copy-ready + dispatch checklist (HTML; unknown package → 404) |
+| `/projects` | public | 307 compatibility redirect to `/repos`; never serves Project packages as the estate |
+| `/dispatch` | public | operational fleet-manager `projects/` Project-package registry (HTML) — [D-0030] |
+| `/projects.json` | public | legacy-named dispatch registry JSON compatibility contract |
+| `/projects/{package}` | public | 307 compatibility redirect to `/dispatch/{package}` |
+| `/dispatch/{package}` | public | per-seat dispatch screen — full role-file contents copy-ready + dispatch checklist (HTML; unknown package → 404) |
 | `/prompts` | **gated in place** | fleet prompt library — 29 fleet-manager registry artifacts, CURRENT per-seat files primary + superseded universal-startup demoted to Historical reference, drift row + supersession warnings (HTML) — ORDER 014 + ORDER 024 (#267); gated in place 2026-08-20 (decisions ledger): 513 KB seat-era RECORD, same URL behind the owner gate (anonymous → tiny 401) |
 | `/reviews` | public | fleet post-merge review-queue ledger + findings links (HTML) — [D-0031] |
 | `/reviews.json` | public | same ledger as JSON (rendered HTML stripped) |
@@ -328,7 +365,7 @@ by *looking*, instead of asking an agent to go fetch GitHub state. Two halves:
 
 ## Live-monitoring auto-refresh ([D-0023])
 
-The two **live-monitoring** surfaces — the board `/` and `/fleet` — auto-refresh
+The two **live-monitoring** surfaces — the board `/` and `/lanes` — auto-refresh
 client-side so the owner's control glance stays current without a manual reload.
 `app/static/autorefresh.js` (a small vanilla-JS module, no dependency) re-fetches
 the **current page** over HTTP every `AUTOREFRESH_SECONDS` (default 45s) and swaps
@@ -438,10 +475,10 @@ itself, and never uses the account key or the ambient production IDs
 | Var | Required | Meaning |
 |---|---|---|
 | `SITE_PASSWORD` | for `/owner` | Gates ONLY the `/owner` area (HTTP Basic, any username). The public site never reads it. Unset → `/owner*` fails closed 503; the public site still works. |
-| `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; the Actions **secrets count** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)`. Secret *names* are exposed only through the gated `/owner` area; `actions:write` is needed for the `/owner` re-run-CI action. Also the only credential that can read `menno420/fleet-manager` when its contents aren't anonymously reachable — unset, `/queue`'s fleet-manager half and `/environments` show an honest **not configured** banner ([D-0027]). |
+| `GITHUB_TOKEN` | yes (for full board) | PAT for the REST API. Plain read scope covers most cells; the Actions **secrets count** and reading `allow_auto_merge` need admin/push scope — without it those cells show `unknown (token lacks admin scope)`. Secret *names* are exposed only through the gated `/owner` area; `actions:write` is needed for the `/owner` re-run-CI action. Also the only credential that can read `menno420/fleet-manager` when its contents aren't anonymously reachable — unset, `/queue`'s fleet-manager half and `/environments` show an honest **not configured** banner ([D-0027]). **`/repos` never uses this token:** its public reader has no authenticated fallback and a separate cache namespace. |
 | `PORT` | Railway sets it | bind port (default 8000) |
 | `CACHE_TTL_SECONDS` | no | server-side GitHub cache TTL, default `180`. Empty/malformed values fall back to the default at import (`_env_int`, 2026-07-13 hardening — same for `AUTOREFRESH_SECONDS`/`FLEET_STALE_HOURS`/`CLAIM_STALE_HOURS`); an empty Railway entry can no longer crash the service. |
-| `AUTOREFRESH_SECONDS` | no | client poll interval for the board `/` + `/fleet` live-monitoring auto-refresh, default `45` ([D-0023]) |
+| `AUTOREFRESH_SECONDS` | no | client poll interval for the board `/` + `/lanes` live-monitoring auto-refresh, default `45` ([D-0023]) |
 | `GITHUB_API_BASE` | no | REST base override (testing behind restricted egress) |
 | `GITHUB_RAW_BASE` | no | raw-content base override |
 | `RAILWAY_TOKEN` | for `/owner/environments` live half | **Project-scoped** Railway token (superbot-websites only — never the account `RAILWAY_API_KEY`, never the ambient production IDs) powering the gated live variable-NAME read. Unset → the page renders committed facts with an honest owner-errand banner. |

@@ -215,9 +215,9 @@ def test_seat_cards_carry_open_dispatch_button(monkeypatch):
     monkeypatch.setattr(github, "repo_api", fake_api)
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
     with TestClient(app) as c:
-        r = c.get("/projects")
+        r = c.get("/dispatch")
     assert r.status_code == 200
-    assert 'class="btn" href="/projects/websites"' in r.text
+    assert 'class="btn" href="/dispatch/websites"' in r.text
     assert ">open dispatch →</a>" in r.text
 
 
@@ -229,7 +229,7 @@ def test_seat_cards_carry_open_dispatch_button(monkeypatch):
 def test_fleet_lane_rows_carry_open_status_button(monkeypatch):
     _offline(monkeypatch)
     with TestClient(app) as c:
-        r = c.get("/fleet")
+        r = c.get("/lanes")
     assert r.status_code == 200
     # one primary-action button per lane header (offline: fallback lane set
     # still renders every lane card, fetch errors and all)

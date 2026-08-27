@@ -5,7 +5,7 @@ The fleet-coordination protocol (menno420/superbot →
 write a ``control/status.md`` heartbeat in its OWN repo, overwritten every
 session. The claude.ai UI cannot show which agents are running or how far along
 they are (session activity is invisible), so those committed heartbeat files are
-the truth. ``/fleet`` fetches every lane's status file (cache-backed) and renders
+the truth. ``/lanes`` fetches every lane's status file (cache-backed) and renders
 it as one glanceable page — the owner's single control glance over the whole
 fleet.
 
@@ -35,7 +35,7 @@ OWNER = config.OWNER
 # fleet-manifest went `historical` (its table removed — healthcheck run 2
 # caught the break live), and the generated roster (docs/roster.md) is a
 # STATUS snapshot whose table carries no repo column, so the generator's own
-# registry literal is the one machine-readable lane→repo mapping. `/fleet`
+# registry literal is the one machine-readable lane→repo mapping. `/lanes`
 # parses it live so a lane added there auto-appears. fleet-manager is
 # READ-ONLY here: fetched at request time via the shared TTL-cached github
 # layer; nothing upstream is written.

@@ -76,7 +76,7 @@ def test_board_renders_heartbeat_chip(monkeypatch):
     assert r.status_code == 200
     assert "lane heartbeat:" in r.text
     assert r.text.count("lane heartbeat:") == 1  # only the repo with a heartbeat
-    assert 'href="/fleet"' in r.text  # chip deep-links the fleet page
+    assert 'href="/lanes"' in r.text  # chip deep-links the fleet page
 
 
 def test_board_no_heartbeat_chip_when_all_unreadable(monkeypatch):
@@ -131,6 +131,6 @@ def test_fleet_page_flags_ritual_only_tooling(monkeypatch):
 
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
     monkeypatch.setattr(github, "repo_api", fake_api)
-    r = TestClient(app).get("/fleet")
+    r = TestClient(app).get("/lanes")
     assert r.status_code == 200
     assert "<th>tooling</th>" in r.text and "cannot land work" in r.text

@@ -22,8 +22,8 @@ from app.main import app  # noqa: E402
 # manifest itself).
 ALL_FEATURE_ROUTES = [
     "/",
-    "/fleet",
-    "/freshness",
+    "/repos",
+    "/lanes",
     "/work",
     "/queue",
     "/orders",
@@ -33,7 +33,7 @@ ALL_FEATURE_ROUTES = [
     "/activity",
     "/journal",
     "/console",
-    "/projects",
+    "/dispatch",
     "/prompts",
     "/owner/environments-hub",
     "/environments",
@@ -109,7 +109,7 @@ def test_header_stays_short():
 def test_owner_console_linked_from_footer_on_every_page(monkeypatch):
     _offline(monkeypatch)
     with TestClient(app) as c:
-        for path in ("/", "/fleet", "/journal", "/work"):
+        for path in ("/", "/lanes", "/journal", "/work"):
             r = c.get(path)
             assert r.status_code == 200
             assert 'href="/owner"' in r.text, f"no owner link on {path}"
@@ -118,7 +118,7 @@ def test_owner_console_linked_from_footer_on_every_page(monkeypatch):
 def test_fleet_lane_cards_deep_link_the_in_app_file_view(monkeypatch):
     _offline(monkeypatch)
     with TestClient(app) as c:
-        r = c.get("/fleet")
+        r = c.get("/lanes")
     assert r.status_code == 200
     # offline → the cached FLEET_LANES fallback set; every lane repo is in
     # the render allow-set, so each card header carries both deep-links

@@ -163,7 +163,7 @@ def test_fleet_page_renders_bounded_reason_not_error_document(monkeypatch):
     monkeypatch.setattr(github, "get_client", lambda raw=False: client)
     try:
         with TestClient(app) as c:
-            resp = c.get("/fleet")
+            resp = c.get("/lanes")
     finally:
         asyncio.run(client.aclose())
         github.clear_cache()

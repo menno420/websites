@@ -147,16 +147,16 @@ def test_file_page_lede_names_github_as_source_of_truth(monkeypatch):
 def test_headright_surfaces_json_feeds(monkeypatch):
     _offline(monkeypatch)
     feeds = {
-        "/fleet": "/fleet.json",
+        "/lanes": "/fleet.json",
         "/queue": "/queue.json",
-        "/projects": "/projects.json",
+        "/dispatch": "/projects.json",
         "/": "/api/readiness.json",
     }
     with TestClient(app) as c:
         for page, feed in feeds.items():
             r = c.get(page)
             assert r.status_code == 200, page
-            assert f'<a href="{feed}">json</a>' in r.text, page
+            assert f'<a href="{feed}">' in r.text, page
 
 
 def test_board_tab_title_matches_overview_framing(monkeypatch):

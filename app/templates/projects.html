@@ -1,12 +1,13 @@
 {% extends "base.html" %}
-{% block title %}projects{% endblock %}
-{% block headright %}<a href="/projects.json">json</a> · <a href="/projects?refresh=1">refresh now</a>{% endblock %}
+{% block title %}agent dispatch{% endblock %}
+{% block headright %}<a href="/projects.json">compatibility json</a> · <a href="/dispatch?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
 {% set seats = p.packages | rejectattr('stub') | list %}
 {% set stubs = p.packages | selectattr('stub') | list %}
 <div class="card">
-  <h2>projects — the fleet's Project-package registry</h2>
-  <p class="dim small">Read-only render of
+  <h2>agent dispatch — operational Project packages</h2>
+  <p class="dim small">This is the launch tooling for agent seats, not the
+    repository estate. <a href="/repos">Review repositories →</a>. Read-only render of
     <a href="{{ p.repo_url }}">fleet-manager <code>projects/</code> ↗</a> — one package per
     repo carrying what its Project runs on: Custom Instructions, coordinator prompt,
     environment setup script, failsafe, and a <code>meta.md</code> with the package's

@@ -174,7 +174,7 @@ def test_fleet_renders_amber_incomplete_chip_with_names(monkeypatch):
         "/contents/projects/beta": _res(data=_incomplete_listing("beta")),
     })
     _mock_fetch_404(monkeypatch)
-    r = TestClient(app).get("/fleet")
+    r = TestClient(app).get("/lanes")
     assert r.status_code == 200
     assert "packages incomplete: 1" in r.text
     assert "<code>beta</code>" in r.text  # the incomplete seat is NAMED
@@ -188,7 +188,7 @@ def test_fleet_renders_green_complete_chip(monkeypatch):
         "/contents/projects/beta": _res(data=_complete_listing("beta")),
     })
     _mock_fetch_404(monkeypatch)
-    r = TestClient(app).get("/fleet")
+    r = TestClient(app).get("/lanes")
     assert r.status_code == 200
     assert "coverage: complete (2 seats)" in r.text
     assert "packages incomplete" not in r.text
@@ -199,7 +199,7 @@ def test_fleet_renders_unknown_chip_when_registry_unreadable(monkeypatch):
     'packages incomplete: 0' and never a green."""
     _mock_api(monkeypatch, {}, default_status=502, default_error="bad gateway")
     _mock_fetch_404(monkeypatch)
-    r = TestClient(app).get("/fleet")
+    r = TestClient(app).get("/lanes")
     assert r.status_code == 200
     assert "coverage unknown" in r.text
     assert "packages incomplete" not in r.text
@@ -214,7 +214,7 @@ def test_fleet_renders_unknown_chip_for_unlistable_seat(monkeypatch):
         "/contents/projects/alpha": _res(data=_complete_listing("alpha")),
     })
     _mock_fetch_404(monkeypatch)
-    r = TestClient(app).get("/fleet")
+    r = TestClient(app).get("/lanes")
     assert r.status_code == 200
     assert "coverage unknown for 1 seat" in r.text
     assert "coverage: complete" not in r.text
