@@ -33,6 +33,7 @@ DETAIL_TIMEOUT_SECONDS = 8.0
 MAX_INDEX_CHARS = 1_000_000
 MAX_COMMENT_CHARS = 20_000
 MAX_CONTEXT_CHARS = 1_000
+MAX_INDEX_RECORDS = 10_000
 
 DERIVED_FROM = (
     "docs/ESTATE.md",
@@ -135,6 +136,18 @@ def _timestamp(value: Any, label: str) -> datetime:
             f"{label} must be a real RFC3339 UTC timestamp"
         ) from exc
     return parsed.astimezone(UTC)
+
+
+def _bounded_index_count(value: str, label: str) -> int:
+    if len(value) > len(str(MAX_INDEX_RECORDS)):
+        raise OwnerCommentContractError(f"{label} exceeds the bounded count")
+    try:
+        count = int(value)
+    except ValueError as exc:
+        raise OwnerCommentContractError(f"{label} is not an integer") from exc
+    if count > MAX_INDEX_RECORDS:
+        raise OwnerCommentContractError(f"{label} exceeds the bounded count")
+    return count
 
 
 def _retrieved_at(result: Mapping[str, Any]) -> Optional[datetime]:
@@ -474,7 +487,9 @@ def parse_repository_index(text: str, repository: str) -> _RepositoryIndex:
     active_heading = re.fullmatch(r"## Unconsumed \((\d+)\)", lines[cursor])
     if not active_heading:
         raise OwnerCommentContractError(f"{label} has invalid Unconsumed heading")
-    active_count = int(active_heading.group(1))
+    active_count = _bounded_index_count(
+        active_heading.group(1), f"{label} Unconsumed count"
+    )
     cursor += 1
     cursor = _expect(lines, cursor, "", label)
 
@@ -517,7 +532,9 @@ def parse_repository_index(text: str, repository: str) -> _RepositoryIndex:
     consumed_heading = re.fullmatch(r"## Consumed history \((\d+)\)", lines[cursor])
     if not consumed_heading:
         raise OwnerCommentContractError(f"{label} has invalid consumed heading")
-    consumed_count = int(consumed_heading.group(1))
+    consumed_count = _bounded_index_count(
+        consumed_heading.group(1), f"{label} consumed count"
+    )
     cursor += 1
     cursor = _expect(lines, cursor, "", label)
 

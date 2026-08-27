@@ -122,6 +122,47 @@ def test_comment_post_rejects_cross_origin_before_write(client, monkeypatch):
     assert not called
 
 
+def test_submission_revalidates_public_visibility_without_cache(
+    client, monkeypatch
+):
+    refreshes = []
+
+    async def changing_overview(refresh=False):
+        refreshes.append(refresh)
+        return _overview(
+            _summary(visibility="private" if refresh else "public")
+        )
+
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("private target must not reach writeback")
+
+    monkeypatch.setattr(estate_service, "overview", changing_overview)
+    monkeypatch.setattr(
+        owner_comment_writeback, "submit_owner_comment", forbidden
+    )
+
+    form = client.get(
+        "/owner/repository-comments/websites", headers=_basic()
+    )
+    assert form.status_code == 200
+    assert refreshes == [False]
+
+    response = client.post(
+        "/owner/repository-comments/submit",
+        data={
+            "repository": "websites",
+            "comment": "This must stay behind the public boundary.",
+            "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
+        },
+        headers={**_basic(), "Origin": SAME_ORIGIN},
+    )
+
+    assert response.status_code == 503
+    assert refreshes == [False, True]
+    assert "not confidently established as public" in response.text
+
+
 def test_submission_preserves_owner_text_and_reports_pending_not_durable(
     client, monkeypatch
 ):

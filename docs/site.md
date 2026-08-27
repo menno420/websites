@@ -113,7 +113,8 @@ breaking the repository page.
 The write half lives behind the existing owner overlay:
 `GET /owner/repository-comments/{name}` shows the public-record warning and
 capability, and `POST /owner/repository-comments/submit` validates the
-repository through the estate model, requires explicit public
+repository through a freshly refreshed anonymous estate model (so cached
+public visibility cannot authorize a now-private repository), requires explicit public
 acknowledgement, and preserves the accepted wording verbatim. Only a repository
 both Fleet-indexed and confidently public is eligible. With the dedicated
 `FLEET_MANAGER_WRITEBACK_TOKEN`, one Git Data transaction creates the record,

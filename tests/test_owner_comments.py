@@ -422,6 +422,26 @@ def test_one_record_fetch_failure_degrades_only_that_record(monkeypatch):
     assert collection.freshness.state is estate.FreshnessState.UNKNOWN
 
 
+def test_hostile_repository_count_degrades_detail_instead_of_escaping(
+    monkeypatch,
+):
+    hostile = _repo_index().replace(
+        "## Unconsumed (0)", f"## Unconsumed ({'9' * 5_000})"
+    )
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        return _result(hostile)
+
+    monkeypatch.setattr(github, "fetch_public_file", fake_fetch)
+    collection = asyncio.run(
+        owner_comments.read_repository_comments("alpha")
+    )
+
+    assert collection.unconsumed == ()
+    assert collection.freshness.state is estate.FreshnessState.UNAVAILABLE
+    assert any("bounded count" in warning for warning in collection.warnings)
+
+
 def test_detail_caps_fanout_and_bounds_concurrency(monkeypatch):
     active = tuple(
         (

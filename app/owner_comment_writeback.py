@@ -38,6 +38,7 @@ ROOT_INDEX_PATH = f"{COMMENTS_ROOT}/index.json"
 SCHEMA_VERSION = 1
 MAX_COMMENT_CHARS = 20_000
 MAX_CONTEXT_CHARS = 1_000
+MAX_INDEX_RECORDS = 10_000
 SOURCE_SURFACE = "control-plane"
 DERIVED_FROM = [
     "docs/ESTATE.md",
@@ -446,6 +447,18 @@ def _valid_id(value: str) -> bool:
     )
 
 
+def _bounded_index_count(value: str, *, field: str) -> int:
+    if len(value) > len(str(MAX_INDEX_RECORDS)):
+        raise _ContractError(f"{field} exceeds the bounded count")
+    try:
+        count = int(value)
+    except ValueError as exc:
+        raise _ContractError(f"{field} is not an integer") from exc
+    if count > MAX_INDEX_RECORDS:
+        raise _ContractError(f"{field} exceeds the bounded count")
+    return count
+
+
 def _repository_readme_pattern(repository: str) -> re.Pattern[str]:
     prefix = (
         f"# Owner comments — `{repository}`\n\n"
@@ -500,8 +513,13 @@ def _parse_repository_readme(
     if not match:
         raise _ContractError("repository owner-comment README is not exact v1 output")
 
-    active_count = int(match.group("active_count"))
-    consumed_count = int(match.group("consumed_count"))
+    active_count = _bounded_index_count(
+        match.group("active_count"), field="repository README active count"
+    )
+    consumed_count = _bounded_index_count(
+        match.group("consumed_count"),
+        field="repository README consumed count",
+    )
     active_lines = match.group("active").splitlines()
     consumed_lines = match.group("consumed").splitlines()
     active: list[_ActiveIndexEntry] = []

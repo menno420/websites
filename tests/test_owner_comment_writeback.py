@@ -518,6 +518,20 @@ def test_malformed_repository_readme_blocks_mutation(monkeypatch):
     assert not any(call[0] == "POST" for call in fake.calls)
 
 
+def test_hostile_repository_count_blocks_mutation_without_escaping(monkeypatch):
+    hostile = writeback.render_repository_readme("websites", [], []).replace(
+        b"## Unconsumed (0)",
+        b"## Unconsumed (" + (b"9" * 5_000) + b")",
+    )
+    fake = FakeGitHub(readme=hostile)
+
+    result = _submit(fake, monkeypatch)
+
+    assert result.state == "failed"
+    assert "bounded count" in result.message
+    assert not any(call[0] == "POST" for call in fake.calls)
+
+
 def test_consumption_before_creation_blocks_mutation(monkeypatch):
     consumed = [
         writeback._ConsumedIndexEntry(
