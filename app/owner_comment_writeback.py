@@ -1164,12 +1164,31 @@ async def _verify_landed_replay(
             if active_entry is not None
             else f"{COMMENTS_ROOT}/{repository}/consumed/{comment_id}.json"
         )
+        alternate_record_path = (
+            f"{COMMENTS_ROOT}/{repository}/consumed/{comment_id}.json"
+            if active_entry is not None
+            else record_path
+        )
         current_record_result = await github.api_request(
             "GET",
             _contents_path(current_record_path, current_main),
             token=token,
         )
         current_results[current_record_path] = current_record_result
+        alternate_record_result = await github.api_request(
+            "GET",
+            _contents_path(alternate_record_path, current_main),
+            token=token,
+        )
+        if alternate_record_result.get("ok"):
+            raise _ContractError(
+                "landed owner-comment record exists in both active and consumed history"
+            )
+        if alternate_record_result.get("status") != 404:
+            current_results[alternate_record_path] = alternate_record_result
+            raise _ContractError(
+                "alternate landed owner-comment record path was unavailable"
+            )
         current_record_raw = _decode_contents_result(
             current_record_result, path=current_record_path
         )
@@ -1561,6 +1580,7 @@ async def _finish_verified_branch(
     attempted_base_sha: str = "",
     attempted_commit_sha: str = "",
     ref_result: dict[str, Any] | None = None,
+    replay_lookup_failure: dict[str, Any] | None = None,
 ) -> OwnerCommentWritebackResult:
     """Verify one deterministic branch and recover/open its ready PR."""
 
@@ -1604,11 +1624,21 @@ async def _finish_verified_branch(
             403,
             404,
         )
+        replay_lookup_was_transient = (
+            replay_lookup_failure is not None
+            and _failure_state(replay_lookup_failure) == "failed_retryable"
+            and failed_result is not None
+            and failed_result.get("ok")
+            and failed_result.get("data") == []
+            and error == "existing ready PR could not be verified"
+        )
         return _failure(
             repository,
             (
                 "unavailable"
                 if permission_failure
+                else "failed_retryable"
+                if replay_lookup_was_transient
                 else _failure_state(failed_result)
                 if failed_result
                 else "failed"
@@ -1620,6 +1650,11 @@ async def _finish_verified_branch(
                 "Do not resubmit this form until that branch is reconciled: "
                 f"{error}"
                 if permission_failure
+                else (
+                    f"{error}; the merged PR lookup was temporarily unavailable, "
+                    "so retry this exact submission before resubmitting"
+                )
+                if replay_lookup_was_transient
                 else f"{error}; inspect Fleet Manager before retrying"
             ),
             base_sha=verified_base,
@@ -1714,7 +1749,7 @@ async def submit_owner_comment(
         token=token,
     )
     if existing_ref.get("ok"):
-        landed, _landed_result, _landed_error = await _verify_landed_replay(
+        landed, landed_result, landed_error = await _verify_landed_replay(
             branch=branch,
             repository=repository,
             comment=comment,
@@ -1739,6 +1774,9 @@ async def submit_owner_comment(
             attempted_created_at=created_at,
             attempted_base_sha=base_sha,
             ref_result=existing_ref,
+            replay_lookup_failure=(
+                landed_result if landed_error else None
+            ),
         )
     if existing_ref.get("status") != 404:
         return _failure(

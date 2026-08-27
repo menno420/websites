@@ -102,6 +102,8 @@ class FakeGitHub:
         compare_ahead_by: int = 1,
         preflight_ref_missing: bool = False,
         raced_ref_status: int | None = None,
+        duplicate_main_record: bool = False,
+        failure_once: tuple[str, int] | None = None,
     ) -> None:
         self.root = root if root is not None else _canonical(_root_index())
         self.readme = readme or writeback.render_repository_readme(
@@ -131,6 +133,8 @@ class FakeGitHub:
         self.compare_ahead_by = compare_ahead_by
         self.preflight_ref_missing = preflight_ref_missing
         self.raced_ref_status = raced_ref_status
+        self.duplicate_main_record = duplicate_main_record
+        self.failure_once = failure_once
         self.branch_ref_reads = 0
         self.compare_response_sizes: list[int] = []
         self.existing_files: dict[str, bytes] = {}
@@ -145,6 +149,10 @@ class FakeGitHub:
         self.initial_tree_created = False
 
     def _fail(self, seam: str) -> dict[str, Any] | None:
+        if self.failure_once and self.failure_once[0] == seam:
+            status = self.failure_once[1]
+            self.failure_once = None
+            return _envelope(status, None, f"{seam} failed")
         if self.failure and self.failure[0] == seam:
             status = self.failure[1]
             return _envelope(status, None, f"{seam} failed")
@@ -455,10 +463,12 @@ class FakeGitHub:
             failed = self._fail("pr_list")
             if failed:
                 return failed
+            wants_open = "state=open" in path
             return _envelope(
                 200,
                 [self._pr(EXISTING_SHA)]
-                if self.pr_exists or self.pr_merged
+                if (wants_open and self.pr_exists and not self.pr_merged)
+                or (not wants_open and self.pr_merged)
                 else [],
             )
         raise AssertionError(f"unexpected GitHub call: {method} {path}")
@@ -536,7 +546,9 @@ def _submit(
                         )
                     ],
                 )
-                consumed_record = json.loads(fake.main_files.pop(record_path))
+                consumed_record = json.loads(fake.main_files[record_path])
+                if not fake.duplicate_main_record:
+                    fake.main_files.pop(record_path)
                 consumed_record.update(
                     {
                         "state": "consumed",
@@ -554,6 +566,12 @@ def _submit(
                     f"{comment_id}.json"
                 )
                 fake.main_files[consumed_path] = _canonical(consumed_record)
+            elif fake.duplicate_main_record:
+                duplicate_path = (
+                    f"{writeback.COMMENTS_ROOT}/{repository}/consumed/"
+                    f"{comment_id}.json"
+                )
+                fake.main_files[duplicate_path] = fake.main_files[record_path]
             if not fake.main_payload_matches:
                 current_path = next(iter(fake.main_files))
                 fake.main_files[current_path] += b"different"
@@ -961,6 +979,46 @@ def test_exact_replay_after_consumption_reports_durable_history_without_writes(
     assert replay.pr_number == 1234
     assert "durable consumed history" in replay.message
     assert not any(call[0] == "POST" for call in fake.calls)
+
+
+@pytest.mark.parametrize("consumed", (False, True))
+def test_merged_replay_rejects_active_and_consumed_duplicate_records(
+    monkeypatch, consumed
+):
+    fake = FakeGitHub(
+        pr_merged=True,
+        main_comment_consumed=consumed,
+        duplicate_main_record=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+    )
+
+    replay = _submit(fake, monkeypatch)
+
+    assert replay.state == "failed"
+    assert "both active and consumed history" in replay.message
+    assert not any(call[0] == "POST" for call in fake.calls)
+
+
+def test_retained_merged_replay_preserves_transient_closed_pr_lookup(
+    monkeypatch,
+):
+    fake = FakeGitHub(
+        ref_exists=True,
+        pr_merged=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+        failure_once=("pr_list", 503),
+    )
+
+    replay = _submit(fake, monkeypatch)
+
+    assert replay.state == "failed_retryable"
+    assert "merged PR lookup was temporarily unavailable" in replay.message
+    assert not any(
+        call[0] == "POST" and call[1].endswith("/git/refs")
+        for call in fake.calls
+    )
 
 
 def test_consumed_replay_with_invalid_consumption_metadata_fails_closed(
