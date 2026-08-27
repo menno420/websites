@@ -271,8 +271,8 @@ def test_journal_file_fleet_lane_repo_renders(client, monkeypatch):
     )
     assert r.status_code == 200
     assert "hello" in r.text
-    assert 'href="/fleet#lane-sim-lab"' in r.text
-    assert "back to sim-lab on fleet" in r.text
+    assert 'href="/lanes#lane-sim-lab"' in r.text
+    assert "back to sim-lab on lanes" in r.text
     assert 'href="/journal/sim-lab"' not in r.text
     assert calls == [("sim-lab", "docs/current-state.md", "main")]
 
@@ -317,7 +317,7 @@ def test_board_has_autorefresh_indicator_and_poll_script(client):
 
 
 def test_fleet_has_autorefresh_indicator_and_poll_script(client):
-    r = client.get("/fleet")
+    r = client.get("/lanes")
     assert r.status_code == 200
     assert _has_autorefresh(r.text)
     assert 'id="ar-toggle"' in r.text
@@ -1365,7 +1365,7 @@ def test_fleet_overview_sorts_attention_first_and_counts(monkeypatch):
 def test_fleet_route_degrades_no_auth(client):
     """/fleet serves 200 with honest empty state when GitHub is unreachable;
     /fleet.json returns the parsed lanes without the rendered body."""
-    r = client.get("/fleet")
+    r = client.get("/lanes")
     assert r.status_code == 200
     assert "fleet heartbeat" in r.text
     rj = client.get("/fleet.json")

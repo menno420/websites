@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import github, nav  # noqa: E402
+from app import github, nav, projects  # noqa: E402
 from app.main import app  # noqa: E402
 
 LANDINGS = [c for c in nav.CATEGORIES if c["landing"]]
@@ -63,11 +63,11 @@ def test_category_grouping_matches_the_brief():
     """The first-cut grouping the owner reacts to — a re-group is a data
     edit in app/nav.py and a conscious update here."""
     by_key = {c["key"]: [i["href"] for i in c["items"]] for c in nav.CATEGORIES}
-    assert by_key["overview"] == ["/", "/fleet", "/freshness"]
+    assert by_key["overview"] == ["/", "/repos"]
     assert by_key["work"] == ["/queue", "/orders", "/ideas", "/reviews"]
     assert by_key["history"] == ["/activity", "/journal"]
     assert by_key["console"] == [
-        "/projects", "/prompts", "/owner/environments-hub", "/directory",
+        "/dispatch", "/lanes", "/prompts", "/owner/environments-hub", "/directory",
     ]
     assert by_key["owner"][0] == "/owner"
 
@@ -98,6 +98,26 @@ def test_landing_pages_degrade_honestly_offline(monkeypatch):
         for cat in LANDINGS:
             r = c.get(cat["href"])
             assert r.status_code == 200
+
+
+def test_console_dispatch_row_keeps_its_seat_count(monkeypatch):
+    _offline(monkeypatch)
+
+    async def fake_projects(refresh=False):
+        return {
+            "state": "ok",
+            "packages": [
+                {"name": "alpha", "stub": False},
+                {"name": "beta", "stub": False},
+                {"name": "retired", "stub": True},
+            ],
+        }
+
+    monkeypatch.setattr(projects, "overview", fake_projects)
+    with TestClient(app) as client:
+        response = client.get("/console")
+    assert response.status_code == 200
+    assert "2 seats" in response.text
 
 
 # (c) every manifest route still responds non-404 -------------------------- #

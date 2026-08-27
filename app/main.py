@@ -17,12 +17,14 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
     JSONResponse,
+    RedirectResponse,
     Response,
 )
 from fastapi.staticfiles import StaticFiles
@@ -33,6 +35,8 @@ from . import (
     config,
     discord_auth,
     environments,
+    estate,
+    estate_service,
     fleet,
     freshness,
     github,
@@ -155,7 +159,7 @@ def _attention(rows: list, heartbeat_chips: dict) -> list[dict]:
         if hb.get("stale"):
             items.append({
                 "text": f"{repo}: heartbeat stale ({hb.get('age_human', '?')})",
-                "href": "/fleet",
+                "href": "/lanes",
                 "state": "warn",
             })
     return items
@@ -309,7 +313,7 @@ _COUNTERS = {
     "ideas": _count_ideas,
     "reviews": _count_reviews,
     "activity": _count_activity,
-    "projects": _count_projects,
+    "dispatch": _count_projects,
     "prompts": _count_prompts,
     "directory": _count_directory,
 }
@@ -417,7 +421,47 @@ async def activity_feed(request: Request):
     return Response(content=xml, media_type="application/atom+xml")
 
 
-@app.get("/fleet", response_class=HTMLResponse)
+@app.get("/repos", response_class=HTMLResponse)
+async def repositories_page(request: Request):
+    """The owner-facing repository estate catalogue.
+
+    The route renders only the stable domain model. Fleet Manager Markdown,
+    GitHub envelopes, and member-file probing stay below it.
+    """
+    data = await estate_service.overview(refresh=_refresh(request))
+    state = listfilter.parse(estate.REPOS_LIST_SPEC, request.query_params)
+    filtered = listfilter.apply(
+        estate.REPOS_LIST_SPEC,
+        data.repositories,
+        state,
+    )
+    return templates.TemplateResponse(
+        request,
+        "repos.html",
+        {"e": data, "filter": filtered, "active": "repos"},
+    )
+
+
+@app.get("/repos/{name}", response_class=HTMLResponse)
+async def repository_detail_page(request: Request, name: str):
+    """One validated repository review; arbitrary path probes are rejected."""
+    data = await estate_service.detail(name, refresh=_refresh(request))
+    if data is None:
+        return HTMLResponse("unknown repository", status_code=404)
+    return templates.TemplateResponse(
+        request,
+        "repo_detail.html",
+        {"d": data, "active": "repos"},
+    )
+
+
+@app.get("/fleet", include_in_schema=False)
+async def legacy_fleet_route():
+    """The seat-era estate view is retired; /repos is the owner catalogue."""
+    return RedirectResponse("/repos", status_code=307)
+
+
+@app.get("/lanes", response_class=HTMLResponse)
 async def fleet_heartbeat(request: Request):
     refresh = _refresh(request)
     # Seat-package coverage rollup (backlog bullet): the SAME projects-registry
@@ -433,7 +477,7 @@ async def fleet_heartbeat(request: Request):
         {
             "f": data,
             "cov": cov,
-            "active": "fleet",
+            "active": "lanes",
             "autorefresh_seconds": config.AUTOREFRESH_SECONDS,
         },
     )
@@ -460,16 +504,20 @@ async def fleet_heartbeat_json(request: Request):
     return JSONResponse(payload)
 
 
-@app.get("/freshness", response_class=HTMLResponse)
-async def repo_freshness(request: Request):
-    """Per-repo movement across the fleet — last commit, last session card,
-    open PRs, heartbeat age — with amber staleness past the thresholds and
-    honest per-cell unknowns (app/freshness.py)."""
+@app.get("/freshness", include_in_schema=False)
+async def legacy_freshness_route():
+    """Repository freshness is now a first-class field on /repos."""
+    return RedirectResponse("/repos", status_code=307)
+
+
+@app.get("/lane-freshness", response_class=HTMLResponse)
+async def lane_freshness_diagnostic(request: Request):
+    """Operational lane movement diagnostic retained outside the estate IA."""
     data = await freshness.overview(refresh=_refresh(request))
     return templates.TemplateResponse(
         request,
         "freshness.html",
-        {"f": data, "active": "freshness"},
+        {"f": data, "active": "lanes"},
     )
 
 
@@ -539,7 +587,13 @@ async def environments_page(request: Request):
     )
 
 
-@app.get("/projects", response_class=HTMLResponse)
+@app.get("/projects", include_in_schema=False)
+async def legacy_projects_route():
+    """The seat-package index is not the estate; /repos is canonical."""
+    return RedirectResponse("/repos", status_code=307)
+
+
+@app.get("/dispatch", response_class=HTMLResponse)
 async def projects_page(request: Request):
     """ORDER 009 increment (1): read-only render of the fleet-manager
     projects/ registry — one card per Project package (instructions /
@@ -548,7 +602,7 @@ async def projects_page(request: Request):
     upstream, not-configured / unavailable on fetch failure — never a 500."""
     data = await projects.overview(refresh=_refresh(request))
     return templates.TemplateResponse(
-        request, "projects.html", {"p": data, "active": "projects"}
+        request, "projects.html", {"p": data, "active": "dispatch"}
     )
 
 
@@ -565,7 +619,15 @@ async def projects_json(request: Request):
     return JSONResponse(payload)
 
 
-@app.get("/projects/{package}", response_class=HTMLResponse)
+@app.get("/projects/{package}", include_in_schema=False)
+async def legacy_project_detail(package: str):
+    """Keep old dispatch deep links reversible while naming the real domain."""
+    return RedirectResponse(
+        f"/dispatch/{quote(package, safe='')}", status_code=307
+    )
+
+
+@app.get("/dispatch/{package}", response_class=HTMLResponse)
 async def project_detail(request: Request, package: str):
     """Owner Launch Console (single-screen dispatch, 2026-07-12): one seat's
     dispatch screen — every recognized role file's FULL content copy-ready,
@@ -588,7 +650,7 @@ async def project_detail(request: Request, package: str):
     return templates.TemplateResponse(
         request,
         "project_detail.html",
-        {"d": data, "pv": pv, "active": "projects"},
+        {"d": data, "pv": pv, "active": "dispatch"},
     )
 
 
@@ -833,12 +895,12 @@ async def journal_file(request: Request, repo: str, path: str, ref: str = "main"
             "back_url": (
                 f"/journal/{repo}"
                 if repo in config.REPOS
-                else f"/fleet#lane-{repo}"
+                else f"/lanes#lane-{repo}"
             ),
             "back_label": (
                 f"back to {repo} journal"
                 if repo in config.REPOS
-                else f"back to {repo} on fleet"
+                else f"back to {repo} on lanes"
             ),
             "active": "journal",
         },

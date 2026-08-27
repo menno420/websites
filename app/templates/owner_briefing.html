@@ -122,7 +122,7 @@
 
 {# 4 · FLEET — stale repos + incomplete environments only #}
 <div class="card" id="fleet">
-  <h2>FLEET <span class="dim small">— what's stale or incomplete · <a href="/freshness">full freshness view</a> · <a href="/owner/environments-hub">environments hub 🔒</a></span></h2>
+  <h2>FLEET <span class="dim small">— what's stale or incomplete · <a href="/repos">repository review</a> · <a href="/owner/environments-hub">environments hub 🔒</a></span></h2>
   {% if b.fleet.lane_source.note %}<p class="banner">⚠ {{ b.fleet.lane_source.note }}{% if b.fleet.lane_source.reason %} — {{ b.fleet.lane_source.reason }}{% endif %}</p>{% endif %}
   <p class="small">
     {% if b.fleet.stale %}{{ badge('warn', b.fleet.stale | length ~ ' stale repo' ~ ('s' if b.fleet.stale | length != 1 else '')) }}

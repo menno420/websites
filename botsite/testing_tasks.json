@@ -28,9 +28,9 @@
     {
       "id": "site-review-control-plane-projects",
       "type": "site-review",
-      "title": "Review the control-plane /projects pages",
-      "product_url": "https://control-plane-production-abb0.up.railway.app/projects",
-      "brief": "Start at /projects and click through every project card and its detail/dispatch views. You are seeing an internal fleet-operations surface — judge it as an outsider. Look for: navigation that traps you or loses your place, jargon a first-time visitor cannot decode, links that 404, pages slower than ~3 seconds, and layout breakage on mobile. List each term you did not understand and each click that did not do what you expected.",
+      "title": "Review the control-plane repository catalogue",
+      "product_url": "https://control-plane-production-abb0.up.railway.app/repos",
+      "brief": "Start at /repos, use every state and attention filter, then open a varied set of repository review pages. Judge whether you can understand the estate without reading Markdown walls. Look for: unclear state or freshness labels, missing provenance, accidental private detail, navigation traps, links that 404, pages slower than ~3 seconds, and layout breakage on mobile. List each term you did not understand and each card or detail section that did not tell you what you needed.",
       "payout_usd": 12,
       "est_minutes": 45,
       "slots_total": 2,

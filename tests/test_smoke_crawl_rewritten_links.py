@@ -58,7 +58,7 @@ def test_collector_extracts_rewriter_shaped_urls_with_source_page():
 
 def test_collector_ignores_non_rewriter_urls():
     html = """
-    <a href="/fleet">same-site relative</a>
+    <a href="/lanes">same-site relative</a>
     <a href="https://example.com/docs/x.md">external non-github</a>
     <a href="https://github.com/menno420/superbot">repo root, not blob/raw</a>
     <a href="https://github.com/menno420/superbot/issues/1">issues view</a>

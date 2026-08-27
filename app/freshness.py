@@ -1,6 +1,6 @@
 """Repo freshness view: which fleet repos are moving, and which are stale.
 
-`/fleet` answers "what does each lane SAY it is doing" (the heartbeat
+`/lanes` answers "what does each lane SAY it is doing" (the heartbeat
 files); this page answers the colder question "is each repo actually
 MOVING?" — one row per fleet repo with the four movement signals:
 
@@ -11,7 +11,7 @@ MOVING?" — one row per fleet repo with the four movement signals:
 * heartbeat age — the ``updated:`` stamp of ``control/status.md``.
 
 Staleness classification (amber): heartbeat older than
-``config.FLEET_STALE_HOURS`` (the existing /fleet threshold — fleet seats
+``config.FLEET_STALE_HOURS`` (the existing lane-heartbeat threshold — fleet seats
 heartbeat at least daily, so a missed wake shows within the same day) OR
 last commit older than ``COMMIT_STALE_DAYS`` (a weekly cadence floor so
 low-traffic-but-alive seats don't false-alarm). Exactly AT a threshold is
@@ -22,7 +22,7 @@ amber.
 Honest degradation everywhere: any not-ok fetch renders
 "unknown — <reason>", never a fabricated freshness and never a 500. The
 lane set resolves live from the fleet-manager registry with the same
-visible fallback notice `/fleet` shows (``fleet.resolve_lanes``).
+visible fallback notice `/lanes` shows (``fleet.resolve_lanes``).
 
 Layering: domain module — imports the ``fleet`` + ``github`` primitives,
 never routes or templates. ``now`` is injectable (``clock.now()``

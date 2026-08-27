@@ -40,7 +40,7 @@ def _offline(monkeypatch):
 def test_header_nav_is_the_five_categories(monkeypatch):
     _offline(monkeypatch)
     with TestClient(app) as c:
-        r = c.get("/fleet")
+        r = c.get("/lanes")
     assert r.status_code == 200
     assert len(nav.CATEGORIES) == 5  # overview · work · history · console · owner
     nav_html = r.text.split("<nav>", 1)[1].split("</nav>", 1)[0]
@@ -58,16 +58,16 @@ def test_header_nav_is_the_five_categories(monkeypatch):
 def test_current_category_highlights(monkeypatch):
     _offline(monkeypatch)
     with TestClient(app) as c:
-        # /fleet is an Overview item → the overview category link highlights
-        r = c.get("/fleet")
+        # /lanes is an operational Console item → console highlights
+        r = c.get("/lanes")
         assert r.status_code == 200
-        assert 'href="/" class="on"' in r.text
+        assert 'href="/console" class="on"' in r.text
         assert 'href="/work" class="on"' not in r.text
         # /ideas is a Work item → the work category link highlights
         r = c.get("/ideas")
         assert r.status_code == 200
         assert 'href="/work" class="on"' in r.text
-        assert 'href="/" class="on"' not in r.text
+        assert 'href="/repos" class="on"' not in r.text
         # a landing page highlights its own category
         r = c.get("/console")
         assert r.status_code == 200

@@ -1,11 +1,15 @@
 """Thin GitHub REST client with a server-side TTL cache.
 
 Every fetch returns a plain dict "result":
-    {ok, status, data, error, fetched_at, cached, url}
+    {ok, status, data, error, fetched_at, fetched_at_iso, cached, url}
 so templates can render partial failures honestly instead of 500ing —
 a board whose whole point is honest state must degrade per-cell.
 
-Caching: in-memory, per-URL, TTL = config.CACHE_TTL_SECONDS (default 3 min).
+Caching: in-memory, per URL + authentication/redirect mode, TTL =
+config.CACHE_TTL_SECONDS (default 3 min).  Mode separation is a privacy
+boundary: an authenticated response can never satisfy an anonymous public
+read of the same API URL.  Identical concurrent misses share one short-lived
+in-flight task; the task is removed as soon as that fetch finishes.
 `refresh=True` (the ?refresh=1 query param upstream) bypasses and repopulates.
 """
 
@@ -19,10 +23,16 @@ from typing import Any, Optional
 
 import httpx
 
-from . import config
+from . import clock, config
 
-_cache: dict[str, tuple[float, dict]] = {}
+_CacheKey = tuple[str, bool, str]
+
+_cache: dict[_CacheKey, tuple[float, dict]] = {}
 _cache_lock = asyncio.Lock()
+# One task at most for one exact request mode.  Entries live only while their
+# request is running (``_fetch_and_cache`` removes itself in ``finally``), so
+# coalescing cannot grow into a second long-lived cache.
+_inflight: dict[_CacheKey, asyncio.Task[dict]] = {}
 
 _client: Optional[httpx.AsyncClient] = None
 _raw_client: Optional[httpx.AsyncClient] = None
@@ -160,6 +170,7 @@ def classify_listing(
 
 
 def _result(url: str, status: int, data: Any = None, error: str = "") -> dict:
+    fetched_at = clock.now()
     return {
         "ok": 200 <= status < 300,
         "status": status,
@@ -168,10 +179,76 @@ def _result(url: str, status: int, data: Any = None, error: str = "") -> dict:
         # error field at this choke point is what bounds ALL downstream
         # reason text (fleet, freshness, owner UI, directory probes, …).
         "error": short_reason(error, status=status or None),
-        "fetched_at": time.strftime("%H:%M:%S UTC", time.gmtime()),
+        # Keep the compact display value for every existing consumer, while
+        # giving domain layers a full, unambiguous instant for freshness math.
+        "fetched_at": fetched_at.strftime("%H:%M:%S UTC"),
+        "fetched_at_iso": fetched_at.isoformat().replace("+00:00", "Z"),
         "cached": False,
         "url": url,
     }
+
+
+def _cache_key(
+    url: str, *, raw: bool, follow_redirects: bool
+) -> _CacheKey:
+    """Return the cache/coalescing identity for one read mode.
+
+    ``raw=True`` means the deliberately tokenless client.  It is named
+    ``public`` in the key rather than after the transport so the security
+    property stays obvious when debugging cache state.
+    """
+    return ("public" if raw else "authenticated", follow_redirects, url)
+
+
+async def _fetch_and_cache(
+    key: _CacheKey,
+    url: str,
+    *,
+    raw: bool,
+    follow_redirects: bool,
+    started_at: float,
+) -> dict:
+    """Perform one network GET and populate the stable-result cache.
+
+    The caller registers this coroutine as the sole in-flight task for
+    ``key`` before awaiting it.  Cleanup in ``finally`` means cancellation,
+    an unexpected client exception, and ordinary completion all release the
+    coalescing slot.
+    """
+    try:
+        try:
+            resp = await get_client(raw=raw).get(
+                url, follow_redirects=follow_redirects
+            )
+            try:
+                data = resp.json()
+            except ValueError:
+                data = resp.text
+            err = ""
+            if resp.status_code >= 300:
+                err = (
+                    data.get("message", "")
+                    if isinstance(data, dict)
+                    else str(data)[:200]
+                )
+            res = _result(url, resp.status_code, data, err)
+        except httpx.HTTPError as exc:
+            res = _result(url, 0, None, f"{type(exc).__name__}: {exc}")
+
+        # Cache successes and *stable* negatives (404 absent file, 403
+        # scope). Transient failures (429 rate limit, 5xx, network) must not
+        # poison the cache for the whole TTL — retry them on the next request.
+        if res["ok"] or res["status"] in (404, 403, 401):
+            async with _cache_lock:
+                _cache[key] = (
+                    started_at + config.CACHE_TTL_SECONDS,
+                    res,
+                )
+        return res
+    finally:
+        async with _cache_lock:
+            if _inflight.get(key) is asyncio.current_task():
+                _inflight.pop(key, None)
 
 
 async def _get(
@@ -191,40 +268,55 @@ async def _get(
     instead of false-negativing on the 302.
     """
     now = time.monotonic()
-    if not refresh:
-        hit = _cache.get(url)
-        if hit and hit[0] > now:
-            out = dict(hit[1])
-            out["cached"] = True
-            return out
-    try:
-        resp = await get_client(raw=raw).get(url, follow_redirects=follow_redirects)
-        try:
-            data = resp.json()
-        except ValueError:
-            data = resp.text
-        err = ""
-        if resp.status_code >= 300:
-            err = (
-                data.get("message", "")
-                if isinstance(data, dict)
-                else str(data)[:200]
+    key = _cache_key(
+        url, raw=raw, follow_redirects=follow_redirects
+    )
+    async with _cache_lock:
+        if not refresh:
+            hit = _cache.get(key)
+            if hit and hit[0] > now:
+                out = dict(hit[1])
+                out["cached"] = True
+                return out
+
+        # Registration and lookup happen in one lock section.  Every caller
+        # after the first awaits the same shielded task instead of multiplying
+        # GitHub traffic.  Shielding also prevents one disconnected request
+        # from cancelling the shared fetch for all other waiters.
+        task = _inflight.get(key)
+        if task is None:
+            task = asyncio.create_task(
+                _fetch_and_cache(
+                    key,
+                    url,
+                    raw=raw,
+                    follow_redirects=follow_redirects,
+                    started_at=now,
+                )
             )
-        res = _result(url, resp.status_code, data, err)
-    except httpx.HTTPError as exc:
-        res = _result(url, 0, None, f"{type(exc).__name__}: {exc}")
-    # Cache successes and *stable* negatives (404 absent file, 403 scope).
-    # Transient failures (429 rate limit, 5xx, network) must not poison the
-    # cache for the whole TTL — retry them on the next request.
-    if res["ok"] or res["status"] in (404, 403, 401):
-        async with _cache_lock:
-            _cache[url] = (now + config.CACHE_TTL_SECONDS, res)
-    return res
+            _inflight[key] = task
+
+    return dict(await asyncio.shield(task))
 
 
 async def api(path: str, refresh: bool = False) -> dict:
     """GET an api.github.com path (must start with '/')."""
     return await _get(config.GITHUB_API_BASE + path, refresh=refresh)
+
+
+async def public_api(path: str, refresh: bool = False) -> dict:
+    """GET an api.github.com path with the anonymous client only.
+
+    Public owner-facing surfaces must use this helper when server credentials
+    could see more than the visitor is allowed to see.  It never retries with
+    the configured/authenticated client, and its cache namespace is isolated
+    from :func:`api` even though the URL is identical.
+    """
+    return await _get(
+        config.GITHUB_API_BASE + path,
+        refresh=refresh,
+        raw=True,
+    )
 
 
 async def api_post(path: str, json_body: Any = None) -> dict:
@@ -485,6 +577,30 @@ async def fetch_file(
             out["error"] = short_reason(f"decode failed: {exc}")
             return out
     return api_res if not res["ok"] else res
+
+
+async def fetch_public_file(
+    repo: str, path: str, ref: str = "main", refresh: bool = False
+) -> dict:
+    """Fetch public repository text without an authenticated fallback.
+
+    A 404/403/unavailable raw response remains exactly that honest envelope;
+    it must never trigger a token-backed Contents request that could project a
+    private file onto a public page.  JSON-shaped files receive the same text
+    normalization as :func:`fetch_file`.
+    """
+    raw_url = f"{config.GITHUB_RAW_BASE}/{config.OWNER}/{repo}/{ref}/{path}"
+    res = await _get(raw_url, refresh=refresh, raw=True)
+    if res["ok"] and isinstance(res["data"], (str, dict, list)):
+        text = (
+            res["data"]
+            if isinstance(res["data"], str)
+            else __import__("json").dumps(res["data"], indent=2)
+        )
+        out = dict(res)
+        out["data"] = text
+        return out
+    return res
 
 
 def cache_size() -> int:

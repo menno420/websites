@@ -142,6 +142,6 @@ def test_fleet_page_shows_rung_row_when_present(monkeypatch):
 
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
     monkeypatch.setattr(github, "repo_api", fake_api)
-    r = TestClient(app).get("/fleet")
+    r = TestClient(app).get("/lanes")
     assert r.status_code == 200
     assert "<th>rung</th>" in r.text and "order" in r.text

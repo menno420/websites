@@ -213,6 +213,6 @@ def test_fleet_page_shows_kit_rollup(monkeypatch):
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
     monkeypatch.setattr(github, "repo_api", fake_repo_api)
     client = TestClient(app)
-    r = client.get("/fleet")
+    r = client.get("/lanes")
     assert r.status_code == 200
     assert "kit adoption:" in r.text and "×v1.7.1" in r.text

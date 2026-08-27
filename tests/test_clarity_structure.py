@@ -54,7 +54,7 @@ from fastapi.routing import APIRoute  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from starlette.routing import Mount  # noqa: E402
 
-from app import config, envhub, github, nav, roster  # noqa: E402
+from app import config, envhub, estate, estate_service, github, nav, roster  # noqa: E402
 from app.main import app  # noqa: E402
 
 OWNER_PW = "test-owner-pw"
@@ -76,7 +76,15 @@ def client(monkeypatch):
         return {"ok": False, "status": 0, "data": None, "error": "offline test",
                 "fetched_at": "", "cached": False, "url": url}
 
+    async def fake_repository_detail(name, refresh=False):
+        summary = estate.RepositorySummary(
+            name=name,
+            purpose="Offline representative repository.",
+        )
+        return estate.RepositoryDetail(summary=summary)
+
     monkeypatch.setattr(github, "_get", fake_get)
+    monkeypatch.setattr(estate_service, "detail", fake_repository_detail)
     with TestClient(app) as c:
         yield c
 
@@ -93,10 +101,14 @@ NON_PAGE_GET_ROUTES: dict[str, str] = {
     "/api/readiness.json": "JSON twin of the / board",
     "/activity.json": "JSON twin of /activity",
     "/activity.xml": "Atom feed twin of /activity — XML, not HTML",
+    "/fleet": "retired seat-era HTML route — 307 to canonical /repos",
     "/fleet.json": "JSON twin of /fleet",
+    "/freshness": "retired competing HTML route — 307 to canonical /repos",
     "/freshness.json": "JSON twin of /freshness",
     "/queue.json": "JSON twin of /queue",
+    "/projects": "retired seat-package estate route — 307 to canonical /repos",
     "/projects.json": "JSON twin of /projects",
+    "/projects/{package}": "legacy dispatch deep-link — 307 to /dispatch/{package}",
     "/reviews.json": "JSON twin of /reviews",
     "/orders.json": "JSON twin of /orders",
     "/ideas.json": "JSON twin of /ideas",
@@ -123,10 +135,14 @@ GATED_IN_PLACE: set[str] = nav.gated_in_place_hrefs()
 
 def _projects_urls() -> list[str]:
     seats = list(roster.SEATS)
-    assert seats, "roster.SEATS is empty — /projects/{package} expander is dead"
+    assert seats, "roster.SEATS is empty — /dispatch/{package} expander is dead"
     # Offline, the registry listing fails and each detail renders its honest
     # degraded 200 banner page — still held to the header idiom.
-    return [f"/projects/{s}" for s in seats]
+    return [f"/dispatch/{s}" for s in seats]
+
+
+def _repository_urls() -> list[str]:
+    return ["/repos/websites"]
 
 
 def _prompt_history_urls() -> list[str]:
@@ -163,7 +179,8 @@ def _envhub_manifest_urls() -> list[str]:
 # completeness test fails a new parameterized route without one AND a stale
 # entry whose route was removed.
 PARAM_EXPANDERS: dict[str, Callable[[], list[str]]] = {
-    "/projects/{package}": _projects_urls,
+    "/repos/{name}": _repository_urls,
+    "/dispatch/{package}": _projects_urls,
     "/prompts/history/{seat}": _prompt_history_urls,
     "/journal/{repo}": _journal_repo_urls,
     "/journal/{repo}/file": _journal_file_urls,

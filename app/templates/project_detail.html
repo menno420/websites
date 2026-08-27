@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ d.name }} · dispatch{% endblock %}
-{% block headright %}<a href="/projects/{{ d.name }}?refresh=1">refresh now</a>{% endblock %}
+{% block headright %}<a href="/dispatch/{{ d.name }}?refresh=1">refresh now</a>{% endblock %}
 {% block content %}
 {# Role-file bodies render through the shared prompt-artifact partial
    (ORDER 015) — one fetch/render/copy path with /prompts, the canonical
@@ -11,7 +11,7 @@
   <h2>{{ d.name }} — dispatch screen
     {% if pkg and pkg.state %}<span class="b ok">{{ pkg.state }}</span>
     {% elif pkg and not pkg.error %}<span class="b unknown">state unknown</span>{% endif %}
-    <span class="dim small">· <a href="/projects">← all projects</a>
+    <span class="dim small">· <a href="/dispatch">← all dispatch packages</a>
       · <a href="/prompts">browse all prompts →</a>
       {% if pkg %}· <a href="{{ pkg.github_url }}">package ↗</a>{% endif %}</span></h2>
   <p class="dim small">One seat's launch console: every recognized role file below is the

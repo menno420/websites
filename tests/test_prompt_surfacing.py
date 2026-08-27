@@ -1,5 +1,5 @@
 """Offline tests for the ORDER 041 REMAINDER: the same prompt data surfaced
-on (a) each seat's dispatch screen (``/projects/{package}`` — a compact
+on (a) each seat's dispatch screen (``/dispatch/{package}`` — a compact
 prompt-versions strip) and (b) the gated owner console (``/owner`` — a
 per-seat fleet prompt-state card) — as VIEWS over the ONE source PR #236
 shipped: ``prompt_history.history()`` for the version ladder and the
@@ -140,7 +140,7 @@ _SHA_BODIES = {
     _SHA_A: "<!-- v3.4 · 2026-07-12 -->\nv3.4 websites CI.\nbody\n",
 }
 
-# Dispatch-screen package listing (the /projects/{package} side).
+# Dispatch-screen package listing (the /dispatch/{package} side).
 _DETAIL_LISTING = [
     {"type": "file", "path": "projects/websites/meta.md"},
     {"type": "file", "path": "projects/websites/project-instructions.md"},
@@ -239,13 +239,13 @@ def test_strip_is_none_for_non_seat_packages():
 
 
 # --------------------------------------------------------------------------- #
-# (a) /projects/{package} — the prompt-versions strip
+# (a) /dispatch/{package} — the prompt-versions strip
 # --------------------------------------------------------------------------- #
 
 
 def test_dispatch_strip_shows_ladder_and_drift(monkeypatch):
     _patch_all(monkeypatch)
-    r = TestClient(app).get("/projects/websites")
+    r = TestClient(app).get("/dispatch/websites")
     assert r.status_code == 200
     assert 'id="prompt-versions"' in r.text
     # current version + ladder labels, parsed from the fetched files
@@ -265,7 +265,7 @@ def test_dispatch_strip_shows_ladder_and_drift(monkeypatch):
 
 def test_dispatch_strip_history_unavailable_is_said_not_hidden(monkeypatch):
     _patch_all(monkeypatch, commits_ok=False)
-    r = TestClient(app).get("/projects/websites")
+    r = TestClient(app).get("/dispatch/websites")
     assert r.status_code == 200
     assert 'id="prompt-versions"' in r.text  # strip still there
     assert "history not available" in r.text
@@ -278,7 +278,7 @@ def test_dispatch_strip_history_unavailable_is_said_not_hidden(monkeypatch):
 
 def test_dispatch_strip_absent_for_non_seat_package(monkeypatch):
     _patch_all(monkeypatch)
-    r = TestClient(app).get("/projects/old-lab")
+    r = TestClient(app).get("/dispatch/old-lab")
     assert r.status_code == 200
     assert 'id="prompt-versions"' not in r.text
     assert "/prompts/history/" not in r.text
@@ -481,5 +481,5 @@ def test_owner_console_requires_auth_and_stays_get_only(monkeypatch):
     client = TestClient(app)
     assert client.get("/owner").status_code == 401
     # GET-rendering only — the new surfaces accept no state change
-    assert client.post("/projects/websites").status_code == 405
+    assert client.post("/dispatch/websites").status_code == 405
     assert client.post("/owner", headers=_basic()).status_code == 405

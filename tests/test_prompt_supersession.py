@@ -17,7 +17,7 @@ from the 27 CURRENT per-seat registry copies + session-ender (lowercase
 file stays the canonical single source" — none may flag), the scan-window
 and header-region bounds, successor extraction (explicit single naming
 only, never invented), the artifact-dict field, and the render path on all
-three surfaces (/prompts banner + chip, /projects/{package} card,
+three surfaces (/prompts banner + chip, /dispatch/{package} card,
 /prompts/history/{seat} rung) with the paste-body contract untouched.
 Network-free: ``github.fetch_file``/``github.repo_api`` monkeypatched,
 mirroring tests/test_prompts.py.
@@ -347,7 +347,7 @@ def test_paste_body_contract_untouched_by_the_banner(monkeypatch):
 
 
 def test_dispatch_screen_card_shows_the_banner(monkeypatch):
-    """ORDER 015 consolidation: the /projects/{package} card renders the
+    """ORDER 015 consolidation: the /dispatch/{package} card renders the
     SAME shared partial — the banner appears there with zero page-local
     code."""
     files = {
@@ -371,7 +371,7 @@ def test_dispatch_screen_card_shows_the_banner(monkeypatch):
 
     monkeypatch.setattr(github, "repo_api", fake_api)
     monkeypatch.setattr(github, "fetch_file", fake_fetch)
-    r = TestClient(app).get("/projects/websites")
+    r = TestClient(app).get("/dispatch/websites")
     assert r.status_code == 200
     assert r.text.count('class="banner superseded"') == 1
     assert "⚠ SUPERSEDED — do not paste" in r.text

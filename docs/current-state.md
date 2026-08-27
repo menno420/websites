@@ -1,11 +1,12 @@
 # websites — Current State
 
-> **Status:** `living-ledger` — last updated 2026-08-24.
+> **Status:** `living-ledger` — last updated 2026-08-27.
 > The first website truth-and-defects tranche is merged and deployed: product
 > behavior landed through `a9ec59c6` (#513, #514, #516), and canonical live
 > crawl run 32746498270 passed all four products at desktop and 375 px. Later
-> control/docs-only commits do not change that product baseline; `/version`
-> remains the authority for the latest Railway deployment revision. The repo
+> work adds the owner-facing repository-estate review surface in #521;
+> `/version` remains the authority for the latest Railway deployment
+> revision. The repo
 > owns three live Railway services plus the public Program Review archive on
 > GitHub Pages; merge to `main` auto-deploys the Railway sites and republishes
 > the archive when `review/**` changes. The current Review export was published
@@ -98,15 +99,28 @@ Deployment: `docs/deployment.md` + each service's doc.
 
 ## In flight
 
-- **No truth-and-defects product repair remains in flight.** The tranche and
-  both bounded deployed-smoke follow-ups are merged, deployed, re-read live,
-  and green in the unchanged canonical crawl.
-- The measured separate-repository follow-on order remains `gba-homebrew`,
-  `product-forge`, `couch-legend`, `curious-research`, then the broader
-  `websites` information architecture.
+- **The repository-estate read surface is complete in #521.** `/repos` is the
+  canonical owner-facing catalogue, with validated detail pages; `/fleet`,
+  `/projects`, and `/freshness` no longer serve competing current
+  estate views.
+- **Durable repository comments remain an ordered cross-repository
+  follow-on:** Fleet Manager storage/index/routing must land before this repo
+  adds the owner-gated writeback client. No website-local queue is called
+  durable feedback.
 
 ## Recently shipped (newest first)
 
+- **2026-08-27 — repository estate review surface (#521):** added the visual
+  `/repos` catalogue and `/repos/{name}` review pages over Fleet Manager's
+  estate/activity/Layer-2 records plus selected repository-native truth;
+  introduced stable repository, activity, source, freshness, and comment
+  summary models; made stale/unknown/unavailable/contradictory facts explicit;
+  isolated anonymous public GitHub reads from token-backed cache entries and
+  bounded/coalesced their fan-out; moved useful operational views to
+  `/lanes`, `/lane-freshness`, and `/dispatch` while preserving the
+  legacy JSON contracts. An adversarial pass corrected routed read-first
+  sources, lifecycle/archive wording, per-fact provenance, in-flight activity,
+  parse failures, and mixed freshness before the session gate closed.
 - **2026-08-24 — first truth-and-defects tranche complete (#513, #514, #516):**
   repaired the three original Control Plane crawl failures without weakening
   real public-404 detection; kept the two exact verified-private owner links

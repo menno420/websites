@@ -262,7 +262,10 @@ def test_writeback_posts_reject_cross_and_missing_origin(client):
         assert missing.status_code == 403, action  # no Origin/Referer → rejected
 
 
-def test_writeback_post_rate_limited(client):
+def test_writeback_post_rate_limited(client, monkeypatch):
+    # The writeback attempt itself can be slow on a loaded CI runner; freeze
+    # the limiter clock so the first hit cannot expire while the loop runs.
+    monkeypatch.setattr(owner.time, "monotonic", lambda: 1000.0)
     hdr = {**_basic(), "Origin": SAME_ORIGIN}
     for i in range(owner.RATE_LIMIT_MAX_REQUESTS):
         assert client.post("/owner/queue/actions/note",

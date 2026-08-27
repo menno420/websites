@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}repositories · estate review{% endblock %}
+{% block headright %}<a href="/repos?refresh=1">refresh sources</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="rowhead">
+    <h2>repositories — the software estate</h2>
+    <span class="cr-action"><a class="btn" href="#repository-catalogue">review catalogue ↓</a></span>
+  </div>
+  <p class="dim small">The canonical owner-facing answer to “what repositories
+    and projects do I have?” Fleet Manager supplies the estate routing record;
+    each member repository remains authoritative for its own product truth.
+    Missing, stale, private, contradictory, and unavailable facts stay visible
+    instead of being guessed.</p>
+  <div class="estate-totals" aria-label="Repository totals">
+    <span class="b repo">{{ e.repositories | length }} repositories</span>
+    {% for state, count in e.counts_by_status.items() %}
+    {% if count %}<span class="b state-{{ state }}">{{ state }} · {{ count }}</span>{% endif %}
+    {% endfor %}
+    <span class="b {{ 'warn' if e.attention_count else 'ok' }}">
+      needs attention · {{ e.attention_count }}</span>
+    <span class="b">{{ e.recently_active_count }} recently active</span>
+  </div>
+  <p class="dim small">Catalogue facts: <span class="b {{ e.freshness.css_class }}">{{ e.freshness.label }}</span>
+    {% if e.freshness.detail != e.freshness.label %}· {{ e.freshness.detail }}{% endif %}
+    · overview performs two public Fleet Manager reads and one public GitHub
+    listing, never a private-token crawl.</p>
+  {% for warning in e.warnings %}
+  <div class="banner">⚠ {{ warning }}</div>
+  {% endfor %}
+  <details class="pagehelp">
+    <summary>provenance for this catalogue</summary>
+    <ul class="source-list">
+      {% for source in e.sources %}
+      <li class="source-item">
+        {% if source.url and source.available %}<a href="{{ source.url }}">{{ source.display_label }} ↗</a>
+        {% else %}{{ source.display_label }}{% endif %}
+        <span class="source-meta">{{ source.authority }} · {{ source.freshness.label }}
+          {% if source.freshness.detail != source.freshness.label %}· {{ source.freshness.detail }}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+</div>
+
+{% set lf = filter %}
+{% include "_listfilter.html" %}
+
+<section class="repo-grid" id="repository-catalogue" aria-label="Repository catalogue">
+{% for repo in filter["items"] %}
+  <article class="card repo-card{{ ' needs-attention' if repo.needs_attention }}"
+           data-row-id="repo-{{ repo.name }}" data-state="{{ repo.status.value }}">
+    <div class="repo-card-head">
+      <h3 class="repo-name"><a href="{{ repo.url }}">{{ repo.name }}</a></h3>
+      <span class="b {{ repo.status_class }}">{{ repo.status_label }}</span>
+    </div>
+    <p class="repo-purpose">{{ repo.purpose_text }}</p>
+    <div class="repo-chips">
+      <span class="b {{ repo.freshness.css_class }}">summary · {{ repo.freshness.label }}</span>
+      <span class="b {{ repo.status_freshness.css_class }}">state · {{ repo.status_freshness.label }}</span>
+      {% if repo.visibility == 'private' %}<span class="b unknown">private · contents not fetched</span>
+      {% elif repo.visibility == 'public' %}<span class="b ok">anonymous public source</span>
+      {% else %}<span class="b unknown">visibility unknown</span>{% endif %}
+      {% if not repo.indexed_by_fleet_manager %}<span class="b warn">not indexed by Fleet Manager</span>{% endif %}
+    </div>
+    <dl class="repo-signals">
+      <div class="repo-signal">
+        <dt>{{ repo.displayed_activity_label }}</dt>
+        <dd>{% if repo.displayed_activity %}
+          {% if repo.displayed_activity.occurred_at %}<time datetime="{{ repo.displayed_activity.occurred_at.isoformat() }}">{{ repo.displayed_activity.timestamp_label }}</time>
+          {% else %}<span class="dim">time unknown</span>{% endif %}
+          <span class="source-meta">{{ repo.displayed_activity.summary }}</span>
+          {% else %}<span class="dim">unknown / unavailable</span>{% endif %}</dd>
+      </div>
+      <div class="repo-signal">
+        <dt>owner feedback</dt>
+        <dd>{{ repo.owner_comments.label }}</dd>
+      </div>
+    </dl>
+    {% if repo.needs_attention %}
+    <div class="repo-alert"><strong>Needs attention</strong><br>{{ repo.attention_reasons[0] }}
+      {% if repo.attention_reasons | length > 1 %}<span class="dim"> · +{{ repo.attention_reasons | length - 1 }} more on detail</span>{% endif %}
+    </div>
+    {% endif %}
+    {% if repo.raw_status %}
+    <details class="pagehelp">
+      <summary>raw Fleet Manager state wording</summary>
+      <p class="small">{{ repo.raw_status }}</p>
+    </details>
+    {% endif %}
+    <div class="repo-card-footer">
+      {% if repo.sources %}
+      {% set source = repo.sources[0] %}
+      {% if source.url and source.available %}<a class="small" href="{{ source.url }}">routing source ↗</a>
+      {% else %}<span class="small dim">routing source unavailable</span>{% endif %}
+      {% endif %}
+      <span class="cr-action"><a class="btn" href="{{ repo.url }}">open repository →</a></span>
+    </div>
+  </article>
+{% else %}
+  <div class="card">
+    <h2>no repositories to show</h2>
+    <p class="dim small">Either the active filters match nothing or the estate
+      index is unavailable. The filter panel and source warnings above state
+      which case applies.</p>
+  </div>
+{% endfor %}
+</section>
+{% endblock %}

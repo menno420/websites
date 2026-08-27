@@ -130,7 +130,7 @@ def test_route_degrades_honestly_when_everything_is_unreachable(monkeypatch):
     _offline_get(monkeypatch)
     _freeze(monkeypatch)
     with TestClient(app) as c:
-        r = c.get("/freshness")
+        r = c.get("/lane-freshness")
     assert r.status_code == 200
     # registry unreachable → visible fallback notice, never a silent pretend
     assert "cached fallback" in r.text
@@ -184,7 +184,7 @@ def test_route_renders_rows_and_amber_badges(monkeypatch):
     _happy_get(monkeypatch)
     _freeze(monkeypatch)
     with TestClient(app) as c:
-        r = c.get("/freshness")
+        r = c.get("/lane-freshness")
     assert r.status_code == 200
     # clarity lede states purpose + the unknown/amber semantics
     assert "which fleet repos are moving, and which are stale" in r.text
@@ -377,7 +377,7 @@ def test_html_error_body_becomes_generic_short_reason(monkeypatch):
     _html_error_get(monkeypatch, status=502)
     _freeze(monkeypatch)
     with TestClient(app) as c:
-        r = c.get("/freshness")
+        r = c.get("/lane-freshness")
     assert r.status_code == 200
     # the injected uppercase DOCTYPE / HTML comment never reach the page
     # (the page's own doctype is the lowercase one in base.html)
