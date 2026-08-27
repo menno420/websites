@@ -132,16 +132,20 @@ the exact record, original timestamp, three-file branch tree, ancestry, and PR
 instead of opening a duplicate or being confused by later movement on `main`.
 After the deterministic PR merges (including when its branch is deleted), the
 same replay verifies the merged PR identity, exact three-file head payload,
-parent ancestry, and reconciled active record on current `main`, then reports a
-distinct landed/replayed result without creating a branch, commit, or PR.
+parent ancestry, and reconciled active or consumed record on current `main`,
+then reports a distinct landed/replayed or consumed/replayed result without
+creating a branch, commit, or PR. A consumed replay also validates the exact
+consumption timestamp, actor, evidence, and preserved original payload.
 Replay reconciliation happens before current-ledger count/size gates, while a
 fresh submission bounds the prospective record count, repository README, and
 root index before any GitHub mutation.
 The first-submit success is **pending PR / not durable**; an exact post-merge
-replay can report **landed replay / already durable** only after current `main`
-verification. The public reader separately reflects active or consumed durable
-history. Missing capability and failed or ambiguous writes are named honestly;
-there is no website-local durable queue or comment truth store.
+replay can report **landed replay / already durable** or **consumed replay /
+durable history verified** only after current `main` verification. The public
+reader separately reflects active or consumed durable history. Missing
+capability and failed or ambiguous writes are named honestly; transient PR
+creation/lookup failures remain explicitly retryable. There is no
+website-local durable queue or comment truth store.
 
 The implementation is the websites #523 change. Fleet Manager #952 landed its
 ordered v1 storage, index, routing, and consume dependency on 2026-08-27.

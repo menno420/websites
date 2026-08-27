@@ -119,9 +119,10 @@ Deployment: `docs/deployment.md` + each service's doc.
   in-flight observations; root/repository reconciliation covers both counts and
   latest timestamps, including a missing root row; replay precedes
   moving-ledger growth gates and recognizes an exact merged PR plus current
-  `main` payload without duplicating it. Pending, landed replay, unavailable,
-  retryable, failed, contradictory, consumed, and durable states remain
-  distinct.
+  `main` payload without duplicating it, including a record already moved into
+  durable consumed history. Pending, landed replay, consumed replay,
+  unavailable, retryable, failed, contradictory, consumed, and durable states
+  remain distinct.
 - **2026-08-27 — repository estate review surface (#521):** added the visual
   `/repos` catalogue and `/repos/{name}` review pages over Fleet Manager's
   estate/activity/Layer-2 records plus selected repository-native truth;

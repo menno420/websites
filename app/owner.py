@@ -662,6 +662,7 @@ async def repository_comment_submit(
     status_code = {
         "pending_pr": 202,
         "landed_replayed": 200,
+        "consumed_replayed": 200,
         "unavailable": 503,
         "failed_retryable": 503,
         "failed": 409,
@@ -673,7 +674,8 @@ async def repository_comment_submit(
         result=result,
         comment_text=(
             ""
-            if result.state in {"pending_pr", "landed_replayed"}
+            if result.state
+            in {"pending_pr", "landed_replayed", "consumed_replayed"}
             else comment
         ),
         submission_key=submission_key,

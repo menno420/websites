@@ -366,6 +366,42 @@ def test_merged_exact_replay_reports_landed_and_hides_resubmission(
     assert '<form method="post"' not in response.text
 
 
+def test_consumed_exact_replay_reports_durable_history_and_hides_resubmission(
+    client, monkeypatch
+):
+    _install_overview(monkeypatch, _summary())
+
+    async def fake_submit(repository, comment, **kwargs):
+        return owner_comment_writeback.OwnerCommentWritebackResult(
+            state="consumed_replayed",
+            repository=repository,
+            comment_id="oc-20260827t120000z-a1b2c3d4",
+            branch="claude/owner-comments-oc-20260827t120000z-a1b2c3d4",
+            commit_sha="d" * 40,
+            pr_number=953,
+            pr_url="https://github.com/menno420/fleet-manager/pull/953",
+        )
+
+    monkeypatch.setattr(
+        owner_comment_writeback, "submit_owner_comment", fake_submit
+    )
+    response = client.post(
+        "/owner/repository-comments/submit",
+        data={
+            "repository": "websites",
+            "comment": "Already consumed wording.",
+            "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
+        },
+        headers={**_basic(), "Origin": SAME_ORIGIN},
+    )
+
+    assert response.status_code == 200
+    assert "Consumed replay — durable history verified" in response.text
+    assert "No duplicate work was created" in response.text
+    assert '<form method="post"' not in response.text
+
+
 @pytest.mark.parametrize(
     ("comment", "ack", "needle"),
     (

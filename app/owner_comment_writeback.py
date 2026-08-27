@@ -51,7 +51,12 @@ DERIVED_FROM = [
 ]
 
 WritebackState = Literal[
-    "unavailable", "pending_pr", "landed_replayed", "failed_retryable", "failed"
+    "unavailable",
+    "pending_pr",
+    "landed_replayed",
+    "consumed_replayed",
+    "failed_retryable",
+    "failed",
 ]
 
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,79}$")
@@ -95,7 +100,11 @@ class OwnerCommentWritebackResult:
     def ok(self) -> bool:
         """True when the pending or already-landed outcome was verified."""
 
-        return self.state in {"pending_pr", "landed_replayed"}
+        return self.state in {
+            "pending_pr",
+            "landed_replayed",
+            "consumed_replayed",
+        }
 
     @property
     def record_id(self) -> str:
@@ -118,6 +127,12 @@ class OwnerCommentWritebackResult:
             return (
                 f"Exact replay of owner comment {self.comment_id}: Fleet Manager "
                 f"PR #{self.pr_number} is merged and the payload is verified on main."
+            )
+        if self.state == "consumed_replayed":
+            return (
+                f"Exact replay of owner comment {self.comment_id}: Fleet Manager "
+                f"PR #{self.pr_number} is merged and the record is verified in "
+                "durable consumed history on main."
             )
         return self.state.replace("_", " ")
 
@@ -1117,14 +1132,9 @@ async def _verify_landed_replay(
         path: await github.api_request(
             "GET", _contents_path(path, current_main), token=token
         )
-        for path in expected_paths
+        for path in (ROOT_INDEX_PATH, readme_path)
     }
     try:
-        current_record = _decode_contents_result(
-            current_results[record_path], path=record_path
-        )
-        if current_record != expected_files[record_path]:
-            raise _ContractError("landed owner-comment record differs on main")
         current_root = _decode_canonical_json(
             _decode_contents_result(
                 current_results[ROOT_INDEX_PATH], path=ROOT_INDEX_PATH
@@ -1139,9 +1149,91 @@ async def _verify_landed_replay(
         target = next(
             (row for row in rows if row["repository"] == repository), None
         )
-        landed_entry = next(
+        active_entry = next(
             (entry for entry in active if entry.comment_id == comment_id), None
         )
+        consumed_entry = next(
+            (entry for entry in consumed if entry.comment_id == comment_id), None
+        )
+        if (active_entry is None) == (consumed_entry is None):
+            raise _ContractError(
+                "landed owner-comment record is neither uniquely active nor consumed"
+            )
+        current_record_path = (
+            record_path
+            if active_entry is not None
+            else f"{COMMENTS_ROOT}/{repository}/consumed/{comment_id}.json"
+        )
+        current_record_result = await github.api_request(
+            "GET",
+            _contents_path(current_record_path, current_main),
+            token=token,
+        )
+        current_results[current_record_path] = current_record_result
+        current_record_raw = _decode_contents_result(
+            current_record_result, path=current_record_path
+        )
+        replay_state: WritebackState
+        if active_entry is not None:
+            if current_record_raw != expected_files[record_path]:
+                raise _ContractError("landed owner-comment record differs on main")
+            if (
+                active_entry.created_at != created_at
+                or active_entry.surface != SOURCE_SURFACE
+            ):
+                raise _ContractError(
+                    "landed owner-comment active index entry differs on main"
+                )
+            replay_state = "landed_replayed"
+        else:
+            consumed_record = _decode_canonical_json(
+                current_record_raw, label=current_record_path
+            )
+            expected_consumed = {**record, "state": "consumed"}
+            if (
+                not isinstance(consumed_record, dict)
+                or set(consumed_record) != {*expected_consumed, "consumption"}
+                or any(
+                    consumed_record.get(key) != value
+                    for key, value in expected_consumed.items()
+                )
+            ):
+                raise _ContractError(
+                    "consumed owner-comment record payload differs on main"
+                )
+            consumption = consumed_record.get("consumption")
+            if (
+                not isinstance(consumption, dict)
+                or set(consumption) != {"at", "actor", "evidence"}
+                or consumption.get("at") != consumed_entry.consumed_at
+            ):
+                raise _ContractError(
+                    "consumed owner-comment metadata differs from its index"
+                )
+            consumed_at = _parse_timestamp(
+                consumption["at"], field="consumption.at"
+            )
+            if consumed_at < _parse_timestamp(created_at, field="created_at"):
+                raise _ContractError(
+                    "consumed owner-comment metadata predates creation"
+                )
+            for field in ("actor", "evidence"):
+                value = consumption.get(field)
+                if (
+                    not isinstance(value, str)
+                    or not value.strip()
+                    or len(value) > MAX_CONTEXT_CHARS
+                    or "\x00" in value
+                    or _contains_surrogate(value)
+                ):
+                    raise _ContractError(
+                        f"consumed owner-comment {field} is invalid"
+                    )
+            if consumed_entry.created_at != created_at:
+                raise _ContractError(
+                    "consumed owner-comment index creation time differs on main"
+                )
+            replay_state = "consumed_replayed"
         latest_active = (
             max(
                 active,
@@ -1168,9 +1260,6 @@ async def _verify_landed_replay(
             or target["consumed_count"] != len(consumed)
             or target["latest_unconsumed_at"] != latest_active
             or target["latest_consumed_at"] != latest_consumed
-            or landed_entry is None
-            or landed_entry.created_at != created_at
-            or landed_entry.surface != SOURCE_SURFACE
         ):
             raise _ContractError(
                 "landed owner-comment indexes do not reconcile on main"
@@ -1184,7 +1273,7 @@ async def _verify_landed_replay(
 
     return (
         OwnerCommentWritebackResult(
-            state="landed_replayed",
+            state=replay_state,
             repository=repository,
             comment_id=comment_id,
             created_at=created_at,
@@ -1517,7 +1606,13 @@ async def _finish_verified_branch(
         )
         return _failure(
             repository,
-            "unavailable" if permission_failure else "failed",
+            (
+                "unavailable"
+                if permission_failure
+                else _failure_state(failed_result)
+                if failed_result
+                else "failed"
+            ),
             (
                 f"{ENV_TOKEN} cannot open or verify the Fleet Manager PR; "
                 "grant Pull requests read/write access, then open or inspect "

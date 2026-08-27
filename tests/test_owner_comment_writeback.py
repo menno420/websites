@@ -87,6 +87,7 @@ class FakeGitHub:
         ref_exists: bool = False,
         pr_exists: bool = False,
         pr_merged: bool = False,
+        main_comment_consumed: bool = False,
         main_payload_matches: bool = True,
         existing_payload_matches: bool = True,
         malformed_pr: bool = False,
@@ -110,6 +111,7 @@ class FakeGitHub:
         self.ref_exists = ref_exists
         self.pr_exists = pr_exists
         self.pr_merged = pr_merged
+        self.main_comment_consumed = main_comment_consumed
         self.main_payload_matches = main_payload_matches
         self.existing_payload_matches = existing_payload_matches
         self.malformed_pr = malformed_pr
@@ -508,8 +510,53 @@ def _submit(
             )
             fake.readme = fake.existing_files[readme_path]
             fake.main_files[record_path] = fake.existing_files[record_path]
+            if fake.main_comment_consumed:
+                consumed_at = "2026-08-27T10:13:00Z"
+                root = json.loads(fake.root)
+                row = next(
+                    item
+                    for item in root["repositories"]
+                    if item["repository"] == repository
+                )
+                row.update(
+                    {
+                        "unconsumed_count": 0,
+                        "consumed_count": 1,
+                        "latest_unconsumed_at": None,
+                        "latest_consumed_at": consumed_at,
+                    }
+                )
+                fake.root = _canonical(root)
+                fake.readme = writeback.render_repository_readme(
+                    repository,
+                    [],
+                    [
+                        writeback._ConsumedIndexEntry(
+                            comment_id, created_at, consumed_at
+                        )
+                    ],
+                )
+                consumed_record = json.loads(fake.main_files.pop(record_path))
+                consumed_record.update(
+                    {
+                        "state": "consumed",
+                        "consumption": {
+                            "at": consumed_at,
+                            "actor": "session-card",
+                            "evidence": "Fleet Manager PR #953",
+                        },
+                    }
+                )
+                if fake.malformed == "consumed_metadata":
+                    consumed_record["consumption"]["actor"] = " "
+                consumed_path = (
+                    f"{writeback.COMMENTS_ROOT}/{repository}/consumed/"
+                    f"{comment_id}.json"
+                )
+                fake.main_files[consumed_path] = _canonical(consumed_record)
             if not fake.main_payload_matches:
-                fake.main_files[record_path] += b"different"
+                current_path = next(iter(fake.main_files))
+                fake.main_files[current_path] += b"different"
     monkeypatch.setattr(github, "api_request", fake.api_request)
     return asyncio.run(
         writeback.submit_owner_comment(
@@ -892,6 +939,45 @@ def test_merged_replay_with_changed_main_payload_fails_without_duplicate_work(
     assert replay.state == "failed"
     assert "already landed" in replay.message
     assert "record differs on main" in replay.message
+    assert not any(call[0] == "POST" for call in fake.calls)
+
+
+@pytest.mark.parametrize("branch_retained", (True, False))
+def test_exact_replay_after_consumption_reports_durable_history_without_writes(
+    monkeypatch, branch_retained
+):
+    fake = FakeGitHub(
+        ref_exists=branch_retained,
+        pr_merged=True,
+        main_comment_consumed=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+    )
+
+    replay = _submit(fake, monkeypatch)
+
+    assert replay.state == "consumed_replayed"
+    assert replay.ok
+    assert replay.pr_number == 1234
+    assert "durable consumed history" in replay.message
+    assert not any(call[0] == "POST" for call in fake.calls)
+
+
+def test_consumed_replay_with_invalid_consumption_metadata_fails_closed(
+    monkeypatch,
+):
+    fake = FakeGitHub(
+        pr_merged=True,
+        main_comment_consumed=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+        malformed="consumed_metadata",
+    )
+
+    replay = _submit(fake, monkeypatch)
+
+    assert replay.state == "failed"
+    assert "consumed owner-comment actor is invalid" in replay.message
     assert not any(call[0] == "POST" for call in fake.calls)
 
 
@@ -1530,7 +1616,7 @@ def test_repository_must_exist_in_pinned_fleet_index(monkeypatch):
         ("ref", 403, "unavailable"),
         ("ref", 503, "failed"),
         ("pr", 403, "unavailable"),
-        ("pr", 500, "failed"),
+        ("pr", 500, "failed_retryable"),
     ],
 )
 def test_upstream_failures_never_claim_pending_or_durable(

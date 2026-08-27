@@ -35,6 +35,14 @@
       record on <code>main</code> were verified. No duplicate branch, commit, or
       pull request was created.
     </div>
+    {% elif result.state == 'consumed_replayed' %}
+    <div class="banner ok">
+      <strong>Consumed replay — durable history verified.</strong>
+      The exact merged <a href="{{ result.pr_url }}">Fleet Manager PR
+      #{{ result.pr_number }} ↗</a>, its original three-file payload, and the
+      consumed record plus reconciled indexes on <code>main</code> were
+      verified. No duplicate work was created.
+    </div>
     {% elif result.state == 'unavailable' %}
     <div class="banner warn"><strong>Write capability unavailable.</strong> {{ result.message }}</div>
     {% elif result.state == 'failed_retryable' %}
@@ -55,7 +63,7 @@
 
 <section class="card owner-comment-form">
   <h2>leave repository feedback</h2>
-  {% set finished = result and result.state in ['pending_pr', 'landed_replayed'] %}
+  {% set finished = result and result.state in ['pending_pr', 'landed_replayed', 'consumed_replayed'] %}
   {% if capability.available and not finished %}
   <form method="post" action="/owner/repository-comments/submit" data-submitting-label="submitting…">
     <input type="hidden" name="repository" value="{{ repo.name }}">

@@ -92,13 +92,22 @@ read-surface architecture.
   timestamps; merged replays verify the exact PR, three-file payload, ancestry,
   and active current-`main` record before returning an explicit landed/replayed
   result. Focused regressions cover each finding.
+- Exact review of `fb46e96755` found two final P2 cases. A replay after
+  legitimate consumption still required the active record, and transient PR
+  creation/lookup failures were flattened into a non-retryable result. Both
+  are **[conceded]**. Replays now accept exactly one reconciled active or
+  consumed record; the consumed alternative validates its canonical payload
+  and consumption metadata before returning a distinct consumed-history
+  result. Transient PR failures retain `failed_retryable`. Focused regressions
+  cover retained/deleted branches, the owner response, and the failure matrix.
 
 ## Verify
 
 - `python -m pytest tests/ botsite/tests dashboard/tests review/tests -q` —
-  **2,500 passed**, 5 deprecation warnings, on Windows.
-- Focused owner-comment reader/writeback/routes — **184 passed**; surrounding
-  estate and repository routes — **60 passed**.
+  **2,503 passed**, 5 deprecation warnings, on Windows.
+- Focused owner-comment reader/writeback/routes after the final review fixes —
+  **149 passed**; the earlier broader focused pass was **184 passed**, with
+  surrounding estate and repository routes at **60 passed**.
 - `git diff --check` — clean locally and on the exact remote PR diff.
 - `python3 bootstrap.py check --strict` — held red by this deliberate
   `in-progress` status until the final corrections and review are complete.
