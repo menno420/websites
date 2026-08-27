@@ -374,6 +374,40 @@ def test_malformed_dedicated_token_never_reaches_or_leaks_from_transport(
     assert calls == []
 
 
+def test_upstream_error_body_cannot_echo_write_token(monkeypatch):
+    token = "fleet-only-token"
+
+    async def echoing_api(method, path, json_body=None, token=""):
+        return _envelope(403, None, f"denied bearer {token}")
+
+    monkeypatch.setattr(github, "api_request", echoing_api)
+    result = asyncio.run(
+        writeback.submit_owner_comment(
+            "websites", "hello", submission_key=SUBMISSION_KEY
+        )
+    )
+
+    assert result.state == "unavailable"
+    assert token not in result.message
+    assert "[credential redacted]" in result.message
+
+
+def test_upstream_surrogate_error_is_render_safe(monkeypatch):
+    async def surrogate_api(method, path, json_body=None, token=""):
+        return _envelope(422, None, "\ud800")
+
+    monkeypatch.setattr(github, "api_request", surrogate_api)
+    result = asyncio.run(
+        writeback.submit_owner_comment(
+            "websites", "hello", submission_key=SUBMISSION_KEY
+        )
+    )
+
+    assert result.state == "failed"
+    assert result.message.endswith("HTTP 422 — invalid Unicode error body")
+    assert result.message.encode("utf-8")
+
+
 def test_per_request_transport_error_never_echoes_token(monkeypatch):
     sentinel = "fleet-super\nsecret"
 

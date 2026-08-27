@@ -89,7 +89,8 @@ def short_reason(
 ) -> str:
     """A render-safe failure reason — short, single-line, human.
 
-    Collapses whitespace runs (newlines included) to single spaces; a body
+    Rejects lone Unicode surrogates without echoing them; collapses whitespace
+    runs (newlines included) to single spaces; a body
     that looks like markup (an HTML error page is a document, not a reason)
     is replaced with a generic "HTTP <status> — non-JSON error body" phrase
     (the envelope status when known); anything still longer than ``limit``
@@ -98,7 +99,11 @@ def short_reason(
     "Not Found") pass through verbatim — honest degradation still says
     WHY, just never in document form.
     """
-    flat = re.sub(r"\s+", " ", str(text or "")).strip()
+    raw = str(text or "")
+    if any(0xD800 <= ord(character) <= 0xDFFF for character in raw):
+        prefix = f"HTTP {status} — " if status else ""
+        return f"{prefix}invalid Unicode error body"
+    flat = re.sub(r"\s+", " ", raw).strip()
     if not flat:
         return ""
     low = flat.lower()
@@ -421,8 +426,14 @@ async def api_request(
             err = (
                 data.get("message", "")
                 if isinstance(data, dict)
-                else str(data)[:200]
+                else str(data)
             )
+        # A per-request mutation credential can be echoed by a hostile or
+        # misbehaving upstream. Redact it before ``_result`` applies the
+        # user-visible 140-character cap; after truncation the complete token
+        # may no longer be present for a downstream writer to remove.
+        if token and isinstance(err, str):
+            err = err.replace(token, "[credential redacted]")
         return _result(url, resp.status_code, data, err)
     except httpx.HTTPError as exc:
         # A per-request credential is present on this path. Exception strings

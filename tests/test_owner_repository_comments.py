@@ -410,6 +410,37 @@ def test_failed_writeback_is_escaped_and_never_called_durable(client, monkeypatc
     assert "Please retry this exactly." in response.text
 
 
+def test_surrogate_writeback_error_cannot_break_owner_response(client, monkeypatch):
+    _install_overview(monkeypatch, _summary())
+
+    async def fake_submit(
+        repository, comment, *, context=None, submission_key=None
+    ):
+        return owner_comment_writeback.OwnerCommentWritebackResult(
+            state="failed",
+            repository=repository,
+            error="\ud800",
+        )
+
+    monkeypatch.setattr(
+        owner_comment_writeback, "submit_owner_comment", fake_submit
+    )
+    response = client.post(
+        "/owner/repository-comments/submit",
+        data={
+            "repository": "websites",
+            "comment": "Preserve this retry text.",
+            "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
+        },
+        headers={**_basic(), "Origin": SAME_ORIGIN},
+    )
+
+    assert response.status_code == 409
+    assert "invalid Unicode error body" in response.text
+    assert "Preserve this retry text." in response.text
+
+
 def test_public_detail_escapes_comment_context_and_consumption_metadata(
     client, monkeypatch
 ):

@@ -516,6 +516,12 @@ def _render_repository_comment(
     error: str = "",
     status_code: int = 200,
 ) -> HTMLResponse:
+    # GitHub envelopes already sanitize failure text at source. Keep the final
+    # template boundary defensive too: a future writer result (or validation
+    # seam) must never carry a lone surrogate into Starlette's UTF-8 response.
+    if result is not None and getattr(result, "error", ""):
+        result = replace(result, error=github.short_reason(result.error))
+    error = github.short_reason(error) if error else ""
     return templates.TemplateResponse(
         request,
         "owner_repository_comment.html",

@@ -458,6 +458,16 @@ def test_hostile_repository_index_degrades_detail_instead_of_escaping(
     assert any(needle in warning for warning in collection.warnings)
 
 
+@pytest.mark.parametrize("separator", ("\u2028", "\x0b"))
+def test_repository_index_rejects_non_lf_line_separators(separator):
+    text = _repo_index().replace("\n", separator, 1)
+    with pytest.raises(
+        owner_comments.OwnerCommentContractError,
+        match="generated Fleet Manager v1 shape",
+    ):
+        owner_comments.parse_repository_index(text, "alpha")
+
+
 def test_detail_caps_fanout_and_bounds_concurrency(monkeypatch):
     active = tuple(
         (

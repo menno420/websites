@@ -340,7 +340,11 @@ def _decode_canonical_json(raw: bytes, *, label: str) -> dict[str, Any]:
 
 
 def _result_error(result: dict[str, Any]) -> str:
-    return str(result.get("error") or f"HTTP {result.get('status', 0)}")
+    message = str(result.get("error") or f"HTTP {result.get('status', 0)}")
+    token = runtime_token()
+    if token:
+        message = message.replace(token, "[credential redacted]")
+    return github.short_reason(message, status=result.get("status"))
 
 
 def _failure_state(result: dict[str, Any]) -> WritebackState:

@@ -472,7 +472,10 @@ def parse_repository_index(text: str, repository: str) -> _RepositoryIndex:
         raise OwnerCommentContractError(
             "owner-comment repository index is not canonical LF text"
         )
-    lines = text.splitlines()
+    # The Fleet Manager renderer is canonical LF text. ``splitlines()`` also
+    # treats Unicode and C0 separators as line endings, which would silently
+    # normalize noncanonical bytes into the accepted generated shape.
+    lines = text.split("\n")[:-1]
     label = f"owner-comment repository index for {repository}"
     cursor = 0
     for expected in (
