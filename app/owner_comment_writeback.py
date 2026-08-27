@@ -58,9 +58,7 @@ _SURFACE_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 _TIMESTAMP_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
 )
-_SUBMISSION_KEY_RE = re.compile(
-    r"^(?P<stamp>\d{8}t\d{6}z)-(?P<nonce>[0-9a-f]{32})$"
-)
+_SUBMISSION_KEY_RE = re.compile(r"^[0-9a-f]{32}$")
 _SHA_RE = re.compile(r"^[0-9a-f]{40,64}$")
 _TOKEN_RE = re.compile(r"^[\x21-\x7e]{1,512}$")
 _WINDOWS_RESERVED = {
@@ -155,6 +153,24 @@ def runtime_token() -> str:
     return os.environ.get(ENV_TOKEN, "").strip()
 
 
+def _redact_runtime_token(text: Any) -> str:
+    """Remove literal and serialized forms of the dedicated credential."""
+
+    rendered = str(text)
+    token = runtime_token()
+    if not token:
+        return rendered
+    variants = {
+        token,
+        repr(token)[1:-1],
+        json.dumps(token, ensure_ascii=True)[1:-1],
+    }
+    for variant in sorted(variants, key=len, reverse=True):
+        if variant:
+            rendered = rendered.replace(variant, "[credential redacted]")
+    return rendered
+
+
 def _token_problem(token: str) -> str:
     if not token:
         return f"{ENV_TOKEN} is not set on this service."
@@ -241,13 +257,12 @@ def _timestamp(value: datetime | None = None) -> str:
 
 
 def new_submission_key(value: datetime | None = None) -> str:
-    """Mint one form-scoped idempotency key without retaining server state."""
+    """Mint a time-free form-scoped nonce without retaining server state."""
 
-    instant = value or clock.now()
-    if instant.tzinfo is None:
-        instant = instant.replace(tzinfo=timezone.utc)
-    stamp = instant.astimezone(timezone.utc).strftime("%Y%m%dt%H%M%Sz")
-    return f"{stamp}-{secrets.token_hex(16)}"
+    # ``value`` stays accepted for compatibility with deterministic tests, but
+    # creation time belongs to the first POST, never to the earlier form GET.
+    del value
+    return secrets.token_hex(16)
 
 
 def validate_submission_key(value: Any) -> str:
@@ -255,18 +270,7 @@ def validate_submission_key(value: Any) -> str:
 
     if not isinstance(value, str) or not _SUBMISSION_KEY_RE.fullmatch(value):
         return "submission key is missing or malformed; reload the form"
-    try:
-        datetime.strptime(
-            value.split("-", 1)[0], "%Y%m%dt%H%M%Sz"
-        ).replace(tzinfo=timezone.utc)
-    except ValueError:
-        return "submission key has an invalid timestamp; reload the form"
     return ""
-
-
-def _submission_created_at(value: str) -> str:
-    stamp = datetime.strptime(value.split("-", 1)[0], "%Y%m%dt%H%M%Sz")
-    return _timestamp(stamp.replace(tzinfo=timezone.utc))
 
 
 def _parse_timestamp(value: Any, *, field: str) -> datetime:
@@ -281,22 +285,18 @@ def _parse_timestamp(value: Any, *, field: str) -> datetime:
 def _comment_id(
     repository: str,
     comment: str,
-    created_at: str,
     context: str,
     submission_key: str,
 ) -> str:
     digest_input = _canonical_json_bytes(
         {
             "comment": comment,
-            "created_at": created_at,
             "repository": repository,
             "source": {"context": context, "surface": SOURCE_SURFACE},
             "submission_key": submission_key,
         }
     )
-    digest = hashlib.sha256(digest_input).hexdigest()[:12]
-    compact = created_at.translate(str.maketrans("", "", "-:"))
-    return f"{compact.lower()}-{digest}"
+    return f"oc-{hashlib.sha256(digest_input).hexdigest()[:32]}"
 
 
 def _canonical_json_bytes(data: Any) -> bytes:
@@ -309,7 +309,7 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
-            raise _ContractError(f"duplicate JSON key {key!r}")
+            raise _ContractError("duplicate JSON key")
         result[key] = value
     return result
 
@@ -340,10 +340,9 @@ def _decode_canonical_json(raw: bytes, *, label: str) -> dict[str, Any]:
 
 
 def _result_error(result: dict[str, Any]) -> str:
-    message = str(result.get("error") or f"HTTP {result.get('status', 0)}")
-    token = runtime_token()
-    if token:
-        message = message.replace(token, "[credential redacted]")
+    message = _redact_runtime_token(
+        result.get("error") or f"HTTP {result.get('status', 0)}"
+    )
     return github.short_reason(message, status=result.get("status"))
 
 
@@ -369,6 +368,11 @@ def _failure(
     base_sha: str = "",
     commit_sha: str = "",
 ) -> OwnerCommentWritebackResult:
+    # Contract validation may quote a value read from GitHub. A hostile or
+    # malformed 200 response can therefore echo the mutation credential just
+    # as an error envelope can. Redact at the final result boundary too, before
+    # anything is stored on the result or rendered by Jinja.
+    error = _redact_runtime_token(error)
     if state == "unavailable" and ENV_TOKEN not in error:
         error = (
             f"{error}. Verify Fleet Manager's v1 comment contract is present "
@@ -400,6 +404,31 @@ def _nested_sha(result: dict[str, Any], field: str) -> str:
         return ""
     sha = nested.get("sha")
     return sha if isinstance(sha, str) else ""
+
+
+def _verified_ref_sha(result: dict[str, Any], branch: str) -> str:
+    data = result.get("data")
+    object_data = data.get("object") if isinstance(data, dict) else None
+    if (
+        not result.get("ok")
+        or not isinstance(data, dict)
+        or data.get("ref") != f"refs/heads/{branch}"
+        or not isinstance(object_data, dict)
+        or object_data.get("type") != "commit"
+    ):
+        return ""
+    return _nested_sha(result, "object")
+
+
+def _verified_commit_tree_sha(result: dict[str, Any], commit_sha: str) -> str:
+    data = result.get("data")
+    if (
+        not result.get("ok")
+        or not isinstance(data, dict)
+        or data.get("sha") != commit_sha
+    ):
+        return ""
+    return _nested_sha(result, "tree")
 
 
 def _response_sha(result: dict[str, Any]) -> str:
@@ -815,7 +844,7 @@ def _verified_pr(
         type(number) is not int
         or number <= 0
         or not isinstance(url, str)
-        or not url.startswith(f"https://github.com/{TARGET_REPOSITORY}/pull/")
+        or url != f"https://github.com/{TARGET_REPOSITORY}/pull/{number}"
         or data.get("state") != "open"
         or data.get("draft") is not False
         or not isinstance(head, dict)
@@ -831,37 +860,183 @@ def _verified_pr(
 async def _verify_existing_branch(
     *,
     branch: str,
-    base_sha: str,
-    tree_sha: str,
-    files: dict[str, bytes],
+    repository: str,
+    comment: str,
+    comment_id: str,
+    context: str,
     token: str,
-) -> tuple[str, str]:
-    """Return ``(head_sha, error)`` for an exact retry branch."""
+) -> tuple[str, str, str, dict[str, Any] | None, str]:
+    """Return replay identity, failed envelope, and error for an exact retry.
+
+    The branch is deterministic from the form nonce, so it is the durable
+    replay receipt after a lost response or process restart. Its parent may be
+    an older ancestor of ``main``; validation therefore rebuilds the exact
+    three-file tree over that original parent instead of comparing it with a
+    tree based on today's moving ``main``.
+    """
 
     ref = await github.api_request(
         "GET", _api_path(f"/git/ref/heads/{quote(branch, safe='/')}"), token=token
     )
-    head_sha = _nested_sha(ref, "object")
+    head_sha = _verified_ref_sha(ref, branch)
     if not isinstance(head_sha, str) or not _SHA_RE.fullmatch(head_sha):
-        return "", "existing writeback branch head could not be verified"
+        return "", "", "", ref, "existing writeback branch head could not be verified"
     commit = await github.api_request(
         "GET", _api_path(f"/git/commits/{head_sha}"), token=token
     )
     data = commit.get("data") if isinstance(commit.get("data"), dict) else {}
     parents = data.get("parents") if isinstance(data, dict) else None
-    existing_tree = _nested_sha(commit, "tree")
-    valid_parent = (
-        isinstance(parents, list)
+    existing_tree = _verified_commit_tree_sha(commit, head_sha)
+    parent_sha = (
+        parents[0].get("sha")
+        if isinstance(parents, list)
         and len(parents) == 1
         and isinstance(parents[0], dict)
-        and parents[0].get("sha") == base_sha
+        else ""
     )
+    expected_message = f"Add owner comment for {repository} ({comment_id})"
     if (
         not commit.get("ok")
-        or existing_tree != tree_sha
-        or not valid_parent
+        or not isinstance(parent_sha, str)
+        or not _SHA_RE.fullmatch(parent_sha)
+        or not isinstance(existing_tree, str)
+        or not _SHA_RE.fullmatch(existing_tree)
+        or data.get("message") != expected_message
     ):
-        return "", "existing writeback branch does not match the pinned payload"
+        return "", "", "", commit, "existing writeback branch commit is not exact"
+
+    main_ref = await github.api_request(
+        "GET", _api_path(f"/git/ref/heads/{BASE_BRANCH}"), token=token
+    )
+    current_main = _verified_ref_sha(main_ref, BASE_BRANCH)
+    if not isinstance(current_main, str) or not _SHA_RE.fullmatch(current_main):
+        return "", "", "", main_ref, "protected main ancestry could not be verified"
+    if parent_sha != current_main:
+        ancestry = await github.api_request(
+            "GET", _api_path(f"/compare/{parent_sha}...{current_main}"), token=token
+        )
+        ancestry_data = (
+            ancestry.get("data") if isinstance(ancestry.get("data"), dict) else {}
+        )
+        merge_base = ancestry_data.get("merge_base_commit")
+        base_commit = ancestry_data.get("base_commit")
+        compared_commits = ancestry_data.get("commits")
+        if (
+            not ancestry.get("ok")
+            or ancestry_data.get("status") != "ahead"
+            or type(ancestry_data.get("behind_by")) is not int
+            or ancestry_data.get("behind_by") != 0
+            or type(ancestry_data.get("ahead_by")) is not int
+            or ancestry_data.get("ahead_by") < 1
+            or not isinstance(merge_base, dict)
+            or merge_base.get("sha") != parent_sha
+            or not isinstance(base_commit, dict)
+            or base_commit.get("sha") != parent_sha
+            or not isinstance(compared_commits, list)
+            or not compared_commits
+            or not isinstance(compared_commits[-1], dict)
+            or compared_commits[-1].get("sha") != current_main
+        ):
+            return (
+                "",
+                "",
+                "",
+                ancestry,
+                "existing writeback branch is not based on current main history",
+            )
+
+    record_path = f"{COMMENTS_ROOT}/{repository}/{comment_id}.json"
+    record_result = await github.api_request(
+        "GET", _contents_path(record_path, head_sha), token=token
+    )
+    contract_results = [record_result]
+    try:
+        record_raw = _decode_contents_result(record_result, path=record_path)
+        record = _decode_canonical_json(record_raw, label=record_path)
+        created_at = record.get("created_at")
+        _parse_timestamp(created_at, field=f"{comment_id}.created_at")
+        expected_record = {
+            "schema_version": SCHEMA_VERSION,
+            "id": comment_id,
+            "repository": repository,
+            "created_at": created_at,
+            "state": "unconsumed",
+            "source": {"surface": SOURCE_SURFACE, "context": context},
+            "comment": comment,
+        }
+        if record != expected_record or record_raw != _canonical_json_bytes(
+            expected_record
+        ):
+            raise _ContractError("existing owner-comment record payload differs")
+
+        parent_commit = await github.api_request(
+            "GET", _api_path(f"/git/commits/{parent_sha}"), token=token
+        )
+        contract_results.append(parent_commit)
+        parent_tree = _verified_commit_tree_sha(parent_commit, parent_sha)
+        if not isinstance(parent_tree, str) or not _SHA_RE.fullmatch(parent_tree):
+            raise _ContractError("existing branch parent tree is unavailable")
+        readme_path = f"{COMMENTS_ROOT}/{repository}/README.md"
+        root_result = await github.api_request(
+            "GET", _contents_path(ROOT_INDEX_PATH, parent_sha), token=token
+        )
+        readme_result = await github.api_request(
+            "GET", _contents_path(readme_path, parent_sha), token=token
+        )
+        contract_results.extend((root_result, readme_result))
+        root_raw = _decode_contents_result(root_result, path=ROOT_INDEX_PATH)
+        readme_raw = _decode_contents_result(readme_result, path=readme_path)
+        root_data = _decode_canonical_json(root_raw, label=ROOT_INDEX_PATH)
+        files = _updated_contract_files(
+            root_data=root_data,
+            repository=repository,
+            comment=comment,
+            comment_id=comment_id,
+            created_at=created_at,
+            context=context,
+            repository_readme=readme_raw,
+        )
+    except _ContractError as exc:
+        failed_result = next(
+            (result for result in contract_results if not result.get("ok")),
+            None,
+        )
+        return "", "", "", failed_result, str(exc)
+
+    blob_shas: dict[str, str] = {}
+    for path, expected in files.items():
+        blob_sha, blob_result, error = await _create_blob(path, expected, token)
+        if error:
+            return (
+                "",
+                "",
+                "",
+                blob_result,
+                f"existing branch tree could not be rebuilt: {error}",
+            )
+        blob_shas[path] = blob_sha
+    tree_result = await github.api_request(
+        "POST",
+        _api_path("/git/trees"),
+        json_body={
+            "base_tree": parent_tree,
+            "tree": [
+                {"path": path, "mode": "100644", "type": "blob", "sha": sha}
+                for path, sha in blob_shas.items()
+            ],
+        },
+        token=token,
+    )
+    expected_tree = _response_sha(tree_result)
+    if expected_tree != existing_tree:
+        return (
+            "",
+            "",
+            "",
+            tree_result,
+            "existing writeback branch contains changes outside the exact payload",
+        )
+
     for path, expected in files.items():
         current = await github.api_request(
             "GET", _contents_path(path, head_sha), token=token
@@ -869,10 +1044,22 @@ async def _verify_existing_branch(
         try:
             actual = _decode_contents_result(current, path=path)
         except _ContractError:
-            return "", f"existing writeback branch payload is unreadable at {path}"
+            return (
+                "",
+                "",
+                "",
+                current,
+                f"existing writeback branch payload is unreadable at {path}",
+            )
         if actual != expected:
-            return "", f"existing writeback branch payload differs at {path}"
-    return head_sha, ""
+            return (
+                "",
+                "",
+                "",
+                None,
+                f"existing writeback branch payload differs at {path}",
+            )
+    return head_sha, parent_sha, created_at, None, ""
 
 
 async def _open_ready_pr(
@@ -965,9 +1152,12 @@ async def submit_owner_comment(
             f"{token_problem} No GitHub write was attempted.",
         )
 
-    created_at = _submission_created_at(stable_key)
+    # Creation time is the first mutation request, not the potentially old GET
+    # that rendered the form. The nonce keeps the id/branch stable; a replay
+    # recovers the winning branch's authoritative timestamp below.
+    created_at = _timestamp(now)
     comment_id = _comment_id(
-        repository, comment, created_at, source_context, stable_key
+        repository, comment, source_context, stable_key
     )
     branch = f"{BRANCH_PREFIX}{comment_id}"
     common = {
@@ -979,7 +1169,7 @@ async def submit_owner_comment(
     base_ref = await github.api_request(
         "GET", _api_path(f"/git/ref/heads/{BASE_BRANCH}"), token=token
     )
-    base_sha = _nested_sha(base_ref, "object")
+    base_sha = _verified_ref_sha(base_ref, BASE_BRANCH)
     if not isinstance(base_sha, str) or not _SHA_RE.fullmatch(base_sha):
         return _failure(
             repository,
@@ -991,7 +1181,7 @@ async def submit_owner_comment(
     base_commit = await github.api_request(
         "GET", _api_path(f"/git/commits/{base_sha}"), token=token
     )
-    tree_sha = _nested_sha(base_commit, "tree")
+    tree_sha = _verified_commit_tree_sha(base_commit, base_sha)
     if not isinstance(tree_sha, str) or not _SHA_RE.fullmatch(tree_sha):
         return _failure(
             repository,
@@ -1097,42 +1287,52 @@ async def submit_owner_comment(
         json_body={"ref": f"refs/heads/{branch}", "sha": commit_sha},
         token=token,
     )
-    if not ref_result.get("ok"):
-        if ref_result.get("status") != 422:
-            permission_failure = ref_result.get("status") in (401, 403, 404)
-            return _failure(
-                repository,
-                "unavailable" if permission_failure else "failed",
-                (
-                    f"{ENV_TOKEN} cannot create the Fleet Manager branch; "
-                    "grant Contents read/write access and retry the unchanged "
-                    f"form: {_result_error(ref_result)}"
-                    if permission_failure
-                    else "writeback branch creation could not be confirmed; "
-                    "inspect Fleet Manager before retrying: "
-                    f"{_result_error(ref_result)}"
-                ),
-                base_sha=base_sha,
-                commit_sha=commit_sha,
-                **common,
-            )
-        existing_sha, error = await _verify_existing_branch(
-            branch=branch,
+    if not ref_result.get("ok") and ref_result.get("status") != 422:
+        permission_failure = ref_result.get("status") in (401, 403, 404)
+        return _failure(
+            repository,
+            "unavailable" if permission_failure else "failed",
+            (
+                f"{ENV_TOKEN} cannot create the Fleet Manager branch; "
+                "grant Contents read/write access and retry the unchanged "
+                f"form: {_result_error(ref_result)}"
+                if permission_failure
+                else "writeback branch creation could not be confirmed; "
+                "inspect Fleet Manager before retrying: "
+                f"{_result_error(ref_result)}"
+            ),
             base_sha=base_sha,
-            tree_sha=new_tree_sha,
-            files=files,
+            commit_sha=commit_sha,
+            **common,
+        )
+
+    # A shape-valid success response is not proof that GitHub stored the exact
+    # commit. Verify the deterministic branch, commit identity, ancestry, full
+    # tree, and all three bytes before opening or reporting a PR. The same path
+    # safely reconciles a 422 from an unchanged lost-response replay.
+    verified_sha, verified_base, verified_created_at, failed_result, error = (
+        await _verify_existing_branch(
+            branch=branch,
+            repository=repository,
+            comment=comment,
+            comment_id=comment_id,
+            context=source_context,
             token=token,
         )
-        if error:
-            return _failure(
-                repository,
-                "failed",
-                error,
-                base_sha=base_sha,
-                commit_sha=commit_sha,
-                **common,
-            )
-        commit_sha = existing_sha
+    )
+    if error:
+        return _failure(
+            repository,
+            _failure_state(failed_result) if failed_result else "failed",
+            f"writeback branch could not be verified: {error}",
+            base_sha=base_sha,
+            commit_sha=commit_sha,
+            **common,
+        )
+    commit_sha = verified_sha
+    base_sha = verified_base
+    created_at = verified_created_at
+    common["created_at"] = verified_created_at
 
     pr_number, pr_url, failed_result, error = await _open_ready_pr(
         branch=branch,

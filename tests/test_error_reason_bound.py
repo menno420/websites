@@ -124,6 +124,29 @@ def test_json_error_with_lone_surrogate_becomes_render_safe_reason(monkeypatch):
     assert res["error"].encode("utf-8")
 
 
+def test_api_request_json_surrogate_becomes_render_safe_reason(monkeypatch):
+    client = _mock_client(
+        lambda request: httpx.Response(
+            422,
+            content=b'{"message":"\\ud800"}',
+            headers={"content-type": "application/json"},
+        )
+    )
+    monkeypatch.setattr(github, "get_client", lambda raw=False: client)
+    try:
+        res = asyncio.run(
+            github.api_request(
+                "POST", "/repos/example/write", {"value": 1}, token="token"
+            )
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+    assert res["ok"] is False and res["status"] == 422
+    assert res["error"] == "HTTP 422 — invalid Unicode error body"
+    assert res["error"].encode("utf-8")
+
+
 def test_api_request_redacts_long_per_request_token_before_reason_bound(
     monkeypatch,
 ):
@@ -206,7 +229,30 @@ def test_api_request_redacts_token_from_non_string_json_message(
     assert res["ok"] is False and res["status"] == 403
     assert token not in res["error"]
     assert "C" * 32 not in res["error"]
-    assert "[credential redacted]" in res["error"]
+    assert res["error"] == "HTTP 403 — unexpected GitHub error payload"
+
+
+def test_structured_error_cannot_escape_a_backslash_bearing_token(monkeypatch):
+    token = r"fleet\secret-token"
+    client = _mock_client(
+        lambda request: httpx.Response(
+            403,
+            json={"message": {"authorization": token}},
+        )
+    )
+    monkeypatch.setattr(github, "get_client", lambda raw=False: client)
+    try:
+        res = asyncio.run(
+            github.api_request(
+                "POST", "/repos/example/write", {"value": 1}, token=token
+            )
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+    assert res["error"] == "HTTP 403 — unexpected GitHub error payload"
+    assert "secret-token" not in res["error"]
+    assert token not in res["error"]
 
 
 def test_short_plain_reasons_pass_verbatim(monkeypatch):

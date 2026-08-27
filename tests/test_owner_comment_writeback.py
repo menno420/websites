@@ -20,9 +20,12 @@ BASE_TREE_SHA = "b" * 40
 NEW_TREE_SHA = "c" * 40
 COMMIT_SHA = "d" * 40
 EXISTING_SHA = "e" * 40
+EXISTING_TREE_SHA = "8" * 40
+ADVANCED_SHA = "6" * 40
+ADVANCED_TREE_SHA = "7" * 40
 PR_URL = "https://github.com/menno420/fleet-manager/pull/1234"
 NOW = datetime(2026, 8, 27, 10, 11, 12, tzinfo=timezone.utc)
-SUBMISSION_KEY = "20260827t101112z-0123456789abcdef0123456789abcdef"
+SUBMISSION_KEY = "0123456789abcdef0123456789abcdef"
 
 
 def _row(repository: str) -> dict[str, Any]:
@@ -86,6 +89,13 @@ class FakeGitHub:
         existing_payload_matches: bool = True,
         malformed_pr: bool = False,
         malformed: str = "",
+        main_sha: str = BASE_SHA,
+        existing_parent_sha: str = BASE_SHA,
+        pr_number: int = 1234,
+        pr_url: str = PR_URL,
+        parent_root: bytes | None = None,
+        parent_readme: bytes | None = None,
+        expected_token: str = "fleet-only-token",
     ) -> None:
         self.root = root if root is not None else _canonical(_root_index())
         self.readme = readme or writeback.render_repository_readme(
@@ -97,11 +107,26 @@ class FakeGitHub:
         self.existing_payload_matches = existing_payload_matches
         self.malformed_pr = malformed_pr
         self.malformed = malformed
+        self.main_sha = main_sha
+        self.main_tree_sha = (
+            ADVANCED_TREE_SHA if main_sha == ADVANCED_SHA else BASE_TREE_SHA
+        )
+        self.existing_parent_sha = existing_parent_sha
+        self.parent_root = parent_root if parent_root is not None else self.root
+        self.parent_readme = (
+            parent_readme if parent_readme is not None else self.readme
+        )
+        self.pr_number = pr_number
+        self.pr_url = pr_url
+        self.expected_token = expected_token
+        self.existing_files: dict[str, bytes] = {}
         self.calls: list[tuple[str, str, Any, str]] = []
         self.blob_count = 0
         self.blob_payloads: dict[str, bytes] = {}
         self.files: dict[str, bytes] = {}
         self.branch = ""
+        self.created_commit: dict[str, Any] = {}
+        self.initial_tree_created = False
 
     def _fail(self, seam: str) -> dict[str, Any] | None:
         if self.failure and self.failure[0] == seam:
@@ -111,8 +136,8 @@ class FakeGitHub:
 
     def _pr(self, commit_sha: str) -> dict[str, Any]:
         data = {
-            "number": 1234,
-            "html_url": PR_URL,
+            "number": self.pr_number,
+            "html_url": self.pr_url,
             "state": "open",
             "draft": False,
             "head": {"ref": self.branch, "sha": commit_sha},
@@ -126,46 +151,111 @@ class FakeGitHub:
         self, method: str, path: str, json_body: Any = None, token: str = ""
     ) -> dict[str, Any]:
         self.calls.append((method, path, json_body, token))
-        assert token == "fleet-only-token"
+        assert token == self.expected_token
 
         if method == "GET" and path.endswith("/git/ref/heads/main"):
             if self.malformed == "base_ref":
                 return _envelope(200, {"object": "not-an-object"})
-            return self._fail("base_ref") or _envelope(
-                200, {"object": {"sha": BASE_SHA}}
+            ref_name = (
+                "refs/heads/not-main"
+                if self.malformed == "base_ref_identity"
+                else "refs/heads/main"
             )
-        if method == "GET" and path.endswith(f"/git/commits/{BASE_SHA}"):
+            return self._fail("base_ref") or _envelope(
+                200,
+                {
+                    "ref": ref_name,
+                    "object": {"sha": self.main_sha, "type": "commit"},
+                },
+            )
+        if method == "GET" and path.endswith(f"/git/commits/{self.main_sha}"):
             if self.malformed == "base_commit":
                 return _envelope(200, {"tree": "not-an-object"})
+            identity = (
+                "9" * 40
+                if self.malformed == "base_commit_identity"
+                else self.main_sha
+            )
             return self._fail("base_commit") or _envelope(
-                200, {"tree": {"sha": BASE_TREE_SHA}}
+                200,
+                {"sha": identity, "tree": {"sha": self.main_tree_sha}},
+            )
+        if (
+            method == "GET"
+            and path.endswith(f"/git/commits/{self.existing_parent_sha}")
+        ):
+            identity = (
+                "9" * 40
+                if self.malformed == "parent_commit_identity"
+                else self.existing_parent_sha
+            )
+            return _envelope(
+                200, {"sha": identity, "tree": {"sha": BASE_TREE_SHA}}
+            )
+        if method == "GET" and "/compare/" in path:
+            if self.malformed == "ancestry":
+                return _envelope(200, {"status": "diverged"})
+            return _envelope(
+                200,
+                {
+                    "status": "ahead",
+                    "ahead_by": 1,
+                    "behind_by": 0,
+                    "base_commit": {"sha": self.existing_parent_sha},
+                    "merge_base_commit": {"sha": self.existing_parent_sha},
+                    "commits": [
+                        {
+                            "sha": (
+                                "9" * 40
+                                if self.malformed == "compare_head"
+                                else self.main_sha
+                            )
+                        }
+                    ],
+                },
             )
         if method == "GET" and "/contents/" in path:
             parsed = urlparse(path)
             ref = parse_qs(parsed.query).get("ref", [""])[0]
             file_path = parsed.path.split("/contents/", 1)[1]
-            if ref == BASE_SHA:
+            if ref in {self.main_sha, self.existing_parent_sha}:
                 failed = self._fail(
                     "root_read" if file_path.endswith("index.json") else "readme_read"
                 )
                 if failed:
                     return failed
+                use_parent = (
+                    ref == self.existing_parent_sha
+                    and self.existing_parent_sha != self.main_sha
+                )
+                root = self.parent_root if use_parent else self.root
+                readme = self.parent_readme if use_parent else self.readme
                 return _contents(
-                    self.root if file_path.endswith("index.json") else self.readme
+                    root if file_path.endswith("index.json") else readme
                 )
             if ref == EXISTING_SHA:
-                payload = self.files.get(file_path, b"")
+                payload = self.existing_files.get(file_path, b"")
                 if not self.existing_payload_matches and file_path.endswith("index.json"):
                     payload += b"different"
                 return _contents(payload)
+            if ref == COMMIT_SHA:
+                return _contents(self.files.get(file_path, b""))
             raise AssertionError(f"unexpected contents ref {ref}")
         if method == "POST" and path.endswith("/git/blobs"):
-            failed = self._fail("blob")
+            seam = (
+                "replay_blob"
+                if self.ref_exists and self.blob_count >= 3
+                else "blob"
+            )
+            failed = self._fail(seam)
             if failed:
                 return failed
             self.blob_count += 1
             sha = str(self.blob_count) * 40
-            self.blob_payloads[sha] = base64.b64decode(json_body["content"])
+            payload = base64.b64decode(json_body["content"])
+            if self.malformed == "blob_content_mismatch" and self.blob_count <= 3:
+                payload = b"not the requested owner-comment bytes\n"
+            self.blob_payloads[sha] = payload
             return _envelope(201, {"sha": sha})
         if method == "POST" and path.endswith("/git/trees"):
             if self.malformed == "tree_error_sha":
@@ -173,18 +263,34 @@ class FakeGitHub:
             failed = self._fail("tree")
             if failed:
                 return failed
-            assert json_body["base_tree"] == BASE_TREE_SHA
-            self.files = {
+            assert json_body["base_tree"] in {
+                BASE_TREE_SHA,
+                ADVANCED_TREE_SHA,
+            }
+            rendered_files = {
                 entry["path"]: self.blob_payloads[entry["sha"]]
                 for entry in json_body["tree"]
             }
-            return _envelope(201, {"sha": NEW_TREE_SHA})
+            if not self.ref_exists:
+                self.files = rendered_files
+            return _envelope(
+                201,
+                {
+                    "sha": (
+                        EXISTING_TREE_SHA
+                        if self.ref_exists
+                        and json_body["base_tree"] == BASE_TREE_SHA
+                        else NEW_TREE_SHA
+                    )
+                },
+            )
         if method == "POST" and path.endswith("/git/commits"):
             if self.malformed == "commit_error_sha":
                 return _envelope(400, {"sha": COMMIT_SHA}, "bad commit")
             failed = self._fail("commit")
             if failed:
                 return failed
+            self.created_commit = dict(json_body)
             return _envelope(201, {"sha": COMMIT_SHA})
         if method == "POST" and path.endswith("/git/refs"):
             self.branch = json_body["ref"].removeprefix("refs/heads/")
@@ -193,14 +299,52 @@ class FakeGitHub:
                 return failed
             if self.ref_exists:
                 return _envelope(422, None, "Reference already exists")
-            return _envelope(201, {"ref": json_body["ref"], "object": {"sha": COMMIT_SHA}})
+            return _envelope(
+                201,
+                {
+                    "ref": json_body["ref"],
+                    "object": {"sha": COMMIT_SHA, "type": "commit"},
+                },
+            )
         if (
             method == "GET"
             and "/git/ref/heads/claude/owner-comments-" in path
         ):
+            failed = self._fail("existing_ref_read")
+            if failed:
+                return failed
             if self.malformed == "existing_ref":
                 return _envelope(200, {"object": "not-an-object"})
-            return _envelope(200, {"object": {"sha": EXISTING_SHA}})
+            return _envelope(
+                200,
+                {
+                    "ref": (
+                        "refs/heads/not-this-branch"
+                        if self.malformed == "existing_ref_identity"
+                        else f"refs/heads/{self.branch}"
+                    ),
+                    "object": {
+                        "sha": EXISTING_SHA if self.ref_exists else COMMIT_SHA,
+                        "type": "commit",
+                    },
+                },
+            )
+        if method == "GET" and path.endswith(f"/git/commits/{COMMIT_SHA}"):
+            return _envelope(
+                200,
+                {
+                    "sha": COMMIT_SHA,
+                    "tree": {"sha": self.created_commit.get("tree", NEW_TREE_SHA)},
+                    "parents": [
+                        {"sha": parent}
+                        for parent in self.created_commit.get("parents", [BASE_SHA])
+                    ],
+                    "message": self.created_commit.get(
+                        "message",
+                        "Add owner comment for websites (missing)",
+                    ),
+                },
+            )
         if method == "GET" and path.endswith(f"/git/commits/{EXISTING_SHA}"):
             if self.malformed == "existing_commit":
                 return _envelope(
@@ -221,10 +365,23 @@ class FakeGitHub:
             return _envelope(
                 200,
                 {
+                    "sha": (
+                        "9" * 40
+                        if self.malformed == "existing_commit_identity"
+                        else EXISTING_SHA
+                    ),
                     "tree": {
-                        "sha": NEW_TREE_SHA if self.existing_payload_matches else "9" * 40
+                        "sha": (
+                            EXISTING_TREE_SHA
+                            if self.existing_payload_matches
+                            else "9" * 40
+                        )
                     },
-                    "parents": [{"sha": BASE_SHA}],
+                    "parents": [{"sha": self.existing_parent_sha}],
+                    "message": (
+                        "Add owner comment for websites "
+                        f"({self.branch.removeprefix(writeback.BRANCH_PREFIX)})"
+                    ),
                 },
             )
         if method == "POST" and path.endswith("/pulls"):
@@ -258,7 +415,29 @@ def _submit(
     repository: str = "websites",
     context: str | None = None,
     submission_key: str = SUBMISSION_KEY,
+    now: datetime = NOW,
 ):
+    if fake.ref_exists:
+        created_at = getattr(
+            fake, "existing_created_at", writeback._timestamp(NOW)
+        )
+        source_context = context or f"/repos/{repository}"
+        comment_id = writeback._comment_id(
+            repository,
+            comment,
+            source_context,
+            submission_key,
+        )
+        fake.branch = f"{writeback.BRANCH_PREFIX}{comment_id}"
+        fake.existing_files = writeback._updated_contract_files(
+            root_data=json.loads(fake.parent_root),
+            repository=repository,
+            comment=comment,
+            comment_id=comment_id,
+            created_at=created_at,
+            context=source_context,
+            repository_readme=fake.parent_readme,
+        )
     monkeypatch.setattr(github, "api_request", fake.api_request)
     return asyncio.run(
         writeback.submit_owner_comment(
@@ -266,7 +445,7 @@ def _submit(
             comment,
             context=context,
             submission_key=submission_key,
-            now=NOW,
+            now=now,
         )
     )
 
@@ -392,6 +571,35 @@ def test_upstream_error_body_cannot_echo_write_token(monkeypatch):
     assert "[credential redacted]" in result.message
 
 
+def test_successful_contract_payload_cannot_echo_write_token(monkeypatch):
+    token_row = _row("fleet-only-token")
+    token_row["index"] = "docs/owner-comments/not-the-token/README.md"
+    result = _submit(
+        FakeGitHub(root=_canonical(_root_index(websites=token_row))),
+        monkeypatch,
+    )
+
+    assert result.state == "failed"
+    assert "fleet-only-token" not in result.message
+    assert "[credential redacted]" in result.message
+
+
+def test_duplicate_key_contract_error_cannot_echo_escaped_token(monkeypatch):
+    token = r"fleet\secret-token"
+    monkeypatch.setenv(writeback.ENV_TOKEN, token)
+    root = (
+        b'{"fleet\\\\secret-token":1,"fleet\\\\secret-token":2}\n'
+    )
+    result = _submit(
+        FakeGitHub(root=root, expected_token=token),
+        monkeypatch,
+    )
+
+    assert result.state == "failed"
+    assert "secret-token" not in result.message
+    assert result.message == "duplicate JSON key"
+
+
 def test_upstream_surrogate_error_is_render_safe(monkeypatch):
     async def surrogate_api(method, path, json_body=None, token=""):
         return _envelope(422, None, "\ud800")
@@ -437,7 +645,8 @@ def test_atomic_three_file_commit_preserves_verbatim_text_and_opens_ready_pr(
     assert result.state == "pending_pr"
     assert result.ok is True
     assert result.pr_number == 1234 and result.pr_url == PR_URL
-    assert result.record_id.startswith("20260827t101112z-")
+    assert result.record_id.startswith("oc-")
+    assert len(result.record_id) == 35
     assert result.branch == f"claude/owner-comments-{result.record_id}"
     assert "not durable until" in result.message
 
@@ -474,11 +683,13 @@ def test_atomic_three_file_commit_preserves_verbatim_text_and_opens_ready_pr(
     assert "## Unconsumed (1)" in readme
     assert f"`{result.record_id}`" in readme
 
-    # Exact pinned reads precede mutation, then three blobs feed one tree and
-    # one commit. The only ref mutation is creation of a new branch.
+    # Exact pinned reads precede mutation. After the only ref mutation creates
+    # the branch, a second bounded pass proves its commit/tree/three files
+    # before the ready PR is opened.
     content_reads = [call for call in fake.calls if call[0] == "GET" and "/contents/" in call[1]]
-    assert len(content_reads) == 2
-    assert all(f"ref={BASE_SHA}" in call[1] for call in content_reads)
+    assert len(content_reads) == 8
+    assert sum(f"ref={BASE_SHA}" in call[1] for call in content_reads) == 4
+    assert sum(f"ref={COMMIT_SHA}" in call[1] for call in content_reads) == 4
     blob_calls = [call for call in fake.calls if call[1].endswith("/git/blobs")]
     tree_calls = [call for call in fake.calls if call[1].endswith("/git/trees")]
     commit_calls = [
@@ -487,8 +698,9 @@ def test_atomic_three_file_commit_preserves_verbatim_text_and_opens_ready_pr(
         if call[1].endswith("/git/commits") and call[0] == "POST"
     ]
     ref_calls = [call for call in fake.calls if call[1].endswith("/git/refs")]
-    assert len(blob_calls) == 3
-    assert len(tree_calls) == len(commit_calls) == len(ref_calls) == 1
+    assert len(blob_calls) == 6
+    assert len(tree_calls) == 2
+    assert len(commit_calls) == len(ref_calls) == 1
     assert commit_calls[0][2]["parents"] == [BASE_SHA]
     assert commit_calls[0][2]["tree"] == NEW_TREE_SHA
     assert ref_calls[0][2] == {
@@ -524,9 +736,7 @@ def test_submission_key_makes_lost_response_replay_exactly_idempotent(
     distinct = _submit(
         FakeGitHub(),
         monkeypatch,
-        submission_key=(
-            "20260827t101112z-fedcba9876543210fedcba9876543210"
-        ),
+        submission_key="fedcba9876543210fedcba9876543210",
     )
 
     assert replay.state == "pending_pr"
@@ -534,6 +744,94 @@ def test_submission_key_makes_lost_response_replay_exactly_idempotent(
     assert replay.branch == first.branch
     assert replay.created_at == first.created_at
     assert distinct.record_id != first.record_id
+
+
+def test_form_age_does_not_backdate_first_submission(monkeypatch):
+    late_submit = datetime(2026, 9, 3, 8, 9, 10, tzinfo=timezone.utc)
+    fake = FakeGitHub()
+    result = _submit(fake, monkeypatch, now=late_submit)
+
+    assert result.state == "pending_pr"
+    assert result.created_at == "2026-09-03T08:09:10Z"
+    record = json.loads(
+        fake.files[
+            f"docs/owner-comments/websites/{result.record_id}.json"
+        ]
+    )
+    assert record["created_at"] == result.created_at
+
+
+def test_exact_replay_after_main_advances_recovers_original_receipt(monkeypatch):
+    fake = FakeGitHub(
+        ref_exists=True,
+        pr_exists=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+    )
+    fake.existing_created_at = "2026-08-27T10:11:12Z"
+    replay = _submit(
+        fake,
+        monkeypatch,
+        now=datetime(2026, 8, 28, 10, 11, 12, tzinfo=timezone.utc),
+    )
+
+    assert replay.state == "pending_pr"
+    assert replay.commit_sha == EXISTING_SHA
+    assert replay.base_sha == BASE_SHA
+    assert replay.created_at == "2026-08-27T10:11:12Z"
+    assert any("/compare/" in call[1] for call in fake.calls)
+
+
+def test_replay_rebuilds_against_original_indexes_after_newer_comment(
+    monkeypatch,
+):
+    other = writeback._ActiveIndexEntry(
+        "oc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "2026-08-27T10:10:00Z",
+        "control-plane",
+    )
+    current_row = _row("websites")
+    current_row.update(
+        {
+            "unconsumed_count": 1,
+            "latest_unconsumed_at": other.created_at,
+        }
+    )
+    fake = FakeGitHub(
+        root=_canonical(_root_index(websites=current_row)),
+        readme=writeback.render_repository_readme("websites", [other], []),
+        parent_root=_canonical(_root_index()),
+        parent_readme=writeback.render_repository_readme("websites", [], []),
+        ref_exists=True,
+        pr_exists=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+    )
+    replay = _submit(
+        fake,
+        monkeypatch,
+        now=datetime(2026, 8, 28, 10, 11, 12, tzinfo=timezone.utc),
+    )
+
+    assert replay.state == "pending_pr"
+    assert replay.base_sha == BASE_SHA
+    assert replay.created_at == "2026-08-27T10:11:12Z"
+
+
+def test_replay_rejects_branch_outside_protected_main_history(monkeypatch):
+    result = _submit(
+        FakeGitHub(
+            ref_exists=True,
+            pr_exists=True,
+            main_sha=ADVANCED_SHA,
+            malformed="ancestry",
+        ),
+        monkeypatch,
+    )
+
+    assert result.state == "failed"
+    assert result.pr_number == 0
+    assert "not based on current main history" in result.message
 
 
 def test_malformed_submission_key_rejects_before_github(monkeypatch):
@@ -776,6 +1074,28 @@ def test_success_response_with_unverified_pr_is_not_pending(monkeypatch):
     assert result.pr_number == 0
 
 
+@pytest.mark.parametrize("ref_exists", (False, True))
+def test_pr_url_must_match_returned_number_on_create_and_reuse(
+    monkeypatch, ref_exists
+):
+    result = _submit(
+        FakeGitHub(
+            ref_exists=ref_exists,
+            pr_exists=ref_exists,
+            pr_number=1234,
+            pr_url=(
+                "https://github.com/menno420/fleet-manager/pull/9999"
+            ),
+        ),
+        monkeypatch,
+    )
+
+    assert result.state == "failed"
+    assert result.pr_number == 0
+    assert result.pr_url == ""
+    assert "could not be verified" in result.message
+
+
 @pytest.mark.parametrize("seam", ("tree_error_sha", "commit_error_sha"))
 def test_error_envelope_with_valid_sha_never_advances_to_pending(
     monkeypatch, seam
@@ -791,7 +1111,10 @@ def test_error_envelope_with_valid_sha_never_advances_to_pending(
     )
 
 
-@pytest.mark.parametrize("seam", ("base_ref", "base_commit"))
+@pytest.mark.parametrize(
+    "seam",
+    ("base_ref", "base_commit", "base_ref_identity", "base_commit_identity"),
+)
 def test_malformed_base_nested_shape_is_an_honest_failure(monkeypatch, seam):
     result = _submit(FakeGitHub(malformed=seam), monkeypatch)
 
@@ -801,7 +1124,14 @@ def test_malformed_base_nested_shape_is_an_honest_failure(monkeypatch, seam):
 
 
 @pytest.mark.parametrize(
-    "seam", ("existing_ref", "existing_commit", "existing_parents")
+    "seam",
+    (
+        "existing_ref",
+        "existing_commit",
+        "existing_parents",
+        "existing_ref_identity",
+        "existing_commit_identity",
+    ),
 )
 def test_malformed_existing_branch_shape_never_escapes_or_reuses(
     monkeypatch, seam
@@ -815,7 +1145,26 @@ def test_malformed_existing_branch_shape_never_escapes_or_reuses(
     assert (
         "could not be verified" in result.message
         or "does not match" in result.message
+        or "not exact" in result.message
     )
+
+
+@pytest.mark.parametrize("seam", ("compare_head", "parent_commit_identity"))
+def test_replay_binds_compare_head_and_parent_commit_identity(monkeypatch, seam):
+    result = _submit(
+        FakeGitHub(
+            ref_exists=True,
+            pr_exists=True,
+            main_sha=ADVANCED_SHA,
+            existing_parent_sha=BASE_SHA,
+            malformed=seam,
+        ),
+        monkeypatch,
+    )
+
+    assert result.state == "failed"
+    assert result.pr_number == 0
+    assert "could not be verified" in result.message
 
 
 def test_422_branch_and_pr_are_reused_only_after_exact_verification(monkeypatch):
@@ -835,7 +1184,7 @@ def test_422_branch_and_pr_are_reused_only_after_exact_verification(monkeypatch)
         for call in fake.calls
         if call[0] == "GET" and f"ref={EXISTING_SHA}" in call[1]
     ]
-    assert len(existing_reads) == 3
+    assert len(existing_reads) == 4
     assert any(call[0] == "GET" and "/pulls?" in call[1] for call in fake.calls)
 
 
@@ -844,9 +1193,41 @@ def test_422_existing_branch_with_different_payload_is_a_hard_failure(monkeypatc
     result = _submit(fake, monkeypatch)
 
     assert result.state == "failed"
-    assert "does not match" in result.message or "differs" in result.message
+    assert (
+        "does not match" in result.message
+        or "differs" in result.message
+        or "outside the exact payload" in result.message
+    )
     assert result.pr_number == 0
     assert not any(call[0] == "POST" and call[1].endswith("/pulls") for call in fake.calls)
+
+
+def test_fresh_branch_is_read_back_before_pending_pr(monkeypatch):
+    fake = FakeGitHub(malformed="blob_content_mismatch")
+    result = _submit(fake, monkeypatch)
+
+    assert result.state == "failed"
+    assert result.pr_number == 0
+    assert "writeback branch could not be verified" in result.message
+    assert not any(
+        call[0] == "POST" and call[1].endswith("/pulls")
+        for call in fake.calls
+    )
+
+
+@pytest.mark.parametrize("seam", ("existing_ref_read", "replay_blob"))
+def test_replay_permission_failure_is_unavailable_with_scope_action(
+    monkeypatch, seam
+):
+    result = _submit(
+        FakeGitHub(ref_exists=True, failure=(seam, 403)),
+        monkeypatch,
+    )
+
+    assert result.state == "unavailable"
+    assert writeback.ENV_TOKEN in result.message
+    assert "Contents read/write" in result.message
+    assert result.pr_number == 0
 
 
 def test_422_pr_without_one_exact_ready_candidate_is_not_pending(monkeypatch):

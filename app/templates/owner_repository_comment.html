@@ -24,7 +24,7 @@
       <strong>Pending Fleet Manager PR — not durable yet.</strong>
       The record and both indexes were committed together on
       <code>{{ result.branch }}</code>. It becomes durable only after
-      <a href="https://github.com/menno420/fleet-manager/pull/{{ result.pr_number }}">Fleet Manager PR #{{ result.pr_number }} ↗</a>
+      <a href="{{ result.pr_url }}">Fleet Manager PR #{{ result.pr_number }} ↗</a>
       merges and the record is visible on <code>main</code>.
     </div>
     {% elif result.state == 'unavailable' %}

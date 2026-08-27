@@ -21,7 +21,7 @@ UTC = timezone.utc
 OWNER_PASSWORD = "owner-comment-test-password"
 SAME_ORIGIN = "http://testserver"
 CROSS_ORIGIN = "https://attacker.example"
-SUBMISSION_KEY = "20260827t120000z-0123456789abcdef0123456789abcdef"
+SUBMISSION_KEY = "0123456789abcdef0123456789abcdef"
 
 
 def _basic(password: str = OWNER_PASSWORD) -> dict[str, str]:
@@ -210,6 +210,10 @@ def test_submission_preserves_owner_text_and_reports_pending_not_durable(
     }
     assert "Pending Fleet Manager PR — not durable yet" in response.text
     assert "Fleet Manager PR #953" in response.text
+    assert (
+        'href="https://github.com/menno420/fleet-manager/pull/953"'
+        in response.text
+    )
     assert "durable only after" in response.text
 
 

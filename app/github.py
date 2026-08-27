@@ -428,7 +428,14 @@ async def api_request(
                 if isinstance(data, dict)
                 else data
             )
-            err = str(raw_error)
+            # Only a string-valued GitHub reason is safe to expose. Stringifying
+            # a list/dict escapes credential characters (notably backslashes)
+            # before literal redaction and can make a secret unmatchable.
+            err = (
+                raw_error
+                if isinstance(raw_error, str)
+                else f"HTTP {resp.status_code} — unexpected GitHub error payload"
+            )
         # A per-request mutation credential can be echoed by a hostile or
         # misbehaving upstream. Redact it before ``_result`` applies the
         # user-visible 140-character cap; after truncation the complete token
