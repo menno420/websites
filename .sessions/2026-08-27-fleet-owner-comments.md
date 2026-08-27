@@ -1,7 +1,7 @@
 # 2026-08-27 — connect repository review to durable owner comments
 
-> **Status:** `complete` — implementation and exact-head review are complete in
-> `menno420/websites#523`; its Fleet Manager dependency landed in #952.
+> **Status:** `in-progress` — Fleet Manager #952 is landed, but exact-head
+> review found two final website races that remain under correction in #523.
 
 - **📊 Model:** GPT-5 · high · feature build
 - **📍 Venue:** chatgpt-work
@@ -78,10 +78,10 @@ read-surface architecture.
   **[conceded]** Every valid finding received a regression, exact-head reply,
   and resolved thread; the compare-list finding was rejected with the official
   GitHub API contract plus boundary tests.
-- Final remote product head `b2914e075723fd2695a0e8a7b0279911cb696156`
-  is tree-identical to local `69ba33e`; its exact-head review completed with no
-  new or open finding. Independent contract/security audits found no remaining
-  P0/P1/P2.
+- Exact review of remote product head
+  `b2914e075723fd2695a0e8a7b0279911cb696156` found two further P2 cases: a
+  replay/growth-gate TOCTOU and mutation visibility limited to the first
+  repository-listing page. Both are being corrected before the final flip.
 
 ## Verify
 
@@ -89,14 +89,14 @@ read-surface architecture.
   **2,471 passed**, 5 deprecation warnings.
 - Focused final comment-reader/writeback/replay contract — **119 passed**.
 - `git diff --check` — clean locally and on the exact remote PR diff.
-- `python3 bootstrap.py check --strict` — green after this deliberate final
-  completion flip.
+- `python3 bootstrap.py check --strict` — held red by this deliberate
+  `in-progress` status until the final corrections and review are complete.
 
 ## Landing
 
 - Fleet Manager storage/index/router/consume contract:
   `menno420/fleet-manager#952`, merged as `089e0053791a8a6b33c51869ae4780f0d03b1ac9`.
-- Website UI/read/writeback: `menno420/websites#523` — READY on protected
-  `main`; the exact product tree is reviewed and the repository gate is green.
+- Website UI/read/writeback: `menno420/websites#523` — open on protected
+  `main`; final corrections remain before merge-on-green.
 - Production write capability is not claimed by repository tests; after deploy,
   the owner form itself reports whether the dedicated credential is available.
