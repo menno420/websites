@@ -143,8 +143,8 @@ The first-submit success is **pending PR / not durable**; an exact post-merge
 replay can report **landed replay / already durable** or **consumed replay /
 durable history verified** only after current `main` verification. The public
 reader separately reflects active or consumed durable history. Missing
-capability and failed or ambiguous writes are named honestly; transient PR
-creation/lookup failures remain explicitly retryable. There is no
+capability and failed or ambiguous writes are named honestly; transient branch
+or PR creation/lookup failures remain explicitly retryable. There is no
 website-local durable queue or comment truth store.
 
 The implementation is the websites #523 change. Fleet Manager #952 landed its

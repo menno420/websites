@@ -1921,7 +1921,11 @@ async def submit_owner_comment(
         permission_failure = ref_result.get("status") in (401, 403, 404)
         return _failure(
             repository,
-            "unavailable" if permission_failure else "failed",
+            (
+                "unavailable"
+                if permission_failure
+                else _failure_state(ref_result)
+            ),
             (
                 f"{ENV_TOKEN} cannot create the Fleet Manager branch; "
                 "grant Contents read/write access and retry the unchanged "

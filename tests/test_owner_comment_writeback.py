@@ -1614,7 +1614,7 @@ def test_repository_must_exist_in_pinned_fleet_index(monkeypatch):
         ("tree", 422, "failed"),
         ("commit", 500, "failed_retryable"),
         ("ref", 403, "unavailable"),
-        ("ref", 503, "failed"),
+        ("ref", 503, "failed_retryable"),
         ("pr", 403, "unavailable"),
         ("pr", 500, "failed_retryable"),
     ],

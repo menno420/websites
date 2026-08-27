@@ -100,6 +100,11 @@ read-surface architecture.
   and consumption metadata before returning a distinct consumed-history
   result. Transient PR failures retain `failed_retryable`. Focused regressions
   cover retained/deleted branches, the owner response, and the failure matrix.
+- Exact review of `6ed5b61ba6` found one remaining P2 classification gap:
+  transient deterministic branch-creation failures were still flattened to
+  non-retryable. **[conceded]** The branch-creation path now uses the same
+  permission-aware shared classifier as the PR path, and the existing failure
+  matrix pins a 503 response as `failed_retryable`.
 
 ## Verify
 
