@@ -108,7 +108,10 @@ cache boundary described above, escapes comment text as untrusted data, and
 keeps the Fleet Manager source link plus live/measured/stale/unknown-or-
 unavailable freshness. A malformed index, private/unreachable source, or
 partial record failure renders explicitly rather than becoming a zero count or
-breaking the repository page.
+breaking the repository page. Root and repository indexes reconcile both
+active/consumed counts and their latest timestamps; a missing root row or any
+count/timestamp mismatch is an explicit contradiction, never "No owner
+comments."
 
 The write half lives behind the existing owner overlay:
 `GET /owner/repository-comments/{name}` shows the public-record warning and
@@ -127,12 +130,17 @@ record id. `created_at` is measured on the first POST, not when the form was
 opened; an unchanged replay after a lost response strictly verifies and reuses
 the exact record, original timestamp, three-file branch tree, ancestry, and PR
 instead of opening a duplicate or being confused by later movement on `main`.
+After the deterministic PR merges (including when its branch is deleted), the
+same replay verifies the merged PR identity, exact three-file head payload,
+parent ancestry, and reconciled active record on current `main`, then reports a
+distinct landed/replayed result without creating a branch, commit, or PR.
 Replay reconciliation happens before current-ledger count/size gates, while a
 fresh submission bounds the prospective record count, repository README, and
 root index before any GitHub mutation.
-The strongest immediate success is **pending PR / not durable**; the public
-reader reflects durability only after that record merges to Fleet Manager
-`main`. Missing capability and failed or ambiguous writes are named honestly;
+The first-submit success is **pending PR / not durable**; an exact post-merge
+replay can report **landed replay / already durable** only after current `main`
+verification. The public reader separately reflects active or consumed durable
+history. Missing capability and failed or ambiguous writes are named honestly;
 there is no website-local durable queue or comment truth store.
 
 The implementation is the websites #523 change. Fleet Manager #952 landed its
@@ -509,8 +517,10 @@ action, while the main site stays browsable:
   - **submit repository feedback** — validates the repository against the
     estate model and uses `FLEET_MANAGER_WRITEBACK_TOKEN` to open a ready
     branch + PR carrying one atomic v1 record/index update in Fleet Manager.
-    The response remains pending/not durable until protected `main` contains
-    the record; failures never fall back to a local durable claim.
+    The first response remains pending/not durable until protected `main`
+    contains the record. An exact replay can report already landed only after
+    verifying the merged PR and current `main`; failures never fall back to a
+    local durable claim.
 - **POST hardening (ORDER 013):** every state-changing `/owner` action layers,
   after Basic auth, a **strict same-origin CSRF check** — the `Origin` header's
   host must match the request's own `Host` (falling back to `Referer` when

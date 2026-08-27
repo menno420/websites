@@ -8,7 +8,10 @@ fresh ``claude/*`` branch, and opens a ready pull request.
 
 An open pull request is deliberately reported as ``pending_pr``.  It is not a
 durable comment until Fleet Manager's protected ``main`` contains the record.
-There is no local queue and no direct/forced update of ``main`` here.
+An exact replay after merge is reported as ``landed_replayed`` only after the
+merged PR, its three-file payload, and the current ``main`` record/indexes are
+verified read-only. There is no local queue and no direct/forced update of
+``main`` here.
 """
 
 from __future__ import annotations
@@ -48,7 +51,7 @@ DERIVED_FROM = [
 ]
 
 WritebackState = Literal[
-    "unavailable", "pending_pr", "failed_retryable", "failed"
+    "unavailable", "pending_pr", "landed_replayed", "failed_retryable", "failed"
 ]
 
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,79}$")
@@ -90,9 +93,9 @@ class OwnerCommentWritebackResult:
 
     @property
     def ok(self) -> bool:
-        """True only when a ready PR is open; this still is not durable."""
+        """True when the pending or already-landed outcome was verified."""
 
-        return self.state == "pending_pr"
+        return self.state in {"pending_pr", "landed_replayed"}
 
     @property
     def record_id(self) -> str:
@@ -110,6 +113,11 @@ class OwnerCommentWritebackResult:
             return (
                 f"Owner comment {self.comment_id} is pending in Fleet Manager "
                 f"PR #{self.pr_number}; it is not durable until that PR merges."
+            )
+        if self.state == "landed_replayed":
+            return (
+                f"Exact replay of owner comment {self.comment_id}: Fleet Manager "
+                f"PR #{self.pr_number} is merged and the payload is verified on main."
             )
         return self.state.replace("_", " ")
 
@@ -879,6 +887,318 @@ def _verified_pr(
     return number, url
 
 
+def _verified_merged_pr(
+    data: Any, *, branch: str
+) -> tuple[int, str, str] | None:
+    """Return one exact merged-PR identity, never a merely closed PR."""
+
+    if not isinstance(data, dict):
+        return None
+    number = data.get("number")
+    url = data.get("html_url")
+    head = data.get("head")
+    base = data.get("base")
+    head_sha = head.get("sha") if isinstance(head, dict) else ""
+    merged_at = data.get("merged_at")
+    merge_commit_sha = data.get("merge_commit_sha")
+    try:
+        _parse_timestamp(merged_at, field="pull_request.merged_at")
+    except _ContractError:
+        return None
+    if (
+        type(number) is not int
+        or number <= 0
+        or not isinstance(url, str)
+        or url != f"https://github.com/{TARGET_REPOSITORY}/pull/{number}"
+        or data.get("state") != "closed"
+        or data.get("draft") is not False
+        or not isinstance(head, dict)
+        or head.get("ref") != branch
+        or not isinstance(head_sha, str)
+        or not _SHA_RE.fullmatch(head_sha)
+        or not isinstance(base, dict)
+        or base.get("ref") != BASE_BRANCH
+        or not isinstance(merge_commit_sha, str)
+        or not _SHA_RE.fullmatch(merge_commit_sha)
+    ):
+        return None
+    return number, url, head_sha
+
+
+async def _verify_landed_replay(
+    *,
+    branch: str,
+    repository: str,
+    comment: str,
+    comment_id: str,
+    context: str,
+    current_main: str,
+    token: str,
+) -> tuple[OwnerCommentWritebackResult | None, dict[str, Any] | None, str]:
+    """Verify a merged deterministic PR and its exact payload, read-only."""
+
+    listing = await github.api_request(
+        "GET",
+        _api_path(
+            f"/pulls?head=menno420:{quote(branch, safe='')}&"
+            f"base={BASE_BRANCH}&state=closed&per_page=100"
+        ),
+        token=token,
+    )
+    if not listing.get("ok"):
+        return None, listing, "merged Fleet Manager PR lookup was unavailable"
+    listed = listing.get("data")
+    if not isinstance(listed, list):
+        return None, listing, "merged Fleet Manager PR lookup was malformed"
+    candidates = [
+        receipt
+        for receipt in (
+            _verified_merged_pr(item, branch=branch) for item in listed
+        )
+        if receipt is not None
+    ]
+    if not candidates:
+        return None, None, ""
+    if len(candidates) != 1:
+        return None, listing, "merged Fleet Manager PR identity was ambiguous"
+    pr_number, pr_url, listed_head = candidates[0]
+
+    detail = await github.api_request(
+        "GET", _api_path(f"/pulls/{pr_number}"), token=token
+    )
+    verified_detail = _verified_merged_pr(detail.get("data"), branch=branch)
+    if (
+        not detail.get("ok")
+        or verified_detail != (pr_number, pr_url, listed_head)
+        or not isinstance(detail.get("data"), dict)
+        or detail["data"].get("changed_files") != 3
+    ):
+        return None, detail, "merged Fleet Manager PR detail was not exact"
+
+    record_path = f"{COMMENTS_ROOT}/{repository}/{comment_id}.json"
+    readme_path = f"{COMMENTS_ROOT}/{repository}/README.md"
+    expected_paths = {record_path, readme_path, ROOT_INDEX_PATH}
+    files_result = await github.api_request(
+        "GET", _api_path(f"/pulls/{pr_number}/files?per_page=100"), token=token
+    )
+    changed_files = files_result.get("data")
+    if (
+        not files_result.get("ok")
+        or not isinstance(changed_files, list)
+        or len(changed_files) != 3
+        or any(not isinstance(item, dict) for item in changed_files)
+        or {item.get("filename") for item in changed_files} != expected_paths
+    ):
+        return None, files_result, "merged Fleet Manager PR changed-file set was not exact"
+
+    commit = await github.api_request(
+        "GET", _api_path(f"/git/commits/{listed_head}"), token=token
+    )
+    commit_data = commit.get("data") if isinstance(commit.get("data"), dict) else {}
+    parents = commit_data.get("parents") if isinstance(commit_data, dict) else None
+    tree_sha = _verified_commit_tree_sha(commit, listed_head)
+    parent_sha = (
+        parents[0].get("sha")
+        if isinstance(parents, list)
+        and len(parents) == 1
+        and isinstance(parents[0], dict)
+        else ""
+    )
+    if (
+        not commit.get("ok")
+        or not isinstance(parent_sha, str)
+        or not _SHA_RE.fullmatch(parent_sha)
+        or not isinstance(tree_sha, str)
+        or not _SHA_RE.fullmatch(tree_sha)
+        or commit_data.get("message")
+        != f"Add owner comment for {repository} ({comment_id})"
+    ):
+        return None, commit, "merged Fleet Manager PR commit was not exact"
+
+    if parent_sha != current_main:
+        ancestry = await github.api_request(
+            "GET", _api_path(f"/compare/{parent_sha}...{current_main}"), token=token
+        )
+        ancestry_data = (
+            ancestry.get("data") if isinstance(ancestry.get("data"), dict) else {}
+        )
+        merge_base = ancestry_data.get("merge_base_commit")
+        base_commit = ancestry_data.get("base_commit")
+        compared_commits = ancestry_data.get("commits")
+        if (
+            not ancestry.get("ok")
+            or ancestry_data.get("status") != "ahead"
+            or type(ancestry_data.get("behind_by")) is not int
+            or ancestry_data.get("behind_by") != 0
+            or type(ancestry_data.get("ahead_by")) is not int
+            or ancestry_data.get("ahead_by") < 1
+            or not isinstance(merge_base, dict)
+            or merge_base.get("sha") != parent_sha
+            or not isinstance(base_commit, dict)
+            or base_commit.get("sha") != parent_sha
+            or not isinstance(compared_commits, list)
+            or not compared_commits
+            or not isinstance(compared_commits[-1], dict)
+            or compared_commits[-1].get("sha") != current_main
+        ):
+            return None, ancestry, "merged PR parent is outside current main history"
+
+    parent_commit = await github.api_request(
+        "GET", _api_path(f"/git/commits/{parent_sha}"), token=token
+    )
+    parent_tree = _verified_commit_tree_sha(parent_commit, parent_sha)
+    if not isinstance(parent_tree, str) or not _SHA_RE.fullmatch(parent_tree):
+        return None, parent_commit, "merged PR parent tree was unavailable"
+
+    parent_root = await github.api_request(
+        "GET", _contents_path(ROOT_INDEX_PATH, parent_sha), token=token
+    )
+    parent_readme = await github.api_request(
+        "GET", _contents_path(readme_path, parent_sha), token=token
+    )
+    head_record = await github.api_request(
+        "GET", _contents_path(record_path, listed_head), token=token
+    )
+    try:
+        record_raw = _decode_contents_result(head_record, path=record_path)
+        record = _decode_canonical_json(record_raw, label=record_path)
+        created_at = record.get("created_at")
+        _parse_timestamp(created_at, field=f"{comment_id}.created_at")
+        expected_record = {
+            "schema_version": SCHEMA_VERSION,
+            "id": comment_id,
+            "repository": repository,
+            "created_at": created_at,
+            "state": "unconsumed",
+            "source": {"surface": SOURCE_SURFACE, "context": context},
+            "comment": comment,
+        }
+        if record != expected_record:
+            raise _ContractError("merged owner-comment record payload differs")
+        root_data = _decode_canonical_json(
+            _decode_contents_result(parent_root, path=ROOT_INDEX_PATH),
+            label=ROOT_INDEX_PATH,
+        )
+        parent_readme_raw = _decode_contents_result(
+            parent_readme, path=readme_path
+        )
+        expected_files = _updated_contract_files(
+            root_data=root_data,
+            repository=repository,
+            comment=comment,
+            comment_id=comment_id,
+            created_at=created_at,
+            context=context,
+            repository_readme=parent_readme_raw,
+        )
+    except _ContractError as exc:
+        failed = next(
+            (
+                result
+                for result in (head_record, parent_root, parent_readme)
+                if not result.get("ok")
+            ),
+            None,
+        )
+        return None, failed, str(exc)
+
+    for path, expected in expected_files.items():
+        head_file = await github.api_request(
+            "GET", _contents_path(path, listed_head), token=token
+        )
+        try:
+            actual = _decode_contents_result(head_file, path=path)
+        except _ContractError as exc:
+            return None, head_file, str(exc)
+        if actual != expected:
+            return None, None, f"merged PR payload differs at {path}"
+
+    current_results = {
+        path: await github.api_request(
+            "GET", _contents_path(path, current_main), token=token
+        )
+        for path in expected_paths
+    }
+    try:
+        current_record = _decode_contents_result(
+            current_results[record_path], path=record_path
+        )
+        if current_record != expected_files[record_path]:
+            raise _ContractError("landed owner-comment record differs on main")
+        current_root = _decode_canonical_json(
+            _decode_contents_result(
+                current_results[ROOT_INDEX_PATH], path=ROOT_INDEX_PATH
+            ),
+            label=ROOT_INDEX_PATH,
+        )
+        rows = _validate_root_index(current_root)
+        current_readme = _decode_contents_result(
+            current_results[readme_path], path=readme_path
+        )
+        active, consumed = _parse_repository_readme(current_readme, repository)
+        target = next(
+            (row for row in rows if row["repository"] == repository), None
+        )
+        landed_entry = next(
+            (entry for entry in active if entry.comment_id == comment_id), None
+        )
+        latest_active = (
+            max(
+                active,
+                key=lambda entry: _parse_timestamp(
+                    entry.created_at, field="created_at"
+                ),
+            ).created_at
+            if active
+            else None
+        )
+        latest_consumed = (
+            max(
+                consumed,
+                key=lambda entry: _parse_timestamp(
+                    entry.consumed_at, field="consumed_at"
+                ),
+            ).consumed_at
+            if consumed
+            else None
+        )
+        if (
+            target is None
+            or target["unconsumed_count"] != len(active)
+            or target["consumed_count"] != len(consumed)
+            or target["latest_unconsumed_at"] != latest_active
+            or target["latest_consumed_at"] != latest_consumed
+            or landed_entry is None
+            or landed_entry.created_at != created_at
+            or landed_entry.surface != SOURCE_SURFACE
+        ):
+            raise _ContractError(
+                "landed owner-comment indexes do not reconcile on main"
+            )
+    except _ContractError as exc:
+        failed = next(
+            (result for result in current_results.values() if not result.get("ok")),
+            None,
+        )
+        return None, failed, str(exc)
+
+    return (
+        OwnerCommentWritebackResult(
+            state="landed_replayed",
+            repository=repository,
+            comment_id=comment_id,
+            created_at=created_at,
+            branch=branch,
+            base_sha=parent_sha,
+            commit_sha=listed_head,
+            pr_number=pr_number,
+            pr_url=pr_url,
+        ),
+        None,
+        "",
+    )
+
+
 async def _verify_existing_branch(
     *,
     branch: str,
@@ -1299,6 +1619,21 @@ async def submit_owner_comment(
         token=token,
     )
     if existing_ref.get("ok"):
+        landed, _landed_result, _landed_error = await _verify_landed_replay(
+            branch=branch,
+            repository=repository,
+            comment=comment,
+            comment_id=comment_id,
+            context=source_context,
+            current_main=base_sha,
+            token=token,
+        )
+        if landed is not None:
+            return landed
+        # A retained deterministic branch can still be reconciled through the
+        # established exact branch/open-PR path when this optional closed-PR
+        # lookup is temporarily unavailable. That path never creates a second
+        # branch and still fails rather than claiming durability.
         return await _finish_verified_branch(
             repository=repository,
             comment=comment,
@@ -1316,6 +1651,30 @@ async def submit_owner_comment(
             _failure_state(existing_ref),
             "could not determine whether the deterministic Fleet Manager "
             f"branch already exists: {_result_error(existing_ref)}",
+            base_sha=base_sha,
+            **common,
+        )
+
+    # With no branch left, a merged PR is the only safe replay receipt. Its
+    # lookup must fail closed: treating an unreadable closed-PR list as "none"
+    # could create a duplicate branch after automatic branch deletion.
+    landed, landed_result, landed_error = await _verify_landed_replay(
+        branch=branch,
+        repository=repository,
+        comment=comment,
+        comment_id=comment_id,
+        context=source_context,
+        current_main=base_sha,
+        token=token,
+    )
+    if landed is not None:
+        return landed
+    if landed_error:
+        return _failure(
+            repository,
+            _failure_state(landed_result) if landed_result else "failed",
+            f"could not verify whether this exact submission already landed: "
+            f"{landed_error}",
             base_sha=base_sha,
             **common,
         )

@@ -384,12 +384,19 @@ class OwnerCommentSummary:
     consumed_count: Optional[int] = None
     freshness: Freshness = field(default_factory=Freshness.unknown)
     source: Optional[SourceReference] = None
+    latest_unconsumed_at: Optional[datetime] = None
+    latest_consumed_at: Optional[datetime] = None
+    contradiction: str = ""
 
     def __post_init__(self) -> None:
         for name in ("unconsumed_count", "consumed_count"):
             value = getattr(self, name)
             if value is not None and value < 0:
                 raise ValueError(f"{name} cannot be negative")
+        for name in ("latest_unconsumed_at", "latest_consumed_at"):
+            value = getattr(self, name)
+            if value is not None:
+                object.__setattr__(self, name, _utc_datetime(value))
 
     @property
     def open_count(self) -> Optional[int]:
@@ -397,7 +404,11 @@ class OwnerCommentSummary:
 
     @property
     def is_known(self) -> bool:
-        return self.unconsumed_count is not None and self.consumed_count is not None
+        return (
+            not self.contradiction
+            and self.unconsumed_count is not None
+            and self.consumed_count is not None
+        )
 
     @property
     def total_count(self) -> Optional[int]:

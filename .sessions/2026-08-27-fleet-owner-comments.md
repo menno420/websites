@@ -1,7 +1,8 @@
 # 2026-08-27 — connect repository review to durable owner comments
 
-> **Status:** `in-progress` — Fleet Manager #952 is landed, but exact-head
-> review found two final website races that remain under correction in #523.
+> **Status:** `in-progress` — Fleet Manager #952 is landed, and the three
+> latest exact-head findings in website #523 are corrected and under final
+> verification.
 
 - **📊 Model:** GPT-5 · high · feature build
 - **📍 Venue:** chatgpt-work
@@ -81,13 +82,23 @@ read-surface architecture.
 - Exact review of remote product head
   `b2914e075723fd2695a0e8a7b0279911cb696156` found two further P2 cases: a
   replay/growth-gate TOCTOU and mutation visibility limited to the first
-  repository-listing page. Both are being corrected before the final flip.
+  repository-listing page. Both were **[conceded]**, corrected, and covered by
+  regressions before the next reviewed head.
+- Exact review of `6361835410` found three remaining P2 cases: a repository
+  index missing from the root could be rendered as zero comments, equal counts
+  did not reconcile differing latest timestamps, and a deterministic replay
+  after PR merge could create duplicate work. All three are **[conceded]**.
+  Root/repository reconciliation now covers presence, counts, and both latest
+  timestamps; merged replays verify the exact PR, three-file payload, ancestry,
+  and active current-`main` record before returning an explicit landed/replayed
+  result. Focused regressions cover each finding.
 
 ## Verify
 
-- `python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q` —
-  **2,471 passed**, 5 deprecation warnings.
-- Focused final comment-reader/writeback/replay contract — **119 passed**.
+- `python -m pytest tests/ botsite/tests dashboard/tests review/tests -q` —
+  **2,500 passed**, 5 deprecation warnings, on Windows.
+- Focused owner-comment reader/writeback/routes — **184 passed**; surrounding
+  estate and repository routes — **60 passed**.
 - `git diff --check` — clean locally and on the exact remote PR diff.
 - `python3 bootstrap.py check --strict` — held red by this deliberate
   `in-progress` status until the final corrections and review are complete.

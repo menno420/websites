@@ -345,7 +345,17 @@ def test_detail_reads_active_and_consumed_and_keeps_untrusted_text_raw(monkeypat
         return payloads[path]
 
     monkeypatch.setattr(github, "fetch_public_file", fake_fetch)
-    expected = estate.OwnerCommentSummary(1, 1, estate.Freshness.live(NOW))
+    expected = estate.OwnerCommentSummary(
+        1,
+        1,
+        estate.Freshness.live(NOW),
+        latest_unconsumed_at=datetime.fromisoformat(
+            active[1].replace("Z", "+00:00")
+        ),
+        latest_consumed_at=datetime.fromisoformat(
+            consumed[2].replace("Z", "+00:00")
+        ),
+    )
     collection = asyncio.run(
         owner_comments.read_repository_comments(
             "alpha", expected_summary=expected, refresh=True
@@ -665,6 +675,81 @@ def test_clean_empty_repository_index_can_override_unknown_root_summary(monkeypa
 
     assert collection.can_confirm_no_unconsumed
     assert detail.owner_feedback_label == "No owner comments"
+
+
+def test_missing_root_row_keeps_an_empty_repository_index_contradictory(monkeypatch):
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        if path == owner_comments.ROOT_INDEX_PATH:
+            return _result(_root(_root_row("beta")))
+        return _result(_repo_index("alpha"))
+
+    monkeypatch.setattr(github, "fetch_public_file", fake_fetch)
+    root_index = asyncio.run(owner_comments.read_index())
+    expected = owner_comments.summary_for(root_index, "alpha")
+    collection = asyncio.run(
+        owner_comments.read_repository_comments(
+            "alpha", expected_summary=expected
+        )
+    )
+    detail = estate.RepositoryDetail(
+        summary=estate.RepositorySummary("alpha", owner_comments=expected),
+        owner_feedback=collection,
+    )
+
+    assert expected.contradiction == "Owner-comment index has no entry for alpha."
+    assert any("indexes disagree" in warning for warning in collection.warnings)
+    assert not collection.can_confirm_no_unconsumed
+    assert detail.owner_feedback_label == "Owner comment state contradictory"
+
+
+@pytest.mark.parametrize(
+    ("latest_active", "latest_consumed"),
+    (
+        (datetime(2026, 8, 27, 9, tzinfo=UTC), datetime(2026, 8, 27, 11, tzinfo=UTC)),
+        (datetime(2026, 8, 27, 10, tzinfo=UTC), datetime(2026, 8, 27, 10, tzinfo=UTC)),
+    ),
+)
+def test_equal_counts_with_different_latest_timestamps_are_contradictory(
+    monkeypatch, latest_active, latest_consumed
+):
+    active = ("oc-active", "2026-08-27T10:00:00Z", "control-plane")
+    consumed = (
+        "oc-consumed",
+        "2026-08-27T09:00:00Z",
+        "2026-08-27T11:00:00Z",
+    )
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        if path.endswith("README.md"):
+            return _result(_repo_index(active=(active,), consumed=(consumed,)))
+        if "/consumed/" in path:
+            return _result(
+                _json(
+                    _record(
+                        consumed[0],
+                        consumed[1],
+                        state="consumed",
+                        consumed_at=consumed[2],
+                    )
+                )
+            )
+        return _result(_json(_record(active[0], active[1])))
+
+    monkeypatch.setattr(github, "fetch_public_file", fake_fetch)
+    expected = estate.OwnerCommentSummary(
+        1,
+        1,
+        estate.Freshness.live(NOW),
+        latest_unconsumed_at=latest_active,
+        latest_consumed_at=latest_consumed,
+    )
+    collection = asyncio.run(
+        owner_comments.read_repository_comments("alpha", expected_summary=expected)
+    )
+
+    assert any("indexes disagree" in warning for warning in collection.warnings)
+    assert collection.freshness.state is estate.FreshnessState.UNKNOWN
+    assert not collection.can_confirm_no_unconsumed
 
 
 def _overview_sources() -> estate_reader.OverviewSources:

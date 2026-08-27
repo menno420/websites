@@ -27,6 +27,14 @@
       <a href="{{ result.pr_url }}">Fleet Manager PR #{{ result.pr_number }} ↗</a>
       merges and the record is visible on <code>main</code>.
     </div>
+    {% elif result.state == 'landed_replayed' %}
+    <div class="banner ok">
+      <strong>Landed replay — already durable.</strong>
+      The exact merged <a href="{{ result.pr_url }}">Fleet Manager PR
+      #{{ result.pr_number }} ↗</a>, its three-file payload, and the active
+      record on <code>main</code> were verified. No duplicate branch, commit, or
+      pull request was created.
+    </div>
     {% elif result.state == 'unavailable' %}
     <div class="banner warn"><strong>Write capability unavailable.</strong> {{ result.message }}</div>
     {% elif result.state == 'failed_retryable' %}
@@ -47,8 +55,8 @@
 
 <section class="card owner-comment-form">
   <h2>leave repository feedback</h2>
-  {% set pending = result and result.state == 'pending_pr' %}
-  {% if capability.available and not pending %}
+  {% set finished = result and result.state in ['pending_pr', 'landed_replayed'] %}
+  {% if capability.available and not finished %}
   <form method="post" action="/owner/repository-comments/submit" data-submitting-label="submitting…">
     <input type="hidden" name="repository" value="{{ repo.name }}">
     <input type="hidden" name="submission_key" value="{{ submission_key }}">

@@ -116,8 +116,12 @@ Deployment: `docs/deployment.md` + each service's doc.
   CSRF/rate-limited submission through a dedicated write credential; and an
   idempotent protected branch+PR client that verifies the complete three-file
   tree before reporting pending. Fresh visibility checks bypass stale cache and
-  in-flight observations; replay precedes moving-ledger growth gates; pending,
-  unavailable, retryable, failed, and durable states remain distinct.
+  in-flight observations; root/repository reconciliation covers both counts and
+  latest timestamps, including a missing root row; replay precedes
+  moving-ledger growth gates and recognizes an exact merged PR plus current
+  `main` payload without duplicating it. Pending, landed replay, unavailable,
+  retryable, failed, contradictory, consumed, and durable states remain
+  distinct.
 - **2026-08-27 — repository estate review surface (#521):** added the visual
   `/repos` catalogue and `/repos/{name}` review pages over Fleet Manager's
   estate/activity/Layer-2 records plus selected repository-native truth;

@@ -436,12 +436,15 @@ def summary_for(
                 reason=reason,
             ),
             source=index.source,
+            contradiction=reason,
         )
     return estate.OwnerCommentSummary(
         unconsumed_count=row.unconsumed_count,
         consumed_count=row.consumed_count,
         freshness=index.source.freshness,
         source=index.source,
+        latest_unconsumed_at=row.latest_unconsumed_at,
+        latest_consumed_at=row.latest_consumed_at,
     )
 
 
@@ -843,10 +846,28 @@ async def read_repository_comments(
         available=True,
     )
     warnings: list[str] = []
-    if expected_summary is not None and expected_summary.is_known:
+    if expected_summary is not None and expected_summary.contradiction:
+        warnings.append(
+            "Fleet Manager root and repository owner-comment indexes disagree: "
+            f"{expected_summary.contradiction}"
+        )
+    elif expected_summary is not None and expected_summary.is_known:
+        latest_active = max(
+            (entry.created_at for entry in parsed.active), default=None
+        )
+        latest_consumed = max(
+            (
+                entry.consumed_at
+                for entry in parsed.consumed
+                if entry.consumed_at is not None
+            ),
+            default=None,
+        )
         if (
             expected_summary.unconsumed_count != len(parsed.active)
             or expected_summary.consumed_count != len(parsed.consumed)
+            or expected_summary.latest_unconsumed_at != latest_active
+            or expected_summary.latest_consumed_at != latest_consumed
         ):
             warnings.append(
                 "Fleet Manager root and repository owner-comment indexes disagree."

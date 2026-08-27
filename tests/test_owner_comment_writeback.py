@@ -86,6 +86,8 @@ class FakeGitHub:
         failure: tuple[str, int] | None = None,
         ref_exists: bool = False,
         pr_exists: bool = False,
+        pr_merged: bool = False,
+        main_payload_matches: bool = True,
         existing_payload_matches: bool = True,
         malformed_pr: bool = False,
         malformed: str = "",
@@ -107,6 +109,8 @@ class FakeGitHub:
         self.failure = failure
         self.ref_exists = ref_exists
         self.pr_exists = pr_exists
+        self.pr_merged = pr_merged
+        self.main_payload_matches = main_payload_matches
         self.existing_payload_matches = existing_payload_matches
         self.malformed_pr = malformed_pr
         self.malformed = malformed
@@ -128,6 +132,7 @@ class FakeGitHub:
         self.branch_ref_reads = 0
         self.compare_response_sizes: list[int] = []
         self.existing_files: dict[str, bytes] = {}
+        self.main_files: dict[str, bytes] = {}
         self.calls: list[tuple[str, str, Any, str]] = []
         self.blob_count = 0
         self.blob_payloads: dict[str, bytes] = {}
@@ -147,11 +152,19 @@ class FakeGitHub:
         data = {
             "number": self.pr_number,
             "html_url": self.pr_url,
-            "state": "open",
+            "state": "closed" if self.pr_merged else "open",
             "draft": False,
             "head": {"ref": self.branch, "sha": commit_sha},
             "base": {"ref": "main"},
         }
+        if self.pr_merged:
+            data.update(
+                {
+                    "merged_at": "2026-08-27T10:12:00Z",
+                    "merge_commit_sha": ADVANCED_SHA,
+                    "changed_files": 3,
+                }
+            )
         if self.malformed_pr:
             data["draft"] = True
         return data
@@ -243,9 +256,14 @@ class FakeGitHub:
                 )
                 root = self.parent_root if use_parent else self.root
                 readme = self.parent_readme if use_parent else self.readme
-                return _contents(
-                    root if file_path.endswith("index.json") else readme
-                )
+                if file_path.endswith("index.json"):
+                    return _contents(root)
+                if file_path.endswith("README.md"):
+                    return _contents(readme)
+                payload = self.main_files.get(file_path)
+                if payload is None:
+                    return _envelope(404, None, "Not Found")
+                return _contents(payload)
             if ref == EXISTING_SHA:
                 payload = self.existing_files.get(file_path, b"")
                 if not self.existing_payload_matches and file_path.endswith("index.json"):
@@ -412,16 +430,34 @@ class FakeGitHub:
             failed = self._fail("pr")
             if failed:
                 return failed
-            if self.pr_exists:
+            if self.pr_exists or self.pr_merged:
                 return _envelope(422, None, "A pull request already exists")
             return _envelope(201, self._pr(EXISTING_SHA if self.ref_exists else COMMIT_SHA))
+        if method == "GET" and path.endswith(f"/pulls/{self.pr_number}"):
+            if self.pr_merged:
+                return _envelope(200, self._pr(EXISTING_SHA))
+            return _envelope(404, None, "Not Found")
+        if method == "GET" and path.endswith(
+            f"/pulls/{self.pr_number}/files?per_page=100"
+        ):
+            if not self.pr_merged:
+                return _envelope(404, None, "Not Found")
+            return _envelope(
+                200,
+                [
+                    {"filename": path}
+                    for path in sorted(self.existing_files)
+                ],
+            )
         if method == "GET" and "/pulls?" in path:
             failed = self._fail("pr_list")
             if failed:
                 return failed
             return _envelope(
                 200,
-                [self._pr(EXISTING_SHA)] if self.pr_exists else [],
+                [self._pr(EXISTING_SHA)]
+                if self.pr_exists or self.pr_merged
+                else [],
             )
         raise AssertionError(f"unexpected GitHub call: {method} {path}")
 
@@ -441,7 +477,7 @@ def _submit(
     submission_key: str = SUBMISSION_KEY,
     now: datetime = NOW,
 ):
-    if fake.ref_exists:
+    if fake.ref_exists or fake.pr_merged:
         created_at = getattr(
             fake, "existing_created_at", writeback._timestamp(NOW)
         )
@@ -462,6 +498,18 @@ def _submit(
             context=source_context,
             repository_readme=fake.parent_readme,
         )
+        if fake.pr_merged:
+            fake.root = fake.existing_files[writeback.ROOT_INDEX_PATH]
+            readme_path = (
+                f"{writeback.COMMENTS_ROOT}/{repository}/README.md"
+            )
+            record_path = (
+                f"{writeback.COMMENTS_ROOT}/{repository}/{comment_id}.json"
+            )
+            fake.readme = fake.existing_files[readme_path]
+            fake.main_files[record_path] = fake.existing_files[record_path]
+            if not fake.main_payload_matches:
+                fake.main_files[record_path] += b"different"
     monkeypatch.setattr(github, "api_request", fake.api_request)
     return asyncio.run(
         writeback.submit_owner_comment(
@@ -804,6 +852,47 @@ def test_exact_replay_after_main_advances_recovers_original_receipt(monkeypatch)
     assert replay.base_sha == BASE_SHA
     assert replay.created_at == "2026-08-27T10:11:12Z"
     assert any("/compare/" in call[1] for call in fake.calls)
+
+
+@pytest.mark.parametrize("branch_retained", (True, False))
+def test_exact_replay_after_merge_reports_landed_without_duplicate_work(
+    monkeypatch, branch_retained
+):
+    fake = FakeGitHub(
+        ref_exists=branch_retained,
+        pr_merged=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+    )
+
+    replay = _submit(fake, monkeypatch)
+
+    assert replay.state == "landed_replayed"
+    assert replay.ok
+    assert replay.pr_number == 1234
+    assert replay.commit_sha == EXISTING_SHA
+    assert replay.base_sha == BASE_SHA
+    assert "merged" in replay.message
+    assert "verified on main" in replay.message
+    assert not any(call[0] == "POST" for call in fake.calls)
+
+
+def test_merged_replay_with_changed_main_payload_fails_without_duplicate_work(
+    monkeypatch,
+):
+    fake = FakeGitHub(
+        pr_merged=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+        main_payload_matches=False,
+    )
+
+    replay = _submit(fake, monkeypatch)
+
+    assert replay.state == "failed"
+    assert "already landed" in replay.message
+    assert "record differs on main" in replay.message
+    assert not any(call[0] == "POST" for call in fake.calls)
 
 
 def test_unpaginated_compare_keeps_current_main_as_tail_beyond_250(monkeypatch):
@@ -1684,7 +1773,9 @@ def test_422_pr_without_one_exact_ready_candidate_is_not_pending(monkeypatch):
     fake = FakeGitHub(pr_exists=True, failure=("pr_list", 500))
     result = _submit(fake, monkeypatch)
 
-    assert result.state == "failed"
+    assert result.state == "failed_retryable"
     assert result.pr_number == 0
-    assert "could not be verified" in result.message
-    assert "before retrying" in result.message
+    assert "could not verify whether this exact submission already landed" in (
+        result.message
+    )
+    assert "lookup was unavailable" in result.message

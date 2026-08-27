@@ -329,6 +329,43 @@ def test_submission_preserves_owner_text_and_reports_pending_not_durable(
     assert "durable only after" in response.text
 
 
+def test_merged_exact_replay_reports_landed_and_hides_resubmission(
+    client, monkeypatch
+):
+    _install_overview(monkeypatch, _summary())
+
+    async def fake_submit(repository, comment, **kwargs):
+        return owner_comment_writeback.OwnerCommentWritebackResult(
+            state="landed_replayed",
+            repository=repository,
+            comment_id="oc-20260827t120000z-a1b2c3d4",
+            branch="claude/owner-comments-oc-20260827t120000z-a1b2c3d4",
+            commit_sha="d" * 40,
+            pr_number=953,
+            pr_url="https://github.com/menno420/fleet-manager/pull/953",
+        )
+
+    monkeypatch.setattr(
+        owner_comment_writeback, "submit_owner_comment", fake_submit
+    )
+    response = client.post(
+        "/owner/repository-comments/submit",
+        data={
+            "repository": "websites",
+            "comment": "Already landed wording.",
+            "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
+        },
+        headers={**_basic(), "Origin": SAME_ORIGIN},
+    )
+
+    assert response.status_code == 200
+    assert "Landed replay — already durable" in response.text
+    assert "No duplicate branch, commit, or" in response.text
+    assert "pull request was created" in response.text
+    assert '<form method="post"' not in response.text
+
+
 @pytest.mark.parametrize(
     ("comment", "ack", "needle"),
     (
