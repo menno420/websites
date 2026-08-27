@@ -51,6 +51,7 @@
   {% if capability.available and not pending %}
   <form method="post" action="/owner/repository-comments/submit" data-submitting-label="submitting…">
     <input type="hidden" name="repository" value="{{ repo.name }}">
+    <input type="hidden" name="submission_key" value="{{ submission_key }}">
     <label for="owner-comment-text"><strong>Comment</strong></label>
     <p class="source-meta">Your wording is preserved verbatim in the JSON record. It is rendered later as untrusted plain text, never Markdown.</p>
     <textarea id="owner-comment-text" name="comment" rows="9" maxlength="20000" required>{{ comment_text }}</textarea>

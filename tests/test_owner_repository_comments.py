@@ -21,6 +21,7 @@ UTC = timezone.utc
 OWNER_PASSWORD = "owner-comment-test-password"
 SAME_ORIGIN = "http://testserver"
 CROSS_ORIGIN = "https://attacker.example"
+SUBMISSION_KEY = "20260827t120000z-0123456789abcdef0123456789abcdef"
 
 
 def _basic(password: str = OWNER_PASSWORD) -> dict[str, str]:
@@ -90,6 +91,7 @@ def test_comment_form_is_owner_only_and_names_public_destination(
     assert "menno420/fleet-manager" in response.text
     assert "FLEET_MANAGER_WRITEBACK_TOKEN" not in response.text
     assert 'name="public_acknowledgement"' in response.text
+    assert 'name="submission_key" value="' in response.text
 
 
 def test_comment_post_rejects_cross_origin_before_write(client, monkeypatch):
@@ -110,6 +112,7 @@ def test_comment_post_rejects_cross_origin_before_write(client, monkeypatch):
             "repository": "websites",
             "comment": "hello",
             "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
         },
         headers={**_basic(), "Origin": CROSS_ORIGIN},
     )
@@ -124,11 +127,14 @@ def test_submission_preserves_owner_text_and_reports_pending_not_durable(
     captured = {}
     wording = "  Keep <script>alert(1)</script> & this line\nexactly.  "
 
-    async def fake_submit(repository, comment, *, context=None):
+    async def fake_submit(
+        repository, comment, *, context=None, submission_key=None
+    ):
         captured.update(
             repository=repository,
             comment=comment,
             context=context,
+            submission_key=submission_key,
         )
         return owner_comment_writeback.OwnerCommentWritebackResult(
             state="pending_pr",
@@ -148,6 +154,7 @@ def test_submission_preserves_owner_text_and_reports_pending_not_durable(
             "repository": "websites",
             "comment": wording,
             "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
         },
         headers={**_basic(), "Origin": SAME_ORIGIN},
     )
@@ -156,6 +163,7 @@ def test_submission_preserves_owner_text_and_reports_pending_not_durable(
         "repository": "websites",
         "comment": wording,
         "context": "/repos/websites",
+        "submission_key": SUBMISSION_KEY,
     }
     assert "Pending Fleet Manager PR — not durable yet" in response.text
     assert "Fleet Manager PR #953" in response.text
@@ -188,11 +196,35 @@ def test_invalid_comment_never_reaches_writeback(
             "repository": "websites",
             "comment": comment,
             "public_acknowledgement": ack,
+            "submission_key": SUBMISSION_KEY,
         },
         headers={**_basic(), "Origin": SAME_ORIGIN},
     )
     assert response.status_code == 422
     assert needle in response.text
+
+
+def test_missing_submission_key_never_reaches_writeback(client, monkeypatch):
+    _install_overview(monkeypatch, _summary())
+
+    async def fake_submit(*args, **kwargs):
+        raise AssertionError("missing idempotency key must not reach writeback")
+
+    monkeypatch.setattr(
+        owner_comment_writeback, "submit_owner_comment", fake_submit
+    )
+    response = client.post(
+        "/owner/repository-comments/submit",
+        data={
+            "repository": "websites",
+            "comment": "hello",
+            "public_acknowledgement": "yes",
+        },
+        headers={**_basic(), "Origin": SAME_ORIGIN},
+    )
+
+    assert response.status_code == 422
+    assert "submission key is missing" in response.text
 
 
 def test_unknown_private_and_missing_token_never_write(client, monkeypatch):
@@ -212,6 +244,7 @@ def test_unknown_private_and_missing_token_never_write(client, monkeypatch):
             "repository": "estate-backups",
             "comment": "public-looking text",
             "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
         },
         headers=headers,
     )
@@ -224,6 +257,7 @@ def test_unknown_private_and_missing_token_never_write(client, monkeypatch):
             "repository": "not-in-estate",
             "comment": "hello",
             "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
         },
         headers=headers,
     )
@@ -237,6 +271,7 @@ def test_unknown_private_and_missing_token_never_write(client, monkeypatch):
             "repository": "websites",
             "comment": "hello",
             "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
         },
         headers=headers,
     )
@@ -248,7 +283,9 @@ def test_unknown_private_and_missing_token_never_write(client, monkeypatch):
 def test_failed_writeback_is_escaped_and_never_called_durable(client, monkeypatch):
     _install_overview(monkeypatch, _summary())
 
-    async def fake_submit(repository, comment, *, context=None):
+    async def fake_submit(
+        repository, comment, *, context=None, submission_key=None
+    ):
         return owner_comment_writeback.OwnerCommentWritebackResult(
             state="failed_retryable",
             repository=repository,
@@ -264,6 +301,7 @@ def test_failed_writeback_is_escaped_and_never_called_durable(client, monkeypatc
             "repository": "websites",
             "comment": "Please retry this exactly.",
             "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
         },
         headers={**_basic(), "Origin": SAME_ORIGIN},
     )

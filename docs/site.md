@@ -117,6 +117,9 @@ both Fleet-indexed and confidently public is eligible. With the dedicated
 `FLEET_MANAGER_WRITEBACK_TOKEN`, one Git Data transaction creates the record,
 repository index, and root index on a `claude/owner-comments-*` branch, then
 opens a ready Fleet Manager PR. Protected `main` is never written directly.
+The form carries a random timestamped submission key into the deterministic
+record id, so an unchanged replay after a lost response reuses the exact
+record, branch, and PR instead of opening a duplicate.
 The strongest immediate success is **pending PR / not durable**; the public
 reader reflects durability only after that record merges to Fleet Manager
 `main`. Missing capability and failed or ambiguous writes are named honestly;

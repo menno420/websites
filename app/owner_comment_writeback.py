@@ -19,6 +19,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -55,6 +56,9 @@ _REPOSITORY_RE = re.compile(
 _SURFACE_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 _TIMESTAMP_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
+)
+_SUBMISSION_KEY_RE = re.compile(
+    r"^(?P<stamp>\d{8}t\d{6}z)-(?P<nonce>[0-9a-f]{32})$"
 )
 _SHA_RE = re.compile(r"^[0-9a-f]{40,64}$")
 _WINDOWS_RESERVED = {
@@ -219,6 +223,35 @@ def _timestamp(value: datetime | None = None) -> str:
     )
 
 
+def new_submission_key(value: datetime | None = None) -> str:
+    """Mint one form-scoped idempotency key without retaining server state."""
+
+    instant = value or clock.now()
+    if instant.tzinfo is None:
+        instant = instant.replace(tzinfo=timezone.utc)
+    stamp = instant.astimezone(timezone.utc).strftime("%Y%m%dt%H%M%Sz")
+    return f"{stamp}-{secrets.token_hex(16)}"
+
+
+def validate_submission_key(value: Any) -> str:
+    """Return an owner-readable problem, or ``""`` for a real form key."""
+
+    if not isinstance(value, str) or not _SUBMISSION_KEY_RE.fullmatch(value):
+        return "submission key is missing or malformed; reload the form"
+    try:
+        datetime.strptime(
+            value.split("-", 1)[0], "%Y%m%dt%H%M%Sz"
+        ).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return "submission key has an invalid timestamp; reload the form"
+    return ""
+
+
+def _submission_created_at(value: str) -> str:
+    stamp = datetime.strptime(value.split("-", 1)[0], "%Y%m%dt%H%M%Sz")
+    return _timestamp(stamp.replace(tzinfo=timezone.utc))
+
+
 def _parse_timestamp(value: Any, *, field: str) -> datetime:
     if not isinstance(value, str) or not _TIMESTAMP_RE.fullmatch(value):
         raise _ContractError(f"{field} is not an RFC3339 UTC timestamp")
@@ -229,7 +262,11 @@ def _parse_timestamp(value: Any, *, field: str) -> datetime:
 
 
 def _comment_id(
-    repository: str, comment: str, created_at: str, context: str
+    repository: str,
+    comment: str,
+    created_at: str,
+    context: str,
+    submission_key: str,
 ) -> str:
     digest_input = _canonical_json_bytes(
         {
@@ -237,6 +274,7 @@ def _comment_id(
             "created_at": created_at,
             "repository": repository,
             "source": {"context": context, "surface": SOURCE_SURFACE},
+            "submission_key": submission_key,
         }
     )
     digest = hashlib.sha256(digest_input).hexdigest()[:12]
@@ -819,6 +857,7 @@ async def submit_owner_comment(
     comment: str,
     *,
     context: str | None = None,
+    submission_key: str | None = None,
     now: datetime | None = None,
 ) -> OwnerCommentWritebackResult:
     """Submit one comment to a ruleset-safe Fleet Manager PR.
@@ -838,6 +877,10 @@ async def submit_owner_comment(
     problem = _validate_context(source_context)
     if problem:
         return _failure(repository, "failed", problem)
+    stable_key = submission_key or new_submission_key(now)
+    problem = validate_submission_key(stable_key)
+    if problem:
+        return _failure(repository, "failed", problem)
 
     token = runtime_token()
     if not token:
@@ -847,8 +890,10 @@ async def submit_owner_comment(
             f"{ENV_TOKEN} is not set; no GitHub write was attempted",
         )
 
-    created_at = _timestamp(now)
-    comment_id = _comment_id(repository, comment, created_at, source_context)
+    created_at = _submission_created_at(stable_key)
+    comment_id = _comment_id(
+        repository, comment, created_at, source_context, stable_key
+    )
     branch = f"{BRANCH_PREFIX}{comment_id}"
     common = {
         "comment_id": comment_id,

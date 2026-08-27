@@ -21,6 +21,7 @@ COMMIT_SHA = "d" * 40
 EXISTING_SHA = "e" * 40
 PR_URL = "https://github.com/menno420/fleet-manager/pull/1234"
 NOW = datetime(2026, 8, 27, 10, 11, 12, tzinfo=timezone.utc)
+SUBMISSION_KEY = "20260827t101112z-0123456789abcdef0123456789abcdef"
 
 
 def _row(repository: str) -> dict[str, Any]:
@@ -227,11 +228,16 @@ def _submit(
     comment: str = "  Keep this wording.\nSecond line.  ",
     repository: str = "websites",
     context: str | None = None,
+    submission_key: str = SUBMISSION_KEY,
 ):
     monkeypatch.setattr(github, "api_request", fake.api_request)
     return asyncio.run(
         writeback.submit_owner_comment(
-            repository, comment, context=context, now=NOW
+            repository,
+            comment,
+            context=context,
+            submission_key=submission_key,
+            now=NOW,
         )
     )
 
@@ -399,6 +405,48 @@ def test_source_context_is_pinned_and_part_of_deterministic_id(monkeypatch):
 
     assert first.record_id == second.record_id
     assert third.record_id != first.record_id
+
+
+def test_submission_key_makes_lost_response_replay_exactly_idempotent(
+    monkeypatch,
+):
+    first = _submit(FakeGitHub(), monkeypatch)
+    replay = _submit(
+        FakeGitHub(ref_exists=True, pr_exists=True),
+        monkeypatch,
+        submission_key=SUBMISSION_KEY,
+    )
+    distinct = _submit(
+        FakeGitHub(),
+        monkeypatch,
+        submission_key=(
+            "20260827t101112z-fedcba9876543210fedcba9876543210"
+        ),
+    )
+
+    assert replay.state == "pending_pr"
+    assert replay.record_id == first.record_id
+    assert replay.branch == first.branch
+    assert replay.created_at == first.created_at
+    assert distinct.record_id != first.record_id
+
+
+def test_malformed_submission_key_rejects_before_github(monkeypatch):
+    calls = []
+
+    async def forbidden(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    monkeypatch.setattr(github, "api_request", forbidden)
+    result = asyncio.run(
+        writeback.submit_owner_comment(
+            "websites", "hello", submission_key="owner-chosen"
+        )
+    )
+
+    assert result.state == "failed"
+    assert "submission key" in result.message
+    assert calls == []
 
 
 @pytest.mark.parametrize(

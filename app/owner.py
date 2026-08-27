@@ -510,6 +510,7 @@ def _render_repository_comment(
     capability=None,
     result=None,
     comment_text: str = "",
+    submission_key: str = "",
     error: str = "",
     status_code: int = 200,
 ) -> HTMLResponse:
@@ -521,6 +522,10 @@ def _render_repository_comment(
             "capability": capability or _repository_comment_capability(repo),
             "result": result,
             "comment_text": comment_text,
+            "submission_key": (
+                submission_key
+                or owner_comment_writeback.new_submission_key()
+            ),
             "error": error,
             "active": "repos",
         },
@@ -551,6 +556,7 @@ async def repository_comment_submit(
     repository: str = Form(""),
     comment: str = Form(""),
     public_acknowledgement: str = Form(""),
+    submission_key: str = Form(""),
     _: None = Depends(require_owner_action),
 ):
     repo = await _known_comment_repository(repository)
@@ -564,7 +570,19 @@ async def repository_comment_submit(
             repo,
             capability=capability,
             comment_text=comment,
+            submission_key=submission_key,
             status_code=503,
+        )
+    key_problem = owner_comment_writeback.validate_submission_key(submission_key)
+    if key_problem:
+        return _render_repository_comment(
+            request,
+            repo,
+            capability=capability,
+            comment_text=comment,
+            submission_key=submission_key,
+            error=key_problem,
+            status_code=422,
         )
     if public_acknowledgement != "yes":
         return _render_repository_comment(
@@ -572,6 +590,7 @@ async def repository_comment_submit(
             repo,
             capability=capability,
             comment_text=comment,
+            submission_key=submission_key,
             error="Confirm that the comment and its metadata may be public.",
             status_code=422,
         )
@@ -582,6 +601,7 @@ async def repository_comment_submit(
             repo,
             capability=capability,
             comment_text=comment,
+            submission_key=submission_key,
             error=problem,
             status_code=422,
         )
@@ -590,6 +610,7 @@ async def repository_comment_submit(
         repo.name,
         comment,
         context=f"/repos/{repo.name}",
+        submission_key=submission_key,
     )
     status_code = {
         "pending_pr": 202,
@@ -603,6 +624,7 @@ async def repository_comment_submit(
         capability=capability,
         result=result,
         comment_text="" if result.state == "pending_pr" else comment,
+        submission_key=submission_key,
         status_code=status_code,
     )
 
