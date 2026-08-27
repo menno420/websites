@@ -3,7 +3,7 @@
 > **Status:** `complete` — PR #521 · branch
 > `codex/control-plane-estate-review`.
 
-- **📊 Model:** GPT-5 · high · feature
+- **📊 Model:** GPT-5 · high · feature build
 - **📍 Venue:** chatgpt-work
 
 **What this session was about:** Owner-directed execution of the control-plane
