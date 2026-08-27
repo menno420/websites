@@ -125,6 +125,7 @@ def test_aggregation_honours_live_archive_and_surfaces_unindexed_public():
     unindexed = model.repository("new-public")
     assert unindexed is not None and not unindexed.indexed_by_fleet_manager
     assert unindexed.status is estate.RepositoryStatus.UNKNOWN
+    assert unindexed.status_freshness.state is estate.FreshnessState.UNKNOWN
     assert unindexed.purpose_text == "Purpose not confidently established."
     assert "not yet indexed" in unindexed.attention_reasons[0]
     assert set(rows) == {"alpha", "private-tool"}
@@ -164,6 +165,21 @@ def test_listing_failure_does_not_treat_future_archive_prose_as_archived():
     )
     model, _rows, _public = estate_service._aggregate(sources)
     assert model.repository("alpha").status is estate.RepositoryStatus.PAUSED
+
+
+def test_live_not_archived_does_not_make_dated_active_state_live():
+    sources = _sources()
+    public = (
+        replace(sources.public_repositories[0], archived=False),
+        sources.public_repositories[1],
+    )
+    model, _rows, _public = estate_service._aggregate(
+        replace(sources, public_repositories=public)
+    )
+    alpha = model.repository("alpha")
+    assert alpha.status is estate.RepositoryStatus.ACTIVE
+    assert alpha.status_source.label == "Fleet Manager estate index"
+    assert alpha.status_freshness.state is not estate.FreshnessState.LIVE
 
 
 def test_catalogue_freshness_uses_oldest_row_verification_floor():

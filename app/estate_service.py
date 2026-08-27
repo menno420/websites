@@ -322,12 +322,14 @@ def _aggregate(
                 )
             )
 
-        live_status_checked = bool(
-            public_repo and public_repo.archived is not None
+        live_archive_override = bool(
+            public_repo and public_repo.archived is True
         )
-        status_source = references[-1] if live_status_checked else references[0]
+        status_source = (
+            references[-1] if live_archive_override else references[0]
+        )
         status_freshness = (
-            listing_freshness if live_status_checked else row_freshness
+            listing_freshness if live_archive_override else row_freshness
         )
 
         warnings = [*row.warnings, *resolution.warnings]
@@ -383,17 +385,26 @@ def _aggregate(
             freshness=listing_freshness,
             available=True,
         )
+        unindexed_archived = public_repo.archived is True
+        unindexed_status_freshness = (
+            listing_freshness
+            if unindexed_archived
+            else estate.Freshness.unknown(
+                retrieved_at=listing_freshness.retrieved_at,
+                reason="Fleet Manager has not established a repository state.",
+            )
+        )
         repositories.append(
             estate.RepositorySummary(
                 name=public_repo.name,
                 purpose="",
                 status=(
                     estate.RepositoryStatus.ARCHIVED
-                    if public_repo.archived is True
+                    if unindexed_archived
                     else estate.RepositoryStatus.UNKNOWN
                 ),
                 raw_status="",
-                status_freshness=listing_freshness,
+                status_freshness=unindexed_status_freshness,
                 status_source=github_source,
                 freshness=listing_freshness,
                 sources=(github_source,),
