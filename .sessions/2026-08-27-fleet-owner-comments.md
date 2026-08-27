@@ -1,8 +1,9 @@
 # 2026-08-27 — connect repository review to durable owner comments
 
-> **Status:** `in-progress` — Fleet Manager #952 is landed, and the three
-> latest exact-head findings in website #523 are corrected and under final
-> verification.
+> **Status:** `complete` — Fleet Manager #952 and the Windows verification
+> follow-up #953 are landed; website #523 has passed its exact-head review and
+> all local verification. This records-only closeout is ready for the final CI
+> gate and merge.
 
 - **📊 Model:** GPT-5 · high · feature build
 - **📍 Venue:** chatgpt-work
@@ -105,23 +106,35 @@ read-surface architecture.
   non-retryable. **[conceded]** The branch-creation path now uses the same
   permission-aware shared classifier as the PR path, and the existing failure
   matrix pins a 503 response as `failed_retryable`.
+- Exact review of `bf9f97d71d` found two final P2 replay gaps: the verifier did
+  not prove the alternate active/consumed record path absent, and a transient
+  merged-PR lookup could be flattened after a retained-branch fallback. Both
+  are **[conceded]**. Exact replay now rejects duplicate durable copies and
+  preserves the retryable result when the fallback finds no open PR.
+- Exact-head review of product commit `fa1a8778e5` reported no major issues.
+  The only later change is this records-only session closeout.
 
 ## Verify
 
 - `python -m pytest tests/ botsite/tests dashboard/tests review/tests -q` —
-  **2,503 passed**, 5 deprecation warnings, on Windows.
-- Focused owner-comment reader/writeback/routes after the final review fixes —
-  **149 passed**; the earlier broader focused pass was **184 passed**, with
-  surrounding estate and repository routes at **60 passed**.
+  **2,507 passed**, 5 deprecation warnings, on Windows.
+- Focused owner-comment writeback/routes after the final review fixes —
+  **110 passed**, 1 deprecation warning; the earlier broader focused pass was
+  **184 passed**, with surrounding estate and repository routes at **60
+  passed**.
 - `git diff --check` — clean locally and on the exact remote PR diff.
-- `python3 bootstrap.py check --strict` — held red by this deliberate
-  `in-progress` status until the final corrections and review are complete.
+- `python bootstrap.py check --strict` — run after this status flip; the final
+  CI result is the merge gate.
 
 ## Landing
 
 - Fleet Manager storage/index/router/consume contract:
   `menno420/fleet-manager#952`, merged as `089e0053791a8a6b33c51869ae4780f0d03b1ac9`.
+- Fleet Manager Windows portability and rollback/recovery verification:
+  `menno420/fleet-manager#953`, merged as
+  `3187facebc7c602ba6216f1d682f675c81ca3158`.
 - Website UI/read/writeback: `menno420/websites#523` — open on protected
-  `main`; final corrections remain before merge-on-green.
+  `main`; exact-head review is clean and this records-only closeout is awaiting
+  the final green gate before merge.
 - Production write capability is not claimed by repository tests; after deploy,
   the owner form itself reports whether the dedicated credential is available.
