@@ -422,12 +422,28 @@ def test_one_record_fetch_failure_degrades_only_that_record(monkeypatch):
     assert collection.freshness.state is estate.FreshnessState.UNKNOWN
 
 
-def test_hostile_repository_count_degrades_detail_instead_of_escaping(
-    monkeypatch,
+@pytest.mark.parametrize(
+    ("hostile", "needle"),
+    (
+        (
+            _repo_index().replace(
+                "## Unconsumed (0)",
+                f"## Unconsumed ({'9' * 5_000})",
+            ),
+            "bounded count",
+        ),
+        (
+            _repo_index().replace(
+                "## Unconsumed (0)", "## Unconsumed (00000)"
+            ),
+            "not canonical",
+        ),
+        (_repo_index().replace("\n", "\r\n"), "canonical LF"),
+    ),
+)
+def test_hostile_repository_index_degrades_detail_instead_of_escaping(
+    monkeypatch, hostile, needle
 ):
-    hostile = _repo_index().replace(
-        "## Unconsumed (0)", f"## Unconsumed ({'9' * 5_000})"
-    )
 
     async def fake_fetch(repo, path, ref="main", refresh=False):
         return _result(hostile)
@@ -439,7 +455,7 @@ def test_hostile_repository_count_degrades_detail_instead_of_escaping(
 
     assert collection.unconsumed == ()
     assert collection.freshness.state is estate.FreshnessState.UNAVAILABLE
-    assert any("bounded count" in warning for warning in collection.warnings)
+    assert any(needle in warning for warning in collection.warnings)
 
 
 def test_detail_caps_fanout_and_bounds_concurrency(monkeypatch):

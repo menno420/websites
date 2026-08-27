@@ -357,6 +357,27 @@ def test_unknown_private_and_missing_token_never_write(client, monkeypatch):
     assert "Submission is unavailable" in missing.text
 
 
+def test_malformed_write_token_never_reaches_owner_html(client, monkeypatch):
+    _install_overview(monkeypatch, _summary())
+    sentinel = "fleet-super\nsecret"
+    monkeypatch.setenv(owner_comment_writeback.ENV_TOKEN, sentinel)
+
+    response = client.post(
+        "/owner/repository-comments/submit",
+        data={
+            "repository": "websites",
+            "comment": "hello",
+            "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
+        },
+        headers={**_basic(), "Origin": SAME_ORIGIN},
+    )
+
+    assert response.status_code == 503
+    assert sentinel not in response.text
+    assert "invalid header characters" in response.text
+
+
 def test_failed_writeback_is_escaped_and_never_called_durable(client, monkeypatch):
     _install_overview(monkeypatch, _summary())
 

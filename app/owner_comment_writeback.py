@@ -62,6 +62,7 @@ _SUBMISSION_KEY_RE = re.compile(
     r"^(?P<stamp>\d{8}t\d{6}z)-(?P<nonce>[0-9a-f]{32})$"
 )
 _SHA_RE = re.compile(r"^[0-9a-f]{40,64}$")
+_TOKEN_RE = re.compile(r"^[\x21-\x7e]{1,512}$")
 _WINDOWS_RESERVED = {
     "con",
     "prn",
@@ -154,10 +155,23 @@ def runtime_token() -> str:
     return os.environ.get(ENV_TOKEN, "").strip()
 
 
+def _token_problem(token: str) -> str:
+    if not token:
+        return f"{ENV_TOKEN} is not set on this service."
+    if not _TOKEN_RE.fullmatch(token):
+        return (
+            f"{ENV_TOKEN} contains invalid header characters or has an "
+            "unsupported length."
+        )
+    return ""
+
+
 def capability() -> OwnerCommentWritebackCapability:
     """Small owner-UI capability summary; token values are never returned."""
 
-    available = bool(runtime_token())
+    token = runtime_token()
+    problem = _token_problem(token)
+    available = not problem
     return OwnerCommentWritebackCapability(
         available=available,
         label=(
@@ -169,7 +183,7 @@ def capability() -> OwnerCommentWritebackCapability:
             "The credential will be verified against Fleet Manager when the "
             "comment is submitted; a ready PR is still not durable until merge."
             if available
-            else f"{ENV_TOKEN} is not set on this service."
+            else problem
         ),
         setup_required=not available,
     )
@@ -384,6 +398,14 @@ def _nested_sha(result: dict[str, Any], field: str) -> str:
     return sha if isinstance(sha, str) else ""
 
 
+def _response_sha(result: dict[str, Any]) -> str:
+    data = result.get("data")
+    if not result.get("ok") or not isinstance(data, dict):
+        return ""
+    sha = data.get("sha")
+    return sha if isinstance(sha, str) else ""
+
+
 def _contents_path(path: str, ref: str) -> str:
     return _api_path(f"/contents/{quote(path, safe='/')}?ref={quote(ref, safe='')}")
 
@@ -467,6 +489,8 @@ def _bounded_index_count(value: str, *, field: str) -> int:
         raise _ContractError(f"{field} is not an integer") from exc
     if count > MAX_INDEX_RECORDS:
         raise _ContractError(f"{field} exceeds the bounded count")
+    if value != str(count):
+        raise _ContractError(f"{field} is not canonical")
     return count
 
 
@@ -929,11 +953,12 @@ async def submit_owner_comment(
         return _failure(repository, "failed", problem)
 
     token = runtime_token()
-    if not token:
+    token_problem = _token_problem(token)
+    if token_problem:
         return _failure(
             repository,
             "unavailable",
-            f"{ENV_TOKEN} is not set; no GitHub write was attempted",
+            f"{token_problem} No GitHub write was attempted.",
         )
 
     created_at = _submission_created_at(stable_key)
@@ -1032,11 +1057,7 @@ async def submit_owner_comment(
         },
         token=token,
     )
-    new_tree_sha = (
-        tree_result.get("data", {}).get("sha")
-        if isinstance(tree_result.get("data"), dict)
-        else ""
-    )
+    new_tree_sha = _response_sha(tree_result)
     if not isinstance(new_tree_sha, str) or not _SHA_RE.fullmatch(new_tree_sha):
         return _failure(
             repository,
@@ -1056,11 +1077,7 @@ async def submit_owner_comment(
         },
         token=token,
     )
-    commit_sha = (
-        commit_result.get("data", {}).get("sha")
-        if isinstance(commit_result.get("data"), dict)
-        else ""
-    )
+    commit_sha = _response_sha(commit_result)
     if not isinstance(commit_sha, str) or not _SHA_RE.fullmatch(commit_sha):
         return _failure(
             repository,
@@ -1131,8 +1148,10 @@ async def submit_owner_comment(
             "unavailable" if permission_failure else "failed",
             (
                 f"{ENV_TOKEN} cannot open or verify the Fleet Manager PR; "
-                "grant Pull requests read/write access and retry the unchanged "
-                f"form: {error}"
+                "grant Pull requests read/write access, then open or inspect "
+                f"a ready PR from `{branch}` to protected `{BASE_BRANCH}`. "
+                "Do not resubmit this form until that branch is reconciled: "
+                f"{error}"
                 if permission_failure
                 else f"{error}; inspect Fleet Manager before retrying"
             ),

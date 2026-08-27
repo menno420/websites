@@ -147,6 +147,8 @@ def _bounded_index_count(value: str, label: str) -> int:
         raise OwnerCommentContractError(f"{label} is not an integer") from exc
     if count > MAX_INDEX_RECORDS:
         raise OwnerCommentContractError(f"{label} exceeds the bounded count")
+    if value != str(count):
+        raise OwnerCommentContractError(f"{label} is not canonical")
     return count
 
 
@@ -465,6 +467,10 @@ def parse_repository_index(text: str, repository: str) -> _RepositoryIndex:
     if not text.endswith("\n"):
         raise OwnerCommentContractError(
             "owner-comment repository index lacks its generated final newline"
+        )
+    if "\r" in text:
+        raise OwnerCommentContractError(
+            "owner-comment repository index is not canonical LF text"
         )
     lines = text.splitlines()
     label = f"owner-comment repository index for {repository}"

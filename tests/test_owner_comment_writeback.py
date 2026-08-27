@@ -10,6 +10,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+import httpx
 
 from app import github, owner_comment_writeback as writeback
 
@@ -167,6 +168,8 @@ class FakeGitHub:
             self.blob_payloads[sha] = base64.b64decode(json_body["content"])
             return _envelope(201, {"sha": sha})
         if method == "POST" and path.endswith("/git/trees"):
+            if self.malformed == "tree_error_sha":
+                return _envelope(400, {"sha": NEW_TREE_SHA}, "bad tree")
             failed = self._fail("tree")
             if failed:
                 return failed
@@ -177,6 +180,8 @@ class FakeGitHub:
             }
             return _envelope(201, {"sha": NEW_TREE_SHA})
         if method == "POST" and path.endswith("/git/commits"):
+            if self.malformed == "commit_error_sha":
+                return _envelope(400, {"sha": COMMIT_SHA}, "bad commit")
             failed = self._fail("commit")
             if failed:
                 return failed
@@ -344,6 +349,48 @@ def test_missing_dedicated_token_makes_zero_calls_and_never_falls_back(
     assert capability.available is False
     assert capability.token_env == writeback.ENV_TOKEN
     assert "must-not-be-used" not in repr(capability)
+
+
+def test_malformed_dedicated_token_never_reaches_or_leaks_from_transport(
+    monkeypatch,
+):
+    sentinel = "fleet-super\nsecret"
+    monkeypatch.setenv(writeback.ENV_TOKEN, sentinel)
+    calls = []
+
+    async def forbidden(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    monkeypatch.setattr(github, "api_request", forbidden)
+    result = asyncio.run(
+        writeback.submit_owner_comment(
+            "websites", "hello", submission_key=SUBMISSION_KEY
+        )
+    )
+
+    assert result.state == "unavailable"
+    assert sentinel not in result.message
+    assert "invalid header" in result.message
+    assert calls == []
+
+
+def test_per_request_transport_error_never_echoes_token(monkeypatch):
+    sentinel = "fleet-super\nsecret"
+
+    class BadClient:
+        async def request(self, *args, **kwargs):
+            raise httpx.LocalProtocolError(
+                f"Illegal header value b'Bearer {sentinel}'"
+            )
+
+    monkeypatch.setattr(github, "get_client", lambda raw=False: BadClient())
+    result = asyncio.run(
+        github.api_request("GET", "/repos/example", token=sentinel)
+    )
+
+    assert result["ok"] is False
+    assert sentinel not in result["error"]
+    assert result["error"] == "LocalProtocolError: GitHub request transport failed"
 
 
 def test_atomic_three_file_commit_preserves_verbatim_text_and_opens_ready_pr(
@@ -649,7 +696,40 @@ def test_post_commit_permission_failure_names_required_scope(
     assert result.state == "unavailable"
     assert writeback.ENV_TOKEN in result.message
     assert scope in result.message
-    assert "unchanged form" in result.message
+    if seam == "ref":
+        assert "unchanged form" in result.message
+    else:
+        assert result.branch in result.message
+        assert "Do not resubmit" in result.message
+
+
+def test_deep_github_json_becomes_an_honest_writer_failure(monkeypatch):
+    deep = b"[" * 10_000 + b"0" + b"]" * 10_000
+
+    async def exercise():
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                content=deep,
+                headers={"content-type": "application/json"},
+            )
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        github.set_clients(client, client)
+        try:
+            return await writeback.submit_owner_comment(
+                "websites",
+                "hello",
+                submission_key=SUBMISSION_KEY,
+            )
+        finally:
+            await client.aclose()
+
+    result = asyncio.run(exercise())
+
+    assert result.state == "failed_retryable"
+    assert result.ok is False
+    assert "malformed GitHub JSON response" in result.message
 
 
 def test_success_response_with_unverified_pr_is_not_pending(monkeypatch):
@@ -660,6 +740,21 @@ def test_success_response_with_unverified_pr_is_not_pending(monkeypatch):
     assert "could not be verified" in result.message
     assert result.commit_sha == COMMIT_SHA
     assert result.pr_number == 0
+
+
+@pytest.mark.parametrize("seam", ("tree_error_sha", "commit_error_sha"))
+def test_error_envelope_with_valid_sha_never_advances_to_pending(
+    monkeypatch, seam
+):
+    fake = FakeGitHub(malformed=seam)
+    result = _submit(fake, monkeypatch)
+
+    assert result.state == "failed"
+    assert result.pr_number == 0
+    assert not any(
+        call[0] == "POST" and call[1].endswith("/git/refs")
+        for call in fake.calls
+    )
 
 
 @pytest.mark.parametrize("seam", ("base_ref", "base_commit"))

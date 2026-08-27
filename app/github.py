@@ -240,7 +240,7 @@ async def _fetch_and_cache(
             else:
                 try:
                     data = resp.json()
-                except ValueError:
+                except (ValueError, RecursionError):
                     data = resp.text
             if not (preserve_text and data is None):
                 err = ""
@@ -355,6 +355,14 @@ async def api_post(path: str, json_body: Any = None) -> dict:
         resp = await get_client().post(url, json=json_body)
         try:
             data = resp.json()
+        except (RecursionError, UnicodeError) as exc:
+            return _result(
+                url,
+                0,
+                None,
+                f"malformed GitHub JSON response (HTTP {resp.status_code}; "
+                f"{type(exc).__name__})",
+            )
         except ValueError:
             data = resp.text
         err = ""
@@ -366,7 +374,14 @@ async def api_post(path: str, json_body: Any = None) -> dict:
             )
         return _result(url, resp.status_code, data, err)
     except httpx.HTTPError as exc:
-        return _result(url, 0, None, f"{type(exc).__name__}: {exc}")
+        # Authenticated transport errors can echo illegal header bytes, so
+        # never send their raw exception strings to result envelopes.
+        return _result(
+            url,
+            0,
+            None,
+            f"{type(exc).__name__}: GitHub request transport failed",
+        )
 
 
 async def api_request(
@@ -391,6 +406,14 @@ async def api_request(
         )
         try:
             data = resp.json()
+        except (RecursionError, UnicodeError) as exc:
+            return _result(
+                url,
+                0,
+                None,
+                f"malformed GitHub JSON response (HTTP {resp.status_code}; "
+                f"{type(exc).__name__})",
+            )
         except ValueError:
             data = resp.text
         err = ""
@@ -402,7 +425,14 @@ async def api_request(
             )
         return _result(url, resp.status_code, data, err)
     except httpx.HTTPError as exc:
-        return _result(url, 0, None, f"{type(exc).__name__}: {exc}")
+        # A per-request credential is present on this path. Exception strings
+        # can echo illegal header bytes, so keep the envelope generic.
+        return _result(
+            url,
+            0,
+            None,
+            f"{type(exc).__name__}: GitHub request transport failed",
+        )
 
 
 async def latest_failed_run(
