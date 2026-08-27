@@ -568,6 +568,12 @@ def test_detail_caps_fanout_and_bounds_concurrency(monkeypatch):
     assert collection.consumed[0].id == "oc-c-002"
     assert len(record_calls) == 60
     assert high_water <= owner_comments.DETAIL_CONCURRENCY
+    detail = estate.RepositoryDetail(
+        summary=estate.RepositorySummary("alpha"), owner_feedback=collection
+    )
+    assert detail.owner_feedback_label == (
+        "Owner comments available · bounded subset shown"
+    )
 
 
 def test_detail_total_budget_cancels_slow_record_fanout(monkeypatch):
@@ -619,6 +625,46 @@ def test_root_repository_count_mismatch_is_visible_but_records_survive(monkeypat
     assert len(collection.unconsumed) == 1
     assert any("indexes disagree" in warning for warning in collection.warnings)
     assert collection.freshness.state is estate.FreshnessState.UNKNOWN
+    assert not collection.can_confirm_no_unconsumed
+
+
+def test_root_zero_and_missing_repository_record_cannot_confirm_empty(monkeypatch):
+    active = ("oc-missing", "2026-08-27T10:00:00Z", "control-plane")
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        if path.endswith("README.md"):
+            return _result(_repo_index(active=(active,)))
+        return _result(ok=False, status=404, error="Not Found")
+
+    monkeypatch.setattr(github, "fetch_public_file", fake_fetch)
+    expected = estate.OwnerCommentSummary(0, 0, estate.Freshness.live(NOW))
+    collection = asyncio.run(
+        owner_comments.read_repository_comments("alpha", expected_summary=expected)
+    )
+
+    assert collection.unconsumed == ()
+    assert any("indexes disagree" in warning for warning in collection.warnings)
+    assert any("record unavailable" in warning for warning in collection.warnings)
+    assert collection.freshness.state is estate.FreshnessState.UNKNOWN
+    assert not collection.can_confirm_no_unconsumed
+
+
+def test_clean_empty_repository_index_can_override_unknown_root_summary(monkeypatch):
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        return _result(_repo_index())
+
+    monkeypatch.setattr(github, "fetch_public_file", fake_fetch)
+    collection = asyncio.run(
+        owner_comments.read_repository_comments(
+            "alpha", expected_summary=estate.OwnerCommentSummary()
+        )
+    )
+    detail = estate.RepositoryDetail(
+        summary=estate.RepositorySummary("alpha"), owner_feedback=collection
+    )
+
+    assert collection.can_confirm_no_unconsumed
+    assert detail.owner_feedback_label == "No owner comments"
 
 
 def _overview_sources() -> estate_reader.OverviewSources:

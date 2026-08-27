@@ -12,6 +12,7 @@ from app.estate import (
     EstateOverview,
     Freshness,
     FreshnessState,
+    OwnerCommentCollection,
     OwnerCommentSummary,
     RepositoryDetail,
     RepositoryStatus,
@@ -184,6 +185,30 @@ def test_comment_summary_distinguishes_open_consumed_and_partial_history():
     assert consumed.label == "1 owner comment consumed"
     assert partial.has_comments is None
     assert partial.label == "No unconsumed comments · history unknown"
+
+
+def test_comment_detail_only_confirms_empty_from_a_clean_complete_read():
+    complete = OwnerCommentCollection(freshness=Freshness.live(NOW))
+    contradictory = OwnerCommentCollection(
+        warnings=(
+            "Fleet Manager root and repository owner-comment indexes disagree.",
+        ),
+        freshness=Freshness.unknown(
+            reason="Owner-comment detail is incomplete or contradictory.",
+            now=NOW,
+        ),
+    )
+    unavailable = OwnerCommentCollection(
+        warnings=("Owner comments unavailable: Not Found",),
+        freshness=Freshness.unavailable(reason="Not Found", now=NOW),
+    )
+
+    assert complete.is_complete
+    assert complete.can_confirm_no_unconsumed
+    assert not contradictory.is_complete
+    assert not contradictory.can_confirm_no_unconsumed
+    assert not unavailable.is_complete
+    assert not unavailable.can_confirm_no_unconsumed
 
 
 def test_negative_comment_counts_are_rejected():

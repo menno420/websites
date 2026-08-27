@@ -40,7 +40,7 @@
         <div class="fact"><dt>last activity</dt><dd>{% if repo.last_activity and repo.last_activity.occurred_at %}
           <time datetime="{{ repo.last_activity.occurred_at.isoformat() }}">{{ repo.last_activity.timestamp_label }}</time>
           {% else %}unknown / unavailable{% endif %}</dd></div>
-        <div class="fact"><dt>owner feedback</dt><dd>{{ repo.owner_comments.label }}</dd></div>
+        <div class="fact"><dt>owner feedback</dt><dd>{{ d.owner_feedback_label }}</dd></div>
       </dl>
       {% if repo.raw_status %}
       <details class="pagehelp"><summary>raw Fleet Manager state wording</summary>
@@ -91,18 +91,25 @@
     <section class="card" id="owner-feedback">
       <div class="rowhead">
         <h2>owner feedback</h2>
-        {% if repo.indexed_by_fleet_manager and repo.visibility == 'public' %}
+        {% if repo.owner_comment_form_reachable %}
         <span class="cr-action"><a class="btn" href="/owner/repository-comments/{{ repo.name }}">leave a comment 🔒</a></span>
         {% endif %}
       </div>
       <p class="dim small">Repository-specific comments are public Fleet
         Manager records. A submission is durable only after its Fleet Manager
         PR merges; pending or website-local state is never presented as landed.</p>
-      <p><strong>{{ repo.owner_comments.label }}</strong>
+      <p><strong>{{ d.owner_feedback_label }}</strong>
+        {% if d.owner_feedback.source %}
+          {% if d.owner_feedback.source.url and d.owner_feedback.source.available %}<a class="small" href="{{ d.owner_feedback.source.url }}">detail index source ↗</a>
+          {% else %}<span class="source-meta">{{ d.owner_feedback.source.display_label }}</span>{% endif %}
+        {% endif %}
+        <span class="source-meta">{{ d.owner_feedback.freshness.label }}{% if d.owner_feedback.freshness.detail != d.owner_feedback.freshness.label %} · {{ d.owner_feedback.freshness.detail }}{% endif %}</span>
+      </p>
+      <p class="source-meta">Fleet Manager root index reports: {{ repo.owner_comments.label }}
         {% if repo.owner_comments.source and repo.owner_comments.source.url %}
         <a class="small" href="{{ repo.owner_comments.source.url }}">index source ↗</a>
         {% endif %}
-        <span class="source-meta">{{ repo.owner_comments.freshness.label }}{% if repo.owner_comments.freshness.detail != repo.owner_comments.freshness.label %} · {{ repo.owner_comments.freshness.detail }}{% endif %}</span>
+        · {{ repo.owner_comments.freshness.label }}{% if repo.owner_comments.freshness.detail != repo.owner_comments.freshness.label %} · {{ repo.owner_comments.freshness.detail }}{% endif %}
       </p>
 
       {% for warning in d.owner_feedback.warnings %}
@@ -124,7 +131,7 @@
         </article>
         {% endfor %}
       </div>
-      {% elif repo.owner_comments.unconsumed_count == 0 %}
+      {% elif d.owner_feedback.can_confirm_no_unconsumed %}
       <p class="dim">No owner comments are awaiting action.</p>
       {% else %}
       <p class="dim">Unconsumed comments are unknown / unavailable.</p>
@@ -151,8 +158,10 @@
       </details>
       {% endif %}
       {% if d.owner_feedback.truncated %}<p class="source-meta">Only a bounded recent subset is shown; use the Fleet Manager index for the full ledger.</p>{% endif %}
-      {% if not (repo.indexed_by_fleet_manager and repo.visibility == 'public') %}
+      {% if not repo.owner_comment_form_reachable %}
       <p class="source-meta">Submission is unavailable here because the repository is not both Fleet-indexed and safely established as public.</p>
+      {% elif repo.visibility != 'public' %}
+      <p class="source-meta">Public eligibility is checked with an exact repository lookup after owner sign-in.</p>
       {% endif %}
     </section>
   </div>

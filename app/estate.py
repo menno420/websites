@@ -527,6 +527,27 @@ class OwnerCommentCollection:
         return self.freshness.state is not FreshnessState.UNAVAILABLE
 
     @property
+    def is_complete(self) -> bool:
+        """Whether the selected detail read can support definitive absence.
+
+        The per-repository index and its selected records are a separate read
+        from the estate-wide count summary.  Any contradiction, malformed or
+        unavailable record, or exhausted detail budget is preserved in
+        ``warnings`` and makes an empty record tuple unknown rather than zero.
+        A bounded consumed-history subset does not make an independently empty
+        unconsumed section uncertain.
+        """
+
+        return not self.warnings and self.freshness.state not in {
+            FreshnessState.UNKNOWN,
+            FreshnessState.UNAVAILABLE,
+        }
+
+    @property
+    def can_confirm_no_unconsumed(self) -> bool:
+        return self.is_complete and not self.unconsumed
+
+    @property
     def unconsumed_count(self) -> int:
         return len(self.unconsumed)
 
@@ -747,6 +768,19 @@ class RepositorySummary:
         return self.purpose or "Purpose not confidently established."
 
     @property
+    def owner_comment_form_reachable(self) -> bool:
+        """Whether the gated exact-visibility review flow may be attempted.
+
+        Fleet Manager indexing establishes the durable destination.  An
+        explicit Fleet-private state remains a disclosure boundary, while an
+        overview ``unknown`` may merely mean the bounded public listing did
+        not include this repository; the owner-only form performs the exact
+        repository lookup before exposing a usable submission action.
+        """
+
+        return self.indexed_by_fleet_manager and self.visibility != "private"
+
+    @property
     def last_activity(self) -> Optional[Activity]:
         dated = [a for a in self.activities if a.occurred_at is not None]
         if dated:
@@ -881,6 +915,41 @@ class RepositoryDetail:
     @property
     def current_next_thread_text(self) -> str:
         return (self.current_next_thread or "").strip() or NEXT_THREAD_UNKNOWN
+
+    @property
+    def owner_feedback_label(self) -> str:
+        """Reconcile overview counts with the repository-detail read.
+
+        A root-index zero must not masquerade as a definitive detail state
+        when the per-repository index disagrees or a referenced record could
+        not be read.  Valid detail reads may continue to use the concise root
+        label; otherwise the uncertainty is explicit.
+        """
+
+        feedback = self.owner_feedback
+        if not feedback.is_complete:
+            if feedback.freshness.state is FreshnessState.UNAVAILABLE:
+                return "Comments unavailable"
+            if any(
+                "disagree" in warning.casefold()
+                for warning in feedback.warnings
+            ):
+                return "Owner comment state contradictory"
+            return "Owner comment state unknown / incomplete"
+        if self.summary.owner_comments.is_known:
+            return self.summary.owner_comments.label
+        if feedback.truncated:
+            return "Owner comments available · bounded subset shown"
+        if feedback.unconsumed:
+            count = len(feedback.unconsumed)
+            return (
+                f"{count} owner comment{'' if count == 1 else 's'} "
+                "awaiting action"
+            )
+        if feedback.consumed:
+            count = len(feedback.consumed)
+            return f"{count} owner comment{'' if count == 1 else 's'} consumed"
+        return "No owner comments"
 
     @property
     def all_sources(self) -> tuple[SourceReference, ...]:
