@@ -821,12 +821,17 @@ def _updated_contract_files(
         (entry.created_at for entry in active),
         key=lambda value: _parse_timestamp(value, field="created_at"),
     )
+    prospective_root = _canonical_json_bytes(root_data)
+    if len(prospective_root.decode("utf-8")) > MAX_INDEX_CHARS:
+        raise _ContractError(
+            "prospective root owner-comment index exceeds bounded read size"
+        )
     record_path = f"{COMMENTS_ROOT}/{repository}/{comment_id}.json"
     readme_path = f"{COMMENTS_ROOT}/{repository}/README.md"
     return {
         record_path: _canonical_json_bytes(record),
         readme_path: prospective_readme,
-        ROOT_INDEX_PATH: _canonical_json_bytes(root_data),
+        ROOT_INDEX_PATH: prospective_root,
     }
 
 
@@ -882,6 +887,7 @@ async def _verify_existing_branch(
     comment_id: str,
     context: str,
     token: str,
+    ref_result: dict[str, Any] | None = None,
 ) -> tuple[str, str, str, dict[str, Any] | None, str]:
     """Return replay identity, failed envelope, and error for an exact retry.
 
@@ -892,9 +898,13 @@ async def _verify_existing_branch(
     tree based on today's moving ``main``.
     """
 
-    ref = await github.api_request(
-        "GET", _api_path(f"/git/ref/heads/{quote(branch, safe='/')}"), token=token
-    )
+    ref = ref_result
+    if ref is None:
+        ref = await github.api_request(
+            "GET",
+            _api_path(f"/git/ref/heads/{quote(branch, safe='/')}"),
+            token=token,
+        )
     head_sha = _verified_ref_sha(ref, branch)
     if not isinstance(head_sha, str) or not _SHA_RE.fullmatch(head_sha):
         return "", "", "", ref, "existing writeback branch head could not be verified"
@@ -1130,6 +1140,91 @@ async def _open_ready_pr(
     return 0, "", result, f"could not open ready PR: {_result_error(result)}"
 
 
+async def _finish_verified_branch(
+    *,
+    repository: str,
+    comment: str,
+    comment_id: str,
+    context: str,
+    branch: str,
+    token: str,
+    attempted_created_at: str,
+    attempted_base_sha: str = "",
+    attempted_commit_sha: str = "",
+    ref_result: dict[str, Any] | None = None,
+) -> OwnerCommentWritebackResult:
+    """Verify one deterministic branch and recover/open its ready PR."""
+
+    common = {
+        "comment_id": comment_id,
+        "created_at": attempted_created_at,
+        "branch": branch,
+    }
+    verified_sha, verified_base, verified_created_at, failed_result, error = (
+        await _verify_existing_branch(
+            branch=branch,
+            repository=repository,
+            comment=comment,
+            comment_id=comment_id,
+            context=context,
+            token=token,
+            ref_result=ref_result,
+        )
+    )
+    if error:
+        return _failure(
+            repository,
+            _failure_state(failed_result) if failed_result else "failed",
+            f"writeback branch could not be verified: {error}",
+            base_sha=attempted_base_sha,
+            commit_sha=attempted_commit_sha,
+            **common,
+        )
+
+    common["created_at"] = verified_created_at
+    pr_number, pr_url, failed_result, error = await _open_ready_pr(
+        branch=branch,
+        commit_sha=verified_sha,
+        repository=repository,
+        comment_id=comment_id,
+        token=token,
+    )
+    if error:
+        permission_failure = (failed_result or {}).get("status") in (
+            401,
+            403,
+            404,
+        )
+        return _failure(
+            repository,
+            "unavailable" if permission_failure else "failed",
+            (
+                f"{ENV_TOKEN} cannot open or verify the Fleet Manager PR; "
+                "grant Pull requests read/write access, then open or inspect "
+                f"a ready PR from `{branch}` to protected `{BASE_BRANCH}`. "
+                "Do not resubmit this form until that branch is reconciled: "
+                f"{error}"
+                if permission_failure
+                else f"{error}; inspect Fleet Manager before retrying"
+            ),
+            base_sha=verified_base,
+            commit_sha=verified_sha,
+            **common,
+        )
+    return OwnerCommentWritebackResult(
+        state="pending_pr",
+        repository=repository,
+        comment_id=comment_id,
+        created_at=verified_created_at,
+        branch=branch,
+        base_sha=verified_base,
+        commit_sha=verified_sha,
+        pr_number=pr_number,
+        pr_url=pr_url,
+        error="",
+    )
+
+
 async def submit_owner_comment(
     repository: str,
     comment: str,
@@ -1192,6 +1287,36 @@ async def submit_owner_comment(
             repository,
             _failure_state(base_ref),
             f"could not resolve Fleet Manager main: {_result_error(base_ref)}",
+            **common,
+        )
+
+    # Recover a deterministic branch before inspecting today's moving ledger.
+    # A successful first attempt remains replayable even when later comments
+    # have brought the current README/root index to their growth ceiling.
+    existing_ref = await github.api_request(
+        "GET",
+        _api_path(f"/git/ref/heads/{quote(branch, safe='/')}"),
+        token=token,
+    )
+    if existing_ref.get("ok"):
+        return await _finish_verified_branch(
+            repository=repository,
+            comment=comment,
+            comment_id=comment_id,
+            context=source_context,
+            branch=branch,
+            token=token,
+            attempted_created_at=created_at,
+            attempted_base_sha=base_sha,
+            ref_result=existing_ref,
+        )
+    if existing_ref.get("status") != 404:
+        return _failure(
+            repository,
+            _failure_state(existing_ref),
+            "could not determine whether the deterministic Fleet Manager "
+            f"branch already exists: {_result_error(existing_ref)}",
+            base_sha=base_sha,
             **common,
         )
 
@@ -1326,69 +1451,15 @@ async def submit_owner_comment(
     # A shape-valid success response is not proof that GitHub stored the exact
     # commit. Verify the deterministic branch, commit identity, ancestry, full
     # tree, and all three bytes before opening or reporting a PR. The same path
-    # safely reconciles a 422 from an unchanged lost-response replay.
-    verified_sha, verified_base, verified_created_at, failed_result, error = (
-        await _verify_existing_branch(
-            branch=branch,
-            repository=repository,
-            comment=comment,
-            comment_id=comment_id,
-            context=source_context,
-            token=token,
-        )
-    )
-    if error:
-        return _failure(
-            repository,
-            _failure_state(failed_result) if failed_result else "failed",
-            f"writeback branch could not be verified: {error}",
-            base_sha=base_sha,
-            commit_sha=commit_sha,
-            **common,
-        )
-    commit_sha = verified_sha
-    base_sha = verified_base
-    created_at = verified_created_at
-    common["created_at"] = verified_created_at
-
-    pr_number, pr_url, failed_result, error = await _open_ready_pr(
-        branch=branch,
-        commit_sha=commit_sha,
+    # safely reconciles a 422 from a branch-creation race.
+    return await _finish_verified_branch(
         repository=repository,
+        comment=comment,
         comment_id=comment_id,
+        context=source_context,
+        branch=branch,
         token=token,
-    )
-    if error:
-        permission_failure = (failed_result or {}).get("status") in (
-            401,
-            403,
-            404,
-        )
-        return _failure(
-            repository,
-            "unavailable" if permission_failure else "failed",
-            (
-                f"{ENV_TOKEN} cannot open or verify the Fleet Manager PR; "
-                "grant Pull requests read/write access, then open or inspect "
-                f"a ready PR from `{branch}` to protected `{BASE_BRANCH}`. "
-                "Do not resubmit this form until that branch is reconciled: "
-                f"{error}"
-                if permission_failure
-                else f"{error}; inspect Fleet Manager before retrying"
-            ),
-            base_sha=base_sha,
-            commit_sha=commit_sha,
-            **common,
-        )
-    return OwnerCommentWritebackResult(
-        state="pending_pr",
-        repository=repository,
-        comment_id=comment_id,
-        created_at=created_at,
-        branch=branch,
-        base_sha=base_sha,
-        commit_sha=commit_sha,
-        pr_number=pr_number,
-        pr_url=pr_url,
-        error="",
+        attempted_created_at=created_at,
+        attempted_base_sha=base_sha,
+        attempted_commit_sha=commit_sha,
     )

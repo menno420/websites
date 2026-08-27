@@ -97,6 +97,7 @@ class FakeGitHub:
         parent_readme: bytes | None = None,
         expected_token: str = "fleet-only-token",
         compare_ahead_by: int = 1,
+        preflight_ref_missing: bool = False,
     ) -> None:
         self.root = root if root is not None else _canonical(_root_index())
         self.readme = readme or writeback.render_repository_readme(
@@ -121,6 +122,8 @@ class FakeGitHub:
         self.pr_url = pr_url
         self.expected_token = expected_token
         self.compare_ahead_by = compare_ahead_by
+        self.preflight_ref_missing = preflight_ref_missing
+        self.branch_ref_reads = 0
         self.compare_response_sizes: list[int] = []
         self.existing_files: dict[str, bytes] = {}
         self.calls: list[tuple[str, str, Any, str]] = []
@@ -128,6 +131,7 @@ class FakeGitHub:
         self.blob_payloads: dict[str, bytes] = {}
         self.files: dict[str, bytes] = {}
         self.branch = ""
+        self.ref_created = False
         self.created_commit: dict[str, Any] = {}
         self.initial_tree_created = False
 
@@ -249,11 +253,7 @@ class FakeGitHub:
                 return _contents(self.files.get(file_path, b""))
             raise AssertionError(f"unexpected contents ref {ref}")
         if method == "POST" and path.endswith("/git/blobs"):
-            seam = (
-                "replay_blob"
-                if self.ref_exists and self.blob_count >= 3
-                else "blob"
-            )
+            seam = "replay_blob" if self.ref_exists else "blob"
             failed = self._fail(seam)
             if failed:
                 return failed
@@ -306,6 +306,7 @@ class FakeGitHub:
                 return failed
             if self.ref_exists:
                 return _envelope(422, None, "Reference already exists")
+            self.ref_created = True
             return _envelope(
                 201,
                 {
@@ -320,6 +321,14 @@ class FakeGitHub:
             failed = self._fail("existing_ref_read")
             if failed:
                 return failed
+            requested_branch = path.split("/git/ref/heads/", 1)[1]
+            if not self.branch:
+                self.branch = requested_branch
+            self.branch_ref_reads += 1
+            if self.preflight_ref_missing and self.branch_ref_reads == 1:
+                return _envelope(404, None, "Not Found")
+            if not self.ref_exists and not self.ref_created:
+                return _envelope(404, None, "Not Found")
             if self.malformed == "existing_ref":
                 return _envelope(200, {"object": "not-an-object"})
             return _envelope(
@@ -1051,6 +1060,223 @@ def test_prospective_readme_size_honors_exact_character_bound(
         assert not any(call[0] == "POST" for call in fake.calls)
 
 
+@pytest.mark.parametrize(
+    ("remaining_chars", "expected_state"),
+    ((0, "pending_pr"), (-1, "failed")),
+)
+def test_prospective_root_size_honors_exact_character_bound_before_blobs(
+    monkeypatch, remaining_chars, expected_state
+):
+    root = _root_index()
+    root["repositories"][1:1] = [
+        _row(f"padding-repository-{index:02d}") for index in range(12)
+    ]
+    comment = "  Keep this wording.\nSecond line.  "
+    comment_id = writeback._comment_id(
+        "websites", comment, "/repos/websites", SUBMISSION_KEY
+    )
+    expected = writeback._updated_contract_files(
+        root_data=json.loads(_canonical(root)),
+        repository="websites",
+        comment=comment,
+        comment_id=comment_id,
+        created_at=writeback._timestamp(NOW),
+        context="/repos/websites",
+        repository_readme=writeback.render_repository_readme(
+            "websites", [], []
+        ),
+    )
+    prospective_root = expected[writeback.ROOT_INDEX_PATH]
+    assert len(prospective_root) > len(
+        expected["docs/owner-comments/websites/README.md"]
+    )
+    monkeypatch.setattr(
+        writeback,
+        "MAX_INDEX_CHARS",
+        len(prospective_root.decode("utf-8")) + remaining_chars,
+    )
+    fake = FakeGitHub(root=_canonical(root))
+
+    result = _submit(fake, monkeypatch, comment=comment)
+
+    assert result.state == expected_state
+    if remaining_chars == 0:
+        assert fake.files[writeback.ROOT_INDEX_PATH] == prospective_root
+    else:
+        assert "prospective root owner-comment index" in result.message
+        assert "exceeds bounded read size" in result.message
+        assert not any(call[0] == "POST" for call in fake.calls)
+
+
+def test_replay_precedes_later_active_count_ceiling(monkeypatch):
+    monkeypatch.setattr(writeback, "MAX_INDEX_RECORDS", 1)
+    other = writeback._ActiveIndexEntry(
+        "oc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "2026-08-27T10:10:00Z",
+        writeback.SOURCE_SURFACE,
+    )
+    current_row = _row("websites")
+    current_row.update(
+        {
+            "unconsumed_count": 1,
+            "latest_unconsumed_at": other.created_at,
+        }
+    )
+    fake = FakeGitHub(
+        root=_canonical(_root_index(websites=current_row)),
+        readme=writeback.render_repository_readme("websites", [other], []),
+        parent_root=_canonical(_root_index()),
+        parent_readme=writeback.render_repository_readme("websites", [], []),
+        ref_exists=True,
+        pr_exists=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+    )
+
+    replay = _submit(fake, monkeypatch)
+
+    assert replay.state == "pending_pr"
+    assert replay.base_sha == BASE_SHA
+    assert not any(
+        call[0] == "GET"
+        and "/contents/" in call[1]
+        and f"ref={ADVANCED_SHA}" in call[1]
+        for call in fake.calls
+    )
+
+
+def test_replay_precedes_later_repository_readme_growth_ceiling(monkeypatch):
+    other = writeback._ActiveIndexEntry(
+        "oc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "2026-08-27T10:10:00Z",
+        writeback.SOURCE_SURFACE,
+    )
+    current_readme = writeback.render_repository_readme(
+        "websites", [other], []
+    )
+    replay_id = writeback._comment_id(
+        "websites",
+        "  Keep this wording.\nSecond line.  ",
+        "/repos/websites",
+        SUBMISSION_KEY,
+    )
+    prospective_readme = writeback.render_repository_readme(
+        "websites",
+        [
+            other,
+            writeback._ActiveIndexEntry(
+                replay_id,
+                writeback._timestamp(NOW),
+                writeback.SOURCE_SURFACE,
+            ),
+        ],
+        [],
+    )
+    assert len(prospective_readme) > len(current_readme)
+    current_row = _row("websites")
+    current_row.update(
+        {
+            "unconsumed_count": 1,
+            "latest_unconsumed_at": other.created_at,
+        }
+    )
+    monkeypatch.setattr(writeback, "MAX_INDEX_CHARS", len(current_readme))
+    fake = FakeGitHub(
+        root=_canonical(_root_index(websites=current_row)),
+        readme=current_readme,
+        parent_root=_canonical(_root_index()),
+        parent_readme=writeback.render_repository_readme("websites", [], []),
+        ref_exists=True,
+        pr_exists=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+    )
+
+    replay = _submit(fake, monkeypatch)
+
+    assert replay.state == "pending_pr"
+    assert replay.base_sha == BASE_SHA
+    assert not any(
+        call[0] == "GET"
+        and "/contents/" in call[1]
+        and f"ref={ADVANCED_SHA}" in call[1]
+        for call in fake.calls
+    )
+
+
+def test_replay_precedes_later_root_index_growth_ceiling(monkeypatch):
+    active = [
+        writeback._ActiveIndexEntry(
+            f"oc-existing-{index:02d}",
+            f"2026-08-27T10:10:{index:02d}Z",
+            writeback.SOURCE_SURFACE,
+        )
+        for index in range(9)
+    ]
+    current_row = _row("websites")
+    current_row.update(
+        {
+            "unconsumed_count": 9,
+            "latest_unconsumed_at": active[-1].created_at,
+        }
+    )
+    current_root = _root_index(websites=current_row)
+    current_root["repositories"][1:1] = [
+        _row(f"padding-repository-{index:02d}") for index in range(20)
+    ]
+    parent_root = json.loads(_canonical(current_root))
+    parent_row = next(
+        row
+        for row in parent_root["repositories"]
+        if row["repository"] == "websites"
+    )
+    parent_row.update(
+        {"unconsumed_count": 0, "latest_unconsumed_at": None}
+    )
+    current_root_bytes = _canonical(current_root)
+    prospective_root = json.loads(current_root_bytes)
+    prospective_row = next(
+        row
+        for row in prospective_root["repositories"]
+        if row["repository"] == "websites"
+    )
+    prospective_row.update(
+        {
+            "unconsumed_count": 10,
+            "latest_unconsumed_at": writeback._timestamp(NOW),
+        }
+    )
+    assert len(_canonical(prospective_root)) == len(current_root_bytes) + 1
+    current_readme = writeback.render_repository_readme(
+        "websites", active, []
+    )
+    assert len(current_root_bytes) > len(current_readme)
+    monkeypatch.setattr(
+        writeback, "MAX_INDEX_CHARS", len(current_root_bytes.decode("utf-8"))
+    )
+    fake = FakeGitHub(
+        root=current_root_bytes,
+        readme=current_readme,
+        parent_root=_canonical(parent_root),
+        parent_readme=writeback.render_repository_readme("websites", [], []),
+        ref_exists=True,
+        pr_exists=True,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+    )
+
+    replay = _submit(fake, monkeypatch)
+
+    assert replay.state == "pending_pr"
+    assert replay.base_sha == BASE_SHA
+    assert not any(
+        call[0] == "GET"
+        and "/contents/" in call[1]
+        and f"ref={ADVANCED_SHA}" in call[1]
+        for call in fake.calls
+    )
+
+
 def test_consumption_before_creation_blocks_mutation(monkeypatch):
     consumed = [
         writeback._ConsumedIndexEntry(
@@ -1285,12 +1511,21 @@ def test_replay_binds_compare_head_and_parent_commit_identity(monkeypatch, seam)
 
 
 def test_422_branch_and_pr_are_reused_only_after_exact_verification(monkeypatch):
-    fake = FakeGitHub(ref_exists=True, pr_exists=True)
+    fake = FakeGitHub(
+        ref_exists=True,
+        pr_exists=True,
+        preflight_ref_missing=True,
+    )
     result = _submit(fake, monkeypatch)
 
     assert result.state == "pending_pr"
     assert result.commit_sha == EXISTING_SHA
     assert result.pr_number == 1234
+    assert fake.branch_ref_reads == 2
+    assert any(
+        call[0] == "POST" and call[1].endswith("/git/refs")
+        for call in fake.calls
+    )
     # Existing branch verification pins parent/tree and all three exact files.
     assert any(
         call[0] == "GET" and call[1].endswith(f"/git/commits/{EXISTING_SHA}")

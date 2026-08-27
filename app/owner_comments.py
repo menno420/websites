@@ -707,10 +707,10 @@ def parse_record(
         raise OwnerCommentContractError(
             f"owner-comment record {entry.id} source/index mismatch"
         )
-    context = raw_source.get("context")
-    if context is not None:
+    context = None
+    if "context" in raw_source:
         context = _validate_text(
-            context,
+            raw_source["context"],
             f"record {entry.id} source.context",
             limit=MAX_CONTEXT_CHARS,
             require_non_whitespace=False,

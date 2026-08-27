@@ -377,6 +377,13 @@ def test_detail_reads_active_and_consumed_and_keeps_untrusted_text_raw(monkeypat
             "source fields",
         ),
         (
+            lambda data: {
+                **data,
+                "source": {**data["source"], "context": None},
+            },
+            "source.context",
+        ),
+        (
             lambda data: {**data, "created_at": "2026-02-30T10:00:00Z"},
             "real RFC3339",
         ),
@@ -388,6 +395,7 @@ def test_detail_reads_active_and_consumed_and_keeps_untrusted_text_raw(monkeypat
         "state-path",
         "unknown-top-key",
         "unknown-source-key",
+        "null-source-context",
         "invalid-timestamp",
     ),
 )
@@ -409,6 +417,28 @@ def test_malformed_record_is_skipped_without_sinking_detail(monkeypatch, mutatio
     assert collection.unconsumed == ()
     assert any(needle in warning for warning in collection.warnings)
     assert collection.freshness.state is estate.FreshnessState.UNKNOWN
+
+
+def test_absent_source_context_remains_valid_and_distinct_from_null(monkeypatch):
+    active = ("oc-active", "2026-08-27T10:00:00Z", "control-plane")
+    payload = _record(active[0], active[1])
+    payload["source"].pop("context")
+    payloads = {
+        "docs/owner-comments/alpha/README.md": _result(
+            _repo_index(active=(active,))
+        ),
+        "docs/owner-comments/alpha/oc-active.json": _result(_json(payload)),
+    }
+
+    async def fake_fetch(repo, path, ref="main", refresh=False):
+        return payloads[path]
+
+    monkeypatch.setattr(github, "fetch_public_file", fake_fetch)
+    collection = asyncio.run(owner_comments.read_repository_comments("alpha"))
+
+    assert len(collection.unconsumed) == 1
+    assert collection.unconsumed[0].source_context is None
+    assert not collection.warnings
 
 
 def test_noncanonical_readme_record_path_is_rejected():
