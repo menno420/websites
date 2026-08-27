@@ -1360,6 +1360,40 @@ async def submit_owner_comment(
             if not root_result.get("ok") or not readme_result.get("ok")
             else "failed"
         )
+        # The preflight 404 is only one observation. Another request may have
+        # created this deterministic branch while we read and validated the
+        # moving ledger, including while today's ledger crossed a growth
+        # ceiling. Re-probe before reporting the contract failure. A found
+        # branch is reusable only through the same exact commit/tree/payload/
+        # ancestry verifier as every other replay; this GET itself performs no
+        # mutation for a genuinely fresh rejected submission.
+        raced_ref = await github.api_request(
+            "GET",
+            _api_path(f"/git/ref/heads/{quote(branch, safe='/')}"),
+            token=token,
+        )
+        if raced_ref.get("ok"):
+            return await _finish_verified_branch(
+                repository=repository,
+                comment=comment,
+                comment_id=comment_id,
+                context=source_context,
+                branch=branch,
+                token=token,
+                attempted_created_at=created_at,
+                attempted_base_sha=base_sha,
+                ref_result=raced_ref,
+            )
+        if raced_ref.get("status") != 404:
+            return _failure(
+                repository,
+                _failure_state(raced_ref),
+                "current Fleet Manager contract rejected the submission, "
+                "and deterministic replay branch existence could not be "
+                f"rechecked: {_result_error(raced_ref)}",
+                base_sha=base_sha,
+                **common,
+            )
         return _failure(
             repository,
             state,

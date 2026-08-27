@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from app import (
     config,
     estate,
+    estate_reader,
     estate_service,
     owner,
     owner_comment_writeback,
@@ -55,11 +56,54 @@ def _overview(*repositories: estate.RepositorySummary) -> estate.EstateOverview:
     return estate.EstateOverview(repositories=repositories)
 
 
+def _public_lookup(
+    name: str = "websites",
+    *,
+    visibility: str = "public",
+    status: int = 200,
+) -> estate_reader.PublicRepositoryLookup:
+    repository = (
+        estate_reader.PublicRepository(
+            name=name,
+            description="Control-plane websites",
+            html_url=f"https://github.com/menno420/{name}",
+            archived=False,
+            disabled=False,
+            pushed_at="2026-08-27T12:00:00Z",
+            updated_at="2026-08-27T12:00:00Z",
+            default_branch="main",
+            open_issues_count=0,
+        )
+        if visibility == "public"
+        else None
+    )
+    return estate_reader.PublicRepositoryLookup(
+        name=name,
+        result={
+            "ok": 200 <= status < 300,
+            "status": status,
+            "data": {} if status == 200 else None,
+            "error": "Not Found" if status == 404 else "",
+        },
+        repository=repository,
+        visibility=visibility,
+        reason="" if visibility == "public" else "not publicly visible",
+    )
+
+
 @pytest.fixture(autouse=True)
 def _reset_owner_limits():
     owner.reset_rate_limits()
     yield
     owner.reset_rate_limits()
+
+
+@pytest.fixture(autouse=True)
+def _default_exact_public_lookup(monkeypatch):
+    async def fake_lookup(name, *, refresh=False, coalesce=True):
+        return _public_lookup(name)
+
+    monkeypatch.setattr(estate_reader, "read_public_repository", fake_lookup)
 
 
 @pytest.fixture()
@@ -96,6 +140,59 @@ def test_comment_form_is_owner_only_and_names_public_destination(
     assert "verified against Fleet Manager when" in response.text
 
 
+def test_fleet_indexed_repo_beyond_listing_limit_gets_exact_form_and_post(
+    client, monkeypatch
+):
+    _install_overview(monkeypatch, _summary(visibility="unknown"))
+    lookups = []
+    submitted = []
+
+    async def exact_public(name, *, refresh=False, coalesce=True):
+        lookups.append((name, refresh, coalesce))
+        return _public_lookup(name)
+
+    async def fake_submit(repository, comment, **kwargs):
+        submitted.append((repository, comment, kwargs))
+        return owner_comment_writeback.OwnerCommentWritebackResult(
+            state="pending_pr",
+            repository=repository,
+            comment_id="oc-0123456789abcdef0123456789abcdef",
+            branch="claude/owner-comments-oc-0123456789abcdef0123456789abcdef",
+            pr_number=953,
+            pr_url="https://github.com/menno420/fleet-manager/pull/953",
+        )
+
+    monkeypatch.setattr(estate_reader, "read_public_repository", exact_public)
+    monkeypatch.setattr(
+        owner_comment_writeback, "submit_owner_comment", fake_submit
+    )
+
+    form = client.get(
+        "/owner/repository-comments/websites",
+        headers=_basic(),
+    )
+    assert form.status_code == 200
+    assert 'name="public_acknowledgement"' in form.text
+
+    response = client.post(
+        "/owner/repository-comments/submit",
+        data={
+            "repository": "websites",
+            "comment": "This repo is beyond the overview page.",
+            "public_acknowledgement": "yes",
+            "submission_key": SUBMISSION_KEY,
+        },
+        headers={**_basic(), "Origin": SAME_ORIGIN},
+    )
+
+    assert response.status_code == 202
+    assert lookups == [
+        ("websites", False, True),
+        ("websites", True, False),
+    ]
+    assert submitted and submitted[0][0] == "websites"
+
+
 def test_comment_post_rejects_cross_origin_before_write(client, monkeypatch):
     _install_overview(monkeypatch, _summary())
     called = False
@@ -126,19 +223,27 @@ def test_submission_revalidates_public_visibility_without_cache(
     client, monkeypatch
 ):
     refreshes = []
+    lookups = []
 
     async def changing_overview(
         refresh=False, *, coalesce_public_listing=True
     ):
         refreshes.append((refresh, coalesce_public_listing))
-        return _overview(
-            _summary(visibility="private" if refresh else "public")
+        return _overview(_summary())
+
+    async def changing_lookup(name, *, refresh=False, coalesce=True):
+        lookups.append((name, refresh, coalesce))
+        return (
+            _public_lookup(name, visibility="unavailable", status=404)
+            if refresh
+            else _public_lookup(name)
         )
 
     async def forbidden(*args, **kwargs):
         raise AssertionError("private target must not reach writeback")
 
     monkeypatch.setattr(estate_service, "overview", changing_overview)
+    monkeypatch.setattr(estate_reader, "read_public_repository", changing_lookup)
     monkeypatch.setattr(
         owner_comment_writeback, "submit_owner_comment", forbidden
     )
@@ -148,6 +253,7 @@ def test_submission_revalidates_public_visibility_without_cache(
     )
     assert form.status_code == 200
     assert refreshes == [(False, True)]
+    assert lookups == [("websites", False, True)]
 
     response = client.post(
         "/owner/repository-comments/submit",
@@ -161,7 +267,11 @@ def test_submission_revalidates_public_visibility_without_cache(
     )
 
     assert response.status_code == 503
-    assert refreshes == [(False, True), (True, False)]
+    assert refreshes == [(False, True), (True, True)]
+    assert lookups == [
+        ("websites", False, True),
+        ("websites", True, False),
+    ]
     assert "not confidently established as public" in response.text
 
 
@@ -236,8 +346,14 @@ def test_invalid_comment_never_reaches_writeback(
     async def fake_submit(*args, **kwargs):
         raise AssertionError("invalid comment must not reach writeback")
 
+    async def forbidden_lookup(*args, **kwargs):
+        raise AssertionError("invalid form must not spend a visibility lookup")
+
     monkeypatch.setattr(
         owner_comment_writeback, "submit_owner_comment", fake_submit
+    )
+    monkeypatch.setattr(
+        estate_reader, "read_public_repository", forbidden_lookup
     )
     response = client.post(
         "/owner/repository-comments/submit",
@@ -283,8 +399,16 @@ def test_unknown_private_and_missing_token_never_write(client, monkeypatch):
     async def fake_submit(*args, **kwargs):
         raise AssertionError("unavailable target must not reach writeback")
 
+    async def forbidden_lookup(*args, **kwargs):
+        raise AssertionError(
+            "explicit Fleet private/unavailable capability must not be overridden"
+        )
+
     monkeypatch.setattr(
         owner_comment_writeback, "submit_owner_comment", fake_submit
+    )
+    monkeypatch.setattr(
+        estate_reader, "read_public_repository", forbidden_lookup
     )
     headers = {**_basic(), "Origin": SAME_ORIGIN}
     private_response = client.post(
@@ -347,6 +471,11 @@ def test_unknown_private_and_missing_token_never_write(client, monkeypatch):
     )
     assert unknown.status_code == 404
 
+    async def exact_public(name, *, refresh=False, coalesce=True):
+        assert (refresh, coalesce) == (True, False)
+        return _public_lookup(name)
+
+    monkeypatch.setattr(estate_reader, "read_public_repository", exact_public)
     _install_overview(monkeypatch, _summary())
     missing = client.post(
         "/owner/repository-comments/submit",

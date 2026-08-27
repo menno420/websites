@@ -82,6 +82,30 @@ def test_public_api_uses_anonymous_client_only():
     assert public.calls == 1
 
 
+def test_exact_public_repository_helper_uses_anonymous_endpoint_and_fresh_mode():
+    def authenticated(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("exact public repository read must stay anonymous")
+
+    def anonymous(request: httpx.Request) -> httpx.Response:
+        assert "authorization" not in request.headers
+        assert request.url.raw_path == b"/repos/menno420/repo-with-space%20name"
+        return httpx.Response(200, json={"name": "repo-with-space name"})
+
+    auth, public = _install_clients(authenticated, anonymous)
+    result = asyncio.run(
+        github.public_repository(
+            "repo-with-space name",
+            refresh=True,
+            coalesce=False,
+        )
+    )
+
+    assert result["ok"] is True
+    assert result["cached"] is False
+    assert auth.calls == 0
+    assert public.calls == 1
+
+
 def test_public_file_404_never_falls_back_to_authenticated_contents():
     def authenticated(request: httpx.Request) -> httpx.Response:
         raise AssertionError(

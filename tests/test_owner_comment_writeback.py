@@ -98,6 +98,7 @@ class FakeGitHub:
         expected_token: str = "fleet-only-token",
         compare_ahead_by: int = 1,
         preflight_ref_missing: bool = False,
+        raced_ref_status: int | None = None,
     ) -> None:
         self.root = root if root is not None else _canonical(_root_index())
         self.readme = readme or writeback.render_repository_readme(
@@ -123,6 +124,7 @@ class FakeGitHub:
         self.expected_token = expected_token
         self.compare_ahead_by = compare_ahead_by
         self.preflight_ref_missing = preflight_ref_missing
+        self.raced_ref_status = raced_ref_status
         self.branch_ref_reads = 0
         self.compare_response_sizes: list[int] = []
         self.existing_files: dict[str, bytes] = {}
@@ -327,6 +329,12 @@ class FakeGitHub:
             self.branch_ref_reads += 1
             if self.preflight_ref_missing and self.branch_ref_reads == 1:
                 return _envelope(404, None, "Not Found")
+            if self.raced_ref_status and self.branch_ref_reads == 2:
+                return _envelope(
+                    self.raced_ref_status,
+                    None,
+                    "raced ref lookup failed",
+                )
             if not self.ref_exists and not self.ref_created:
                 return _envelope(404, None, "Not Found")
             if self.malformed == "existing_ref":
@@ -1015,6 +1023,7 @@ def test_prospective_active_count_at_contract_bound_blocks_mutation(monkeypatch)
     assert result.state == "failed"
     assert "prospective repository README active count" in result.message
     assert "exceeds the bounded count" in result.message
+    assert fake.branch_ref_reads == 2
     assert not any(call[0] == "POST" for call in fake.calls)
 
 
@@ -1108,7 +1117,7 @@ def test_prospective_root_size_honors_exact_character_bound_before_blobs(
         assert not any(call[0] == "POST" for call in fake.calls)
 
 
-def test_replay_precedes_later_active_count_ceiling(monkeypatch):
+def test_active_count_rejection_recovers_a_concurrently_created_branch(monkeypatch):
     monkeypatch.setattr(writeback, "MAX_INDEX_RECORDS", 1)
     other = writeback._ActiveIndexEntry(
         "oc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -1131,21 +1140,28 @@ def test_replay_precedes_later_active_count_ceiling(monkeypatch):
         pr_exists=True,
         main_sha=ADVANCED_SHA,
         existing_parent_sha=BASE_SHA,
+        preflight_ref_missing=True,
     )
 
     replay = _submit(fake, monkeypatch)
 
     assert replay.state == "pending_pr"
     assert replay.base_sha == BASE_SHA
-    assert not any(
+    assert fake.branch_ref_reads == 2
+    assert any(
         call[0] == "GET"
         and "/contents/" in call[1]
         and f"ref={ADVANCED_SHA}" in call[1]
         for call in fake.calls
     )
+    assert not any(
+        call[0] == "POST"
+        and (call[1].endswith("/git/refs") or call[1].endswith("/git/commits"))
+        for call in fake.calls
+    )
 
 
-def test_replay_precedes_later_repository_readme_growth_ceiling(monkeypatch):
+def test_readme_growth_rejection_recovers_a_concurrently_created_branch(monkeypatch):
     other = writeback._ActiveIndexEntry(
         "oc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "2026-08-27T10:10:00Z",
@@ -1190,21 +1206,28 @@ def test_replay_precedes_later_repository_readme_growth_ceiling(monkeypatch):
         pr_exists=True,
         main_sha=ADVANCED_SHA,
         existing_parent_sha=BASE_SHA,
+        preflight_ref_missing=True,
     )
 
     replay = _submit(fake, monkeypatch)
 
     assert replay.state == "pending_pr"
     assert replay.base_sha == BASE_SHA
-    assert not any(
+    assert fake.branch_ref_reads == 2
+    assert any(
         call[0] == "GET"
         and "/contents/" in call[1]
         and f"ref={ADVANCED_SHA}" in call[1]
         for call in fake.calls
     )
+    assert not any(
+        call[0] == "POST"
+        and (call[1].endswith("/git/refs") or call[1].endswith("/git/commits"))
+        for call in fake.calls
+    )
 
 
-def test_replay_precedes_later_root_index_growth_ceiling(monkeypatch):
+def test_root_growth_rejection_recovers_a_concurrently_created_branch(monkeypatch):
     active = [
         writeback._ActiveIndexEntry(
             f"oc-existing-{index:02d}",
@@ -1263,18 +1286,93 @@ def test_replay_precedes_later_root_index_growth_ceiling(monkeypatch):
         pr_exists=True,
         main_sha=ADVANCED_SHA,
         existing_parent_sha=BASE_SHA,
+        preflight_ref_missing=True,
     )
 
     replay = _submit(fake, monkeypatch)
 
     assert replay.state == "pending_pr"
     assert replay.base_sha == BASE_SHA
-    assert not any(
+    assert fake.branch_ref_reads == 2
+    assert any(
         call[0] == "GET"
         and "/contents/" in call[1]
         and f"ref={ADVANCED_SHA}" in call[1]
         for call in fake.calls
     )
+    assert not any(
+        call[0] == "POST"
+        and (call[1].endswith("/git/refs") or call[1].endswith("/git/commits"))
+        for call in fake.calls
+    )
+
+
+def test_contract_rejection_race_never_reuses_a_different_branch(monkeypatch):
+    monkeypatch.setattr(writeback, "MAX_INDEX_RECORDS", 1)
+    other = writeback._ActiveIndexEntry(
+        "oc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "2026-08-27T10:10:00Z",
+        writeback.SOURCE_SURFACE,
+    )
+    current_row = _row("websites")
+    current_row.update(
+        {
+            "unconsumed_count": 1,
+            "latest_unconsumed_at": other.created_at,
+        }
+    )
+    fake = FakeGitHub(
+        root=_canonical(_root_index(websites=current_row)),
+        readme=writeback.render_repository_readme("websites", [other], []),
+        parent_root=_canonical(_root_index()),
+        parent_readme=writeback.render_repository_readme("websites", [], []),
+        ref_exists=True,
+        pr_exists=True,
+        existing_payload_matches=False,
+        main_sha=ADVANCED_SHA,
+        existing_parent_sha=BASE_SHA,
+        preflight_ref_missing=True,
+    )
+
+    result = _submit(fake, monkeypatch)
+
+    assert result.state == "failed"
+    assert fake.branch_ref_reads == 2
+    assert "could not be verified" in result.message
+    assert not any(
+        call[0] == "POST" and call[1].endswith("/pulls")
+        for call in fake.calls
+    )
+
+
+def test_contract_rejection_with_unknown_raced_ref_is_retryable(monkeypatch):
+    monkeypatch.setattr(writeback, "MAX_INDEX_RECORDS", 1)
+    other = writeback._ActiveIndexEntry(
+        "oc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "2026-08-27T10:10:00Z",
+        writeback.SOURCE_SURFACE,
+    )
+    current_row = _row("websites")
+    current_row.update(
+        {
+            "unconsumed_count": 1,
+            "latest_unconsumed_at": other.created_at,
+        }
+    )
+    fake = FakeGitHub(
+        root=_canonical(_root_index(websites=current_row)),
+        readme=writeback.render_repository_readme("websites", [other], []),
+        preflight_ref_missing=True,
+        raced_ref_status=503,
+    )
+
+    result = _submit(fake, monkeypatch)
+
+    assert result.state == "failed_retryable"
+    assert fake.branch_ref_reads == 2
+    assert "replay branch existence could not be rechecked" in result.message
+    assert "bounded count" not in result.message
+    assert not any(call[0] == "POST" for call in fake.calls)
 
 
 def test_consumption_before_creation_blocks_mutation(monkeypatch):

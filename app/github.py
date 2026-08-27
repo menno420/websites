@@ -21,6 +21,7 @@ import json
 import re
 import time
 from typing import Any, Optional
+from urllib.parse import quote
 
 import httpx
 
@@ -393,6 +394,30 @@ async def public_api(
         config.GITHUB_API_BASE + path,
         refresh=refresh,
         raw=True,
+        coalesce=coalesce,
+    )
+
+
+async def public_repository(
+    repository: str,
+    refresh: bool = False,
+    *,
+    coalesce: bool = True,
+) -> dict:
+    """Read one repository through GitHub's exact anonymous endpoint.
+
+    The caller still has to validate the response identity and visibility;
+    this client helper only pins the privacy, cache, and coalescing boundary.
+    In particular, mutation authorization uses ``refresh=True`` and
+    ``coalesce=False`` so it neither accepts a TTL hit nor joins a visibility
+    observation that began before the mutation request.
+    """
+
+    owner = quote(config.OWNER, safe="")
+    name = quote(str(repository or ""), safe="")
+    return await public_api(
+        f"/repos/{owner}/{name}",
+        refresh=refresh,
         coalesce=coalesce,
     )
 

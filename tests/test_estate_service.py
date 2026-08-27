@@ -244,6 +244,106 @@ def test_overview_delegates_to_reader(monkeypatch):
     assert calls == [(True, False)]
 
 
+def test_owner_comment_visibility_keeps_explicit_fleet_private(monkeypatch):
+    repository = estate.RepositorySummary(
+        name="private-tool",
+        indexed_by_fleet_manager=True,
+        visibility="private",
+    )
+
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("Fleet PRIVATE must not be overridden by GitHub")
+
+    monkeypatch.setattr(estate_reader, "read_public_repository", forbidden)
+
+    observed = asyncio.run(
+        estate_service.revalidate_owner_comment_repository(
+            repository,
+            mutation=True,
+        )
+    )
+
+    assert observed is repository
+    assert observed.visibility == "private"
+
+
+def test_owner_comment_visibility_upgrades_unknown_only_from_exact_public(
+    monkeypatch,
+):
+    repository = estate.RepositorySummary(
+        name="beyond-first-page",
+        indexed_by_fleet_manager=True,
+        visibility="unknown",
+    )
+    public = estate_reader.PublicRepository(
+        name=repository.name,
+        description="",
+        html_url=f"https://github.com/menno420/{repository.name}",
+        archived=False,
+        disabled=False,
+        pushed_at="",
+        updated_at="",
+        default_branch="main",
+        open_issues_count=0,
+    )
+    calls = []
+
+    async def fake_lookup(name, *, refresh=False, coalesce=True):
+        calls.append((name, refresh, coalesce))
+        return estate_reader.PublicRepositoryLookup(
+            name=name,
+            result=_result({}),
+            repository=public,
+            visibility="public",
+        )
+
+    monkeypatch.setattr(estate_reader, "read_public_repository", fake_lookup)
+
+    observed = asyncio.run(
+        estate_service.revalidate_owner_comment_repository(
+            repository,
+            mutation=True,
+        )
+    )
+
+    assert calls == [("beyond-first-page", True, False)]
+    assert observed.visibility == "public"
+    assert observed.github_present is True
+
+
+def test_owner_comment_visibility_downgrades_stale_public_on_exact_404(
+    monkeypatch,
+):
+    repository = estate.RepositorySummary(
+        name="was-public",
+        indexed_by_fleet_manager=True,
+        visibility="public",
+        github_present=True,
+    )
+
+    async def fake_lookup(name, *, refresh=False, coalesce=True):
+        return estate_reader.PublicRepositoryLookup(
+            name=name,
+            result=_result(None, ok=False, status=404, error="Not Found"),
+            repository=None,
+            visibility="unavailable",
+            reason="Not Found",
+        )
+
+    monkeypatch.setattr(estate_reader, "read_public_repository", fake_lookup)
+
+    observed = asyncio.run(
+        estate_service.revalidate_owner_comment_repository(
+            repository,
+            mutation=True,
+        )
+    )
+
+    assert observed.visibility == "unavailable"
+    assert observed.github_present is None
+    assert any("did not prove this target public" in row for row in observed.warnings)
+
+
 def test_detail_uses_member_truth_and_exact_next_heading(monkeypatch):
     async def fake_overview(refresh=False):
         return _sources()

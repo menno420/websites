@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from dataclasses import replace
 from datetime import date, datetime, timezone
 from typing import Any, Mapping, Optional
 from urllib.parse import quote
@@ -524,6 +525,49 @@ async def overview(
     )
     model, _rows, _public = _aggregate(sources, comment_index)
     return model
+
+
+async def revalidate_owner_comment_repository(
+    repository: estate.RepositorySummary,
+    *,
+    mutation: bool = False,
+) -> estate.RepositorySummary:
+    """Apply an exact-public observation to one known estate member.
+
+    Fleet Manager's estate index establishes which names are valid review
+    targets.  This independent repository-specific read establishes whether
+    the selected target may receive a public owner-comment record right now;
+    it never depends on the overview listing's pagination. Mutation checks
+    are fresh and uncoalesced; form-display checks may use the public cache.
+    """
+
+    # Fleet Manager's explicit PRIVATE wording is an estate-owned disclosure
+    # boundary, not an old listing observation that GitHub may override.
+    if repository.visibility == "private":
+        return repository
+
+    lookup = await estate_reader.read_public_repository(
+        repository.name,
+        refresh=mutation,
+        coalesce=not mutation,
+    )
+    warnings = repository.warnings
+    if not lookup.is_public:
+        warnings = tuple(
+            dict.fromkeys(
+                (
+                    *warnings,
+                    "Anonymous repository-specific visibility check did not "
+                    f"prove this target public: {lookup.reason}",
+                )
+            )
+        )
+    return replace(
+        repository,
+        visibility=lookup.visibility,
+        github_present=True if lookup.is_public else None,
+        warnings=warnings,
+    )
 
 
 _AS_OF_PATTERNS = (

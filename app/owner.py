@@ -563,6 +563,10 @@ async def repository_comment_form(
     repo = await _known_comment_repository(name)
     if repo is None:
         raise HTTPException(status_code=404, detail="unknown repository")
+    # The overview listing is bounded and may omit a valid Fleet member. An
+    # owner opening the form gets a repository-specific anonymous observation;
+    # POST repeats it independently at the authorization boundary.
+    repo = await estate_service.revalidate_owner_comment_repository(repo)
     return _render_repository_comment(request, repo)
 
 
@@ -575,19 +579,16 @@ async def repository_comment_submit(
     submission_key: str = Form(""),
     _: None = Depends(require_owner_action),
 ):
-    # Mutation revalidates the anonymous public boundary now. Neither a cached
-    # listing nor a public read already in flight before this POST may authorize
-    # a comment after a repository becomes private.
-    repo = await _known_comment_repository(
-        repository,
-        refresh=True,
-        coalesce_public_listing=False,
-    )
+    # Fleet Manager's fresh estate projection validates the target name.  A
+    # separate exact repository lookup below authorizes public writeback; the
+    # overview listing is intentionally irrelevant because it can stop at 100
+    # rows.
+    repo = await _known_comment_repository(repository, refresh=True)
     if repo is None:
         raise HTTPException(status_code=404, detail="unknown repository")
-
-    capability = _repository_comment_capability(repo)
-    if not capability.available:
+    runtime_capability = owner_comment_writeback.capability()
+    if not repo.indexed_by_fleet_manager or repo.visibility == "private":
+        capability = _repository_comment_capability(repo)
         return _render_repository_comment(
             request,
             repo,
@@ -596,6 +597,11 @@ async def repository_comment_submit(
             submission_key=submission_key,
             status_code=503,
         )
+
+    # Cheap local validation precedes the security-sensitive GitHub request.
+    # This keeps the exact visibility observation immediately before the
+    # writer and avoids spending anonymous rate limit on malformed forms.
+    capability = runtime_capability
     key_problem = owner_comment_writeback.validate_submission_key(submission_key)
     if key_problem:
         return _render_repository_comment(
@@ -627,6 +633,24 @@ async def repository_comment_submit(
             submission_key=submission_key,
             error=problem,
             status_code=422,
+        )
+
+    # This anonymous exact-repository read bypasses both its TTL entry and any
+    # older in-flight request. A private, absent, malformed, foreign, or
+    # unavailable response fails closed before the write client is called.
+    repo = await estate_service.revalidate_owner_comment_repository(
+        repo,
+        mutation=True,
+    )
+    capability = _repository_comment_capability(repo)
+    if not capability.available:
+        return _render_repository_comment(
+            request,
+            repo,
+            capability=capability,
+            comment_text=comment,
+            submission_key=submission_key,
+            status_code=503,
         )
 
     result = await owner_comment_writeback.submit_owner_comment(
