@@ -3,8 +3,12 @@
 > **Status:** `complete` — PR #525, branch `claude/live-walkthrough-chatgpt-work`;
 > completion is the deliberate LAST code step, after the report and repairs.
 
-- **📊 Model:** GPT · reviewer · review/verify
+- **📊 Model:** GPT · unrecorded · review/verify
 - **📍 Venue:** chatgpt-work
+
+Effort was not exposed by this session's harness. The initial role word
+`reviewer` was not a measured effort tier; the correction uses the kit's
+documented `unrecorded` marker rather than inventing attribution.
 
 **What this session was about:** direct owner continuation request: read the
 live Program Review site cold through the owner's Chrome extension, walk every
@@ -54,6 +58,10 @@ examples-shape decision are constraints, not redesign invitations.
 - Report and repair batch: remote `cad55011` / local `0211afe`, identical
   tested tree `858aa900`. The final step also corrects the two new audit
   documents' required Status badge syntax; strict then passes.
+- CI run `33804057846` caught the off-taxonomy effort word in the added-card
+  lane, which the plain local strict command had treated as advisory. Corrected
+  the metadata and also ran the workflow's exact `--added-card` check; no gate
+  was changed and no site code changed after the passing browser/test run.
 
 ⚑ Self-initiated: no — direct owner walkthrough request.
 
