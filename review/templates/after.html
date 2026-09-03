@@ -8,11 +8,12 @@
     <h1>What a Project adds over a session — the owner's answer</h1>
     <p class="sb-lead">
       Anthropic asked him what would make him choose a Project over a regular Claude Code session.
-      His answers from the 2026-09-02 sitting are below, verbatim and labelled
-      <span class="rv-prov rv-prov-owner">OWNER</span>; where a session read something into them
-      the block is labelled <span class="rv-prov rv-prov-derived">DERIVED</span>, and where it was
-      read from a named file, <span class="rv-prov rv-prov-reviewed">REVIEWED</span>. Typos are his
-      and are kept.
+      His answers from the 2026-09-02 sitting are below, verbatim. Every quote and every
+      paragraph carries its own label: <span class="rv-prov rv-prov-owner">OWNER</span> for his
+      words, quoted or closely paraphrased; <span class="rv-prov rv-prov-derived">DERIVED</span>
+      where a session read something into them; <span class="rv-prov rv-prov-reviewed">REVIEWED</span>
+      where a paragraph reports what was read from a named file. Typos in his words are his and
+      are kept.
     </p>
   </div>
 </section>
@@ -29,11 +30,11 @@
 
     {% for s in sections %}
     <article class="rv-qa" id="{{ s.id }}">
-      <h2>{{ s.heading }} <span class="rv-prov rv-prov-{{ s.kind|lower }}">{{ s.kind }}</span></h2>
+      <h2>{{ s.heading }}</h2>
       {% if s.quote %}
-      <blockquote class="rv-quote"><p>“{{ s.quote }}”</p></blockquote>
+      <blockquote class="rv-quote"><p><span class="rv-prov rv-prov-{{ s.kind|lower }}">{{ s.kind }}</span> “{{ s.quote }}”</p></blockquote>
       {% endif %}
-      {% if s.text %}<p>{{ s.text }}</p>{% endif %}
+      {% if s.text %}<p><span class="rv-prov rv-prov-{{ (s.text_kind or s.kind)|lower }}">{{ s.text_kind or s.kind }}</span> {{ s.text }}</p>{% endif %}
       <p class="rv-evidence">
         <span class="sb-label">Evidence:</span>
         {% for label, url in s.evidence %}

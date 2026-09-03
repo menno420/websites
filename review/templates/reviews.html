@@ -8,10 +8,19 @@
     <p class="sb-lead">
       During the program, agent sessions published dated review editions — what shipped, what
       broke (with citations), what only the owner could do — through the same PR ceremony as
-      code. Two were published, on 2026-07-11 and 2026-07-21, and none since: the program ended
-      with the second. They are kept as they were written, each stating its own date and
-      provenance. The <a href="/reviews/feed.xml">Atom feed</a> still lists them; the publishing
-      ritual is in
+      code.
+      {%- if editions %}
+      {%- set newest = editions[0] %}{% set oldest = editions[-1] %}
+      {{ editions|length }} {{ "edition is" if editions|length == 1 else "editions are" }} on record,
+      from <span class="sb-mono">{{ oldest.date }}</span> to <span class="sb-mono">{{ newest.date }}</span>
+      {%- if newest.date <= "2026-07-21" %} — none since the program’s close on
+      <span class="sb-mono">2026-07-21</span>, which the last one records{% else %}; any dated after
+      <span class="sb-mono">2026-07-21</span> is an archive update, not a sign the program is live{% endif %}.
+      {%- else %}
+      None is committed yet.
+      {%- endif %}
+      Each is kept as it was written and states its own date and provenance. The
+      <a href="/reviews/feed.xml">Atom feed</a> lists them; the publishing ritual is in
       <a href="{{ repo_url }}/blob/main/review/README.md" target="_blank" rel="noopener">review/README.md</a>
       should a later archive update warrant an edition.
     </p>

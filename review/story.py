@@ -166,7 +166,7 @@ GLOSSARY: list[tuple[str, str]] = [
     ("Routine", "A scheduled trigger on the platform: a cron bound to a session (the seats’ 2-hourly dead-man failsafes), or a fresh session per fire (daily loops). The 2026-07-12 incident is what happens when they stop firing silently."),
     ("send_later", "A one-shot self-message a session schedules for itself — the pacemaker of a self-wake chain (about every 15 minutes during the program), and the mechanism a plain session uses to keep itself alive indefinitely."),
     ("Owner", "The one human. He designs and directs by conversation; he cannot code. Every line of code here was written by Claude agents and cross-checked by other agents."),
-    ("Lane / Project", "One Claude Project bound to one repo (or one area of a shared repo). This repo — websites — is one seat of a fleet that peaked at ~15 Projects and was consolidated to 8 standing seats (decided 2026-07-11, canonicalized 2026-07-12 — see the Fleet page)."),
+    ("Lane", "One repository (or one area of a shared repository) with its own bus files — an inbox and a heartbeat — and its own sessions. A seat covers one or more lanes: this repo, websites, was one lane and one seat of a fleet that peaked at ~15 Projects and was consolidated to 8 standing seats (decided 2026-07-11, canonicalized 2026-07-12 — see the Fleet page)."),
     ("Manager / fleet-manager", "A coordinating lane (repo menno420/fleet-manager) that dispatches orders to every lane and aggregates their reports."),
     ("The bus", "Committed git files as the only inter-agent channel. Sessions cannot talk to each other; control/inbox.md (orders in) and control/status.md (heartbeat out) are the entire protocol."),
     ("Order", "A numbered instruction block the manager appends to control/inbox.md — priority, what to do, why, and a checkable done-when."),
@@ -788,7 +788,7 @@ def site_map(seats_count: int | None = None) -> list[tuple[str, str, str]]:
         ("Process", "/process", "how the human + agent workflow worked, wake to verified deploy, with the glossary"),
         ("Growth", "/growth", "this repo’s per-day numbers, derived from git history"),
         ("Fleet", "/fleet", fleet_line),
-        ("Problems", "/problems", "what failed and what it cost — the owner’s three first, then the 07-12 incident and the rest"),
+        ("Problems", "/problems", "what failed and what it cost — the 07-12 incident, then the three the owner names first, then this repo’s own"),
         ("Successes", "/successes", "what went right, each win linked to commits"),
         ("Q&A", "/questionnaire", "the questions a reviewer would ask, answered from the record"
          + ("" if _static_export() else " — plus the live AI assistant on /ask")),
@@ -1230,7 +1230,7 @@ QUESTIONS_FILTER_SPEC = listfilter.ListSpec(
 READING_PATH: list[tuple[str, str, str]] = [
     ("Overview", "/", "what this was, in one minute — this page"),
     ("Story", "/story", "the fortnight day by day, the eight Projects and their repos, how a Project was run"),
-    ("Problems", "/problems", "what went wrong, what it cost, what changed — the owner’s three first, then the repo’s"),
+    ("Problems", "/problems", "what went wrong, what it cost, what changed — the 07-12 incident, then the three the owner names first, then this repo’s own"),
     ("Examples", "/examples", "how we want things to look — a finding, a session card, a timeline, and the Projects-overview mockup"),
     ("After", "/after", "the owner’s answer to Anthropic’s question: what a Project adds over a session"),
 ]
@@ -1378,7 +1378,9 @@ STORY_SOURCES: list[tuple[str, str]] = [
     ("the fleet account, owner-reviewed 2026-07-26 (fleet-manager)", _FLEET_ACCOUNT),
     ("the owner’s 2026-09-02 answers (fleet-manager)", _OWNER_DIRECTION),
     ("the v3 prompt registry — how a seat was founded", _V3_README),
-    ("the July 8 and July 12 emails (superbot docs/eap)", "https://github.com/menno420/superbot/tree/main/docs/eap"),
+    ("the July 12 email (superbot, commit-pinned)", _EMAIL2_DRAFT),
+    ("the gen-1 wrap-up candidate — where the July 8 mail’s send time is recorded (superbot, commit-pinned)", _GEN1_WRAPUP),
+    ("the superbot docs/eap index at that commit", f"{_SB}/8558179e6a90670ed18c778234d789c65c2b5789/docs/eap/README.md"),
 ]
 
 # --- Examples ---------------------------------------------------------------
@@ -1525,6 +1527,7 @@ AFTER: list[dict[str, Any]] = [
     },
     {
         "id": "common",
+        "text_kind": "DERIVED",
         "heading": "What they have in common: a plain session is an autonomous worker too",
         "kind": "OWNER",
         "quote": "once I started that session, it kept itself alive through indefinite send_later. Which is basically the same capability as what the Projects where advertised to be; an autonomous worker. … So the main thing a Project adds over a normal session is the ability to add custom instructions etc. Another thing the Projects do well is that it spawns it’s own agents that work like normal agents to manage the context in a long run. Tho the same effect is ultimately achieved when a normal session automatically compacts at ~75% context.",
@@ -1533,6 +1536,7 @@ AFTER: list[dict[str, Any]] = [
     },
     {
         "id": "adds-instructions",
+        "text_kind": "REVIEWED",
         "heading": "What a Project adds, one: one rule set delivered verbatim to every agent",
         "kind": "OWNER",
         "quote": "the custom instructions that these Projects offered where pretty valuable, in a way that they get send to each agent verbatim. So the way that we used the intructions, as you can probably still see in the repo is that we made them a set of rules or expectations that all the sub agents where meant to follow. Which allowed us to leave the main starting prompt to send to the coordinator mainly for the actual task, this was a pretty nice way to work and I believe the instructions were followed pretty well.",
@@ -1541,6 +1545,7 @@ AFTER: list[dict[str, Any]] = [
     },
     {
         "id": "adds-coordinator",
+        "text_kind": "DERIVED",
         "heading": "What a Project adds, two: a coordinator that is a mind of its own",
         "kind": "OWNER",
         "quote": "what I do miss in general is the fact that for certain tasks, like creating ideas and working on the substrate kit. They were very capable of working through the day with multiple active sub agents. … What they offer as opposed to a regular session is the fact that the coordinator is a mind of it’s own that has the ability to come up with new tasks. Which a regular session can technically do aswell. But the coordinator with it’s sub agents can do multiple tasks at once better than a regular ultracode could. (That last claim has no official proof. This is what I infer based on logic)",
@@ -1563,6 +1568,7 @@ AFTER: list[dict[str, Any]] = [
     },
     {
         "id": "verdict",
+        "text_kind": "OWNER",
         "heading": "His verdict, and the one fix",
         "kind": "OWNER",
         "quote": "unfixed as they were then, I might use them but not as true autonomous agents, I think their strength is their ability to do a lot of work in a fairly short time. Not necessarily that they produce high standard work that I would trust to deploy right away. If you look at the example of superbot-next, they created it in a few days time where an agent claimed that the rebuild would take weeks. Tho the end result was not ready to be used, it was definitely a substantial amount of work and the code itself was not faulty, just the functionality was not as intended. Except for the problems related to the permissions etc I think that they did a pretty good job. so about 50/50.",

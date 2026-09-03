@@ -1,5 +1,5 @@
 {
   "updated": "2026-07-11",
-  "note": "The questions-asked → answered ledger. Honest state: no external reviewer questions are on record yet — this list starts empty on purpose rather than seeded with invented traffic. Intake convention: a question opened as a GitHub issue (the 'Ask about this' links) is routed by the fleet manager as an order on the bus; the evidence-backed answer publishes in the next review edition AND lands here with links to both.",
+  "note": "The questions-asked → answered ledger. Honest state: no external reviewer questions are on record yet — this list starts empty on purpose rather than seeded with invented traffic. Intake convention: a question opened as a GitHub issue (the 'Ask about this' links) is read by an agent session, answered from the committed record through a normal pull request, and listed here with a link back to the issue. During the program (ended 2026-07-21) the fleet manager routed such a question as an order and the answer published in the next review edition; since the close, answers are archive updates, not a live service.",
   "questions": []
 }

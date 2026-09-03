@@ -138,6 +138,7 @@ def test_examples_page_labels_each_exemplar():
     assert r.text.count('class="rv-tag">Example</span>') == 3
     assert 'class="rv-tag rv-tag-mockup">Mockup</span>' in r.text
     assert 'id="projects-overview-mockup"' in r.text
+    assert 'role="img"' not in r.text  # structured content stays readable (Codex #524 R1)
     assert "A proposal, not a screenshot." in r.text
     assert "illustrative value" in r.text
     assert "MOCKUP — proposal, illustrative values" in r.text
@@ -173,7 +174,13 @@ def test_after_page_labels_provenance_per_section():
         assert f'id="{s["id"]}"' in r.text
         assert s["evidence"], s["id"]
         assert s.get("quote") or s.get("text"), s["id"]
+        # Codex #524 R1: a section that pairs an owner quote with session
+        # prose labels the prose separately — never a DERIVED paragraph
+        # under an OWNER heading badge.
+        if s.get("quote") and s.get("text"):
+            assert s.get("text_kind"), s["id"]
     assert r.text.count("rv-prov-owner") >= 5
+    assert r.text.count("rv-prov-derived") >= 3
 
 
 # --------------------------------------------------------------------------- #

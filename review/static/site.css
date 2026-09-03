@@ -393,3 +393,8 @@
   .rv-finding-grid, .rv-cardex-row { grid-template-columns: 1fr; }
   .rv-cardex-why { grid-column: 1; }
 }
+
+/* Codex #524 R1 P1: the drawer is position:fixed, so the document cannot
+   scroll it — with 13 links + 3 group headings the tail was unreachable on a
+   667px-tall phone. Bound it to the space under the bar and let it scroll. */
+.sb-drawer { max-height: calc(100vh - var(--sb-nav-h)); max-height: calc(100dvh - var(--sb-nav-h)); overflow-y: auto; }

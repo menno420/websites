@@ -84,7 +84,7 @@
 <section class="sb-section" id="projects-overview-mockup">
   <div class="sb-wrap">
     <div class="sb-sec-head">
-      <h2><span class="rv-tag rv-tag-mockup">Mockup</span> The Projects overview, redrawn so each Project shows its state</h2>
+      <h2 id="mockup-heading"><span class="rv-tag rv-tag-mockup">Mockup</span> The Projects overview, redrawn so each Project shows its state</h2>
       <p class="sb-muted">
         <strong>A proposal, not a screenshot.</strong> On 2026-07-11 the owner's claude.ai Projects
         overview showed eight cards — a name, an age ("yesterday", "2 days ago") and "Only visible
@@ -97,7 +97,10 @@
       </p>
     </div>
 
-    <div class="rv-mock" role="img" aria-label="Mockup of a Projects overview: a sidebar with two Routines and eight Projects, each with a state; a grid of eight Project cards each showing name, state, last progress, what it is doing now, open asks, age, and 'Only visible to you'.">
+    {#- Ordinary semantic containers, not role="img": the names, states and
+        asks ARE the content, and an image role would flatten them for
+        assistive technology (Codex #524 R1). -#}
+    <div class="rv-mock" aria-labelledby="mockup-heading">
       <div class="rv-mock-chrome"><span class="rv-mock-dot"></span><span class="rv-mock-dot"></span><span class="rv-mock-dot"></span><span class="rv-mock-url">claude.ai — Projects</span><span class="rv-mock-label">MOCKUP — proposal, illustrative values</span></div>
       <div class="rv-mock-body">
         <aside class="rv-mock-side">
