@@ -1,7 +1,9 @@
 # 2026-09-03 — the review site for a first-time Anthropic reader: navigation, explanation, examples
 
-> **Status:** `in-progress` — branch `claude/review-site-navigation-examples`;
-> flips to `complete` + PR number as the deliberate LAST code step.
+> **Status:** `complete` — branch `claude/review-site-navigation-examples`,
+> PR #524. Born red: this card's in-progress Status held the `quality` gate
+> red through three Codex rounds; this flip to `complete` is the deliberate
+> LAST code step and releases the hold.
 
 - **📊 Model:** Claude Fable 5 · xhigh · site build
 - **📍 Venue:** cloud-container
@@ -118,14 +120,51 @@ put to the owner before editing:
   born-red `[session-card-hold]`; the rest are pre-existing NOTEs
   (`scripts/preflight.py` not found; the boot-section advisory).
   Rendered locally (chromium headless over the served export) and the renders
-  sent to the owner before merge: the Overview top and the mockup section.
+  sent to the owner before merge: the Overview top and the mockup section;
+  a 390-px iframe render confirmed the phone layout (header buttons present,
+  no sideways overflow).
+- **Codex, three rounds (the session cap), on the bare `@codex review`:**
+  round 1 at `af7de0d` — nine findings (P1: the fixed-position mobile drawer
+  could not scroll past 13 links on a short phone; P2 ×8: `role="img"` on
+  the mockup, the Overview's Problems order line, a Project/Seat/Lane
+  conflict in the glossary, a hardcoded editions count in the Reviews lede,
+  an unpinned `tree/main` Story source, the questions ledger's stale data
+  note, mixed provenance under one OWNER badge on After, the Growth lede
+  moving the program's start to 07-09) — **9 conceded**, fixed in `13b383c`;
+  round 2 at `13b383c` — three findings (the 07-09 row said 46 PRs where
+  the snapshot counts 45 merged / 46 commits; a hardcoded "two editions" on
+  the Overview site map; the `/ask` map row ignoring export mode) — **3
+  conceded**, fixed in `41df1f3`; round 3 at `41df1f3` — clean ("Didn't find
+  any major issues", `Reviewed commit: 41df1f3bad`, 10:30:58Z). Each fix
+  batch was verified on the free-key Gemini route before its push (9/9 and
+  3/3 addressed, no regressions). Tally: **12 `[conceded]` · 0 `[partial]`
+  · 0 `[survived]`**.
+- Final verification on `13b383c` + the round-2 fixes: all four suites
+  **2525 passed**; `review/tests` **315 passed** at `41df1f3`; the export
+  38 routes, exit 0; strict gate red solely on this card's hold until this flip.
 
 ⚑ Self-initiated: no — owner order (the 2026-09-02 review-site prompt).
 
 ## 💡 Session idea
 
-(filled at close)
+**Bake the Projects-overview mockup's states from the committed mirror as a
+second, "as it would have looked on 2026-08-20" panel.** The mockup's values
+are illustrative by design; `review/data/fleet.json` already holds each
+seat's heartbeat age, `needs-owner` field and orders outstanding, which is
+enough to derive Working / Idle / Stalled / Needs-input for the bake moment
+and label it "measured at bake, not live". Worth having because it would turn
+the proposal into a demonstration on real data without adding a service or
+a live claim — the one thing a product reviewer would ask for next. Deduped
+against `docs/ideas/backlog.md` + the queue-state NEXT list: not present
+(the backlog carries fleet-page ideas, none about the mockup). To capture in
+`docs/ideas/backlog.md`.
 
 ## ⟲ Previous-session review
 
-(filled at close)
+`.sessions/2026-08-27-fleet-owner-comments.md` (#523) did the estate-boundary
+work well — websites as the UI and writeback client, Fleet Manager as the
+record owner, every degraded state explicit — and left the review site's own
+front door untouched, which is what this pass found: a site whose tiles said
+"now running" under a banner saying the program ended, and whose intake
+promised routing on a bus that no longer exists. Records may grow;
+instructions may not — the fix here was pages and tests, not a rule.
