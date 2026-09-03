@@ -2039,3 +2039,5 @@
   fallback is safe but invisible; a dead-secret regression should be a run
   signal, not a mystery blocked PR. Source:
   `.sessions/2026-07-18-wire-bake-pat.md` 💡.
+
+- **Bake the Projects-overview mockup's states from the committed fleet mirror** as a second "as it would have looked at bake" panel on `/examples` — Working / Idle / Stalled / Needs-input derived from each seat's heartbeat age, `needs-owner` field and orders outstanding in `review/data/fleet.json`, labelled "measured at bake, not live". Worth having because it turns the proposal into a demonstration on real data without a service or a live claim. (2026-09-03, `.sessions/2026-09-03-review-site-navigation-examples.md`)

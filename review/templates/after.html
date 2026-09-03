@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}After — what a Project adds over a session — Program Review{% endblock %}
+{% block description %}The owner's answer to Anthropic's question — what would make him choose a Project over a regular Claude Code session — in his words, with a session's reading labelled as such.{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">After</p>
+    <h1>What a Project adds over a session — the owner's answer</h1>
+    <p class="sb-lead">
+      Anthropic asked him what would make him choose a Project over a regular Claude Code session.
+      His answers from the 2026-09-02 sitting are below, verbatim. Every quote and every
+      paragraph carries its own label: <span class="rv-prov rv-prov-owner">OWNER</span> for his
+      words, quoted or closely paraphrased; <span class="rv-prov rv-prov-derived">DERIVED</span>
+      where a session read something into them; <span class="rv-prov rv-prov-reviewed">REVIEWED</span>
+      where a paragraph reports what was read from a named file. Typos in his words are his and
+      are kept.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <nav class="sb-card rv-toc" aria-label="Sections on this page">
+      <ol>
+        {% for s in sections %}
+        <li><a href="#{{ s.id }}">{{ s.heading }}</a></li>
+        {% endfor %}
+      </ol>
+    </nav>
+
+    {% for s in sections %}
+    <article class="rv-qa" id="{{ s.id }}">
+      <h2>{{ s.heading }}</h2>
+      {% if s.quote %}
+      <blockquote class="rv-quote"><p><span class="rv-prov rv-prov-{{ s.kind|lower }}">{{ s.kind }}</span> “{{ s.quote }}”</p></blockquote>
+      {% endif %}
+      {% if s.text %}<p><span class="rv-prov rv-prov-{{ (s.text_kind or s.kind)|lower }}">{{ s.text_kind or s.kind }}</span> {{ s.text }}</p>{% endif %}
+      <p class="rv-evidence">
+        <span class="sb-label">Evidence:</span>
+        {% for label, url in s.evidence %}
+        <a href="{{ url }}"{% if url.startswith("http") %} target="_blank" rel="noopener"{% endif %}>{{ label }}</a>{% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </p>
+    </article>
+    {% endfor %}
+
+    <p class="sb-muted">
+      The program ended 2026-07-21. This page records what he would say afterwards; the
+      <a href="/problems">Problems</a> page carries each failure with its cost, and the
+      <a href="/examples#projects-overview-mockup">Examples</a> page draws the one screen he asked for.
+    </p>
+  </div>
+</section>
+{% endblock %}

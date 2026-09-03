@@ -15,3 +15,6 @@ botsite/testing.sqlite3*
 
 # owner-writeback local SQLite audit log (ephemeral runtime state — ORDER 020)
 app/writeback.sqlite3*
+
+# local static-export build output (review/gen_static.py --out _site)
+_site/

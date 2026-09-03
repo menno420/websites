@@ -58,6 +58,9 @@
           <a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a>{% if not loop.last %} · {% endif %}
           {% endfor %}
         </p>
+        {% if item.more %}
+        <p class="rv-evidence"><span class="sb-label">On this site:</span> <a href="{{ item.more[1] }}">{{ item.more[0] }}</a></p>
+        {% endif %}
       </article>
       {% endfor %}
     </div>

@@ -442,7 +442,7 @@ def test_homepage_degrades_without_fleet_mirror(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(fleetdata, "FLEET_PATH", tmp_path / "gone.json")
     r = client.get("/")
     assert r.status_code == 200
-    assert "standing fleet seats" not in r.text
+    assert "Project seats at the close" not in r.text
     snap = story.load_snapshot()
     assert "{:,}".format(snap["data"]["totals"]["prs_merged"]) in r.text
 

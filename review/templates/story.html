@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Story — Program Review{% endblock %}
+{% block description %}The fortnight day by day, the eight Projects and their repositories, and how a Project was run — every row cited to a committed file.{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">Story</p>
+    <h1>The fortnight, the eight Projects, and how one was run</h1>
+    <p class="sb-lead">
+      What happened between <span class="sb-mono">2026-07-07</span> and
+      <span class="sb-mono">2026-07-21</span>, told from the estate's owner-reviewed account and
+      the owner's own answers of 2026-09-02 — not re-derived here. Every stop on the timeline names
+      the file it was read from; the Project table is joined to the committed seat registry rather
+      than typed in.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-sec-head"><h2>Day by day</h2></div>
+    <ol class="rv-timeline">
+      {% for t in timeline %}
+      <li class="rv-tl-item">
+        <span class="rv-tl-date sb-mono">{{ t.date }}</span>
+        <div>
+          <h3>{{ t.title }}</h3>
+          <p>{{ t.detail }}</p>
+          <p class="rv-evidence">
+            <span class="sb-label">Evidence:</span>
+            {% for label, url in t.evidence %}
+            <a href="{{ url }}"{% if url.startswith("http") %} target="_blank" rel="noopener"{% endif %}>{{ label }}</a>{% if not loop.last %} · {% endif %}
+            {% endfor %}
+          </p>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+
+<section class="sb-section" id="projects">
+  <div class="sb-wrap">
+    <div class="sb-sec-head">
+      <h2>The eight Projects, as the owner's screen named them</h2>
+      <p class="sb-muted">
+        In the order his claude.ai Projects overview showed them on 2026-07-11. Seat roles and
+        member repositories come from the committed fleet mirror — the same registry the
+        <a href="/fleet">Fleet</a> page renders — never typed in here. Where the registry uses a
+        different name for a seat, the row says so.
+      </p>
+    </div>
+    {% if projects %}
+    <div class="sb-grid-2">
+      {% for p in projects %}
+      <div class="sb-card rv-lane-card">
+        <h3>{{ p.screen_name }}{% if p.renamed %} <span class="rv-chip rv-chip-unknown">registry name: {{ p.seat }}</span>{% endif %}</h3>
+        <p>{{ p.role }}</p>
+        <ul class="rv-kv">
+          {% for m in p.repos %}
+          <li><span>repo</span><strong>{% if m.repo_url %}<a href="{{ m.repo_url }}" target="_blank" rel="noopener">{{ m.repo }}</a>{% else %}{{ m.repo }}{% endif %}</strong></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="sb-chart-note sb-muted">
+      One Game Lab lane is private by design and is deliberately not listed. The screen itself
+      showed only a name, an age and "Only visible to you" per Project — the
+      <a href="/examples#projects-overview-mockup">Examples</a> page redraws it with each
+      Project's state visible.
+    </p>
+    {% else %}
+    <div class="sb-error" role="alert">
+      <strong>Fleet mirror unavailable.</strong> <span class="sb-mono">{{ fleet_error }}</span> —
+      the Project table renders only from the committed registry, so it is absent rather than
+      invented.
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="sb-section" id="ritual">
+  <div class="sb-wrap">
+    <div class="sb-sec-head">
+      <h2>How a Project was run, day to day</h2>
+      <p class="sb-muted">The owner's account of 2026-09-02, and the registry recipe it followed.</p>
+    </div>
+    <ol class="rv-flow-list">
+      {% for r in ritual %}
+      <li class="rv-flow-step">
+        <span class="rv-flow-num" aria-hidden="true">{{ loop.index }}</span>
+        <div>
+          <h3>{{ r.step }}</h3>
+          <p>{{ r.text }}</p>
+          <p class="rv-evidence">
+            <span class="sb-label">Evidence:</span>
+            {% for label, url in r.evidence %}
+            <a href="{{ url }}"{% if url.startswith("http") %} target="_blank" rel="noopener"{% endif %}>{{ label }}</a>{% if not loop.last %} · {% endif %}
+            {% endfor %}
+          </p>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+
+<section class="sb-section" id="kept">
+  <div class="sb-wrap-narrow">
+    <h2>What the owner kept</h2>
+    <blockquote class="rv-quote">
+      <p>“{{ kept.quote }}”</p>
+      <footer class="rv-evidence">
+        <span class="sb-label">Owner, 2026-09-02:</span>
+        {% for label, url in kept.evidence %}
+        <a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a>{% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </footer>
+    </blockquote>
+    <p class="sb-muted">
+      Sources for this page:
+      {% for label, url in story_sources %}
+      <a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a>{% if not loop.last %} · {% endif %}
+      {% endfor %}.
+      What went wrong is on <a href="/problems">Problems</a>; what he would tell the product team is
+      on <a href="/after">After</a>.
+    </p>
+  </div>
+</section>
+{% endblock %}

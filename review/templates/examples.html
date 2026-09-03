@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Examples — how we want things to look — Program Review{% endblock %}
+{% block description %}Examples of the shape the owner wants: a finding, a session card, a timeline, and a mockup of the claude.ai Projects overview with each Project's state visible — labelled as a proposal.{% endblock %}
+{% block content %}
+<section class="sb-page-hero">
+  <div class="sb-wrap-narrow">
+    <p class="sb-ey">Examples</p>
+    <h1>How we want things to look</h1>
+    <p class="sb-lead">
+      Four exemplars, each labelled. Three are real things from the record drawn in the shape a
+      reader should see them: a finding, a session card, a timeline. The fourth is a
+      <strong>mockup</strong> — a proposal for the one product screen the owner asked for, drawn
+      from his description of it, not a screenshot of anything that exists.
+    </p>
+  </div>
+</section>
+
+<section class="sb-section" id="finding">
+  <div class="sb-wrap-narrow">
+    <div class="sb-sec-head">
+      <h2><span class="rv-tag">Example</span> A finding, in the shape we want</h2>
+      <p class="sb-muted">Headline · what was measured · the evidence · what it cost · what would fix it. Nothing estimated; every line cites a file at a commit.</p>
+    </div>
+    <article class="sb-card rv-finding">
+      <h3>{{ finding.headline }}</h3>
+      <dl class="rv-finding-grid">
+        <dt>What was measured</dt><dd>{{ finding.measured }}</dd>
+        <dt>Evidence</dt>
+        <dd>
+          {% for label, url in finding.evidence %}
+          <a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a>{% if not loop.last %} · {% endif %}
+          {% endfor %}
+        </dd>
+        <dt>What it cost</dt><dd>{{ finding.cost }}</dd>
+        <dt>What would fix it</dt><dd>{{ finding.fix }}</dd>
+      </dl>
+      <p class="rv-evidence"><a href="{{ finding.on_this_site }}">The same finding on the Problems page</a> — the Problems page follows this shape for every entry.</p>
+    </article>
+  </div>
+</section>
+
+<section class="sb-section" id="session-card">
+  <div class="sb-wrap-narrow">
+    <div class="sb-sec-head">
+      <h2><span class="rv-tag">Example</span> A session card, as a reader should see it</h2>
+      <p class="sb-muted">
+        A real card from this repository's program era —
+        <a href="{{ card.url }}" target="_blank" rel="noopener"><code>{{ card.path }}</code></a>
+        (<a href="{{ card.pr[1] }}" target="_blank" rel="noopener">{{ card.pr[0] }}</a>) — field by
+        field, quoted (trimmed with ellipses), with what each field is for. Every session
+        commits one; CI refuses to merge until it flips complete.
+      </p>
+    </div>
+    <div class="sb-card rv-cardex">
+      {% for f in card.fields %}
+      <div class="rv-cardex-row">
+        <div class="rv-cardex-name sb-label">{{ f.name }}</div>
+        <div class="rv-cardex-value">{{ f.value }}</div>
+        <div class="rv-cardex-why sb-muted">{{ f.why }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="sb-section" id="timeline">
+  <div class="sb-wrap">
+    <div class="sb-sec-head">
+      <h2><span class="rv-tag">Example</span> A timeline of the fortnight</h2>
+      <p class="sb-muted">One line per stop, dated, each with the file it was read from — the full version with detail is the <a href="/story">Story</a> page.</p>
+    </div>
+    <ol class="rv-strip rv-strip-cited" aria-label="Timeline of the program">
+      {% for t in timeline %}
+      <li class="rv-strip-item">
+        <span class="rv-strip-date sb-mono">{{ t.date }}</span>
+        <span class="rv-strip-title">{{ t.title }}</span>
+        <span class="rv-strip-cite">{% for label, url in t.evidence %}<a href="{{ url }}"{% if url.startswith("http") %} target="_blank" rel="noopener"{% endif %}>{{ label }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</span>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+
+<section class="sb-section" id="projects-overview-mockup">
+  <div class="sb-wrap">
+    <div class="sb-sec-head">
+      <h2 id="mockup-heading"><span class="rv-tag rv-tag-mockup">Mockup</span> The Projects overview, redrawn so each Project shows its state</h2>
+      <p class="sb-muted">
+        <strong>A proposal, not a screenshot.</strong> On 2026-07-11 the owner's claude.ai Projects
+        overview showed eight cards — a name, an age ("yesterday", "2 days ago") and "Only visible
+        to you" — and a sidebar with two Routines and the same eight Projects. Nothing on it said
+        whether a Project was working, stalled, or waiting on him. His words: <em>"This screen is
+        where I'd like the projects to be showing whether or not they are active."</em> Below is
+        that screen redrawn with the state he asked for. The names, ages and Routine names are
+        what his screen showed; <strong>every state, time and count is an illustrative value</strong>
+        — an example of what the screen would carry, not a measurement of anything.
+      </p>
+    </div>
+
+    {#- Ordinary semantic containers, not role="img": the names, states and
+        asks ARE the content, and an image role would flatten them for
+        assistive technology (Codex #524 R1). -#}
+    <div class="rv-mock" aria-labelledby="mockup-heading">
+      <div class="rv-mock-chrome"><span class="rv-mock-dot"></span><span class="rv-mock-dot"></span><span class="rv-mock-dot"></span><span class="rv-mock-url">claude.ai — Projects</span><span class="rv-mock-label">MOCKUP — proposal, illustrative values</span></div>
+      <div class="rv-mock-body">
+        <aside class="rv-mock-side">
+          <div class="rv-mock-side-head">Routines</div>
+          {% for r in mockup_routines %}
+          <div class="rv-mock-side-row"><span class="rv-mock-dot-state rv-state-{{ r.state }}"></span><span>{{ r.name }}</span><span class="rv-mock-side-sub">{{ r.line }}</span></div>
+          {% endfor %}
+          <div class="rv-mock-side-head">Projects</div>
+          {% for p in mockup_projects %}
+          <div class="rv-mock-side-row"><span class="rv-mock-dot-state rv-state-{{ p.state }}"></span><span>{{ p.name }}</span>{% if p.asks %}<span class="rv-mock-side-ask">{{ p.asks }}</span>{% endif %}</div>
+          {% endfor %}
+        </aside>
+        <div class="rv-mock-main">
+          <div class="rv-mock-toolbar"><span class="rv-mock-h">Projects</span><span class="rv-mock-summary">{% set ns = namespace(w=0,i=0,s=0,n=0) %}{% for p in mockup_projects %}{% if p.state == "working" %}{% set ns.w = ns.w + 1 %}{% elif p.state == "idle" %}{% set ns.i = ns.i + 1 %}{% elif p.state == "stalled" %}{% set ns.s = ns.s + 1 %}{% else %}{% set ns.n = ns.n + 1 %}{% endif %}{% endfor %}{{ ns.w }} working · {{ ns.i }} idle · {{ ns.s }} stalled · {{ ns.n }} need your input</span></div>
+          <div class="rv-mock-grid">
+            {% for p in mockup_projects %}
+            <div class="rv-mock-card rv-mock-card-{{ p.state }}">
+              <div class="rv-mock-card-top"><span class="rv-mock-name">{{ p.name }}</span><span class="rv-mock-state rv-state-{{ p.state }}">{% for s in mockup_states %}{% if s.key == p.state %}{{ s.label }}{% endif %}{% endfor %}</span></div>
+              <div class="rv-mock-line"><span class="rv-mock-k">last progress</span> {{ p.last }}</div>
+              <div class="rv-mock-line"><span class="rv-mock-k">now</span> {{ p.now }}</div>
+              <div class="rv-mock-line"><span class="rv-mock-k">asks</span> {% if p.asks %}{{ p.asks }} open for you{% else %}none{% endif %}</div>
+              <div class="rv-mock-foot"><span>{{ p.age }}</span><span>Only visible to you</span></div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-grid-2 rv-mock-legend">
+      {% for s in mockup_states %}
+      <div class="sb-card">
+        <h3><span class="rv-mock-dot-state rv-state-{{ s.key }}"></span> {{ s.label }}</h3>
+        <p>{{ s.meaning }}</p>
+        <p class="sb-muted rv-stat-sub"><strong>Where it would come from:</strong> {{ s.source }}.</p>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="sb-chart-note sb-muted">
+      Why these four states and these fields: his answer to how he found a silent Project ("by
+      checking in on them"), his one-feature ask ("see which of the Projects are active … quickly
+      determine which Project needs my input"), and the two mails' asks for a cross-Project view
+      that splits "session open" from "making progress" and for a visible failed/missed state on
+      Routines. Sources:
+      {% for label, url in mockup_sources %}
+      <a href="{{ url }}"{% if url.startswith("http") %} target="_blank" rel="noopener"{% endif %}>{{ label }}</a>{% if not loop.last %} · {% endif %}
+      {% endfor %}.
+      The image the mockup redraws is not in any repository; its description is.
+    </p>
+  </div>
+</section>
+{% endblock %}

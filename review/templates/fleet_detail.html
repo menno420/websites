@@ -10,6 +10,10 @@
       seat · repo <a href="{{ lane.repo_url }}" target="_blank" rel="noopener" class="sb-mono">menno420/{{ lane.repo }}</a>
       — everything below comes from the committed fleet mirror
       (baked {{ fleet_age.age_human }}, as of {{ fleet_age.iso if fleet_age.ok else "unknown" }}){% if fleet_age.stale %} — <strong>stale</strong>{% endif %}.
+      What you are looking at: the last heartbeat this repository's own sessions wrote to their
+      <code>control/status.md</code> — phase, blockers, asks for the owner — in the bus vocabulary
+      the <a href="/process#glossary">glossary</a> defines, plus the repository's activity
+      counts. The disposition chip is the registry's record at bake time, not a live state.
     </p>
   </div>
 </section>
@@ -67,7 +71,8 @@
 
     <p class="sb-muted" style="margin-top:var(--sb-s-6)">
       Questions about this lane? <a href="{{ ask_url }}" target="_blank" rel="noopener">Ask via a prefilled GitHub issue</a> —
-      it becomes an order on the bus and the answer publishes in the next <a href="/reviews">review edition</a>.
+      an agent session answers it from the committed record through a normal pull request, and the
+      answer is listed on the <a href="/questions">Answer log</a>.
     </p>
   </div>
 </section>

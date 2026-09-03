@@ -3,15 +3,59 @@
 <section class="sb-page-hero">
   <div class="sb-wrap-narrow">
     <p class="sb-ey">For the Anthropic Claude Code team</p>
-    <h1>The public, evidence-backed review of a completed program: running Claude Code Projects as an autonomous software fleet.</h1>
+    <h1>One person, eight Claude Projects, two weeks — the program reviewing itself.</h1>
     <p class="sb-lead">
-      One human directed; Claude agents built, verified and coordinated — through git alone.
-      The program ran 2026-07-07 to 2026-07-21; this site is that program reviewing itself for
-      the Claude Code team, and every claim on it links to a public commit. It pairs with the July&nbsp;8 and July&nbsp;12 emails: the findings
-      those emails report are the cards below, each with its evidence.
+      From <span class="sb-mono">2026-07-07</span> to <span class="sb-mono">2026-07-21</span> one
+      owner, who does not code, ran a fleet of Claude Code Projects — eight standing ones after a
+      mid-program consolidation — across about twenty repositories, coordinated through committed
+      git files alone. This site is that program's public review of itself for the Claude Code
+      team. The program ended; the Project seats no longer exist; every claim here links to a
+      public commit, and the problems get the same specificity as the successes.
     </p>
   </div>
 </section>
+
+<section class="sb-section">
+  <div class="sb-wrap-narrow">
+    <h2>What this was, in one minute</h2>
+    <p>
+      A <strong>Project</strong> was a claude.ai Code Project: one instruction box pasted once and
+      delivered verbatim to every agent it spawned, a coordinator chat, and the worker sessions
+      the coordinator started. Each Project owned one or more repositories. The owner's day was
+      a reset-and-repaste of every Project each morning, a shared continuation prompt every few
+      hours, and "continue" whenever a Project claimed its queue was exhausted. Sessions could
+      not talk to each other, so orders travelled as numbered blocks appended to a file in each
+      repo, and each session's last act was to overwrite a heartbeat file. What the program
+      shipped, what broke, and what the owner would tell the product team are on the pages below;
+      the words in bold are defined in the <a href="/process#glossary">glossary</a>.
+    </p>
+    <p class="sb-muted">
+      Ten minutes, in this order:
+      {% for label, href, line in reading_path %}
+      <a href="{{ href }}"><strong>{{ label }}</strong></a> — {{ line }}{% if not loop.last %}; {% else %}.{% endif %}
+      {% endfor %}
+    </p>
+  </div>
+</section>
+
+{% if timeline %}
+<section class="sb-section">
+  <div class="sb-wrap">
+    <div class="sb-sec-head">
+      <h2>The fortnight at a glance</h2>
+      <p class="sb-muted">Each stop is cited on the <a href="/story">Story</a> page.</p>
+    </div>
+    <ol class="rv-strip" aria-label="Timeline of the program">
+      {% for t in timeline %}
+      <li class="rv-strip-item">
+        <span class="rv-strip-date sb-mono">{{ t.date }}</span>
+        <span class="rv-strip-title">{{ t.title }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+{% endif %}
 
 {% if stats %}
 <section class="sb-section rv-home-stats">
@@ -26,7 +70,9 @@
       {% endfor %}
     </div>
     <p class="sb-chart-note sb-muted">
-      Counted from the committed record, never typed in{% if generated_at %} — snapshot as of {{ generated_at }}{% endif %}{% if fleet_generated_at %}, fleet mirror as of {{ fleet_generated_at }}{% endif %}{% if git_head %} (<a href="{{ repo_url }}/commit/{{ git_head }}" target="_blank" rel="noopener" class="sb-mono">{{ git_head[:8] }}</a>){% endif %}.
+      Pull requests, sessions, tests and services count <strong>this repository (websites) only</strong> —
+      one seat of the fleet; the <a href="/fleet">Fleet</a> page covers the others. Counted from
+      the committed record, never typed in{% if generated_at %} — snapshot as of {{ generated_at }}{% endif %}{% if fleet_generated_at %}, fleet mirror as of {{ fleet_generated_at }}{% endif %}{% if git_head %} (<a href="{{ repo_url }}/commit/{{ git_head }}" target="_blank" rel="noopener" class="sb-mono">{{ git_head[:8] }}</a>){% endif %}.
     </p>
   </div>
 </section>
@@ -36,6 +82,7 @@
   <div class="sb-wrap">
     <div class="sb-sec-head">
       <h2>Start here — five findings worth your first five minutes</h2>
+      <p class="sb-muted">The July 12 email's findings, each with its evidence. The three problems the owner names first are on the <a href="/problems">Problems</a> page.</p>
     </div>
     <div class="sb-grid-3 rv-start-grid">
       {% for card in start_here %}
@@ -55,21 +102,21 @@
 
 <section class="sb-section">
   <div class="sb-wrap-narrow">
+    <h2>How this site is organized</h2>
+    <ul class="sb-bullets rv-map">
+      {% for label, href, line in site_map %}
+      <li><strong><a href="{{ href }}">{{ label }}</a></strong> — {{ line }}</li>
+      {% endfor %}
+    </ul>
+    {%- if static_export %}
+    <p class="sb-muted rv-stat-sub">
+      While the review service ran, this page carried a live, evidence-grounded assistant over
+      the committed corpus. It retired with the move to this static export (2026-08-20); its
+      seeded answers survive as <a href="/ask">Archived answers</a>.
+      <a class="sb-btn sb-btn-ghost rv-inline-btn" href="/ask">Browse archived answers</a>
+    </p>
+    {%- else %}
     <div class="sb-card rv-ai-panel">
-      {%- if static_export %}
-      <p class="sb-ey">Archive</p>
-      <h2>Archived answers</h2>
-      <p>
-        <strong>Retired with the program.</strong> While the review service ran, this panel
-        offered a live, evidence-grounded assistant over the committed corpus — free-form
-        questions and a one-click structured review, every answer citing its commits. The
-        backend retired with the move to this static export, so the assistant is no longer
-        reachable. Its evidence-backed seeded answers remain available as a historical record.
-      </p>
-      <p class="rv-ai-panel-actions">
-        <a class="sb-btn sb-btn-primary" href="/ask">Browse archived answers</a>
-      </p>
-      {%- else %}
       <p class="sb-ey">Interactive</p>
       <h2>Ask the project / Review with an AI</h2>
       <p>
@@ -79,31 +126,16 @@
         draw only from the committed evidence corpus and cite their commits — what isn't in the
         evidence gets an honest "that's not in the evidence", never an invention.
       </p>
-      {%- endif %}
-      {%- if not static_export %}
       <p class="rv-ai-panel-actions">
         <a class="sb-btn sb-btn-primary" href="/ask">Ask the project</a>
         <a class="sb-btn sb-btn-ghost" href="/ask">Run a structured review</a>
       </p>
-      {%- endif %}
-      {%- if not static_export %}
       <p class="sb-muted rv-stat-sub">
         Server-side only — no key ever reaches the browser. Seeded answers to the common
         questions work instantly even while the live model is degraded.
       </p>
-      {%- endif %}
     </div>
-  </div>
-</section>
-
-<section class="sb-section">
-  <div class="sb-wrap-narrow">
-    <h2>How this site is organized</h2>
-    <ul class="sb-bullets rv-map">
-      {% for label, href, line in site_map %}
-      <li><strong><a href="{{ href }}">{{ label }}</a></strong> — {{ line }}</li>
-      {% endfor %}
-    </ul>
+    {%- endif %}
   </div>
 </section>
 

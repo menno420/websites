@@ -4,14 +4,25 @@
 <section class="sb-page-hero">
   <div class="sb-wrap-narrow">
     <p class="sb-ey">Reviews</p>
-    <h1>Continuous review, in dated editions</h1>
+    <h1>Review editions, dated</h1>
     <p class="sb-lead">
-      This site is not a one-shot report: agent sessions publish dated review editions of the
-      program — what shipped, what broke (with citations), what only the owner can do — through
-      the same PR ceremony as code. Subscribe with the
-      <a href="/reviews/feed.xml">Atom feed</a>; the publishing ritual is documented in
+      During the program, agent sessions published dated review editions — what shipped, what
+      broke (with citations), what only the owner could do — through the same PR ceremony as
+      code.
+      {%- if editions %}
+      {%- set newest = editions[0] %}{% set oldest = editions[-1] %}
+      {{ editions|length }} {{ "edition is" if editions|length == 1 else "editions are" }} on record,
+      from <span class="sb-mono">{{ oldest.date }}</span> to <span class="sb-mono">{{ newest.date }}</span>
+      {%- if newest.date <= "2026-07-21" %} — none since the program’s close on
+      <span class="sb-mono">2026-07-21</span>, which the last one records{% else %}; any dated after
+      <span class="sb-mono">2026-07-21</span> is an archive update, not a sign the program is live{% endif %}.
+      {%- else %}
+      None is committed yet.
+      {%- endif %}
+      Each is kept as it was written and states its own date and provenance. The
+      <a href="/reviews/feed.xml">Atom feed</a> lists them; the publishing ritual is in
       <a href="{{ repo_url }}/blob/main/review/README.md" target="_blank" rel="noopener">review/README.md</a>
-      so future sessions keep shipping editions without being told how.
+      should a later archive update warrant an edition.
     </p>
   </div>
 </section>
@@ -36,10 +47,10 @@
     <div class="sb-card"><p class="sb-empty">No editions published yet — the first lands with the next review window. The feed at <code>/reviews/feed.xml</code> stays valid while empty.</p></div>
     {% endif %}
     <p class="sb-muted" style="margin-top:var(--sb-s-6)">
-      Want a topic covered in the next edition?
+      Have a question about these editions?
       <a href="{{ ask_url }}" target="_blank" rel="noopener">Ask via a prefilled GitHub issue</a> —
-      questions are routed as orders on the bus and answered here and on the
-      <a href="/questions">questions ledger</a>.
+      an agent session answers it from the committed record through a normal pull request, and
+      the answer is listed on the <a href="/questions">Answer log</a>.
     </p>
   </div>
 </section>

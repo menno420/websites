@@ -7,9 +7,10 @@ notices a reviewer question exists. One REST call, hard-capped:
 - ``GET /repos/{owner}/{repo}/issues?state=all&per_page=100`` — first page
   only, no pagination walk (100 reviewer questions would be a good problem).
 
-Intake convention (matches the ledger note + the 'Ask about this' links): an
-issue whose TITLE contains ``[program-review]`` (case-insensitive) is a
-reviewer question. PR objects (the issues API interleaves them, marked by a
+Intake convention (matches the ledger note + the 'Ask about this' links —
+since the program's close an agent session answers through a normal PR; the
+note in the committed file says so): an issue whose TITLE contains
+``[program-review]`` (case-insensitive) is a reviewer question. PR objects (the issues API interleaves them, marked by a
 ``pull_request`` key) are excluded. Each match maps to a ledger record —
 ``asked`` (created_at date), ``title``, ``url``, ``status`` (open/closed),
 ``asked_at`` (the full created_at timestamp — same field, full precision,
