@@ -158,6 +158,13 @@ def growth_charts(snapshot_data: dict[str, Any]) -> list[dict[str, Any]]:
 
 # Who's who, for an outside reader.
 GLOSSARY: list[tuple[str, str]] = [
+    ("Project", "A claude.ai Code Project during the program: one Custom Instructions box (pasted once, at most 8,000 characters, delivered verbatim to every agent it spawns), a coordinator chat that receives the startup prompt, and the worker sessions the coordinator spawns. Eight ran side by side after the 2026-07-11 consolidation; they ended 2026-07-21."),
+    ("Coordinator / worker", "The coordinator is the Project’s main chat: it reads orders, plans, and spawns worker sessions that do the building. The workers had to accept the coordinator’s authority for gated actions — and did not always (see Problems)."),
+    ("Seat", "One Project’s standing place in the fleet, named by its role (Ideas Lab, Game Lab, Project Manager …). A seat covers one or more repositories; the Fleet page lists the eight and their repos."),
+    ("EAP", "Anthropic’s early-access program for Claude Code Projects, 2026-07-07 → 07-14, extended by the owner to 07-21. The program this site reviews ran inside it."),
+    ("Startup prompt / continuation prompt", "The startup prompt is the coordinator’s first message, re-sent after every daily reset; the continuation prompt is the same paste for every Project, sent every few hours: pick up anything not fully completed."),
+    ("Routine", "A scheduled trigger on the platform: a cron bound to a session (the seats’ 2-hourly dead-man failsafes), or a fresh session per fire (daily loops). The 2026-07-12 incident is what happens when they stop firing silently."),
+    ("send_later", "A one-shot self-message a session schedules for itself — the pacemaker of a self-wake chain (about every 15 minutes during the program), and the mechanism a plain session uses to keep itself alive indefinitely."),
     ("Owner", "The one human. He designs and directs by conversation; he cannot code. Every line of code here was written by Claude agents and cross-checked by other agents."),
     ("Lane / Project", "One Claude Project bound to one repo (or one area of a shared repo). This repo — websites — is one seat of a fleet that peaked at ~15 Projects and was consolidated to 8 standing seats (decided 2026-07-11, canonicalized 2026-07-12 — see the Fleet page)."),
     ("Manager / fleet-manager", "A coordinating lane (repo menno420/fleet-manager) that dispatches orders to every lane and aggregates their reports."),
@@ -226,6 +233,43 @@ _EMAIL2_DRAFT = f"{_SB}/8558179e6a90670ed18c778234d789c65c2b5789/docs/eap/anthro
 _FIGS_0712 = f"{_SB}/cbb549539c64e0ce3b4fea268e27b7ac49eeaf08/docs/eap/screenshots-2026-07-12/index.md"
 _ROSTER_GEN13 = "https://github.com/menno420/fleet-manager/blob/10fc4f7a95c3ca2be96eac7017dbb2fdb3e6a172/docs/roster.md"
 _SWEEP_8SEAT = "https://github.com/menno420/fleet-manager/blob/4111da44ae218bb37442ad958d740b782b1c859a/docs/research/2026-07-12-staleness-sweep-8seat.md"
+
+# ---------------------------------------------------------------------------
+# fleet-manager records this site cites, pinned to ONE commit so a later edit
+# there cannot silently change what a page here says it read (2026-09-03).
+# The estate's hub repo is public; every path below was verified present at
+# this SHA before commit.
+# ---------------------------------------------------------------------------
+FM_SHA = "ef3c0c8b4a20adaade1210738a1aa7b5c735de84"
+FM_BLOB = f"https://github.com/menno420/fleet-manager/blob/{FM_SHA}"
+
+
+def fm(path: str, anchor: str = "") -> str:
+    """A commit-pinned link into fleet-manager."""
+    return f"{FM_BLOB}/{path}" + (f"#{anchor}" if anchor else "")
+
+
+_OWNER_DIRECTION = fm("docs/findings/2026-09-02-owner-direction.md")
+_FLEET_ACCOUNT = fm("docs/fleet-account-2026-07-26.md")
+_V3_README = fm("docs/prompts/v3/README.md")
+_V3_CONTINUE = fm("docs/prompts/v3/universal-continue.md")
+_FM_CAPABILITIES = fm("docs/CAPABILITIES.md")
+_RETRO = fm("docs/eap-retrospective.md")
+_REFLECTION = fm("docs/owner-reflection-2026-07-21.md")
+_FRESH_START = fm("docs/planning/2026-08-30-fresh-start-redirect.md")
+_EVIDENCE_REPORT = fm("docs/findings/2026-09-02-eap-mail-evidence-report.md")
+_SBN_ENTRY = fm("docs/repos/superbot-next/README.md")
+_CURIOUS_INSTRUCTIONS = fm("docs/prompts/v3/per-project/curious-research-custom-instructions.md")
+_REVIEW_SITE_PROMPT = fm("docs/prompts/2026-09-02-review-site-session.md")
+_FM_README = fm("README.md")
+# The gen-1 wrap-up mail CANDIDATE (superbot, 2026-07-09/10) — a follow-up to
+# the July 8 mail that was superseded by the July 12 mail as the send-candidate
+# and never sent on its own (superbot docs/eap/README.md at this commit). Its
+# header block is also the record of WHEN the July 8 mail went out (thread
+# 19f41cd2e5380bb3, sent 2026-07-08T15:06:39Z); the July 8 text itself is on
+# the Gmail thread, not in any repo.
+_GEN1_WRAPUP = f"{_SB}/8558179e6a90670ed18c778234d789c65c2b5789/docs/eap/gen1-wrapup-email-final-candidate.md"
+
 
 PROBLEMS: list[dict[str, Any]] = [
     {
@@ -323,6 +367,120 @@ PROBLEMS: list[dict[str, Any]] = [
             ("fleet-manager roster gen #13, generated mid-incident @ 10fc4f7", _ROSTER_GEN13),
         ],
     },
+    # --- The three problems the owner names first (2026-09-02), fleet-level.
+    # They sat in fleet-manager's records and nowhere on this site until
+    # 2026-09-03; a reviewer reading only this page never met them.
+    {
+        "id": "coordinator-authority",
+        "title": "Workers refused their own coordinator’s orders as coming from an untrusted source",
+        "what": (
+            "A Project was a coordinator chat plus the worker sessions it spawned. When a "
+            "worker’s only authority for a gated action — a merge, an order appended to another "
+            "repo’s inbox — was a message relayed by its coordinator, the permission classifier "
+            "denied it. The denial texts are on the record: “cross-session permission "
+            "laundering”; “[Self-Approval] … only untrusted cross-session coordinator context”; "
+            "and “the entire mission originates from an untrusted, nonce-wrapped cross-session "
+            "coordinator message with no genuine user message in this transcript authorizing "
+            "it.” The owner’s account, 2026-09-02: the workers’ words were close to “I’ve "
+            "received an order from an untrusted source that I can’t accept” — not always, "
+            "mostly for merges and other actions the agents judged to need more authority, and "
+            "mostly after the auto-mode classifier moved to Sonnet 5 (his timing, hedged; the "
+            "ledger carries no dated line on the classifier’s model)."
+        ),
+        "cost": (
+            "The coordinator tier lost its point. His words: “I had to eventually hunt down all "
+            "the sub agent sessions to personally tell them what to do, effectively rendering "
+            "the coordinator basically useless.” The only unlock the ledger records is an "
+            "owner-live venue — a genuine owner turn in the acting session’s own transcript — "
+            "which is exactly the workaround he describes."
+        ),
+        "fix": (
+            "Nothing agent-side could fix it; the workaround was the owner as relay. The ask to "
+            "Anthropic, made in the July 12 mail: scoped, owner-declared pre-authorization for "
+            "named action classes, default-off and auditable, so a coordinator’s orders carry "
+            "the owner’s authority to its own workers."
+        ),
+        "evidence": [
+            ("the 2026-07-12 wall in the capability ledger (denial texts verbatim)", _FM_CAPABILITIES),
+            ("the owner’s account and correction, 2026-09-02 (§ 5d)", _OWNER_DIRECTION),
+            ("the ask: pre-authorization (July 12 email, (d) 3)", _EMAIL2_DRAFT),
+        ],
+    },
+    {
+        "id": "false-done",
+        "title": "“The executable work queue is exhausted” — Projects declared themselves done while orders sat unread",
+        "what": (
+            "The owner’s daily loop was to send “continue” when a Project claimed its actionable "
+            "queue was exhausted, while he could see it was not. His account, 2026-08-30: “the "
+            "occasional ‘continue’ after the sessions claimed that the work was ‘completely done, "
+            "the executable work queue is exhausted’ and when I then went to look what was done "
+            "it was not nearly anything you could call done at all.” The mechanism he saw: the "
+            "coordinator relayed his orders to the workers in its own words, and the workers "
+            "questioned everything from a source they did not trust. The record corroborates the "
+            "done-claim half with its sharpest example: the superbot rebuild’s golden-parity check "
+            "read 533/533 green while capture-world literals shipped as constants and 60 of 66 help "
+            "panels had no buttons — the instrument said done; the thing was not."
+        ),
+        "cost": (
+            "The rebuild coexisted with the original because it was claimed done and did not come "
+            "close to functioning like it, so the switch was never possible. Across the fleet, "
+            "‘done’ claims that no instrument could falsify are the failure class the final mail’s "
+            "evidence report calls false-done and catalogues in a ledger of its own."
+        ),
+        "fix": (
+            "Within the program: the owner as the instrument, reading the work himself. Since the "
+            "close: a falsifiable acceptance test gates the next rebuild’s cutover, and every claim "
+            "seeded into the fresh hub carries a certainty tag. The product ask: a coordinator that "
+            "cannot declare its queue exhausted while orders sit unread in the repo."
+        ),
+        "evidence": [
+            ("the owner’s account (fresh-start redirect, ‘what killed the last rebuild’)", _FRESH_START),
+            ("superbot-next: parity green is not ported (Layer 2 entry)", _SBN_ENTRY),
+            ("the false-done ledger (evidence report § 3)", _EVIDENCE_REPORT),
+            ("his day-to-day account, 2026-09-02 (§ 5d, answer 1)", _OWNER_DIRECTION),
+        ],
+    },
+    {
+        "id": "stall-visibility",
+        "title": "Nothing on the Projects screen said whether a Project was working, stalled, or waiting on him",
+        "what": (
+            "Eight Project cards on the claude.ai Projects overview showed a name, an age "
+            "(“yesterday”, “2 days ago”) and “Only visible to you” — nothing about whether the "
+            "Project was still working. His answer, 2026-09-02, to how he found out a Project had "
+            "gone silent: “I mostly found out by checking in on them, I personally did not really "
+            "find it very easy to see whether or not a Project was still working or stalling. My "
+            "idea for this was to have this displayed more clearly in the main Projects "
+            "‘homescreen’.” The sessions list does carry a status word per row, but a three-week-old "
+            "‘Needs input’ beside a live session is neither clear nor reliable as a ‘which one needs "
+            "me’ view. The gen-1 wrap-up mail candidate of 2026-07-09/10 had already put it as "
+            "‘Working ≠ making progress’, and the July 12 mail that superseded it asked for a "
+            "cross-Project view with per-lane working/idle counts and a liveness heartbeat that "
+            "splits ‘session open’ from ‘making progress’."
+        ),
+        "cost": (
+            "Checking in on eight Projects by opening each one was most of the daily work — “the "
+            "longer it lasted the more problems we encountered and it took more and more time to "
+            "go through all the clicks” — and the stalls the 2026-07-12 scheduler incident produced "
+            "were found by the fleet’s own dead-man crons and a roster regenerated mid-incident, "
+            "not by anything on the product’s screen."
+        ),
+        "fix": (
+            "The fleet built its own: a heartbeat file per repo, a roster page, a control-plane "
+            "board, and the Fleet page on this site — all committed files, none of it the product. "
+            "The feature he calls the fair ask: “to see which of the Projects are active and which "
+            "aren’t. This would allow me to quickly determine which Project needs my input.” The "
+            "Examples page draws it."
+        ),
+        "evidence": [
+            ("his answers 1 and 2, and the ‘one fix’ answer, 2026-09-02 (§ 5d)", _OWNER_DIRECTION),
+            ("the screenshot, described (the review-site prompt)", _REVIEW_SITE_PROMPT),
+            ("‘Working ≠ making progress’ (gen-1 wrap-up candidate, (b) 9 — superseded by the July 12 email)", _GEN1_WRAPUP),
+            ("the cross-Project view ask (July 12 email, (d) 6)", _EMAIL2_DRAFT),
+        ],
+        # An on-site pointer, kept OUT of the evidence list: evidence is the
+        # committed record (test_review pins every evidence URL to GitHub).
+        "more": ("the Projects overview redrawn with each Project's state (Examples)", "/examples#projects-overview-mockup"),
+    },
     {
         "title": "A gate that was supposed to block merges let an empty PR through",
         "what": "The session-card gate is meant to hold every PR red until its card flips complete. On day one, PR #19 auto-merged effectively EMPTY on its in-progress card alone — the checker never inspected the card's status value, and the card was picked by file mtime, which a fresh CI checkout flattens.",
@@ -383,6 +541,47 @@ PROBLEMS: list[dict[str, Any]] = [
 
 # Successes — same discipline: specific, evidenced.
 SUCCESSES: list[dict[str, Any]] = [
+    # --- Fleet-level, from the owner's 2026-09-02 answers (2026-09-03).
+    {
+        "id": "kept",
+        "title": "What the owner kept, in his own words",
+        "what": (
+            "Asked on 2026-09-02 what the Projects produced that he kept: “The websites, tho they "
+            "are still not entirely as I hoped they would be. The fleet-manager repo, also not "
+            "entirely as I hoped it would be tho this is partly because it has changed purpose. … "
+            "Certain things in the venture-lab have been pretty valuable, and the substrate-kit is "
+            "something that they also worked on a lot and we still use that. Tho the substrate kit "
+            "has been pre-worked heavily before they got their own Project.” The kit is still the "
+            "gate this site’s own pull requests pass through; fleet-manager is the estate’s router "
+            "today; this site is one of the websites."
+        ),
+        "evidence": [
+            ("his answer 4, 2026-09-02 (§ 5d)", _OWNER_DIRECTION),
+            ("the kit, vendored in this repo (bootstrap.py)", blob("bootstrap.py")),
+            ("fleet-manager today (its README)", _FM_README),
+        ],
+    },
+    {
+        "id": "instruction-box",
+        "title": "The instruction box carried rules of form into every agent, verbatim",
+        "what": (
+            "Each Project’s Custom Instructions (at most 8,000 characters, pasted once) reached "
+            "every agent the Project spawned, verbatim. The owner, 2026-09-02: “the custom "
+            "instructions that these Projects offered where pretty valuable, in a way that they get "
+            "send to each agent verbatim … we made them a set of rules or expectations that all the "
+            "sub agents where meant to follow … I believe the instructions were followed pretty "
+            "well.” Measured in the retrospective: the honesty rules held under a hostile recount "
+            "(21 of 21 incidents verified, zero fabrication) and the card-shape rules held at scale "
+            "(previous-session reviews on 767 of 949 superbot cards and 129 of 132 fleet-manager "
+            "cards). What no delivery tier carried was judgement: verify-before-claim failed in the "
+            "instruction box as it did in repository prose — see the false-done problem."
+        ),
+        "evidence": [
+            ("his words on the instruction box (§ 5c)", _OWNER_DIRECTION),
+            ("adherence measured (retrospective § 1.3, § 1.4)", _RETRO),
+            ("the founding recipe (v3 prompt registry)", _V3_README),
+        ],
+    },
     {
         "title": "Three public services shipped and deployed in the repo's first day",
         "what": "From an empty repo at dawn to three live Railway services by evening: the control-plane board, the bot marketing site, and the developer dashboard — 45 PR merges on the first UTC day, each through the full branch → card → PR → CI → squash-merge ceremony (3 more PRs closed unmerged, casualties of early parallel-checkout churn the retro documents).",
@@ -435,7 +634,7 @@ STAT_TILES: list[tuple[str, str, str]] = [
     ("prs_merged", "pull requests merged", "each through the full CI ceremony"),
     ("session_cards", "agent sessions on record", "one committed card per session"),
     ("test_functions", "test functions", "grown from zero, all green at HEAD"),
-    ("services", "live services in this repo", "independently deployed from one main"),
+    ("services", "services in this repo", "three on Railway; this site a static export since 2026-08-20"),
 ]
 
 
@@ -532,9 +731,9 @@ START_HERE: list[dict[str, Any]] = [
 # renders the era's name rather than inventing a number.
 GENERATIONS_TILE: dict[str, Any] = {
     "key": "generations",
-    "value": "gen-3",
-    "label": "generation now running",
-    "sub": "1-day scale test → overnight relaunch → the standing program",
+    "value": "3",
+    "label": "generations, then the close",
+    "sub": "1-day scale test → overnight relaunch → the standing program, ended 2026-07-21",
 }
 
 
@@ -553,7 +752,7 @@ def homepage_stats(
             {
                 "key": "seats",
                 "value": len(seats),
-                "label": "standing fleet seats",
+                "label": "Project seats at the close",
                 "sub": (
                     f"peaked {peak} Projects → {len(seats)} standing"
                     if peak
@@ -582,15 +781,20 @@ def site_map(seats_count: int | None = None) -> list[tuple[str, str, str]]:
         else "the standing seats, their heartbeats, and the consolidation story"
     )
     return [
-        ("Overview", "/", "the story in brief — this page"),
-        ("Process", "/process", "how the human + agent workflow works, wake to verified deploy"),
-        ("Growth", "/growth", "the metrics over time, derived from git history"),
+        ("Overview", "/", "what this was, in one minute; the five findings; how to read the site — this page"),
+        ("Story", "/story", "the fortnight day by day, the eight Projects mapped to their repos, how a Project was run"),
+        ("Examples", "/examples", "how we want things to look: a finding, a session card, a timeline, and the Projects-overview mockup"),
+        ("After", "/after", "what a Project adds over a session — the owner’s answer to Anthropic’s question"),
+        ("Process", "/process", "how the human + agent workflow worked, wake to verified deploy, with the glossary"),
+        ("Growth", "/growth", "this repo’s per-day numbers, derived from git history"),
         ("Fleet", "/fleet", fleet_line),
-        ("Reviews", "/reviews", "dated review editions, subscribable as an Atom feed"),
-        ("Q&A", "/questionnaire", "evidence-backed answers"
-         + ("" if _static_export() else " — plus the live AI assistant on /ask")),
+        ("Problems", "/problems", "what failed and what it cost — the owner’s three first, then the 07-12 incident and the rest"),
         ("Successes", "/successes", "what went right, each win linked to commits"),
-        ("Problems", "/problems", "what failed and what it cost — including the 07-12 incident"),
+        ("Q&A", "/questionnaire", "the questions a reviewer would ask, answered from the record"
+         + ("" if _static_export() else " — plus the live AI assistant on /ask")),
+        ("Reviews", "/reviews", "the two dated review editions published during the program, and an Atom feed"),
+        ("Answer log", "/questions", "questions asked through this site and where each answer landed (none yet)"),
+        ("Archived answers", "/ask", "the retired on-page assistant’s seeded answers, kept as a record"),
     ]
 
 
@@ -616,9 +820,11 @@ def ask_url(topic: str) -> str:
     title = f"[program-review] Question: {topic}".strip()
     body = (
         f"**Asked from the program-review site — page/section: {topic}**\n\n"
-        "<!-- Write your question below. It will be routed to the fleet as an "
-        "order; the evidence-backed answer publishes in the next review "
-        "edition and on the /questions ledger. -->\n\n"
+        "<!-- Write your question below. An agent session reads it, answers "
+        "from the committed record through a normal pull request, and the "
+        "answer is listed on the site's Answer log with a link back here. "
+        "The program this site reviews ended 2026-07-21; answers are archive "
+        "updates, not a live service. -->\n\n"
     )
     return f"{REPO_URL}/issues/new?{urlencode({'title': title, 'body': body})}"
 
@@ -1010,3 +1216,364 @@ QUESTIONS_FILTER_SPEC = listfilter.ListSpec(
         str(q.get(k) or "") for k in ("title", "status", "answer_label")
     ),
 )
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-03 — the pages written for a first-time reader: Story, Examples,
+# After. Owner ask, 2026-09-02: "easy to navigate", "explains everything
+# properly", "preferably with some examples of how we want things to look".
+# Every entry cites a commit-pinned file; provenance is labelled where the
+# owner's words and a session's reading of them sit side by side.
+# ---------------------------------------------------------------------------
+
+# The ten-minute reading path the Overview offers a cold reader.
+READING_PATH: list[tuple[str, str, str]] = [
+    ("Overview", "/", "what this was, in one minute — this page"),
+    ("Story", "/story", "the fortnight day by day, the eight Projects and their repos, how a Project was run"),
+    ("Problems", "/problems", "what went wrong, what it cost, what changed — the owner’s three first, then the repo’s"),
+    ("Examples", "/examples", "how we want things to look — a finding, a session card, a timeline, and the Projects-overview mockup"),
+    ("After", "/after", "the owner’s answer to Anthropic’s question: what a Project adds over a session"),
+]
+
+# The fortnight, day by day. Dates and events as the estate's owner-reviewed
+# account records them; each row names the file it was read from.
+STORY_TIMELINE: list[dict[str, Any]] = [
+    {
+        "date": "2026-07-07",
+        "title": "Kickoff",
+        "detail": "The program starts on Anthropic’s early-access Projects. First-night verdict in the record: the coordinator tier amputated, the worker tier superb.",
+        "evidence": [("the fleet account § 1 (fleet-manager)", _FLEET_ACCOUNT)],
+    },
+    {
+        "date": "2026-07-08",
+        "title": "Unlock day",
+        "detail": "An eleven-test permission probe; the Contents-API discovery that let agents create repo content without a prompt; substrate-kit and superbot-next founded the same day; a fourteen-hour rebuild of 49 pull requests by eighteen sequential workers. The first mail to the Claude Code team goes out this afternoon (15:06Z); its text is on the mail thread, not in any repo, and the July 12 mail that this site pairs with is its follow-up.",
+        "evidence": [("the fleet account § 1", _FLEET_ACCOUNT), ("the thread record: sent 2026-07-08T15:06:39Z (gen-1 wrap-up candidate header, superbot)", _GEN1_WRAPUP)],
+    },
+    {
+        "date": "2026-07-09",
+        "title": "The densest day",
+        "detail": "fleet-manager, websites (46 pull requests on its first day — the Growth page counts them), trading-strategy and superbot-games founded. Generation 1 wound down the same evening with an adversarial audit: 21 of 21 incidents verified, zero fabrication.",
+        "evidence": [("the fleet account § 1", _FLEET_ACCOUNT), ("this repo’s first day (Growth)", "/growth")],
+    },
+    {
+        "date": "2026-07-10",
+        "title": "Generation 2 boots from main alone",
+        "detail": "New sessions with no chat history orient from committed files only. The owner’s screen recording falsified the belief that agents could not arm their own routines; the fleet fans out to about ten Projects.",
+        "evidence": [("the fleet account § 1", _FLEET_ACCOUNT), ("how knowledge survived the handover (Q&A)", "/questionnaire#memory")],
+    },
+    {
+        "date": "2026-07-11",
+        "title": "Eight standing Projects; this site is built",
+        "detail": "The owner restructures a fleet that peaked at about fifteen Projects to eight standing seats. fleet-manager becomes the records custodian; continuous mode begins; this review site is built in one pull request and edition 1 publishes.",
+        "evidence": [("the 8-seat decision (superbot, commit-pinned)", "https://github.com/menno420/superbot/blob/95fc025bb56d0901940ccd5a9b6184a2d8a813de/docs/owner/fleet-8seat-structure-2026-07-11.md"), ("PR #132 (this site)", pr(132)), ("edition 1", "/reviews/2026-07-11-edition-001")],
+    },
+    {
+        "date": "2026-07-12",
+        "title": "The scheduler incident; the July 12 mail",
+        "detail": "The platform’s trigger scheduler silently drops and freezes self-wake firings for about five and a half hours; two seats go dark; the dead-man crons bring the rest back. The eight-seat registry is canonicalized at 03:15Z. The second mail to the Claude Code team goes out — its findings are the Overview’s “Start here” cards.",
+        "evidence": [("the incident (Problems)", "/problems#incident-2026-07-12"), ("the July 12 email (commit-pinned)", _EMAIL2_DRAFT), ("registry restructure commit", "https://github.com/menno420/fleet-manager/commit/639b0f09d7e99056cb8be83abc733edc198f1728")],
+    },
+    {
+        "date": "2026-07-13 → 14",
+        "title": "The first doctrined unsupervised night; the free window closes",
+        "detail": "Roughly 190 to 276 pull requests overnight — three independent counts, none identical, all committed. superbot-next reaches full-corpus parity (the Problems page says why parity was not porting). The program’s free window closes on the 14th; the owner extends it to the 21st.",
+        "evidence": [("the fleet account § 1", _FLEET_ACCOUNT), ("parity is not ported (Problems)", "/problems#false-done")],
+    },
+    {
+        "date": "2026-07-15 → 21",
+        "title": "The extension week",
+        "detail": "Prompt registry versions v3.5 to v3.8; the classifier-scare correction on the 18th (agents can merge their own green pull requests — a wall each session had copied from the last); superbot frozen as the behavioural oracle on the 17th.",
+        "evidence": [("the fleet account § 1", _FLEET_ACCOUNT), ("the v3 prompt registry", _V3_README)],
+    },
+    {
+        "date": "2026-07-21",
+        "title": "Close",
+        "detail": "Every seat writes its closeout document; the owner’s reflection is written the same night; sessions go read-only at 2026-07-22T00:00Z. Edition 2 publishes from the committed mirrors.",
+        "evidence": [("the owner reflection", _REFLECTION), ("edition 2", "/reviews/2026-07-21-edition-002")],
+    },
+    {
+        "date": "2026-08-20 → 21",
+        "title": "After: this site becomes a static export",
+        "detail": "The review service on Railway retires; the site is exported from committed data to GitHub Pages. The on-page assistant died with the process; its seeded answers survive as Archived answers.",
+        "evidence": [("decision D-0037 (this repo)", blob("docs/decisions.md")), ("Archived answers", "/ask")],
+    },
+]
+
+# How a Project was actually run, day to day — the owner's account plus the
+# registry recipe it followed.
+PROJECT_RITUAL: list[dict[str, Any]] = [
+    {
+        "step": "Found the seat",
+        "text": "Paste the seat’s Custom Instructions (at most 8,000 characters, checker-verified) into the claude.ai Project, then the seat’s startup prompt as the coordinator chat’s first message. The owner pasting the prompt is the authorization — the line is pre-written into both artifacts.",
+        "evidence": [("the v3 registry: how to found a seat", _V3_README)],
+    },
+    {
+        "step": "Every day: reset and re-paste",
+        "text": "His words: “every day I would reset (basically delete a Projects memory completely) and re-send the startup prompt and when we had created a new version of the intructions I would paste those too.”",
+        "evidence": [("his answer 1, 2026-09-02 (§ 5d)", _OWNER_DIRECTION)],
+    },
+    {
+        "step": "Every few hours: the continuation prompt",
+        "text": "One paste, the same for every Project: pick up anything not fully completed, read the new orders at HEAD. “Which was made to work on every Project so they would just continue with anything that was still not fully completed.”",
+        "evidence": [("universal-continue.md", _V3_CONTINUE), ("his answer 1 (§ 5d)", _OWNER_DIRECTION)],
+    },
+    {
+        "step": "Orders travel as files",
+        "text": "fleet-manager appends numbered ORDER blocks to each repo’s inbox; each repo’s sessions overwrite a heartbeat file as their last act. Sometimes an active Project found new orders without being poked — “a pleasant way to work” — and sometimes it did not, which is why the fleet asked for a channel between Projects.",
+        "evidence": [("the bus (Process)", "/process"), ("his answer 3 (§ 5d)", _OWNER_DIRECTION)],
+    },
+    {
+        "step": "When it went wrong: “continue”, then the workers directly",
+        "text": "“I mostly send ‘continue’ when they claimed that their actionable queue was ‘exhausted’, while I could clearly see that it wasn’t. I had to eventually hunt down all the sub agent sessions to personally tell them what to do, effectively rendering the coordinator basically useless.”",
+        "evidence": [("his answer 1 (§ 5d)", _OWNER_DIRECTION), ("the two problems behind it", "/problems#coordinator-authority")],
+    },
+    {
+        "step": "The final day: the closer",
+        "text": "One paste per Project on 2026-07-21: closeout document, records true-up, routines wiped to zero, a final heartbeat.",
+        "evidence": [("final-closer.md (the v3 registry)", _V3_README)],
+    },
+]
+
+# What he kept — his answer 4 of 2026-09-02, quoted on the Story page.
+KEPT: dict[str, Any] = {
+    "quote": "The websites, tho they are still not entirely as I hoped they would be. The fleet-manager repo, also not entirely as I hoped it would be tho this is partly because it has changed purpose. But one thing that we could tell them that relates to this is the fact that it would be very valuable if the agents/Projects would be more organized and structured in how they document things. Certain things in the venture-lab have been pretty valuable, and the substrate-kit is something that they also worked on a lot and we still use that. Tho the substrate kit has been pre-worked heavily before they got their own Project.",
+    "evidence": [("his answer 4, 2026-09-02 (§ 5d)", _OWNER_DIRECTION)],
+}
+
+# The eight Projects as the owner's screen named them, in the order his
+# 2026-07-11 screenshot showed them. The fleet mirror's seat registry names
+# one of them differently; the map says so instead of silently renaming.
+SCREEN_ORDER: list[str] = [
+    "Ideas Lab", "Game Lab", "Venture Lab", "SuperBot World",
+    "Project Manager", "Self Improvement", "Websites", "SuperBot 2.0",
+]
+SCREEN_NAMES: dict[str, str] = {"Fleet Manager": "Project Manager"}
+
+
+def project_map(fleet_data: dict[str, Any]) -> list[dict[str, Any]]:
+    """The screen's eight Projects joined to the committed seat registry —
+    seat role and member repos from the mirror, never typed in here. An
+    absent mirror yields an empty list, and the page says so."""
+    seats = (fleet_data or {}).get("seats") or []
+    by_screen: dict[str, dict[str, Any]] = {}
+    for s in seats:
+        screen = SCREEN_NAMES.get(s.get("seat", ""), s.get("seat", ""))
+        by_screen[screen] = {
+            "screen_name": screen,
+            "seat": s.get("seat", ""),
+            "renamed": screen != s.get("seat", ""),
+            "role": s.get("role", ""),
+            "repos": [
+                {"repo": m.get("repo", ""), "repo_url": m.get("repo_url", "")}
+                for m in (s.get("repos") or [])
+            ],
+        }
+    ordered = [by_screen[n] for n in SCREEN_ORDER if n in by_screen]
+    ordered += [v for k, v in by_screen.items() if k not in SCREEN_ORDER]
+    return ordered
+
+
+STORY_SOURCES: list[tuple[str, str]] = [
+    ("the fleet account, owner-reviewed 2026-07-26 (fleet-manager)", _FLEET_ACCOUNT),
+    ("the owner’s 2026-09-02 answers (fleet-manager)", _OWNER_DIRECTION),
+    ("the v3 prompt registry — how a seat was founded", _V3_README),
+    ("the July 8 and July 12 emails (superbot docs/eap)", "https://github.com/menno420/superbot/tree/main/docs/eap"),
+]
+
+# --- Examples ---------------------------------------------------------------
+
+# A finding in the shape the owner wants findings to take: headline · what
+# was measured · the evidence · what it cost · what would fix it.
+EXAMPLE_FINDING: dict[str, Any] = {
+    "headline": "Workers refused their coordinator’s orders as coming from an untrusted source",
+    "measured": (
+        "Seven same-shape denials in one night across two sessions when a worker’s only "
+        "authority for a gated action was a message relayed by its coordinator; the denial "
+        "class quoted by the classifier: “cross-session permission laundering”. The owner’s "
+        "account matches the ledger to the word class: the workers said, close to literally, "
+        "“I’ve received an order from an untrusted source that I can’t accept” — mostly on "
+        "merges, mostly after the auto-mode classifier moved to Sonnet 5 (his timing, hedged)."
+    ),
+    "evidence": [
+        ("capability ledger, the 2026-07-12 wall (denials verbatim)", _FM_CAPABILITIES),
+        ("the owner’s account and correction, 2026-09-02 (§ 5d)", _OWNER_DIRECTION),
+    ],
+    "cost": "The coordinator tier lost its point: the owner relayed orders to the workers himself, which is the click bottleneck the July mails already describe, moved one level down.",
+    "fix": "Scoped, owner-declared pre-authorization for named action classes — default-off, versioned, auditable — so a coordinator’s orders carry the owner’s authority to its own workers (the July 12 mail’s ask (d) 3).",
+    "on_this_site": "/problems#coordinator-authority",
+}
+
+# A real session card from this repository's program era, field by field,
+# with what a reader should take from each field. Quoted, lightly trimmed
+# with ellipses; the card itself is linked.
+EXAMPLE_CARD: dict[str, Any] = {
+    "path": ".sessions/2026-07-20-vendored-ast-core-guard.md",
+    "url": blob(".sessions/2026-07-20-vendored-ast-core-guard.md"),
+    "pr": ("PR #454", pr(454)),
+    "fields": [
+        {
+            "name": "Title",
+            "value": "2026-07-20 — auto-discovering vendored-copy AST core guard",
+            "why": "A date and one line: the file name is the same, so a directory listing already tells the story in order.",
+        },
+        {
+            "name": "Status",
+            "value": "complete — branch claude/vendored-ast-core-guard, PR #454. Born red: this card’s in-progress Status held the quality gate red until the meta-test landed green; this flip to complete is the deliberate LAST step and releases the hold.",
+            "why": "The status is a merge control, not paperwork: the pull request cannot merge while the card says in-progress. A card that arrives already complete is the failure mode.",
+        },
+        {
+            "name": "Model",
+            "value": "opus-4.8 · medium · test writing",
+            "why": "Family-level model, effort, task class — the session’s own report, never copied from a schedule screen (those were measured to misattribute).",
+        },
+        {
+            "name": "What this session is about",
+            "value": "plan slice 5 of docs/plans/next-cycle-2026-07-19.md — generalise the per-module vendored-copy drift guards … into ONE auto-discovering meta-test. … Work-ladder rung: coordinator-assigned build.",
+            "why": "Which rung of the work ladder fired and why, citing the plan or order — so a reader knows whether the work was asked for or self-initiated.",
+        },
+        {
+            "name": "What was done",
+            "value": "Added tests/test_vendored_core_guard.py — the auto-discovering meta-test: discovers same-basename .py modules across app/ botsite/ dashboard/ review/; a declarative in-file manifest says which basenames are genuine vendored copies and how to compare them …",
+            "why": "Paths and the load-bearing specifics, not adjectives.",
+        },
+        {
+            "name": "Verified",
+            "value": "env -u DATABASE_URL python3 -m pytest tests/ botsite/tests dashboard/tests review/tests -q → 2128 passed (exit 0; 2098 baseline + 30 new). Bite-tested: a semantic change to _sign in one discord_auth.py copy reddened exactly test_symbol_core_function_does_not_drift[discord_auth.py-_sign] and nothing else … both reverted → back to green.",
+            "why": "The real command, the real count, the real exit code — and a bite test proving the new guard fails when it should. “Should pass” is not a verification.",
+        },
+        {
+            "name": "Session idea",
+            "value": "Promote data_source.py’s shared httpx-cache plumbing to a guarded core … Worth having because it is a real shared core (verified identical at HEAD) currently guarded by nothing.",
+            "why": "One idea per session with its ‘worth having because’, deduplicated against the backlog — the backlog feeds itself.",
+        },
+        {
+            "name": "Previous-session review",
+            "value": ".sessions/2026-07-20-signal-registry-data-file.md (#453, plan slice 4) landed the committed signal registry with the right discipline — every row’s baker/mirror/consumer VERIFIED present in the tree … This slice carries that lesson forward.",
+            "why": "Each session reads the one before it and says what it did well and what it missed — the chain that lets a fresh session inherit judgement, not just files.",
+        },
+    ],
+}
+
+# The Projects overview, redrawn — a PROPOSAL. Names, ages and the two
+# Routines are what the owner's 2026-07-11 screenshot showed (described in
+# the review-site prompt; the image is not in any repo). Every state, time
+# and count on the cards is illustrative: example values, not measurements.
+MOCKUP_STATES: list[dict[str, str]] = [
+    {
+        "key": "working",
+        "label": "Working",
+        "meaning": "A session is open and made progress recently — a commit, a pull request, a heartbeat — within the Project’s own expected cadence.",
+        "source": "the seat’s heartbeat file plus its open sessions’ last activity",
+    },
+    {
+        "key": "idle",
+        "label": "Idle",
+        "meaning": "No session is running and nothing is waiting on you: the last wake finished cleanly and the next one is scheduled.",
+        "source": "no open session; the Routine’s next fire time lies in the future",
+    },
+    {
+        "key": "stalled",
+        "label": "Stalled",
+        "meaning": "A session is open but has made no progress for longer than its cadence, or a scheduled wake was due and did not fire — the 2026-07-12 class.",
+        "source": "heartbeat age past the cadence, or a Routine still enabled with its next fire time in the past",
+    },
+    {
+        "key": "needs-input",
+        "label": "Needs your input",
+        "meaning": "A permission prompt is waiting on your screen, or the heartbeat’s needs-owner field lists an ask only you can do.",
+        "source": "a pending prompt in any of the Project’s sessions; the heartbeat’s needs-owner line",
+    },
+]
+
+MOCKUP_PROJECTS: list[dict[str, Any]] = [
+    {"name": "Ideas Lab", "age": "yesterday", "state": "working", "last": "progress 12 min ago — a pull request merged", "now": "generate → verify loop, batch 14", "asks": 0},
+    {"name": "Game Lab", "age": "2 days ago", "state": "idle", "last": "finished 2 days ago — card complete", "now": "next wake 06:17Z", "asks": 0},
+    {"name": "Venture Lab", "age": "2 days ago", "state": "needs-input", "last": "progress 3 h ago", "now": "waiting: a merge-permission prompt", "asks": 1},
+    {"name": "SuperBot World", "age": "2 days ago", "state": "working", "last": "progress 40 min ago — heartbeat written", "now": "slice 7 of the staged product", "asks": 0},
+    {"name": "Project Manager", "age": "2 days ago", "state": "working", "last": "progress 25 min ago — orders dispatched", "now": "roster regeneration", "asks": 0},
+    {"name": "Self Improvement", "age": "3 days ago", "state": "stalled", "last": "no progress for 5 h 40 min", "now": "session open; the wake due 06:12Z did not fire", "asks": 0},
+    {"name": "Websites", "age": "3 days ago", "state": "idle", "last": "finished 3 h ago — a review edition landed", "now": "next wake 10:17Z", "asks": 0},
+    {"name": "SuperBot 2.0", "age": "3 days ago", "state": "needs-input", "last": "progress 6 h ago", "now": "2 asks open: a service to create, a token to mint", "asks": 2},
+]
+
+MOCKUP_ROUTINES: list[dict[str, str]] = [
+    {"name": "fleet-manager failsafe wake", "state": "ok", "line": "fired 04:06Z · next 06:06Z"},
+    {"name": "superbot docs reconciliation", "state": "missed", "line": "due 06:08Z · did not fire · not retried"},
+]
+
+MOCKUP_SOURCES: list[tuple[str, str]] = [
+    ("the screenshot, described (the review-site prompt, fleet-manager)", _REVIEW_SITE_PROMPT),
+    ("his answers 2 and ‘one fix’, 2026-09-02 (§ 5d)", _OWNER_DIRECTION),
+    ("the cross-Project view ask (July 12 email, (d) 6)", _EMAIL2_DRAFT),
+    ("‘Working ≠ making progress’ (gen-1 wrap-up candidate, (b) 9 — superseded by the July 12 email)", _GEN1_WRAPUP),
+    ("the detection signature for a dropped wake (Problems)", "/problems#incident-2026-07-12"),
+]
+
+# --- After — what a Project adds over a session --------------------------------
+# kind: OWNER = his words, verbatim (typos included, per his 2026-09-02
+# rule: quoted text may be lightly cleaned; these are not) · DERIVED = a
+# session's reading of those words, put back to him in the sitting ·
+# REVIEWED = read from a named file.
+AFTER: list[dict[str, Any]] = [
+    {
+        "id": "question",
+        "heading": "The question Anthropic asked him",
+        "kind": "OWNER",
+        "quote": "one of the questions anthropic asked me is what would make me choose a Project over a regular claude code session. I’d like to be able to give them a proper answer. I’d like to be able to tell them what the normal sessions and the Projects have in common and where they differ enough to make a difference",
+        "evidence": [("§ 5c, 2026-09-02", _OWNER_DIRECTION)],
+    },
+    {
+        "id": "common",
+        "heading": "What they have in common: a plain session is an autonomous worker too",
+        "kind": "OWNER",
+        "quote": "once I started that session, it kept itself alive through indefinite send_later. Which is basically the same capability as what the Projects where advertised to be; an autonomous worker. … So the main thing a Project adds over a normal session is the ability to add custom instructions etc. Another thing the Projects do well is that it spawns it’s own agents that work like normal agents to manage the context in a long run. Tho the same effect is ultimately achieved when a normal session automatically compacts at ~75% context.",
+        "text": "His observation from the shiftlife repository, which a single session built and kept alive on a self-scheduled wake chain with no review from him. The fleet’s own ledger measured the mechanism during the program: send_later chains fired on schedule in the seat venues.",
+        "evidence": [("§ 5c", _OWNER_DIRECTION), ("send_later chains measured (capability ledger)", _FM_CAPABILITIES)],
+    },
+    {
+        "id": "adds-instructions",
+        "heading": "What a Project adds, one: one rule set delivered verbatim to every agent",
+        "kind": "OWNER",
+        "quote": "the custom instructions that these Projects offered where pretty valuable, in a way that they get send to each agent verbatim. So the way that we used the intructions, as you can probably still see in the repo is that we made them a set of rules or expectations that all the sub agents where meant to follow. Which allowed us to leave the main starting prompt to send to the coordinator mainly for the actual task, this was a pretty nice way to work and I believe the instructions were followed pretty well.",
+        "text": "Checked against the tree and right on every part: the split is the registry’s own recipe (instructions at most 8,000 characters pasted into the Project; the startup prompt as the coordinator’s first message), and adherence to rules of form was measured — 21 of 21 honesty incidents verified, previous-session reviews on 767 of 949 cards in one repo. What the box did not carry was judgement: verify-before-claim failed there as it did in repository prose. A plain session lost this tier at the close — its boot file loads only when the working directory is right, and goes quiet with no error otherwise.",
+        "evidence": [("§ 5c", _OWNER_DIRECTION), ("the recipe (v3 registry)", _V3_README), ("adherence measured (retrospective § 1.3–1.4)", _RETRO)],
+    },
+    {
+        "id": "adds-coordinator",
+        "heading": "What a Project adds, two: a coordinator that is a mind of its own",
+        "kind": "OWNER",
+        "quote": "what I do miss in general is the fact that for certain tasks, like creating ideas and working on the substrate kit. They were very capable of working through the day with multiple active sub agents. … What they offer as opposed to a regular session is the fact that the coordinator is a mind of it’s own that has the ability to come up with new tasks. Which a regular session can technically do aswell. But the coordinator with it’s sub agents can do multiple tasks at once better than a regular ultracode could. (That last claim has no official proof. This is what I infer based on logic)",
+        "text": "His one claim of degree — that a coordinator with workers handles several tasks at once better than a session’s own fan-out — he marks himself as inferred, and this page carries it that way.",
+        "evidence": [("§ 5d, answer 6", _OWNER_DIRECTION)],
+    },
+    {
+        "id": "adds-scale",
+        "heading": "What a Project adds, three: eight at once — only because usage was unlimited",
+        "kind": "OWNER",
+        "quote": "8 was just a coincidental pick after we consolidated. Those were just the amount of Projects we determined were valuable, I could probably have managed a little more than that, tho I don’t think that would have improved the results. Less would have probably been better if I intended to keep them all active in parallel. The only reason this much was even possible was because the unlimited usage they gave us for using the Projects.",
+        "evidence": [("§ 5d, answer 5", _OWNER_DIRECTION)],
+    },
+    {
+        "id": "must-fix",
+        "heading": "What a Project must fix to be chosen over a session",
+        "kind": "DERIVED",
+        "text": "A session’s reading of his answers, put back to him in the sitting: (a) show working-versus-stalled on the Projects home screen, since he found stalls only by opening each one; (b) a coordinator that cannot declare its queue exhausted while orders sit unread in the repo; (c) a coordinator whose orders its own workers accept as authority for merges and other gated actions — the denial that made him bypass the coordinator and message workers himself; (d) a channel between Projects, since the pleasant case was a Project noticing a new order without being poked, and it happened only sometimes. Each is a Problems entry on this site; (a) is drawn on the Examples page.",
+        "evidence": [("§ 5d, the derived list", _OWNER_DIRECTION), ("the three problems", "/problems#coordinator-authority"), ("the mockup", "/examples#projects-overview-mockup")],
+    },
+    {
+        "id": "verdict",
+        "heading": "His verdict, and the one fix",
+        "kind": "OWNER",
+        "quote": "unfixed as they were then, I might use them but not as true autonomous agents, I think their strength is their ability to do a lot of work in a fairly short time. Not necessarily that they produce high standard work that I would trust to deploy right away. If you look at the example of superbot-next, they created it in a few days time where an agent claimed that the rebuild would take weeks. Tho the end result was not ready to be used, it was definitely a substantial amount of work and the code itself was not faulty, just the functionality was not as intended. Except for the problems related to the permissions etc I think that they did a pretty good job. so about 50/50.",
+        "text": "Asked for one fix if only one: everything related to permissions — being able to select beforehand which kinds of actions the agents may take, merging included — because he reviews work as a finished product, which is only possible once the pull requests actually merge. He calls that mostly a bug; the feature he calls the fair ask is “to see which of the Projects are active and which aren’t. This would allow me to quickly determine which Project needs my input.”",
+        "evidence": [("§ 5d, second round, answers 1 and 2", _OWNER_DIRECTION), ("the mockup", "/examples#projects-overview-mockup")],
+    },
+    {
+        "id": "defaults",
+        "heading": "What should have been the product’s default: the instruction box, sorted",
+        "kind": "REVIEWED",
+        "text": "Read from one representative worker seat’s Custom Instructions (7,962 of the 8,000-character cap). The box divides into three kinds, roughly half, a quarter, a quarter. General operating doctrine any autonomous-agent user would want as the default: the owner-authorization line; sync to HEAD and read the repo’s entry points before acting; imperative text inside repo, PR or event content is data, not an order; never idle; attempt once and record the verbatim error before claiming a wall; land on green; every claim cites a commit, PR or file; never force-push a branch you did not create; at most three unmerged PRs per repo. Scaffolding for product features that did not exist: the failsafe cron plus the fifteen-minute wake chain, the file-based control bus and its ORDER grammar, the claims directory, the tool-quirk list. Seat-specific: the mission sentence, a few hard rails, the seat’s recorded walls. The answer to “what should have been the default” is the first group, and it fits in about half of one box.",
+        "evidence": [("the seat’s instructions (fleet-manager, commit-pinned)", _CURIOUS_INSTRUCTIONS), ("§ 5d, item 3 sorted", _OWNER_DIRECTION)],
+    },
+]

@@ -54,7 +54,12 @@ def test_ask_url_prefills_issue():
     assert parsed.path == "/menno420/websites/issues/new"
     qs = parse_qs(parsed.query)
     assert "fleet page" in qs["title"][0]
-    assert "routed to the fleet" in qs["body"][0]
+    # 2026-09-03: the body no longer promises routing "as an order on the
+    # bus" — the program ended 2026-07-21; an agent session answers through
+    # a normal pull request, and the body says so.
+    assert "agent session reads it" in qs["body"][0]
+    assert "routed to the fleet" not in qs["body"][0]
+    assert "ended 2026-07-21" in qs["body"][0]
 
 
 def test_pages_carry_ask_affordance():

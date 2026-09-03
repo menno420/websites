@@ -49,17 +49,24 @@ from . import ai, editions, fleetdata, listfilter, story
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# (id, label, href, group). Grouped in reading order for a first-time reader
+# (2026-09-03): "Read first" is the ten-minute path, "The record" the
+# evidence pages, "Questions" the Q&A family. test_nav_completeness.py keeps
+# this list and the router in sync (it reads entry[2]).
 NAV = [
-    ("overview", "Overview", "/"),
-    ("process", "Process", "/process"),
-    ("growth", "Growth", "/growth"),
-    ("fleet", "Fleet", "/fleet"),
-    ("reviews", "Reviews", "/reviews"),
-    ("questionnaire", "Q&A", "/questionnaire"),
-    ("questions", "Answer log", "/questions"),
-    ("ask", "Ask AI", "/ask"),
-    ("successes", "Successes", "/successes"),
-    ("problems", "Problems", "/problems"),
+    ("overview", "Overview", "/", "Read first"),
+    ("story", "Story", "/story", "Read first"),
+    ("examples", "Examples", "/examples", "Read first"),
+    ("after", "After", "/after", "Read first"),
+    ("process", "Process", "/process", "The record"),
+    ("growth", "Growth", "/growth", "The record"),
+    ("fleet", "Fleet", "/fleet", "The record"),
+    ("problems", "Problems", "/problems", "The record"),
+    ("successes", "Successes", "/successes", "The record"),
+    ("questionnaire", "Q&A", "/questionnaire", "Questions"),
+    ("reviews", "Reviews", "/reviews", "Questions"),
+    ("questions", "Answer log", "/questions", "Questions"),
+    ("ask", "Ask AI", "/ask", "Questions"),
 ]
 
 app = FastAPI(title="Program Review", docs_url=None, redoc_url=None, openapi_url=None)
@@ -91,13 +98,21 @@ def _base_ctx(request: Request, active: str) -> dict[str, Any]:
     release_drift_entries = [e for e in rel["entries"] if e.get("drift")]
     static_export = os.environ.get("REVIEW_STATIC_EXPORT", "") == "1"
     nav = [
-        (key, "Archived answers" if static_export and key == "ask" else label, href)
-        for key, label, href in NAV
+        (key, "Archived answers" if static_export and key == "ask" else label, href, group)
+        for key, label, href, group in NAV
     ]
+    # The header renders the groups in NAV order; the flat list stays for
+    # anything that iterates nav (the palette in site.js reads the DOM).
+    nav_groups: list[tuple[str, list[tuple[str, str, str]]]] = []
+    for key, label, href, group in nav:
+        if not nav_groups or nav_groups[-1][0] != group:
+            nav_groups.append((group, []))
+        nav_groups[-1][1].append((key, label, href))
     return {
         "request": request,
         "active": active,
         "nav": nav,
+        "nav_groups": nav_groups,
         "snap_ok": snap["ok"],
         "snap_error": snap["error"],
         "snapshot": snap["data"],
@@ -191,6 +206,8 @@ async def overview(request: Request):
             "stats": story.homepage_stats(ctx["snapshot"], fleet_data),
             "start_here": story.START_HERE,
             "site_map": story.site_map(seats_count),
+            "reading_path": story.READING_PATH,
+            "timeline": story.STORY_TIMELINE,
             "evidence_links": story.EVIDENCE_LINKS,
             "days": ctx["snapshot"].get("days", []) if ctx["snap_ok"] else [],
         }
@@ -198,10 +215,60 @@ async def overview(request: Request):
     return templates.TemplateResponse(request, "index.html", ctx)
 
 
+@app.get("/story", response_class=HTMLResponse)
+async def story_page(request: Request):
+    """The fortnight for a first-time reader (2026-09-03): the timeline, the
+    eight Projects joined to the committed seat registry, how a Project was
+    run day to day, and what the owner kept — every row cited."""
+    ctx = _base_ctx(request, "story")
+    fl = fleetdata.load_fleet()
+    ctx.update(
+        {
+            "timeline": story.STORY_TIMELINE,
+            "projects": story.project_map(fl["data"] if fl["ok"] else {}),
+            "fleet_ok": fl["ok"],
+            "fleet_error": fl["error"],
+            "ritual": story.PROJECT_RITUAL,
+            "kept": story.KEPT,
+            "story_sources": story.STORY_SOURCES,
+        }
+    )
+    return templates.TemplateResponse(request, "story.html", ctx)
+
+
+@app.get("/examples", response_class=HTMLResponse)
+async def examples(request: Request):
+    """How we want things to look (2026-09-03): a finding in the target
+    shape, a real session card field by field, the timeline, and the
+    Projects-overview mockup — labelled as a proposal, never a screenshot."""
+    ctx = _base_ctx(request, "examples")
+    ctx.update(
+        {
+            "finding": story.EXAMPLE_FINDING,
+            "card": story.EXAMPLE_CARD,
+            "timeline": story.STORY_TIMELINE,
+            "mockup_states": story.MOCKUP_STATES,
+            "mockup_projects": story.MOCKUP_PROJECTS,
+            "mockup_routines": story.MOCKUP_ROUTINES,
+            "mockup_sources": story.MOCKUP_SOURCES,
+        }
+    )
+    return templates.TemplateResponse(request, "examples.html", ctx)
+
+
+@app.get("/after", response_class=HTMLResponse)
+async def after(request: Request):
+    """What a Project adds over a session — the owner's 2026-09-02 answers
+    to Anthropic's question, provenance labelled per section."""
+    ctx = _base_ctx(request, "after")
+    ctx.update({"sections": story.AFTER})
+    return templates.TemplateResponse(request, "after.html", ctx)
+
+
 @app.get("/process", response_class=HTMLResponse)
 async def process(request: Request):
     ctx = _base_ctx(request, "process")
-    ctx.update({"landing_path": story.LANDING_PATH, "glossary": story.GLOSSARY})
+    ctx.update({"landing_path": story.LANDING_PATH, "glossary": story.GLOSSARY, "ritual": story.PROJECT_RITUAL})
     return templates.TemplateResponse(request, "process.html", ctx)
 
 

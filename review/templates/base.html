@@ -39,9 +39,17 @@
       <span class="sb-brand-tile" aria-hidden="true">⟲</span>
       Program Review
     </a>
-    <nav class="sb-nav-links" aria-label="Primary">
-      {% for id, label, href in nav %}
-      <a class="sb-nav-link" href="{{ href }}"{% if active == id %} aria-current="page"{% endif %}>{{ label }}</a>
+    <nav class="sb-nav-links rv-nav-groups" aria-label="Primary">
+      {#- Grouped in reading order for a first-time reader (2026-09-03):
+          the group label is text, not a link; the links keep .sb-nav-link
+          so ds.js's palette and the drawer keep working unchanged. -#}
+      {% for group, links in nav_groups %}
+      <span class="rv-nav-group">
+        <span class="rv-nav-group-label" aria-hidden="true">{{ group }}</span>
+        {% for id, label, href in links %}
+        <a class="sb-nav-link" href="{{ href }}"{% if active == id %} aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+      </span>
       {% endfor %}
     </nav>
     <span class="sb-nav-spacer"></span>
@@ -49,8 +57,11 @@
     <button class="sb-iconbtn sb-menubtn" data-menu-toggle aria-expanded="false" aria-controls="sb-drawer" aria-label="Open menu"></button>
   </div>
   <div class="sb-drawer" id="sb-drawer" data-drawer>
-    {% for id, label, href in nav %}
+    {% for group, links in nav_groups %}
+    <span class="rv-drawer-group-label">{{ group }}</span>
+    {% for id, label, href in links %}
     <a class="sb-nav-link" href="{{ href }}"{% if active == id %} aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
     {% endfor %}
   </div>
 </header>
@@ -68,27 +79,25 @@
   </div>
 </div>
 {% endif %}
-{% if static_export %}
-{#- Every relative age below ("17h ago", stale chips) froze at export time —
-    on a static page they would silently drift into falsehood. Anchor them
-    all in one visible place (Codex #509 round 2). -#}
+{% if static_export or snapshot_aged %}
+{#- One short data-age line instead of two paragraphs (2026-09-03; the
+    claims are unchanged). Every relative age below ("17h ago", stale chips)
+    froze at export time — on a static page they would silently drift into
+    falsehood, so they are anchored here (Codex #509 round 2) — and the
+    numbers were baked at a commit the repo has since moved past. -#}
 <div class="sb-wrap" style="padding-top:16px">
-  <div class="rv-aged" role="note">
-    Static export built <span class="sb-mono">{{ static_built_at }}</span> —
-    every relative age and stale marker on this page is measured from that
-    moment, not from now. Absolute timestamps beside them stay exact.
-  </div>
-</div>
-{% endif %}
-{% if snapshot_aged %}
-<div class="sb-wrap" style="padding-top:16px">
-  <div class="rv-aged" role="note">
-    Numbers on this site were baked at commit
+  <div class="rv-aged rv-aged-short" role="note">
+    {%- if static_export %}
+    Static export built <span class="sb-mono">{{ static_built_at }}</span> — relative ages
+    and stale markers on this page are measured from then, not from now.
+    {%- endif %}
+    {%- if snapshot_aged %}
+    Numbers were baked at commit
     <a href="{{ repo_url }}/commit/{{ git_head }}" target="_blank" rel="noopener" class="sb-mono">{{ git_head[:8] }}</a>
     ({{ generated_at }}); the repo has moved since (this build renders
-    <span class="sb-mono">{{ deployed_sha[:8] }}</span>). Honest staleness beats silent aging —
-    a review-bake dispatch refreshes the data files on demand (the daily
-    schedule retired 2026-08-20 with the move to a static export).
+    <span class="sb-mono">{{ deployed_sha[:8] }}</span>) — honest staleness beats silent aging;
+    a review-bake dispatch refreshes the data files on demand.
+    {%- endif %}
   </div>
 </div>
 {% endif %}
@@ -116,7 +125,8 @@
       Aug-20 bake that includes post-close activity, so this cannot claim
       everything below was measured during the program. -#}
   <div class="sb-wrap" style="padding-top:16px">
-    <div class="rv-era" role="note">
+    {%- if active == "overview" %}
+    <div class="rv-era" role="note" id="era">
       <strong>This is a record of a programme that ended.</strong>
       The autonomous-Projects program reviewed here ran
       <span class="sb-mono">2026-07-07</span> &rarr; <span class="sb-mono">2026-07-21</span>
@@ -138,6 +148,17 @@
       dates, and archived editions state theirs.
       {%- endif %}
     </div>
+    {%- else %}
+    {#- Off the Overview the same note is one line (2026-09-03): the full
+        wording, with the data-provenance half, is on the Overview at #era. -#}
+    <div class="rv-era rv-era-short" role="note">
+      <strong>A record of a programme that ended</strong> — the autonomous-Projects
+      program ran <span class="sb-mono">2026-07-07</span> &rarr; <span class="sb-mono">2026-07-21</span>;
+      the Project seats no longer exist{% if snap_ok and generated_at %}, and figures from the
+      current data snapshot (baked <span class="sb-mono">{{ generated_at }}</span>) include
+      post-close work{% endif %}. <a href="/#era">The full note is on the Overview.</a>
+    </div>
+    {%- endif %}
   </div>
   {% block content %}{% endblock %}
 </main>
@@ -148,7 +169,9 @@
     <span class="sb-muted">Every number derived from the repo's committed history; every claim linked to its evidence.</span>
     {#- Fleet strip: cross-service nav. URLs vendored per service (NO cross-service
         import) — hardcoded railway URLs until the deferred custom-domain call. -#}
-    <nav class="sb-fleet sb-muted" aria-label="SuperBot fleet">Fleet:
+    {#- Relabelled 2026-09-03: a first-time reader took "Fleet:" as part of
+        the review. These are the owner's other, separate services. -#}
+    <nav class="sb-fleet sb-muted" aria-label="The owner's other sites">The owner's other sites (separate services, not part of this review):
       <a href="https://control-plane-production-abb0.up.railway.app">Control</a> ·
       <a href="https://superbot-app.up.railway.app">Bots</a> ·
       <a href="https://superbot-dashboard.up.railway.app">Dashboard</a> ·
