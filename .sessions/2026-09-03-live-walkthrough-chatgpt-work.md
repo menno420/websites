@@ -1,7 +1,7 @@
 # 2026-09-03 — attended Chrome walkthrough of the Program Review archive
 
-> **Status:** `in-progress` — branch `claude/live-walkthrough-chatgpt-work`;
-> the completion flip and real PR number are the deliberate LAST code step.
+> **Status:** `complete` — PR #525, branch `claude/live-walkthrough-chatgpt-work`;
+> completion is the deliberate LAST code step, after the report and repairs.
 
 - **📊 Model:** GPT · reviewer · review/verify
 - **📍 Venue:** chatgpt-work
@@ -44,13 +44,16 @@ examples-shape decision are constraints, not redesign invitations.
   `exported 38 routes + static/` (exit 0). Export success is not substituted
   for the independent browser and link checks.
 - `python bootstrap.py check --strict`: pre-flip exit 1 named only this
-  session's deliberate born-red hold; final exit-0 check follows the flip.
+  session's deliberate born-red hold; final check at the flip exits 0.
 - Capability delta appended to `docs/CAPABILITIES.md`: extension opening,
   clicks, shortcuts, measured viewport capture, exact client-block result.
 - READY PR #525 began with card-only remote commit `a4bcf1e3` (local first
   commit `9d26861`; identical tree `18628567`). After merge, dispatch
   `review-pages.yml` manually and re-open the changed live pages; neither
   a pre-merge card nor a successful merge proves a Pages rebuild.
+- Report and repair batch: remote `cad55011` / local `0211afe`, identical
+  tested tree `858aa900`. The final step also corrects the two new audit
+  documents' required Status badge syntax; strict then passes.
 
 ⚑ Self-initiated: no — direct owner walkthrough request.
 

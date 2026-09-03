@@ -1,6 +1,6 @@
 # 2026-09-03 — live Program Review walkthrough through the owner’s Chrome extension
 
-> **Status:** audit — point-in-time observations at live build `137b80eb`; three clear defects repaired in this PR. Read alongside the session card for final verification and landing. No mirror refresh, redesign or external question submission.
+> **Status:** `audit` — point-in-time observations at live build `137b80eb`; three clear defects repaired in this PR. Read alongside the session card for final verification and landing. No mirror refresh, redesign or external question submission.
 >
 > **Venue:** chatgpt-work · **Method:** one attended Chrome-extension session, no delegation. The site was read cold before repository content.
 

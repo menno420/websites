@@ -1,5 +1,7 @@
 # External links opened in Chrome — 2026-09-03
 
+> **Status:** `audit` — evidence ledger for the attended walkthrough.
+
 All entries below were opened in the owner’s signed-in browser. Public accessibility is not inferred from signed-in access; ShiftLife was visibly Private. No private source content is copied here. The three separate footer services are outside this audit.
 
 | # | Site label and destination | Observed result |
