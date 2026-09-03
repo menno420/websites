@@ -116,6 +116,17 @@
 /* glossary */
 .rv-term { white-space: nowrap; }
 
+/* Keep linked sections below the sticky, wrapping navigation. */
+html { scroll-padding-top: var(--rv-nav-offset, calc(var(--sb-nav-h) + 16px)); }
+
+/* Long glossary terms must not push their definitions off a phone screen. */
+@media (max-width: 720px) {
+  #glossary .sb-table { table-layout: fixed; }
+  #glossary th:first-child { width: 34%; }
+  #glossary .rv-term { white-space: normal; overflow-wrap: anywhere; }
+  #glossary td { vertical-align: top; }
+}
+
 @media (max-width: 720px) {
   .rv-tl-item { flex-direction: column; gap: var(--sb-s-1); }
   .rv-tl-date { width: auto; }

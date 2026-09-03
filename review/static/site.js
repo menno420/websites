@@ -8,6 +8,18 @@
    page works fully without this file). */
 (function () {
   "use strict";
+  // The grouped navigation changes height as its rows wrap. Native fragment
+  // navigation needs that actual height, including after a viewport resize.
+  var nav = document.querySelector(".sb-nav");
+  if (nav) {
+    var syncNavOffset = function () {
+      document.documentElement.style.setProperty(
+        "--rv-nav-offset", Math.ceil(nav.getBoundingClientRect().height) + 16 + "px"
+      );
+    };
+    syncNavOffset();
+    if (window.ResizeObserver) new ResizeObserver(syncNavOffset).observe(nav);
+  }
   if (!window.SBDS) return;
   SBDS.initChrome();
 

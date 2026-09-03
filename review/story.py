@@ -1491,14 +1491,14 @@ MOCKUP_STATES: list[dict[str, str]] = [
 ]
 
 MOCKUP_PROJECTS: list[dict[str, Any]] = [
-    {"name": "Ideas Lab", "age": "yesterday", "state": "working", "last": "progress 12 min ago — a pull request merged", "now": "generate → verify loop, batch 14", "asks": 0},
+    {"name": "Ideas Lab", "age": "yesterday", "state": "working", "last": "12 min ago — a pull request merged", "now": "generate → verify loop, batch 14", "asks": 0},
     {"name": "Game Lab", "age": "2 days ago", "state": "idle", "last": "finished 2 days ago — card complete", "now": "next wake 06:17Z", "asks": 0},
-    {"name": "Venture Lab", "age": "2 days ago", "state": "needs-input", "last": "progress 3 h ago", "now": "waiting: a merge-permission prompt", "asks": 1},
-    {"name": "SuperBot World", "age": "2 days ago", "state": "working", "last": "progress 40 min ago — heartbeat written", "now": "slice 7 of the staged product", "asks": 0},
-    {"name": "Project Manager", "age": "2 days ago", "state": "working", "last": "progress 25 min ago — orders dispatched", "now": "roster regeneration", "asks": 0},
+    {"name": "Venture Lab", "age": "2 days ago", "state": "needs-input", "last": "3 h ago", "now": "waiting: a merge-permission prompt", "asks": 1},
+    {"name": "SuperBot World", "age": "2 days ago", "state": "working", "last": "40 min ago — heartbeat written", "now": "slice 7 of the staged product", "asks": 0},
+    {"name": "Project Manager", "age": "2 days ago", "state": "working", "last": "25 min ago — orders dispatched", "now": "roster regeneration", "asks": 0},
     {"name": "Self Improvement", "age": "3 days ago", "state": "stalled", "last": "no progress for 5 h 40 min", "now": "session open; the wake due 06:12Z did not fire", "asks": 0},
     {"name": "Websites", "age": "3 days ago", "state": "idle", "last": "finished 3 h ago — a review edition landed", "now": "next wake 10:17Z", "asks": 0},
-    {"name": "SuperBot 2.0", "age": "3 days ago", "state": "needs-input", "last": "progress 6 h ago", "now": "2 asks open: a service to create, a token to mint", "asks": 2},
+    {"name": "SuperBot 2.0", "age": "3 days ago", "state": "needs-input", "last": "6 h ago", "now": "2 asks open: a service to create, a token to mint", "asks": 2},
 ]
 
 MOCKUP_ROUTINES: list[dict[str, str]] = [

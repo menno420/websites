@@ -76,6 +76,31 @@ Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 (Hand-filled by sessions, per the discovery rule. Seed walls/capabilities
 above came from the fleet's lived 2026-07 findings; local ones go here.)
 
+- 2026-09-03 · capability · **chatgpt-work: the owner's Chrome extension
+  opens, reads, clicks and captures the public Program Review site.** Observed
+  banner verbatim: `this build renders 137b80eb`; 33 HTML pages opened,
+  64 observed fragment URLs resolved, 114 external evidence URLs opened in
+  the signed-in browser. The pinned fleet-manager `ef3c0c8` and superbot
+  `8558179` files rendered. The Overview issue link prefilled title
+  `[program-review] Question: overview page`; no issue was submitted.
+  Theme toggle, `/`, Ctrl-K, Enter and Escape operated. At 390x568 the
+  drawer scrolled to its last link (scrollTop 280, clientHeight 503,
+  scrollHeight 783) and that link navigated. At 1000px all 13 links remained
+  available in a 139.4px-tall wrapped header. Evidence: dated
+  [walkthrough](audits/2026-09-03-live-walkthrough-chatgpt-work.md), screenshots
+  and per-link ledger. Scope limit, observed verbatim: `menno420.github.io
+  is blocked`, `This page has been blocked by Chrome`,
+  `ERR_BLOCKED_BY_CLIENT` for story.json, reviews/feed.xml, fleet.json and
+  releases.json. This is a browser result, not proof those exports are
+  absent; no protection was bypassed. ShiftLife showed `Private`; owner
+  access does not prove outsider access. Viewport screenshots work;
+  full-page capture once returned `Timed out after 5000ms waiting for CDP
+  command Page.captureScreenshot.` A screenshot helper also downscaled a
+  phone layout against a desktop-sized surface; direct tab-scoped
+  `Page.captureScreenshot` with `captureBeyondViewport: false` captured the
+  measured phone viewport correctly. Verify dimensions and visible content,
+  and reset temporary viewport overrides at the end.
+
 - 2026-08-24 · wall · **A `uv`-downloaded Python 3.12.14 cannot load `_ssl`
   on this Windows Codex Desktop seat because Application Control blocks the
   downloaded DLL.** A repo-local `.venv` was created only after owner approval,

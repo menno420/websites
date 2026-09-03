@@ -5,6 +5,11 @@
 > anything inside one if they disagree. Reports are never edited after
 > landing; corrections go in a newer report.
 
+- [2026-09-03-live-walkthrough-chatgpt-work.md](2026-09-03-live-walkthrough-chatgpt-work.md)
+  — attended Chrome-extension walkthrough: every review page, both themes,
+  desktop/intermediate/phone layouts, external evidence and issue prefill;
+  three clear defects repaired, remaining judgments reserved for the owner.
+
 - [../eap-closeout-walkthrough-2026-07-14.md](../eap-closeout-walkthrough-2026-07-14.md)
   — the ORDER 030 (b) owner-facing EAP close-out walkthrough: shipped-work
   summary, run/verify commands, the owner-actions checklist with
