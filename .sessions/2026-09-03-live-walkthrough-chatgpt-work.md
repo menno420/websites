@@ -20,18 +20,46 @@ examples-shape decision are constraints, not redesign invitations.
 - Read Overview → Story → Problems → Examples → After before repository
   content, then every navigation page, all 18 linked repository lanes, and
   both editions. Fleet has 25 entries: seven are explicitly registry-only,
-  with no repository detail links. Further interaction checks are in progress.
+  with no repository detail links. All 64 observed fragment URLs have targets;
+  114 external evidence URLs opened in the owner's signed-in Chrome. ShiftLife
+  is Private, so owner access is not reported as outsider access.
 - Chrome rendered the HTML pages. The four linked JSON/XML resources displayed
   `ERR_BLOCKED_BY_CLIENT`; no browser protections or settings were changed.
-- Verification and final report are pending; this card deliberately holds CI.
+- Shipped report: `docs/audits/2026-09-03-live-walkthrough-chatgpt-work.md`,
+  indexed from the audits README, with 37 page/resource blocks, 46 screenshots,
+  a per-external-link ledger and measured interaction checks. Remaining content,
+  ordering and presentation judgments stay with the owner.
+- Three clear defects only: sticky-header fragment occlusion (review
+  `static/site.css` + `static/site.js`); the phone glossary's oversized term
+  column (`static/site.css`); five duplicated "progress" words in illustrative
+  mockup values (`story.py`). No data mirrors or sibling services changed.
+- Browser verification: all nine priority fragments at 1440/1000/390px clear
+  the header (27/27); glossary table fits its 317px phone container; the mockup
+  keeps its proposal labels with no "progress progress". Both themes and all
+  33 HTML pages checked; short-phone drawer, palette and issue prefill operated.
+- `python -m pytest tests/ botsite/tests dashboard/tests review/tests -q`:
+  `2525 passed, 5 warnings in 453.66s (0:07:33)` (exit 0, installed Python 3.13.15).
+- `python -m pytest review/tests -q`: `315 passed, 1 warning in 2.61s` (exit 0).
+- `python -m review.gen_static --out .walkthrough-preview/websites --base-path /websites`:
+  `exported 38 routes + static/` (exit 0). Export success is not substituted
+  for the independent browser and link checks.
+- `python bootstrap.py check --strict`: pre-flip exit 1 named only this
+  session's deliberate born-red hold; final exit-0 check follows the flip.
+- Capability delta appended to `docs/CAPABILITIES.md`: extension opening,
+  clicks, shortcuts, measured viewport capture, exact client-block result.
+- READY PR #525 began with card-only remote commit `a4bcf1e3` (local first
+  commit `9d26861`; identical tree `18628567`). After merge, dispatch
+  `review-pages.yml` manually and re-open the changed live pages; neither
+  a pre-merge card nor a successful merge proves a Pages rebuild.
 
 ⚑ Self-initiated: no — direct owner walkthrough request.
 
 ## 💡 Session idea
 
-No new backlog proposal yet. The owner explicitly reserved the shape of a
-second site pass; the audit will preserve findings as input to that decision
-rather than manufacture a separate improvement task.
+No separate backlog idea: the owner explicitly reserved the shape of a
+second site pass. The report preserves the unresolved navigation, density and
+examples-shape findings as input to that decision. Worth keeping in the audit
+because opening an unsolicited redesign task would pre-empt that choice.
 
 ## ⟲ Previous-session review
 

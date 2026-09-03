@@ -1,0 +1,2099 @@
+{
+  "build": "137b80eb",
+  "pageCount": 33,
+  "externalLinkCount": 114,
+  "responsive": [
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/story/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/problems/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/examples/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/after/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/process/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/growth/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/successes/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/questionnaire/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/reviews/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/questions/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/ask/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/fleet-manager/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/gba-homebrew/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/idea-engine/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/product-forge/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/shiftlife/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/sim-lab/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/substrate-kit/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-games/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-idle/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-mineverse/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-next/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/trading-strategy/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/venture-lab/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/websites/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-fable5/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-opus4.8/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-sonnet5/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-11-edition-001/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-21-edition-002/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/story/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/problems/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/examples/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/after/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/process/",
+      "wideElements": [
+        {
+          "cls": "sb-table",
+          "tag": "TABLE",
+          "text": "TERM\tMEANING\nProject\tA claude.ai Code Project during the program: one ",
+          "width": 478.453125
+        },
+        {
+          "cls": "",
+          "tag": "THEAD",
+          "text": "TERM\tMEANING\n",
+          "width": 478.453125
+        },
+        {
+          "cls": "",
+          "tag": "TR",
+          "text": "TERM\tMEANING",
+          "width": 478.453125
+        },
+        {
+          "cls": "",
+          "tag": "TH",
+          "text": "MEANING",
+          "width": 144.046875
+        },
+        {
+          "cls": "",
+          "tag": "TBODY",
+          "text": "Project\tA claude.ai Code Project during the program: one Custom Instru",
+          "width": 478.453125
+        },
+        {
+          "cls": "",
+          "tag": "TR",
+          "text": "Project\tA claude.ai Code Project during the program: one Custom Instru",
+          "width": 478.453125
+        },
+        {
+          "cls": "",
+          "tag": "TD",
+          "text": "A claude.ai Code Project during the program: one Custom Instructions b",
+          "width": 144.046875
+        },
+        {
+          "cls": "",
+          "tag": "TR",
+          "text": "Coordinator / worker\tThe coordinator is the Project’s main chat: it re",
+          "width": 478.453125
+        }
+      ],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/growth/",
+      "wideElements": [
+        {
+          "cls": "sb-table",
+          "tag": "TABLE",
+          "text": "UTC DAY\tPRS MERGED\tCOMMITS\tSESSION CARDS\tTEST FUNCTIONS (END OF DAY)\n2",
+          "width": 630.4140625
+        },
+        {
+          "cls": "",
+          "tag": "THEAD",
+          "text": "UTC DAY\tPRS MERGED\tCOMMITS\tSESSION CARDS\tTEST FUNCTIONS (END OF DAY)\n",
+          "width": 630.4140625
+        },
+        {
+          "cls": "",
+          "tag": "TR",
+          "text": "UTC DAY\tPRS MERGED\tCOMMITS\tSESSION CARDS\tTEST FUNCTIONS (END OF DAY)",
+          "width": 630.4140625
+        },
+        {
+          "cls": "",
+          "tag": "TH",
+          "text": "SESSION CARDS",
+          "width": 127.5546875
+        },
+        {
+          "cls": "",
+          "tag": "TH",
+          "text": "TEST FUNCTIONS (END OF DAY)",
+          "width": 230.453125
+        },
+        {
+          "cls": "",
+          "tag": "TBODY",
+          "text": "2026-07-09\t45\t46\t29\t106\n2026-07-10\t36\t39\t21\t178\n2026-07-11\t72\t95\t36\t31",
+          "width": 630.4140625
+        },
+        {
+          "cls": "",
+          "tag": "TR",
+          "text": "2026-07-09\t45\t46\t29\t106",
+          "width": 630.4140625
+        },
+        {
+          "cls": "",
+          "tag": "TD",
+          "text": "29",
+          "width": 127.5546875
+        }
+      ],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/successes/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/questionnaire/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/reviews/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/questions/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/ask/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/fleet-manager/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/gba-homebrew/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/idea-engine/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/product-forge/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/shiftlife/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/sim-lab/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/substrate-kit/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-games/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-idle/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-mineverse/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-next/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/trading-strategy/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/venture-lab/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/websites/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-fable5/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-opus4.8/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-sonnet5/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-11-edition-001/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1425,
+      "headerHeight": 65,
+      "height": 900,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-21-edition-002/",
+      "wideElements": [],
+      "width": 1440
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/fleet-manager/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/gba-homebrew/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/idea-engine/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/product-forge/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/shiftlife/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/sim-lab/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/substrate-kit/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-games/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-idle/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-mineverse/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/superbot-next/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/trading-strategy/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/venture-lab/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/websites/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-fable5/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-opus4.8/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-sonnet5/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-11-edition-001/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "light",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-21-edition-002/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/story/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/problems/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/examples/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/after/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/process/",
+      "wideElements": [
+        {
+          "cls": "sb-table",
+          "tag": "TABLE",
+          "text": "TERM\tMEANING\nProject\tA claude.ai Code Project during the program: one ",
+          "width": 478.453125
+        },
+        {
+          "cls": "",
+          "tag": "THEAD",
+          "text": "TERM\tMEANING\n",
+          "width": 478.453125
+        },
+        {
+          "cls": "",
+          "tag": "TR",
+          "text": "TERM\tMEANING",
+          "width": 478.453125
+        },
+        {
+          "cls": "",
+          "tag": "TH",
+          "text": "MEANING",
+          "width": 144.046875
+        },
+        {
+          "cls": "",
+          "tag": "TBODY",
+          "text": "Project\tA claude.ai Code Project during the program: one Custom Instru",
+          "width": 478.453125
+        },
+        {
+          "cls": "",
+          "tag": "TR",
+          "text": "Project\tA claude.ai Code Project during the program: one Custom Instru",
+          "width": 478.453125
+        },
+        {
+          "cls": "",
+          "tag": "TD",
+          "text": "A claude.ai Code Project during the program: one Custom Instructions b",
+          "width": 144.046875
+        },
+        {
+          "cls": "",
+          "tag": "TR",
+          "text": "Coordinator / worker\tThe coordinator is the Project’s main chat: it re",
+          "width": 478.453125
+        }
+      ],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/growth/",
+      "wideElements": [
+        {
+          "cls": "sb-table",
+          "tag": "TABLE",
+          "text": "UTC DAY\tPRS MERGED\tCOMMITS\tSESSION CARDS\tTEST FUNCTIONS (END OF DAY)\n2",
+          "width": 630.4140625
+        },
+        {
+          "cls": "",
+          "tag": "THEAD",
+          "text": "UTC DAY\tPRS MERGED\tCOMMITS\tSESSION CARDS\tTEST FUNCTIONS (END OF DAY)\n",
+          "width": 630.4140625
+        },
+        {
+          "cls": "",
+          "tag": "TR",
+          "text": "UTC DAY\tPRS MERGED\tCOMMITS\tSESSION CARDS\tTEST FUNCTIONS (END OF DAY)",
+          "width": 630.4140625
+        },
+        {
+          "cls": "",
+          "tag": "TH",
+          "text": "SESSION CARDS",
+          "width": 127.5546875
+        },
+        {
+          "cls": "",
+          "tag": "TH",
+          "text": "TEST FUNCTIONS (END OF DAY)",
+          "width": 230.453125
+        },
+        {
+          "cls": "",
+          "tag": "TBODY",
+          "text": "2026-07-09\t45\t46\t29\t106\n2026-07-10\t36\t39\t21\t178\n2026-07-11\t72\t95\t36\t31",
+          "width": 630.4140625
+        },
+        {
+          "cls": "",
+          "tag": "TR",
+          "text": "2026-07-09\t45\t46\t29\t106",
+          "width": 630.4140625
+        },
+        {
+          "cls": "",
+          "tag": "TD",
+          "text": "29",
+          "width": 127.5546875
+        }
+      ],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/successes/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/questionnaire/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/reviews/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/questions/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/ask/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/fleet-manager/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/gba-homebrew/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/idea-engine/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/product-forge/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/shiftlife/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/sim-lab/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/substrate-kit/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/superbot/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/superbot-games/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/superbot-idle/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/superbot-mineverse/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/superbot-next/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/trading-strategy/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/venture-lab/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/websites/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-fable5/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-opus4.8/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-sonnet5/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-11-edition-001/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 375,
+      "headerHeight": 65,
+      "height": 844,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-21-edition-002/",
+      "wideElements": [],
+      "width": 390
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/story/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/problems/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/examples/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/after/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/process/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/growth/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/successes/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/questionnaire/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/reviews/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/questions/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/ask/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/fleet-manager/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/gba-homebrew/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/idea-engine/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/product-forge/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/shiftlife/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/sim-lab/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/substrate-kit/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/superbot/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/superbot-games/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/superbot-idle/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/superbot-mineverse/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/superbot-next/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/trading-strategy/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/venture-lab/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/websites/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-fable5/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-opus4.8/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-sonnet5/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-11-edition-001/",
+      "wideElements": [],
+      "width": 1000
+    },
+    {
+      "documentWidth": 985,
+      "headerHeight": 139.3984375,
+      "height": 800,
+      "theme": "dark",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-21-edition-002/",
+      "wideElements": [],
+      "width": 1000
+    }
+  ],
+  "headerChecks": [
+    {
+      "height": 75.3984375,
+      "menuVisible": false,
+      "navLinks": 13,
+      "width": 1200
+    },
+    {
+      "height": 107.3984375,
+      "menuVisible": false,
+      "navLinks": 13,
+      "width": 1100
+    },
+    {
+      "height": 139.3984375,
+      "menuVisible": false,
+      "navLinks": 13,
+      "width": 1000
+    },
+    {
+      "height": 139.3984375,
+      "menuVisible": false,
+      "navLinks": 13,
+      "width": 900
+    },
+    {
+      "height": 139.3984375,
+      "menuVisible": false,
+      "navLinks": 13,
+      "width": 881
+    },
+    {
+      "height": 65,
+      "menuVisible": true,
+      "navLinks": 0,
+      "width": 880
+    }
+  ],
+  "fragmentResults": [
+    {
+      "exists": true,
+      "heading": "One person, eight Claude Projects, two weeks — the program reviewing itself.",
+      "url": "https://menno420.github.io/websites/#main"
+    },
+    {
+      "exists": true,
+      "heading": "Glossary — the jargon, translated",
+      "url": "https://menno420.github.io/websites/process/#glossary"
+    },
+    {
+      "exists": true,
+      "heading": "How do the gates work — what actually stops a bad merge?",
+      "url": "https://menno420.github.io/websites/questionnaire/#gates"
+    },
+    {
+      "exists": true,
+      "heading": "2026-07-12: the platform's trigger scheduler silently degraded — the fleet's dead-man failsafes brought it back",
+      "url": "https://menno420.github.io/websites/problems/#incident-2026-07-12"
+    },
+    {
+      "exists": true,
+      "heading": "Sessions are amnesiac — how does knowledge survive?",
+      "url": "https://menno420.github.io/websites/questionnaire/#memory"
+    },
+    {
+      "exists": true,
+      "heading": "The fortnight, the eight Projects, and how one was run",
+      "url": "https://menno420.github.io/websites/story/#main"
+    },
+    {
+      "exists": true,
+      "url": "https://menno420.github.io/websites/#era"
+    },
+    {
+      "exists": true,
+      "heading": "“The executable work queue is exhausted” — Projects declared themselves done while orders sat unread",
+      "url": "https://menno420.github.io/websites/problems/#false-done"
+    },
+    {
+      "exists": true,
+      "heading": "MOCKUP The Projects overview, redrawn so each Project shows its state",
+      "url": "https://menno420.github.io/websites/examples/#projects-overview-mockup"
+    },
+    {
+      "exists": true,
+      "heading": "Workers refused their own coordinator’s orders as coming from an untrusted source",
+      "url": "https://menno420.github.io/websites/problems/#coordinator-authority"
+    },
+    {
+      "exists": true,
+      "heading": "What went wrong — specifically",
+      "url": "https://menno420.github.io/websites/problems/#main"
+    },
+    {
+      "exists": true,
+      "heading": "How we want things to look",
+      "url": "https://menno420.github.io/websites/examples/#main"
+    },
+    {
+      "exists": true,
+      "heading": "What a Project adds over a session — the owner's answer",
+      "url": "https://menno420.github.io/websites/after/#main"
+    },
+    {
+      "exists": true,
+      "heading": "The question Anthropic asked him",
+      "url": "https://menno420.github.io/websites/after/#question"
+    },
+    {
+      "exists": true,
+      "heading": "What they have in common: a plain session is an autonomous worker too",
+      "url": "https://menno420.github.io/websites/after/#common"
+    },
+    {
+      "exists": true,
+      "heading": "What a Project adds, one: one rule set delivered verbatim to every agent",
+      "url": "https://menno420.github.io/websites/after/#adds-instructions"
+    },
+    {
+      "exists": true,
+      "heading": "What a Project adds, two: a coordinator that is a mind of its own",
+      "url": "https://menno420.github.io/websites/after/#adds-coordinator"
+    },
+    {
+      "exists": true,
+      "heading": "What a Project adds, three: eight at once — only because usage was unlimited",
+      "url": "https://menno420.github.io/websites/after/#adds-scale"
+    },
+    {
+      "exists": true,
+      "heading": "What a Project must fix to be chosen over a session",
+      "url": "https://menno420.github.io/websites/after/#must-fix"
+    },
+    {
+      "exists": true,
+      "heading": "His verdict, and the one fix",
+      "url": "https://menno420.github.io/websites/after/#verdict"
+    },
+    {
+      "exists": true,
+      "heading": "What should have been the product’s default: the instruction box, sorted",
+      "url": "https://menno420.github.io/websites/after/#defaults"
+    },
+    {
+      "exists": true,
+      "heading": "The substrate workflow",
+      "url": "https://menno420.github.io/websites/process/#main"
+    },
+    {
+      "exists": true,
+      "heading": "How a Project was run, day to day",
+      "url": "https://menno420.github.io/websites/story/#ritual"
+    },
+    {
+      "exists": true,
+      "heading": "Glossary — the jargon, translated",
+      "url": "https://menno420.github.io/websites/process/#glossary"
+    },
+    {
+      "exists": true,
+      "heading": "Every day since the repo was born, measured from git",
+      "url": "https://menno420.github.io/websites/growth/#main"
+    },
+    {
+      "exists": true,
+      "heading": "Every seat in the fleet, from the manager's own registry",
+      "url": "https://menno420.github.io/websites/fleet/#main"
+    },
+    {
+      "exists": true,
+      "heading": "The eight Projects, as the owner's screen named them",
+      "url": "https://menno420.github.io/websites/story/#projects"
+    },
+    {
+      "exists": true,
+      "heading": "What worked — with receipts",
+      "url": "https://menno420.github.io/websites/successes/#main"
+    },
+    {
+      "exists": true,
+      "heading": "The questions a reviewer would ask, answered from the record",
+      "url": "https://menno420.github.io/websites/questionnaire/#main"
+    },
+    {
+      "exists": true,
+      "heading": "How do you prevent runaway agents?",
+      "url": "https://menno420.github.io/websites/questionnaire/#runaway"
+    },
+    {
+      "exists": true,
+      "heading": "What has actually failed?",
+      "url": "https://menno420.github.io/websites/questionnaire/#failures"
+    },
+    {
+      "exists": true,
+      "heading": "How do the gates work — what actually stops a bad merge?",
+      "url": "https://menno420.github.io/websites/questionnaire/#gates"
+    },
+    {
+      "exists": true,
+      "heading": "What does the human actually do, versus the agents?",
+      "url": "https://menno420.github.io/websites/questionnaire/#human-role"
+    },
+    {
+      "exists": true,
+      "heading": "How do unattended wakes stay safe?",
+      "url": "https://menno420.github.io/websites/questionnaire/#unattended"
+    },
+    {
+      "exists": true,
+      "heading": "How do agents coordinate without talking to each other?",
+      "url": "https://menno420.github.io/websites/questionnaire/#coordination"
+    },
+    {
+      "exists": true,
+      "heading": "How do we know the numbers on this site are real?",
+      "url": "https://menno420.github.io/websites/questionnaire/#numbers"
+    },
+    {
+      "exists": true,
+      "heading": "What can agents here verifiably NOT do?",
+      "url": "https://menno420.github.io/websites/questionnaire/#walls"
+    },
+    {
+      "exists": true,
+      "heading": "Sessions are amnesiac — how does knowledge survive?",
+      "url": "https://menno420.github.io/websites/questionnaire/#memory"
+    },
+    {
+      "exists": true,
+      "heading": "Why believe this is safe-by-design rather than lucky-so-far?",
+      "url": "https://menno420.github.io/websites/questionnaire/#luck"
+    },
+    {
+      "exists": true,
+      "heading": "What are the known weaknesses you have NOT fixed?",
+      "url": "https://menno420.github.io/websites/questionnaire/#weaknesses"
+    },
+    {
+      "exists": true,
+      "heading": "Where did the speed actually come from?",
+      "url": "https://menno420.github.io/websites/questionnaire/#why-fast"
+    },
+    {
+      "exists": true,
+      "heading": "Review editions, dated",
+      "url": "https://menno420.github.io/websites/reviews/#main"
+    },
+    {
+      "exists": true,
+      "heading": "Questions asked → answered",
+      "url": "https://menno420.github.io/websites/questions/#main"
+    },
+    {
+      "exists": true,
+      "heading": "Archived answers",
+      "url": "https://menno420.github.io/websites/ask/#main"
+    },
+    {
+      "exists": true,
+      "heading": "fleet-manager (this repo)",
+      "url": "https://menno420.github.io/websites/fleet/fleet-manager/#main"
+    },
+    {
+      "exists": true,
+      "heading": "gba-homebrew",
+      "url": "https://menno420.github.io/websites/fleet/gba-homebrew/#main"
+    },
+    {
+      "exists": true,
+      "heading": "idea-engine",
+      "url": "https://menno420.github.io/websites/fleet/idea-engine/#main"
+    },
+    {
+      "exists": true,
+      "heading": "product-forge",
+      "url": "https://menno420.github.io/websites/fleet/product-forge/#main"
+    },
+    {
+      "exists": true,
+      "heading": "shiftlife",
+      "url": "https://menno420.github.io/websites/fleet/shiftlife/#main"
+    },
+    {
+      "exists": true,
+      "heading": "sim-lab",
+      "url": "https://menno420.github.io/websites/fleet/sim-lab/#main"
+    },
+    {
+      "exists": true,
+      "heading": "substrate-kit",
+      "url": "https://menno420.github.io/websites/fleet/substrate-kit/#main"
+    },
+    {
+      "exists": true,
+      "heading": "superbot (hub)",
+      "url": "https://menno420.github.io/websites/fleet/superbot/#main"
+    },
+    {
+      "exists": true,
+      "heading": "superbot-games · Seat A",
+      "url": "https://menno420.github.io/websites/fleet/superbot-games/#main"
+    },
+    {
+      "exists": true,
+      "heading": "superbot-idle (Seat B)",
+      "url": "https://menno420.github.io/websites/fleet/superbot-idle/#main"
+    },
+    {
+      "exists": true,
+      "heading": "superbot-mineverse",
+      "url": "https://menno420.github.io/websites/fleet/superbot-mineverse/#main"
+    },
+    {
+      "exists": true,
+      "heading": "superbot-next",
+      "url": "https://menno420.github.io/websites/fleet/superbot-next/#main"
+    },
+    {
+      "exists": true,
+      "heading": "trading-strategy",
+      "url": "https://menno420.github.io/websites/fleet/trading-strategy/#main"
+    },
+    {
+      "exists": true,
+      "heading": "venture-lab",
+      "url": "https://menno420.github.io/websites/fleet/venture-lab/#main"
+    },
+    {
+      "exists": true,
+      "heading": "websites",
+      "url": "https://menno420.github.io/websites/fleet/websites/#main"
+    },
+    {
+      "exists": true,
+      "heading": "codetool-lab-fable5",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-fable5/#main"
+    },
+    {
+      "exists": true,
+      "heading": "codetool-lab-opus4.8",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-opus4.8/#main"
+    },
+    {
+      "exists": true,
+      "heading": "codetool-lab-sonnet5",
+      "url": "https://menno420.github.io/websites/fleet/codetool-lab-sonnet5/#main"
+    },
+    {
+      "exists": true,
+      "heading": "Edition 1 — three days from empty repo, and the honest ledger of what broke",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-11-edition-001/#main"
+    },
+    {
+      "exists": true,
+      "heading": "Edition 2 — the fleet by its own committed numbers, as of 2026-07-20",
+      "url": "https://menno420.github.io/websites/reviews/2026-07-21-edition-002/#main"
+    }
+  ],
+  "fixedFragments": [
+    {
+      "nav": 65,
+      "target": 71.09375,
+      "url": "http://127.0.0.1:8765/websites/#era",
+      "width": 1440
+    },
+    {
+      "nav": 65,
+      "target": 71.1328125,
+      "url": "http://127.0.0.1:8765/websites/process/#glossary",
+      "width": 1440
+    },
+    {
+      "nav": 65,
+      "target": 71.09375,
+      "url": "http://127.0.0.1:8765/websites/story/#projects",
+      "width": 1440
+    },
+    {
+      "nav": 65,
+      "target": 81.09375,
+      "url": "http://127.0.0.1:8765/websites/story/#ritual",
+      "width": 1440
+    },
+    {
+      "nav": 65,
+      "target": 71.15625,
+      "url": "http://127.0.0.1:8765/websites/examples/#projects-overview-mockup",
+      "width": 1440
+    },
+    {
+      "nav": 65,
+      "target": 71.2421875,
+      "url": "http://127.0.0.1:8765/websites/problems/#coordinator-authority",
+      "width": 1440
+    },
+    {
+      "nav": 65,
+      "target": 81.203125,
+      "url": "http://127.0.0.1:8765/websites/problems/#false-done",
+      "width": 1440
+    },
+    {
+      "nav": 65,
+      "target": 80.96875,
+      "url": "http://127.0.0.1:8765/websites/problems/#stall-visibility",
+      "width": 1440
+    },
+    {
+      "nav": 65,
+      "target": 81.15625,
+      "url": "http://127.0.0.1:8765/websites/problems/#incident-2026-07-12",
+      "width": 1440
+    },
+    {
+      "nav": 139.3984375,
+      "target": 145.9921875,
+      "url": "http://127.0.0.1:8765/websites/#era",
+      "width": 1000
+    },
+    {
+      "nav": 139.3984375,
+      "target": 146.03125,
+      "url": "http://127.0.0.1:8765/websites/process/#glossary",
+      "width": 1000
+    },
+    {
+      "nav": 139.3984375,
+      "target": 145.9921875,
+      "url": "http://127.0.0.1:8765/websites/story/#projects",
+      "width": 1000
+    },
+    {
+      "nav": 139.3984375,
+      "target": 156.1875,
+      "url": "http://127.0.0.1:8765/websites/story/#ritual",
+      "width": 1000
+    },
+    {
+      "nav": 139.3984375,
+      "target": 145.9453125,
+      "url": "http://127.0.0.1:8765/websites/examples/#projects-overview-mockup",
+      "width": 1000
+    },
+    {
+      "nav": 139.3984375,
+      "target": 146.140625,
+      "url": "http://127.0.0.1:8765/websites/problems/#coordinator-authority",
+      "width": 1000
+    },
+    {
+      "nav": 139.3984375,
+      "target": 155.796875,
+      "url": "http://127.0.0.1:8765/websites/problems/#false-done",
+      "width": 1000
+    },
+    {
+      "nav": 139.3984375,
+      "target": 155.7578125,
+      "url": "http://127.0.0.1:8765/websites/problems/#stall-visibility",
+      "width": 1000
+    },
+    {
+      "nav": 139.3984375,
+      "target": 156.0546875,
+      "url": "http://127.0.0.1:8765/websites/problems/#incident-2026-07-12",
+      "width": 1000
+    },
+    {
+      "nav": 65,
+      "target": 70.78125,
+      "url": "http://127.0.0.1:8765/websites/#era",
+      "width": 390
+    },
+    {
+      "nav": 65,
+      "target": 70.75,
+      "url": "http://127.0.0.1:8765/websites/process/#glossary",
+      "width": 390
+    },
+    {
+      "nav": 65,
+      "target": 70.8203125,
+      "url": "http://127.0.0.1:8765/websites/story/#projects",
+      "width": 390
+    },
+    {
+      "nav": 65,
+      "target": 81.21875,
+      "url": "http://127.0.0.1:8765/websites/story/#ritual",
+      "width": 390
+    },
+    {
+      "nav": 65,
+      "target": 71.03125,
+      "url": "http://127.0.0.1:8765/websites/examples/#projects-overview-mockup",
+      "width": 390
+    },
+    {
+      "nav": 65,
+      "target": 70.9453125,
+      "url": "http://127.0.0.1:8765/websites/problems/#coordinator-authority",
+      "width": 390
+    },
+    {
+      "nav": 65,
+      "target": 80.90625,
+      "url": "http://127.0.0.1:8765/websites/problems/#false-done",
+      "width": 390
+    },
+    {
+      "nav": 65,
+      "target": 80.9765625,
+      "url": "http://127.0.0.1:8765/websites/problems/#stall-visibility",
+      "width": 390
+    },
+    {
+      "nav": 65,
+      "target": 80.890625,
+      "url": "http://127.0.0.1:8765/websites/problems/#incident-2026-07-12",
+      "width": 390
+    }
+  ],
+  "issuePrefill": {
+    "body": "**Asked from the program-review site — page/section: overview page**\n\n<!-- Write your question below. An agent session reads it, answers from the committed record through a normal pull request, and the answer is listed on the site's Answer log with a link back here. The program this site reviews ended 2026-07-21; answers are archive updates, not a live service. -->\n\n",
+    "title": "[program-review] Question: overview page",
+    "url": "https://github.com/menno420/websites/issues/new?title=%5Bprogram-review%5D+Question%3A+overview+page&body=%2A%2AAsked+from+the+program-review+site+%E2%80%94+page%2Fsection%3A+overview+page%2A%2A%0A%0A%3C%21--+Write+your+question+below.+An+agent+session+reads+it%2C+answers+from+the+committed+record+through+a+normal+pull+request%2C+and+the+answer+is+listed+on+the+site%27s+Answer+log+with+a+link+back+here.+The+program+this+site+reviews+ended+2026-07-21%3B+answers+are+archive+updates%2C+not+a+live+service.+--%3E%0A%0A"
+  }
+}
