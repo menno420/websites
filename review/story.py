@@ -792,9 +792,11 @@ def site_map(seats_count: int | None = None) -> list[tuple[str, str, str]]:
         ("Successes", "/successes", "what went right, each win linked to commits"),
         ("Q&A", "/questionnaire", "the questions a reviewer would ask, answered from the record"
          + ("" if _static_export() else " — plus the live AI assistant on /ask")),
-        ("Reviews", "/reviews", "the two dated review editions published during the program, and an Atom feed"),
+        ("Reviews", "/reviews", "the dated review editions, all published during the program, and an Atom feed"),
         ("Answer log", "/questions", "questions asked through this site and where each answer landed (none yet)"),
-        ("Archived answers", "/ask", "the retired on-page assistant’s seeded answers, kept as a record"),
+        (("Archived answers", "/ask", "the retired on-page assistant’s seeded answers, kept as a record")
+         if _static_export()
+         else ("Ask AI", "/ask", "the live, evidence-grounded assistant over the committed corpus")),
     ]
 
 
@@ -1253,8 +1255,8 @@ STORY_TIMELINE: list[dict[str, Any]] = [
     {
         "date": "2026-07-09",
         "title": "The densest day",
-        "detail": "fleet-manager, websites (46 pull requests on its first day — the Growth page counts them), trading-strategy and superbot-games founded. Generation 1 wound down the same evening with an adversarial audit: 21 of 21 incidents verified, zero fabrication.",
-        "evidence": [("the fleet account § 1", _FLEET_ACCOUNT), ("this repo’s first day (Growth)", "/growth")],
+        "detail": "fleet-manager, websites, trading-strategy and superbot-games founded. This repository merged 45 pull requests on its first UTC day, as the Growth page counts them from the committed snapshot (its gen-1 retrospective adds the 3 closed unmerged). Generation 1 wound down the same evening with an adversarial audit: 21 of 21 incidents verified, zero fabrication.",
+        "evidence": [("the fleet account § 1", _FLEET_ACCOUNT), ("this repo’s first day, merged PRs per day (Growth)", "/growth"), ("gen-1 final retro (this repo)", blob("docs/retro/gen1-final-retro-2026-07-09.md"))],
     },
     {
         "date": "2026-07-10",
