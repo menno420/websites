@@ -5,7 +5,7 @@
 > red through three Codex rounds; this flip to `complete` is the deliberate
 > LAST code step and releases the hold.
 
-- **📊 Model:** Claude Fable 5 · xhigh · site build
+- **📊 Model:** Claude Fable 5 · xhigh · feature build
 - **📍 Venue:** cloud-container
 
 **What this session was about:** the owner's 2026-09-02 ask (fleet-manager
